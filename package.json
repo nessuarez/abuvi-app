@@ -1,0 +1,13 @@
+{
+  "name": "abuvi-app",
+  "version": "0.0.1",
+  "private": true,
+  "description": "ABUVI Web Platform",
+  "scripts": {
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"**/*.mdc\"",
+    "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\" \"**/*.mdc\""
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "^0.17.0"
+  }
+}

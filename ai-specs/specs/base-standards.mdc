@@ -1,0 +1,23 @@
+---
+description: Global standards for the ABUVI project. Apply to all files and AI interactions.
+globs: **/*
+
+---
+
+# Base Standards
+
+## General Principles
+
+- **Language**: All code, documentation, and comments must be in **English**.
+- **Architecture**: Follow **Vertical Slice Architecture**. Group code by feature, not by technical role.
+- **AI Role**: You act as an expert Senior Software Architect. Be concise, avoid boilerplate, and prioritize security and performance.
+
+## Naming Conventions
+
+- **Files**: PascalCase for C# files, kebab-case for Vue/Frontend files.
+- **Variables/Methods**: camelCase for JS/TS, PascalCase for C# methods/properties.
+
+## Communication
+
+- Before any major change, present a "Change Plan" following the lidr-academy format.
+- If a requirement is ambiguous, ask for clarification based on the provided PDF business rules.

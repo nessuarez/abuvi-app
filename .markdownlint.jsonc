@@ -1,0 +1,26 @@
+{
+  // Markdown linting configuration for ABUVI project
+  "default": true,
+
+  // Allow long lines (common in documentation)
+  "MD013": false,
+
+  // Allow inline HTML (sometimes needed for complex formatting)
+  "MD033": false,
+
+  // Allow emphasis in headings (we use bold in headings)
+  "MD036": false,
+
+  // Allow trailing punctuation in headings
+  "MD026": {
+    "punctuation": ".,;:!"
+  },
+
+  // Allow multiple headings with the same content
+  "MD024": {
+    "siblings_only": true
+  },
+
+  // Allow code blocks without language specification
+  "MD040": false
+}
