@@ -1,0 +1,11 @@
+{
+	"python.testing.pytestArgs": ["."],
+	"python.testing.unittestEnabled": false,
+	"python.testing.pytestEnabled": true,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.markdownlint": "explicit"
+	},
+	"[markdown]": {
+		"files.trimTrailingWhitespace": true
+	}
+}
