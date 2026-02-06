@@ -20,7 +20,7 @@ alwaysApply: true
 - **English Only**: All technical artifacts must always use English, including:
   - Code (variables, functions, classes, comments, error messages, log messages)
   - Documentation (README, guides, API docs)
-  - Jira tickets (titles, descriptions, comments)
+  - Trello cards (titles, descriptions, checklists)
   - Data schemas and database names
   - Configuration files and scripts
   - Git commit messages
