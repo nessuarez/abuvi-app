@@ -85,6 +85,147 @@ abuvi-app/                  # Root directory
    cd src/Abuvi.Web && npm install && npm run dev
    ```
 
+## **🏃 Quick Start (Current Backend Scaffolding)**
+
+### Running the Backend API
+
+1. **Start PostgreSQL**:
+   ```bash
+   docker compose up -d
+   ```
+
+2. **Run database migrations** (first time only):
+   ```bash
+   dotnet ef database update --project src/Abuvi.API
+   ```
+
+3. **Start the Backend API**:
+   ```bash
+   dotnet run --project src/Abuvi.API
+   ```
+
+4. **Verify the application**:
+   - API: http://localhost:5000/health
+   - Swagger UI: http://localhost:5000/swagger
+
+## **💻 Development Commands**
+
+### Backend (.NET)
+
+- `dotnet restore` - Restore NuGet packages
+- `dotnet build` - Build the solution
+- `dotnet run --project src/Abuvi.API` - Run the API
+- `dotnet test` - Run all tests
+- `dotnet ef migrations add <MigrationName> --project src/Abuvi.API` - Create a new migration
+- `dotnet ef database update --project src/Abuvi.API` - Apply migrations to the database
+- `dotnet ef migrations list --project src/Abuvi.API` - List all migrations
+
+### Database (Docker)
+
+- `docker compose up -d` - Start PostgreSQL in detached mode
+- `docker compose down` - Stop PostgreSQL
+- `docker compose ps` - Check container status
+- `docker compose logs postgres` - View PostgreSQL logs
+
+### Testing
+
+- `dotnet test` - Run all tests
+- `dotnet test --logger "console;verbosity=detailed"` - Run tests with detailed output
+- `dotnet test --collect:"XPlat Code Coverage"` - Run tests with code coverage
+
+## **📂 Actual Project Structure**
+
+```text
+abuvi-app/
+├── src/
+│   ├── Abuvi.API/              # Backend .NET 9 API
+│   │   ├── Features/           # Vertical slice features (empty, ready for features)
+│   │   ├── Common/             # Cross-cutting concerns
+│   │   │   ├── Middleware/     # Global middleware (exception handling)
+│   │   │   ├── Models/         # Shared models (ApiResponse, ApiError)
+│   │   │   ├── Extensions/     # Service extensions (empty)
+│   │   │   └── Filters/        # Action filters (empty)
+│   │   ├── Data/               # EF Core DbContext & migrations
+│   │   │   ├── Configurations/ # Entity configurations (empty)
+│   │   │   └── Migrations/     # EF Core migrations
+│   │   ├── Program.cs          # Application entry point
+│   │   └── appsettings.json    # Application configuration
+│   ├── Abuvi.Tests/            # xUnit test project
+│   │   ├── Unit/               # Unit tests
+│   │   ├── Integration/        # Integration tests (HealthCheckTests)
+│   │   └── Helpers/            # Test utilities
+│   │       ├── Builders/       # Test data builders (empty)
+│   │       └── Fixtures/       # Test fixtures (empty)
+│   └── Abuvi.Analysis/         # Python integration (CSnakes)
+│       ├── requirements.txt    # Python dependencies
+│       └── __init__.py         # Python module initialization
+├── ai-specs/                   # Specifications (SDD approach)
+│   ├── .agents/                # AI agent configurations
+│   ├── .commands/              # Custom AI commands
+│   ├── specs/                  # Core specifications
+│   └── changes/                # Change plans
+├── docker-compose.yml          # PostgreSQL container
+├── Abuvi.sln                   # .NET solution file
+└── README.md                   # This file
+```
+
+## **🔍 Health Checks & Endpoints**
+
+- **Backend API Health Check**: http://localhost:5000/health
+  - Returns: `{"status":"healthy","timestamp":"2026-02-06T..."}`
+- **Swagger UI (API Documentation)**: http://localhost:5000/swagger
+- **PostgreSQL Database**: `localhost:5432`
+  - Database: `abuvi`
+  - Username: `abuvi_user`
+  - Password: `dev_password` (local dev only)
+
+## **🛠️ Troubleshooting**
+
+### Port 5432 already in use
+
+If PostgreSQL port is already in use, change the port mapping in `docker-compose.yml`:
+
+```yaml
+ports:
+  - "5433:5432"  # Changed host port to 5433
+```
+
+Then update the connection string in `src/Abuvi.API/appsettings.json`:
+
+```json
+"DefaultConnection": "Host=localhost;Port=5433;Database=abuvi;Username=abuvi_user;Password=dev_password"
+```
+
+### Docker not running
+
+Ensure Docker Desktop is running:
+
+```bash
+docker ps  # Should not error
+```
+
+### Database connection failed
+
+1. Check PostgreSQL is running: `docker compose ps`
+2. Verify health status shows "healthy"
+3. Check connection string in `appsettings.json` matches `docker-compose.yml` environment variables
+
+### Build errors related to .NET version
+
+This project targets .NET 9, but can be built with .NET 10 SDK (backward compatible). If you encounter framework errors:
+
+1. Check installed SDKs: `dotnet --list-sdks`
+2. Verify you have .NET 9.0.x SDK installed
+3. If needed, create `global.json` to pin SDK version
+
+### EF Core migrations fail
+
+Ensure PostgreSQL is running before creating or applying migrations:
+
+```bash
+docker compose ps  # Should show "healthy" status
+```
+
 ## **📄 License**
 
 This project is licensed under the **Apache License 2.0** - see the [LICENSE](LICENSE) file for details. This license allows for community use and transparency while protecting the core architectural patterns and the non-profit organization's brand.
