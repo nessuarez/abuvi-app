@@ -1,0 +1,1456 @@
+---
+description: Frontend development standards, best practices, and conventions for the ABUVI Vue 3 application including component patterns, Composition API, PrimeVue UI, Tailwind CSS styling, state management with Pinia, and testing practices
+globs: ["frontend/src/**/*.{vue,ts,tsx}", "frontend/cypress/**/*.{ts,js}", "frontend/tsconfig.json", "frontend/vite.config.ts", "frontend/cypress.config.ts", "frontend/package.json", "frontend/tailwind.config.*"]
+alwaysApply: true
+---
+
+# Frontend Project Standards and Best Practices
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Technology Stack](#technology-stack)
+  - [Core Technologies](#core-technologies)
+  - [UI Framework](#ui-framework)
+  - [State Management and Data Flow](#state-management-and-data-flow)
+  - [Testing Framework](#testing-framework)
+  - [Development Tools](#development-tools)
+- [Project Structure](#project-structure)
+- [Coding Standards](#coding-standards)
+  - [Naming Conventions](#naming-conventions)
+  - [Component Conventions](#component-conventions)
+  - [TypeScript Usage](#typescript-usage)
+  - [Composables](#composables)
+- [State Management](#state-management)
+  - [Pinia Stores](#pinia-stores)
+  - [Local State with Composition API](#local-state-with-composition-api)
+  - [Loading and Error States](#loading-and-error-states)
+- [Service Layer Architecture](#service-layer-architecture)
+  - [API Composables](#api-composables)
+  - [Axios Configuration](#axios-configuration)
+- [UI and UX Standards](#ui-and-ux-standards)
+  - [PrimeVue Integration](#primevue-integration)
+  - [Tailwind CSS Usage](#tailwind-css-usage)
+  - [Form Handling](#form-handling)
+  - [Navigation Patterns](#navigation-patterns)
+  - [Accessibility](#accessibility)
+  - [Responsive Design](#responsive-design)
+  - [Maps Integration](#maps-integration)
+- [Testing Standards](#testing-standards)
+  - [Unit Testing with Vitest](#unit-testing-with-vitest)
+  - [Component Testing](#component-testing)
+  - [End-to-End Testing with Cypress](#end-to-end-testing-with-cypress)
+  - [Test Organization](#test-organization)
+  - [Test Coverage Requirements](#test-coverage-requirements)
+  - [Common Anti-Patterns to Avoid](#common-anti-patterns-to-avoid)
+- [Configuration Standards](#configuration-standards)
+  - [TypeScript Configuration](#typescript-configuration)
+  - [Vite Configuration](#vite-configuration)
+  - [Environment Configuration](#environment-configuration)
+- [Performance Best Practices](#performance-best-practices)
+  - [Component Optimization](#component-optimization)
+  - [Bundle Optimization](#bundle-optimization)
+  - [API Efficiency](#api-efficiency)
+- [Development Workflow](#development-workflow)
+  - [Git Workflow](#git-workflow)
+  - [Development Scripts](#development-scripts)
+  - [Code Quality](#code-quality)
+
+---
+
+## Overview
+
+This document outlines the best practices, conventions, and standards for the ABUVI frontend application. The frontend uses **Vue 3** with the **Composition API**, **PrimeVue** components, and **Tailwind CSS** for styling, built with **Vite** and **TypeScript**.
+
+For core principles (TDD, incremental changes, type safety) and language standards (English only), refer to [base-standards.mdc](./base-standards.mdc).
+
+## Technology Stack
+
+### Core Technologies
+
+- **Vue 3**: Modern framework with Composition API
+- **TypeScript**: Type-safe development with strict mode
+- **Vite**: Fast build tool and development server
+- **Vue Router**: Client-side routing and navigation
+
+### UI Framework
+
+- **PrimeVue**: Rich component library (tables, dialogs, calendars, forms)
+- **Tailwind CSS**: Utility-first CSS framework for styling
+- **Leaflet.js**: Lightweight interactive maps (historical camp locations)
+
+### State Management and Data Flow
+
+- **Pinia**: Official Vue 3 state management (global/shared state)
+- **Composition API**: `ref`, `reactive`, `computed` for local component state
+- **Composables**: Reusable logic encapsulated in `useXxx` functions
+- **Axios**: HTTP client for API communication
+
+### Testing Framework
+
+- **Vitest**: Unit and component testing (Vite-native, fast)
+- **Vue Test Utils**: Vue component testing utilities
+- **Cypress**: End-to-end testing for user workflows
+- **Coverage Threshold**: 90% for branches, functions, lines, and statements
+
+### Development Tools
+
+- **ESLint**: Code linting with Vue-specific rules
+- **Prettier**: Code formatting
+- **TypeScript**: Static type checking
+- **Vite Dev Server**: Hot module replacement (HMR)
+
+## Project Structure
+
+```text
+frontend/
+├── public/                     # Static assets (favicon, robots.txt)
+├── src/
+│   ├── assets/                 # Images, fonts, static resources
+│   ├── components/
+│   │   ├── common/             # Shared UI components (AppHeader, AppFooter, LoadingSpinner)
+│   │   ├── camps/              # Camp-specific components
+│   │   ├── registrations/      # Registration-specific components
+│   │   ├── memories/           # Historical archive components
+│   │   └── photos/             # Photo gallery components
+│   ├── composables/            # Reusable logic (useAuth, useCamps, useApi)
+│   ├── layouts/                # Page layouts (DefaultLayout, AdminLayout)
+│   ├── pages/                  # Route-level page components
+│   │   ├── HomePage.vue
+│   │   ├── CampsPage.vue
+│   │   ├── RegistrationPage.vue
+│   │   ├── MemoriesPage.vue
+│   │   ├── PhotoGalleryPage.vue
+│   │   └── admin/              # Admin-only pages
+│   ├── router/                 # Vue Router configuration
+│   │   └── index.ts
+│   ├── stores/                 # Pinia stores
+│   │   ├── auth.ts
+│   │   ├── camps.ts
+│   │   └── registrations.ts
+│   ├── types/                  # TypeScript type definitions
+│   │   ├── api.ts              # API response/request types
+│   │   ├── camp.ts             # Camp-related types
+│   │   └── user.ts             # User-related types
+│   ├── utils/                  # Utility functions
+│   ├── App.vue                 # Root component
+│   └── main.ts                 # Application entry point
+├── cypress/
+│   ├── e2e/                    # End-to-end test files
+│   ├── fixtures/               # Test data fixtures
+│   └── support/                # Cypress support files
+├── package.json                # Dependencies and scripts
+├── tsconfig.json               # TypeScript configuration
+├── vite.config.ts              # Vite configuration
+├── tailwind.config.ts          # Tailwind CSS configuration
+├── cypress.config.ts           # Cypress configuration
+└── index.html                  # HTML entry point
+```
+
+## Coding Standards
+
+### Naming Conventions
+
+- **Components**: PascalCase for component files and usage (`CampCard.vue`, `<CampCard />`)
+- **Composables**: camelCase starting with `use` prefix (`useCamps.ts`, `useAuth.ts`)
+- **Stores**: camelCase matching the domain (`camps.ts` → `useCampsStore`)
+- **Types/Interfaces**: PascalCase (`CampResponse`, `RegistrationRequest`, `User`)
+- **Variables/Functions**: camelCase (`campId`, `handleSubmit`, `fetchCamps`)
+- **Constants**: UPPER_SNAKE_CASE (`API_BASE_URL`, `MAX_FILE_SIZE`)
+- **CSS Classes**: Tailwind utilities; for custom classes use kebab-case (`camp-card-header`)
+- **Pages**: PascalCase with `Page` suffix (`CampsPage.vue`, `RegistrationPage.vue`)
+- **Event Emits**: camelCase with verb prefix (`update:modelValue`, `submit`, `cancel`)
+
+**Examples:**
+
+```vue
+<!-- Good: English naming, PascalCase component, kebab-case file -->
+<!-- components/camps/CampCard.vue -->
+<script setup lang="ts">
+import { computed } from 'vue'
+import type { Camp } from '@/types/camp'
+
+const props = defineProps<{
+  camp: Camp
+  isSelected: boolean
+}>()
+
+const emit = defineEmits<{
+  select: [camp: Camp]
+}>()
+
+const formattedDate = computed(() => {
+  return new Intl.DateTimeFormat('es-ES').format(new Date(props.camp.startDate))
+})
+
+const handleCardClick = () => {
+  emit('select', props.camp)
+}
+</script>
+
+<template>
+  <div
+    class="rounded-lg border p-4 cursor-pointer hover:shadow-md transition-shadow"
+    :class="{ 'border-primary-500 bg-primary-50': isSelected }"
+    @click="handleCardClick"
+  >
+    <h3 class="text-lg font-semibold">{{ camp.name }}</h3>
+    <p class="text-sm text-gray-600">{{ formattedDate }}</p>
+  </div>
+</template>
+```
+
+```vue
+<!-- Avoid: Non-English names, Options API, inline styles -->
+<script>
+export default {
+  props: ['campamento'],
+  methods: {
+    manejarClic() {
+      this.$emit('seleccionar', this.campamento)
+    }
+  }
+}
+</script>
+```
+
+### Component Conventions
+
+#### Script Setup Syntax
+
+**Always** use `<script setup lang="ts">`. Never use Options API or plain `<script>` for new components.
+
+**Before (Options API):**
+
+```vue
+<script lang="ts">
+import { defineComponent, ref } from 'vue'
+
+export default defineComponent({
+  data() {
+    return {
+      camps: [] as Camp[],
+      loading: false,
+      error: ''
+    }
+  },
+  methods: {
+    async fetchCamps() {
+      this.loading = true
+      try {
+        const response = await axios.get('/api/camps')
+        this.camps = response.data.data
+      } catch (err) {
+        this.error = 'Failed to load camps'
+      } finally {
+        this.loading = false
+      }
+    }
+  },
+  mounted() {
+    this.fetchCamps()
+  }
+})
+</script>
+```
+
+**After (Script Setup):**
+
+```vue
+<script setup lang="ts">
+import { onMounted } from 'vue'
+import { useCamps } from '@/composables/useCamps'
+
+const { camps, loading, error, fetchCamps } = useCamps()
+
+onMounted(() => {
+  fetchCamps()
+})
+</script>
+```
+
+**Explanation**: `<script setup>` eliminates boilerplate, enables automatic type inference, and naturally encourages extracting logic into composables. The component becomes a thin view layer.
+
+#### Component Props
+
+- **Define props with TypeScript** using generic `defineProps<T>()`
+- Use **destructuring** with `withDefaults` when default values are needed
+- Props should be **readonly** — never mutate props directly
+
+```vue
+<script setup lang="ts">
+import type { Camp } from '@/types/camp'
+
+interface Props {
+  camp: Camp
+  showDetails?: boolean
+  maxParticipants?: number
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  showDetails: false,
+  maxParticipants: 50
+})
+</script>
+```
+
+#### Component Emits
+
+- **Define emits with TypeScript** using generic `defineEmits<T>()`
+- Use descriptive event names
+
+```vue
+<script setup lang="ts">
+const emit = defineEmits<{
+  submit: [data: RegistrationRequest]
+  cancel: []
+  'update:step': [step: number]
+}>()
+</script>
+```
+
+### TypeScript Usage
+
+- **Strict Mode**: Always enable strict mode in `tsconfig.json`
+- **Explicit Types**: Define interfaces for all data structures in `src/types/`
+- **Avoid `any`**: Use `unknown` or specific types instead
+- **Generics**: Use generics for reusable composables and utilities
+
+```typescript
+// types/camp.ts — Domain types
+export interface Camp {
+  id: string
+  name: string
+  location: string
+  startDate: string
+  endDate: string
+  maxParticipants: number
+  pricePerPerson: number
+  status: CampStatus
+}
+
+export type CampStatus = 'Draft' | 'Open' | 'Closed' | 'Completed'
+
+export interface CreateCampRequest {
+  name: string
+  location: string
+  startDate: string
+  endDate: string
+  maxParticipants: number
+  pricePerPerson: number
+}
+
+// types/api.ts — API response wrapper
+export interface ApiResponse<T> {
+  success: boolean
+  data: T | null
+  error: ApiError | null
+}
+
+export interface ApiError {
+  message: string
+  code: string
+  details?: Array<{ field: string; message: string }>
+}
+
+export interface PagedResult<T> {
+  items: T[]
+  totalCount: number
+  page: number
+  pageSize: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+}
+```
+
+### Composables
+
+Composables encapsulate reusable logic. They are the primary way to share stateful logic between components.
+
+**Rules:**
+
+- Name composables with the `use` prefix (`useCamps`, `useAuth`, `useForm`)
+- Place composables in `src/composables/`
+- Composables should return reactive state and functions
+- **Never call API directly from components** — always use composables
+
+**Before (Logic in component):**
+
+```vue
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
+import type { Camp } from '@/types/camp'
+
+const camps = ref<Camp[]>([])
+const loading = ref(false)
+const error = ref('')
+
+const fetchCamps = async () => {
+  loading.value = true
+  try {
+    const response = await axios.get('/api/camps')
+    camps.value = response.data.data
+  } catch (err) {
+    error.value = 'Failed to load camps'
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchCamps)
+</script>
+```
+
+**After (Logic in composable):**
+
+```typescript
+// composables/useCamps.ts
+import { ref } from 'vue'
+import { api } from '@/utils/api'
+import type { Camp, CreateCampRequest } from '@/types/camp'
+import type { ApiResponse } from '@/types/api'
+
+export function useCamps() {
+  const camps = ref<Camp[]>([])
+  const loading = ref(false)
+  const error = ref<string | null>(null)
+
+  const fetchCamps = async () => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.get<ApiResponse<Camp[]>>('/camps')
+      camps.value = response.data.data ?? []
+    } catch (err) {
+      error.value = 'Failed to load camps'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const createCamp = async (request: CreateCampRequest): Promise<Camp | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post<ApiResponse<Camp>>('/camps', request)
+      if (response.data.data) {
+        camps.value.push(response.data.data)
+        return response.data.data
+      }
+      return null
+    } catch (err) {
+      error.value = 'Failed to create camp'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { camps, loading, error, fetchCamps, createCamp }
+}
+```
+
+```vue
+<!-- Component uses the composable — clean and focused on rendering -->
+<script setup lang="ts">
+import { onMounted } from 'vue'
+import { useCamps } from '@/composables/useCamps'
+
+const { camps, loading, error, fetchCamps } = useCamps()
+
+onMounted(fetchCamps)
+</script>
+```
+
+**Explanation**: The component becomes a thin view layer. Business logic, API calls, and state management are encapsulated in the composable, making them reusable and testable independently.
+
+## State Management
+
+### Pinia Stores
+
+Use Pinia for **global/shared state** that multiple components need to access (auth, user session, app-wide settings). Use composables for **feature-local state** and API calls.
+
+**Before (Vuex-style verbose store):**
+
+```typescript
+// Vuex store with mutations, actions, getters — verbose and boilerplate-heavy
+const store = new Vuex.Store({
+  state: { user: null, isAuthenticated: false },
+  mutations: {
+    SET_USER(state, user) { state.user = user },
+    SET_AUTH(state, value) { state.isAuthenticated = value }
+  },
+  actions: {
+    async login({ commit }, credentials) {
+      const user = await authService.login(credentials)
+      commit('SET_USER', user)
+      commit('SET_AUTH', true)
+    }
+  },
+  getters: {
+    isAdmin: (state) => state.user?.role === 'Admin'
+  }
+})
+```
+
+**After (Pinia setup store):**
+
+```typescript
+// stores/auth.ts
+import { ref, computed } from 'vue'
+import { defineStore } from 'pinia'
+import { api } from '@/utils/api'
+import type { User } from '@/types/user'
+import type { ApiResponse } from '@/types/api'
+
+export const useAuthStore = defineStore('auth', () => {
+  // State
+  const user = ref<User | null>(null)
+  const token = ref<string | null>(null)
+
+  // Getters
+  const isAuthenticated = computed(() => !!token.value)
+  const isAdmin = computed(() => user.value?.role === 'Admin')
+  const isBoard = computed(() =>
+    user.value?.role === 'Admin' || user.value?.role === 'Board'
+  )
+
+  // Actions
+  async function login(email: string, password: string): Promise<boolean> {
+    try {
+      const response = await api.post<ApiResponse<{ user: User; token: string }>>(
+        '/auth/login',
+        { email, password }
+      )
+      if (response.data.data) {
+        user.value = response.data.data.user
+        token.value = response.data.data.token
+        return true
+      }
+      return false
+    } catch {
+      return false
+    }
+  }
+
+  function logout() {
+    user.value = null
+    token.value = null
+  }
+
+  return { user, token, isAuthenticated, isAdmin, isBoard, login, logout }
+})
+```
+
+**Explanation**: Pinia's setup syntax mirrors the Composition API — `ref` for state, `computed` for getters, plain functions for actions. No mutations, no boilerplate.
+
+**Usage in components:**
+
+```vue
+<script setup lang="ts">
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+</script>
+
+<template>
+  <div v-if="auth.isAuthenticated">
+    <p>Welcome, {{ auth.user?.firstName }}</p>
+    <button v-if="auth.isAdmin" @click="navigateToAdmin">Admin Panel</button>
+  </div>
+</template>
+```
+
+### Local State with Composition API
+
+Use `ref` for primitives and `reactive` for complex form objects:
+
+```vue
+<script setup lang="ts">
+import { ref, reactive, computed } from 'vue'
+
+// Primitives — use ref
+const searchQuery = ref('')
+const selectedCampId = ref<string | null>(null)
+const currentStep = ref(1)
+
+// Complex objects — use reactive
+const formData = reactive({
+  firstName: '',
+  lastName: '',
+  email: '',
+  campId: '',
+  members: [] as string[]
+})
+
+// Computed values
+const isFormValid = computed(() =>
+  formData.firstName.length > 0 &&
+  formData.lastName.length > 0 &&
+  formData.email.includes('@')
+)
+</script>
+```
+
+### Loading and Error States
+
+Always handle loading and error states for async operations:
+
+```vue
+<script setup lang="ts">
+import { useCamps } from '@/composables/useCamps'
+import ProgressSpinner from 'primevue/progressspinner'
+import Message from 'primevue/message'
+
+const { camps, loading, error, fetchCamps } = useCamps()
+</script>
+
+<template>
+  <div>
+    <!-- Loading state -->
+    <div v-if="loading" class="flex justify-center p-8">
+      <ProgressSpinner />
+    </div>
+
+    <!-- Error state -->
+    <Message v-else-if="error" severity="error" :closable="false">
+      {{ error }}
+      <button class="ml-2 underline" @click="fetchCamps">Retry</button>
+    </Message>
+
+    <!-- Success state -->
+    <div v-else>
+      <CampCard v-for="camp in camps" :key="camp.id" :camp="camp" />
+    </div>
+  </div>
+</template>
+```
+
+## Service Layer Architecture
+
+### API Composables
+
+Encapsulate all API calls in composables. Never call Axios directly from components.
+
+```typescript
+// composables/useRegistrations.ts
+import { ref } from 'vue'
+import { api } from '@/utils/api'
+import type { ApiResponse } from '@/types/api'
+
+interface RegistrationRequest {
+  campId: string
+  familyUnitId: string
+  memberIds: string[]
+}
+
+interface Registration {
+  id: string
+  campId: string
+  status: 'Pending' | 'Confirmed' | 'Cancelled'
+  totalAmount: number
+}
+
+export function useRegistrations() {
+  const registrations = ref<Registration[]>([])
+  const loading = ref(false)
+  const error = ref<string | null>(null)
+
+  const register = async (request: RegistrationRequest): Promise<Registration | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post<ApiResponse<Registration>>('/registrations', request)
+      return response.data.data
+    } catch (err) {
+      error.value = 'Registration failed. Please try again.'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const fetchMyRegistrations = async () => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.get<ApiResponse<Registration[]>>('/registrations/mine')
+      registrations.value = response.data.data ?? []
+    } catch {
+      error.value = 'Failed to load registrations'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { registrations, loading, error, register, fetchMyRegistrations }
+}
+```
+
+### Axios Configuration
+
+Configure a centralized Axios instance with interceptors:
+
+```typescript
+// utils/api.ts
+import axios from 'axios'
+import { useAuthStore } from '@/stores/auth'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+// Request interceptor — attach auth token
+api.interceptors.request.use((config) => {
+  const auth = useAuthStore()
+  if (auth.token) {
+    config.headers.Authorization = `Bearer ${auth.token}`
+  }
+  return config
+})
+
+// Response interceptor — handle 401 globally
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const auth = useAuthStore()
+      auth.logout()
+    }
+    return Promise.reject(error)
+  }
+)
+```
+
+## UI and UX Standards
+
+### PrimeVue Integration
+
+Use PrimeVue components for all interactive UI elements. Do not create custom implementations for functionality that PrimeVue already provides.
+
+```vue
+<script setup lang="ts">
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
+import Calendar from 'primevue/calendar'
+
+import { ref } from 'vue'
+import type { Camp } from '@/types/camp'
+
+const props = defineProps<{ camps: Camp[] }>()
+const showDetails = ref(false)
+const selectedCamp = ref<Camp | null>(null)
+
+const openDetails = (camp: Camp) => {
+  selectedCamp.value = camp
+  showDetails.value = true
+}
+</script>
+
+<template>
+  <DataTable :value="camps" striped-rows paginator :rows="10">
+    <Column field="name" header="Camp Name" sortable />
+    <Column field="startDate" header="Start Date" sortable />
+    <Column field="maxParticipants" header="Capacity" />
+    <Column field="status" header="Status">
+      <template #body="{ data }">
+        <span
+          class="rounded-full px-2 py-1 text-xs font-semibold"
+          :class="{
+            'bg-green-100 text-green-800': data.status === 'Open',
+            'bg-gray-100 text-gray-800': data.status === 'Closed',
+            'bg-yellow-100 text-yellow-800': data.status === 'Draft'
+          }"
+        >
+          {{ data.status }}
+        </span>
+      </template>
+    </Column>
+    <Column header="Actions">
+      <template #body="{ data }">
+        <Button label="Details" icon="pi pi-eye" text @click="openDetails(data)" />
+      </template>
+    </Column>
+  </DataTable>
+
+  <Dialog v-model:visible="showDetails" header="Camp Details" modal class="w-full max-w-lg">
+    <div v-if="selectedCamp">
+      <p><strong>Name:</strong> {{ selectedCamp.name }}</p>
+      <p><strong>Location:</strong> {{ selectedCamp.location }}</p>
+    </div>
+  </Dialog>
+</template>
+```
+
+### Tailwind CSS Usage
+
+- **Utility-first**: Use Tailwind utility classes for styling. Do not write custom `<style>` blocks unless absolutely necessary (complex animations).
+- **Responsive**: Use responsive prefixes (`sm:`, `md:`, `lg:`, `xl:`)
+- **Dark mode**: Plan for dark mode support with `dark:` prefix
+- **Consistent spacing**: Follow Tailwind's spacing scale
+
+```vue
+<!-- Good: Tailwind utilities for all styling -->
+<template>
+  <div class="grid grid-cols-1 gap-6 p-4 md:grid-cols-2 lg:grid-cols-3">
+    <div
+      v-for="camp in camps"
+      :key="camp.id"
+      class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+    >
+      <h3 class="mb-2 text-lg font-semibold text-gray-900">{{ camp.name }}</h3>
+      <p class="text-sm text-gray-600">{{ camp.location }}</p>
+      <div class="mt-4 flex items-center justify-between">
+        <span class="text-lg font-bold text-primary-600">{{ camp.pricePerPerson }}€</span>
+        <Button label="Register" size="small" />
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- Avoid: Custom style blocks when Tailwind suffices -->
+<style scoped>
+.camp-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 24px;
+}
+</style>
+```
+
+### Form Handling
+
+- Use **PrimeVue form components** (InputText, Dropdown, Calendar, etc.)
+- Implement **real-time validation** where appropriate
+- **Disable submit buttons** during submission
+- Use **multi-step wizards** for complex registration flows
+
+**Before (Plain HTML form):**
+
+```vue
+<template>
+  <form @submit.prevent="handleSubmit">
+    <label>Name</label>
+    <input v-model="formData.name" type="text" required />
+    <label>Date</label>
+    <input v-model="formData.date" type="date" />
+    <button type="submit">Save</button>
+  </form>
+</template>
+```
+
+**After (PrimeVue form with validation):**
+
+```vue
+<script setup lang="ts">
+import { reactive, ref } from 'vue'
+import InputText from 'primevue/inputtext'
+import Calendar from 'primevue/calendar'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
+
+const formData = reactive({
+  name: '',
+  startDate: null as Date | null,
+  endDate: null as Date | null
+})
+
+const errors = ref<Record<string, string>>({})
+const submitting = ref(false)
+
+const validate = (): boolean => {
+  errors.value = {}
+  if (!formData.name.trim()) {
+    errors.value.name = 'Name is required'
+  }
+  if (!formData.startDate) {
+    errors.value.startDate = 'Start date is required'
+  }
+  if (formData.startDate && formData.endDate && formData.endDate <= formData.startDate) {
+    errors.value.endDate = 'End date must be after start date'
+  }
+  return Object.keys(errors.value).length === 0
+}
+
+const handleSubmit = async () => {
+  if (!validate()) return
+  submitting.value = true
+  try {
+    // API call via composable
+  } finally {
+    submitting.value = false
+  }
+}
+</script>
+
+<template>
+  <form class="flex max-w-md flex-col gap-4" @submit.prevent="handleSubmit">
+    <div>
+      <label for="name" class="mb-1 block text-sm font-medium">Camp Name *</label>
+      <InputText id="name" v-model="formData.name" class="w-full" :invalid="!!errors.name" />
+      <small v-if="errors.name" class="text-red-500">{{ errors.name }}</small>
+    </div>
+
+    <div>
+      <label for="startDate" class="mb-1 block text-sm font-medium">Start Date *</label>
+      <Calendar id="startDate" v-model="formData.startDate" date-format="dd/mm/yy" class="w-full" />
+      <small v-if="errors.startDate" class="text-red-500">{{ errors.startDate }}</small>
+    </div>
+
+    <Button type="submit" label="Create Camp" :loading="submitting" :disabled="submitting" />
+  </form>
+</template>
+```
+
+### Navigation Patterns
+
+- Use **Vue Router** for all navigation
+- Implement **route guards** for protected pages
+- Use **programmatic navigation** with `useRouter`
+
+```typescript
+// router/index.ts
+import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    { path: '/', component: () => import('@/pages/HomePage.vue') },
+    { path: '/camps', component: () => import('@/pages/CampsPage.vue') },
+    { path: '/camps/:id', component: () => import('@/pages/CampDetailPage.vue') },
+    {
+      path: '/register/:campId',
+      component: () => import('@/pages/RegistrationPage.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin',
+      component: () => import('@/pages/admin/AdminDashboard.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    { path: '/memories', component: () => import('@/pages/MemoriesPage.vue') },
+    { path: '/gallery', component: () => import('@/pages/PhotoGalleryPage.vue') }
+  ]
+})
+
+// Route guard for authentication
+router.beforeEach((to) => {
+  const auth = useAuthStore()
+
+  if (to.meta.requiresAuth && !auth.isAuthenticated) {
+    return { path: '/login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.requiresAdmin && !auth.isAdmin) {
+    return { path: '/' }
+  }
+})
+
+export default router
+```
+
+```vue
+<!-- Navigation in components -->
+<script setup lang="ts">
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+const goToCamp = (campId: string) => {
+  router.push({ path: `/camps/${campId}` })
+}
+
+const goBack = () => {
+  router.back()
+}
+</script>
+```
+
+### Accessibility
+
+- Include **aria-label** attributes for interactive elements
+- Use **semantic HTML** elements (`<nav>`, `<main>`, `<article>`, `<section>`)
+- Ensure **keyboard navigation** support
+- Provide **alternative text** for images
+- Use PrimeVue's built-in accessibility features
+
+```vue
+<template>
+  <main>
+    <section aria-label="Available Camps">
+      <h2 class="text-2xl font-bold">Available Camps</h2>
+      <div role="list">
+        <article
+          v-for="camp in camps"
+          :key="camp.id"
+          role="listitem"
+          tabindex="0"
+          @keydown.enter="selectCamp(camp)"
+          @click="selectCamp(camp)"
+        >
+          <h3>{{ camp.name }}</h3>
+        </article>
+      </div>
+    </section>
+  </main>
+</template>
+```
+
+### Responsive Design
+
+- **Mobile-first**: Start with mobile layout, add larger breakpoints
+- Use Tailwind responsive prefixes: `sm:` (640px), `md:` (768px), `lg:` (1024px), `xl:` (1280px)
+- Test on multiple screen sizes
+
+```vue
+<template>
+  <!-- Mobile: 1 column, Tablet: 2 columns, Desktop: 3 columns -->
+  <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:gap-6">
+    <CampCard v-for="camp in camps" :key="camp.id" :camp="camp" />
+  </div>
+</template>
+```
+
+### Maps Integration
+
+Use Leaflet.js for the interactive historical camp locations map:
+
+```vue
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import L from 'leaflet'
+import type { CampLocation } from '@/types/camp'
+
+const props = defineProps<{ locations: CampLocation[] }>()
+const mapContainer = ref<HTMLElement | null>(null)
+
+onMounted(() => {
+  if (!mapContainer.value) return
+
+  const map = L.map(mapContainer.value).setView([40.4168, -3.7038], 6)
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map)
+
+  props.locations.forEach((location) => {
+    L.marker([location.latitude, location.longitude])
+      .addTo(map)
+      .bindPopup(`<strong>${location.name}</strong><br>${location.year}`)
+  })
+})
+</script>
+
+<template>
+  <div ref="mapContainer" class="h-96 w-full rounded-lg" />
+</template>
+```
+
+## Testing Standards
+
+### Unit Testing with Vitest
+
+- Use Vitest for unit tests (composables, utilities, stores)
+- Follow the **AAA pattern** (Arrange-Act-Assert)
+- Use **descriptive test names**: `should [expected behavior] when [condition]`
+
+```typescript
+// composables/__tests__/useCamps.test.ts
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { useCamps } from '@/composables/useCamps'
+import { api } from '@/utils/api'
+
+vi.mock('@/utils/api')
+
+describe('useCamps', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should fetch camps successfully', async () => {
+    // Arrange
+    const mockCamps = [
+      { id: '1', name: 'Summer Camp', status: 'Open' },
+      { id: '2', name: 'Winter Camp', status: 'Draft' }
+    ]
+    vi.mocked(api.get).mockResolvedValue({
+      data: { success: true, data: mockCamps, error: null }
+    })
+
+    // Act
+    const { camps, loading, error, fetchCamps } = useCamps()
+    await fetchCamps()
+
+    // Assert
+    expect(camps.value).toEqual(mockCamps)
+    expect(loading.value).toBe(false)
+    expect(error.value).toBeNull()
+    expect(api.get).toHaveBeenCalledWith('/camps')
+  })
+
+  it('should set error when fetch fails', async () => {
+    // Arrange
+    vi.mocked(api.get).mockRejectedValue(new Error('Network error'))
+
+    // Act
+    const { camps, error, fetchCamps } = useCamps()
+    await fetchCamps()
+
+    // Assert
+    expect(camps.value).toEqual([])
+    expect(error.value).toBe('Failed to load camps')
+  })
+})
+```
+
+### Component Testing
+
+Use Vue Test Utils with Vitest for component tests:
+
+```typescript
+// components/camps/__tests__/CampCard.test.ts
+import { describe, it, expect } from 'vitest'
+import { mount } from '@vue/test-utils'
+import CampCard from '@/components/camps/CampCard.vue'
+import type { Camp } from '@/types/camp'
+
+const mockCamp: Camp = {
+  id: '1',
+  name: 'Summer Camp 2025',
+  location: 'Mountain Lodge',
+  startDate: '2025-07-01',
+  endDate: '2025-07-15',
+  maxParticipants: 50,
+  pricePerPerson: 150,
+  status: 'Open'
+}
+
+describe('CampCard', () => {
+  it('should render camp name and location', () => {
+    const wrapper = mount(CampCard, {
+      props: { camp: mockCamp, isSelected: false }
+    })
+
+    expect(wrapper.text()).toContain('Summer Camp 2025')
+    expect(wrapper.text()).toContain('Mountain Lodge')
+  })
+
+  it('should emit select event when clicked', async () => {
+    const wrapper = mount(CampCard, {
+      props: { camp: mockCamp, isSelected: false }
+    })
+
+    await wrapper.trigger('click')
+
+    expect(wrapper.emitted('select')).toHaveLength(1)
+    expect(wrapper.emitted('select')![0]).toEqual([mockCamp])
+  })
+
+  it('should apply selected styles when isSelected is true', () => {
+    const wrapper = mount(CampCard, {
+      props: { camp: mockCamp, isSelected: true }
+    })
+
+    expect(wrapper.classes()).toContain('border-primary-500')
+  })
+})
+```
+
+### End-to-End Testing with Cypress
+
+- Test **user workflows** rather than implementation details
+- Use **data-testid** attributes for reliable element selection
+- Organize tests **by feature**
+
+```typescript
+// cypress/e2e/camps.cy.ts
+describe('Camps Page', () => {
+  beforeEach(() => {
+    cy.visit('/camps')
+  })
+
+  it('should display a list of available camps', () => {
+    cy.get('[data-testid="camp-card"]').should('have.length.greaterThan', 0)
+    cy.get('[data-testid="camp-card"]').first().should('contain.text', 'Camp')
+  })
+
+  it('should navigate to camp details when clicking a card', () => {
+    cy.get('[data-testid="camp-card"]').first().click()
+    cy.url().should('include', '/camps/')
+    cy.get('[data-testid="camp-detail"]').should('be.visible')
+  })
+})
+
+describe('Registration Flow', () => {
+  beforeEach(() => {
+    cy.login('member@abuvi.org', 'password123')
+  })
+
+  it('should complete registration wizard successfully', () => {
+    cy.visit('/camps')
+    cy.get('[data-testid="register-button"]').first().click()
+
+    // Step 1: Select camp
+    cy.get('[data-testid="wizard-step"]').should('contain.text', 'Step 1')
+    cy.get('[data-testid="next-button"]').click()
+
+    // Step 2: Member details
+    cy.get('[data-testid="member-select"]').click()
+    cy.get('[data-testid="member-option"]').first().click()
+    cy.get('[data-testid="next-button"]').click()
+
+    // Step 3: Summary and confirm
+    cy.get('[data-testid="total-amount"]').should('be.visible')
+    cy.get('[data-testid="confirm-button"]').click()
+
+    cy.get('[data-testid="success-message"]').should('be.visible')
+  })
+})
+```
+
+### Test Organization
+
+```text
+frontend/
+├── src/
+│   ├── composables/
+│   │   ├── useCamps.ts
+│   │   └── __tests__/
+│   │       └── useCamps.test.ts
+│   ├── components/
+│   │   ├── camps/
+│   │   │   ├── CampCard.vue
+│   │   │   └── __tests__/
+│   │   │       └── CampCard.test.ts
+│   └── stores/
+│       ├── auth.ts
+│       └── __tests__/
+│           └── auth.test.ts
+└── cypress/
+    └── e2e/
+        ├── camps.cy.ts
+        ├── registrations.cy.ts
+        ├── memories.cy.ts
+        └── auth.cy.ts
+```
+
+### Test Coverage Requirements
+
+- **Comprehensive coverage** — include these categories:
+  1. **Happy Path Tests**: Valid inputs producing expected outputs
+  2. **Error Handling Tests**: Network errors, API failures, invalid data
+  3. **Edge Cases**: Empty states, boundary values, null/undefined
+  4. **User Interaction Tests**: Clicks, form submissions, navigation
+  5. **Accessibility Tests**: Keyboard navigation, screen reader compatibility
+
+- **Threshold**: 90% for branches, functions, lines, and statements
+- **Coverage Reports**: Generate with `npx vitest --coverage`
+
+### Common Anti-Patterns to Avoid
+
+- Do not test implementation details — test user-visible behavior
+- Do not create overly complex test setups
+- Do not use `setTimeout` for waiting — use Cypress commands or `nextTick`
+- Do not test third-party libraries (PrimeVue, Vue Router) — test your usage of them
+- Do not skip error or loading state tests
+- Do not write tests that depend on external services
+
+## Configuration Standards
+
+### TypeScript Configuration
+
+```json
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "jsx": "preserve",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "types": ["vite/client", "vitest/globals"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.vue"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
+```
+
+### Vite Configuration
+
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import { resolve } from 'path'
+
+export default defineConfig({
+  plugins: [vue()],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src')
+    }
+  },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true
+      }
+    }
+  }
+})
+```
+
+### Environment Configuration
+
+- Use **Vite environment variables** (`VITE_` prefix)
+- **Separate configurations** for development and production
+- **Never commit secrets** in `.env` files
+
+```bash
+# .env.development
+VITE_API_URL=http://localhost:5000/api
+VITE_APP_TITLE=ABUVI - Development
+
+# .env.production
+VITE_API_URL=https://api.abuvi.org/api
+VITE_APP_TITLE=ABUVI
+```
+
+```typescript
+// Usage in code
+const apiUrl = import.meta.env.VITE_API_URL
+```
+
+## Performance Best Practices
+
+### Component Optimization
+
+- **Lazy load** route-level components with dynamic imports
+- **Memoize expensive calculations** with `computed`
+- **Avoid unnecessary re-renders** — use `v-once` for static content, `v-memo` for lists
+- **Extract reusable logic** into composables
+- **Use `shallowRef`** for large objects that do not need deep reactivity
+
+```typescript
+// Good: Lazy-loaded routes
+const routes = [
+  { path: '/camps', component: () => import('@/pages/CampsPage.vue') },
+  { path: '/memories', component: () => import('@/pages/MemoriesPage.vue') }
+]
+```
+
+### Bundle Optimization
+
+- **Tree shaking**: Import PrimeVue components individually, not from the full bundle
+- **Code splitting**: Vite handles this automatically with dynamic imports
+- **Optimize images**: Use WebP format, lazy load images below the fold
+- **Monitor bundle size**: Use `npx vite-bundle-visualizer`
+
+```typescript
+// Good: Individual PrimeVue imports (tree-shakeable)
+import Button from 'primevue/button'
+import DataTable from 'primevue/datatable'
+
+// Avoid: Full library import
+import PrimeVue from 'primevue'
+```
+
+### API Efficiency
+
+- **Implement error handling** for all network requests
+- **Debounce search inputs** to avoid excessive API calls
+- **Use loading states** to improve perceived performance
+- **Paginate large lists** — never fetch all records at once
+- **Cache responses** in Pinia stores when appropriate
+
+```typescript
+// composables/useDebounce.ts
+import { ref, watch } from 'vue'
+
+export function useDebounce<T>(value: () => T, delay: number = 300) {
+  const debounced = ref(value()) as Ref<T>
+  let timeout: ReturnType<typeof setTimeout>
+
+  watch(value, (newValue) => {
+    clearTimeout(timeout)
+    timeout = setTimeout(() => {
+      debounced.value = newValue
+    }, delay)
+  })
+
+  return debounced
+}
+```
+
+## Development Workflow
+
+### Git Workflow
+
+- **Feature Branches**: Develop features in separate branches with the `-frontend` suffix (e.g., `feature/camp-registration-frontend`)
+- **Descriptive Commits**: Write descriptive commit messages in English
+- **Code Review**: Code review before merging to main
+- **Small Branches**: Keep branches small and focused on a single feature
+
+### Development Scripts
+
+```bash
+# Development server with HMR
+npm run dev
+
+# Type checking
+npx vue-tsc --noEmit
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Run unit tests
+npx vitest
+
+# Run unit tests with coverage
+npx vitest --coverage
+
+# Open Cypress test runner
+npx cypress open
+
+# Run Cypress tests headlessly
+npx cypress run
+
+# Lint
+npm run lint
+
+# Format
+npm run format
+```
+
+### Code Quality
+
+- **ESLint**: Validate code with Vue-specific rules before commits
+- **Prettier**: Format code consistently
+- **TypeScript**: Ensure no type errors with `vue-tsc`
+- **All tests passing**: Ensure all tests pass before deployment
+- **Performance monitoring**: Use browser DevTools and Lighthouse
+
+This document serves as the foundation for maintaining code quality and consistency across the ABUVI frontend application. All team members and AI agents should follow these practices to ensure a maintainable, scalable, and performant codebase.

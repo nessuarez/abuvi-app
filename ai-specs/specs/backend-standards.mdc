@@ -1,33 +1,1626 @@
 ---
-description: Technical standards for .NET 9 Backend and Python integration.
-globs: src/Abuvi.API/**/*, src/Abuvi.Analysis/**/*
+description: Backend development standards, best practices, and conventions for the ABUVI .NET 9 application including Vertical Slice Architecture, SOLID principles, Minimal API patterns, EF Core database access, and testing practices
+globs: ["backend/**/*.cs", "backend/**/*.csproj", "backend/**/appsettings*.json", "backend/**/*.sln"]
+alwaysApply: true
 ---
 
-# Backend Standards (.NET 9 & Python)
+# Backend Project Standards and Best Practices
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Technology Stack](#technology-stack)
+  - [Core Technologies](#core-technologies)
+  - [Database and ORM](#database-and-orm)
+  - [Testing Framework](#testing-framework)
+  - [Development Tools](#development-tools)
+- [Architecture Overview](#architecture-overview)
+  - [Vertical Slice Architecture](#vertical-slice-architecture)
+  - [Project Structure](#project-structure)
+  - [Feature Slice Structure](#feature-slice-structure)
+  - [Cross-Cutting Concerns](#cross-cutting-concerns)
+- [SOLID and DRY Principles](#solid-and-dry-principles)
+  - [Single Responsibility Principle (SRP)](#single-responsibility-principle-srp)
+  - [Open/Closed Principle (OCP)](#openclosed-principle-ocp)
+  - [Liskov Substitution Principle (LSP)](#liskov-substitution-principle-lsp)
+  - [Interface Segregation Principle (ISP)](#interface-segregation-principle-isp)
+  - [Dependency Inversion Principle (DIP)](#dependency-inversion-principle-dip)
+  - [DRY (Don't Repeat Yourself)](#dry-dont-repeat-yourself)
+- [Coding Standards](#coding-standards)
+  - [Naming Conventions](#naming-conventions)
+  - [C# and .NET Usage](#c-and-net-usage)
+  - [Error Handling](#error-handling)
+  - [Logging Standards](#logging-standards)
+- [Minimal API Design Standards](#minimal-api-design-standards)
+  - [Endpoint Definitions](#endpoint-definitions)
+  - [Request and Response Patterns](#request-and-response-patterns)
+  - [Error Response Format](#error-response-format)
+  - [CORS Configuration](#cors-configuration)
+- [Validation Patterns](#validation-patterns)
+  - [FluentValidation Setup](#fluentvalidation-setup)
+  - [Validation Pipeline](#validation-pipeline)
+- [Database Patterns](#database-patterns)
+  - [EF Core Configuration](#ef-core-configuration)
+  - [Entity Configuration](#entity-configuration)
+  - [Migrations](#migrations)
+  - [Repository Pattern](#repository-pattern)
+- [Testing Standards](#testing-standards)
+  - [Test Organization](#test-organization)
+  - [Test Naming Convention](#test-naming-convention)
+  - [Test Structure (AAA Pattern)](#test-structure-aaa-pattern)
+  - [Mocking with NSubstitute](#mocking-with-nsubstitute)
+  - [Integration Testing](#integration-testing)
+  - [Test Coverage Requirements](#test-coverage-requirements)
+  - [Common Anti-Patterns to Avoid](#common-anti-patterns-to-avoid)
+- [Performance Best Practices](#performance-best-practices)
+  - [Async and Await Patterns](#async-and-await-patterns)
+  - [EF Core Query Optimization](#ef-core-query-optimization)
+  - [Pagination](#pagination)
+- [Security Best Practices](#security-best-practices)
+  - [Input Validation](#input-validation)
+  - [Sensitive Data (RGPD)](#sensitive-data-rgpd)
+  - [Environment Configuration](#environment-configuration)
+  - [Redsys Payment Security](#redsys-payment-security)
+- [CSnakes and Python Integration](#csnakes-and-python-integration)
+- [Development Workflow](#development-workflow)
+  - [Git Workflow](#git-workflow)
+  - [Development Commands](#development-commands)
+  - [Code Quality](#code-quality)
+
+---
+
+## Overview
+
+This document outlines the best practices, conventions, and standards for the ABUVI backend application. The backend follows **Vertical Slice Architecture** using **.NET 9 Minimal APIs** to ensure code consistency, maintainability, and scalability.
+
+For core principles (TDD, incremental changes, type safety) and language standards (English only), refer to [base-standards.mdc](./base-standards.mdc).
 
 ## Technology Stack
 
-- **Framework**: .NET 9 (Minimal APIs).
-- **Database**: PostgreSQL 16 using Entity Framework Core.
-- **Python Integration**: **CSnakes** for calling Python 3.12 scripts.
-- **Validation**: FluentValidation for all request DTOs.
+### Core Technologies
 
-## Vertical Slice Structure
+- **.NET 9**: Runtime and framework
+- **C# 13**: Language with nullable reference types enabled
+- **Minimal APIs**: Lightweight HTTP endpoint definitions (not MVC Controllers)
+- **FluentValidation**: Request DTO validation
 
-Each feature must be contained within `src/Abuvi.API/Features/[FeatureName]/`:
+### Database and ORM
 
-- `[Feature]Endpoints.cs`: Minimal API definitions.
-- `[Feature]Models.cs`: Request/Response DTOs and Domain Entities.
-- `[Feature]Service.cs`: Business logic (keep it thin if possible).
-- `[Feature]Repository.cs`: Data access using EF Core.
+- **PostgreSQL 16**: Relational database
+- **Entity Framework Core**: ORM with Fluent API configuration
+- **EF Core Migrations**: Database schema versioning
 
-## Python (CSnakes) Integration
+### Testing Framework
 
-- Python scripts live in `src/Abuvi.Analysis/`.
-- Use Type-safe wrappers generated by CSnakes.
-- Handle Python exceptions gracefully and map them to HTTP 500 or 422.
+- **xUnit**: Testing framework
+- **FluentAssertions**: Expressive assertion library
+- **NSubstitute**: Mocking library for interfaces
+- **WebApplicationFactory**: Integration testing for Minimal APIs
+- **Coverage Threshold**: 90% for branches, functions, lines, and statements
 
-## Security
+### Development Tools
 
-- Use **Redsys** for payments (SHA-256 signatures).
-- Sensitive data must be encrypted at rest if required by Spanish GDPR (RGPD).
+- **dotnet CLI**: Build, run, and test
+- **EF Core Tools**: Migration management
+- **Code Analyzers**: .NET analyzers for static analysis
+- **Docker**: PostgreSQL container for local development
+
+## Architecture Overview
+
+### Vertical Slice Architecture
+
+Vertical Slice Architecture organizes code by **feature** rather than by technical layer. Each feature is self-contained, containing all the code needed to handle a specific use case — from the API endpoint down to data access.
+
+**Benefits:**
+
+- **High Cohesion**: All code for a feature lives together, making it easy to understand and modify
+- **Low Coupling**: Features are independent; changing one feature does not affect others
+- **Scalability**: New features are added without modifying existing code
+- **Easier Navigation**: Finding all code for a feature requires looking in a single folder
+
+**Before (Traditional Layered Architecture):**
+
+```csharp
+// Code spread across multiple folders by technical role
+Controllers/
+    CampsController.cs      // HTTP handling
+    RegistrationsController.cs
+Services/
+    CampService.cs          // Business logic
+    RegistrationService.cs
+Repositories/
+    CampRepository.cs       // Data access
+    RegistrationRepository.cs
+Models/
+    Camp.cs                 // Domain entities
+    Registration.cs
+DTOs/
+    CreateCampRequest.cs    // Data transfer objects
+    CampResponse.cs
+```
+
+**After (Vertical Slice Architecture):**
+
+```csharp
+// Code organized by feature — everything for a feature in one folder
+Features/
+    Camps/
+        CampsEndpoints.cs
+        CampsModels.cs
+        CampsService.cs
+        CampsRepository.cs
+    Registrations/
+        RegistrationsEndpoints.cs
+        RegistrationsModels.cs
+        RegistrationsService.cs
+        RegistrationsRepository.cs
+```
+
+### Project Structure
+
+```text
+src/
+├── Abuvi.API/
+│   ├── Features/
+│   │   ├── Camps/              # Camp management feature
+│   │   ├── Registrations/      # Registration feature
+│   │   ├── Payments/           # Payment processing feature
+│   │   ├── Users/              # User management feature
+│   │   ├── FamilyUnits/        # Family unit management
+│   │   ├── Memories/           # Historical memories feature
+│   │   ├── PhotoAlbums/        # Photo album feature
+│   │   └── CampIdeas/          # Camp ideas feature
+│   ├── Common/
+│   │   ├── Middleware/         # Global middleware (error handling, logging)
+│   │   ├── Extensions/         # Service registration extensions
+│   │   ├── Models/             # Shared models (ApiResponse, PagedResult)
+│   │   └── Filters/            # Endpoint filters (validation, auth)
+│   ├── Data/
+│   │   ├── AbuviDbContext.cs   # EF Core DbContext
+│   │   ├── Configurations/     # Entity type configurations (Fluent API)
+│   │   └── Migrations/         # EF Core migrations
+│   ├── Program.cs              # Application entry point
+│   └── appsettings.json        # Application configuration
+├── Abuvi.Analysis/
+│   └── *.py                    # Python scripts (CSnakes integration)
+└── Abuvi.Tests/
+    ├── Unit/
+    │   └── Features/           # Unit tests mirroring feature structure
+    ├── Integration/
+    │   └── Features/           # Integration tests with WebApplicationFactory
+    └── Helpers/
+        ├── Builders/           # Test data builders
+        └── Fixtures/           # Shared test fixtures
+```
+
+### Feature Slice Structure
+
+Each feature folder contains these files:
+
+```csharp
+// Features/Camps/CampsEndpoints.cs — API endpoint definitions
+public static class CampsEndpoints
+{
+    public static void MapCampsEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/camps")
+            .WithTags("Camps");
+
+        group.MapGet("/", GetAllCamps);
+        group.MapGet("/{id:guid}", GetCampById);
+        group.MapPost("/", CreateCamp);
+        group.MapPut("/{id:guid}", UpdateCamp);
+        group.MapDelete("/{id:guid}", DeleteCamp);
+    }
+}
+
+// Features/Camps/CampsModels.cs — Request/Response DTOs and domain entity
+public record CreateCampRequest(
+    string Name,
+    string Location,
+    DateOnly StartDate,
+    DateOnly EndDate,
+    int MaxParticipants,
+    decimal PricePerPerson);
+
+public record CampResponse(
+    Guid Id,
+    string Name,
+    string Location,
+    DateOnly StartDate,
+    DateOnly EndDate,
+    int MaxParticipants,
+    decimal PricePerPerson,
+    string Status);
+
+public class Camp
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Location { get; set; } = string.Empty;
+    public DateOnly StartDate { get; set; }
+    public DateOnly EndDate { get; set; }
+    public int MaxParticipants { get; set; }
+    public decimal PricePerPerson { get; set; }
+    public CampStatus Status { get; set; } = CampStatus.Draft;
+}
+
+// Features/Camps/CampsService.cs — Business logic
+public class CampsService(ICampsRepository repository)
+{
+    public async Task<CampResponse> CreateAsync(CreateCampRequest request, CancellationToken ct)
+    {
+        var camp = new Camp
+        {
+            Id = Guid.NewGuid(),
+            Name = request.Name,
+            Location = request.Location,
+            StartDate = request.StartDate,
+            EndDate = request.EndDate,
+            MaxParticipants = request.MaxParticipants,
+            PricePerPerson = request.PricePerPerson
+        };
+
+        await repository.AddAsync(camp, ct);
+        return camp.ToResponse();
+    }
+}
+
+// Features/Camps/CampsRepository.cs — Data access
+public interface ICampsRepository
+{
+    Task<Camp?> GetByIdAsync(Guid id, CancellationToken ct);
+    Task<IReadOnlyList<Camp>> GetAllAsync(CancellationToken ct);
+    Task AddAsync(Camp camp, CancellationToken ct);
+    Task UpdateAsync(Camp camp, CancellationToken ct);
+    Task DeleteAsync(Guid id, CancellationToken ct);
+}
+
+public class CampsRepository(AbuviDbContext db) : ICampsRepository
+{
+    public async Task<Camp?> GetByIdAsync(Guid id, CancellationToken ct)
+        => await db.Camps.FindAsync([id], ct);
+
+    public async Task AddAsync(Camp camp, CancellationToken ct)
+    {
+        db.Camps.Add(camp);
+        await db.SaveChangesAsync(ct);
+    }
+}
+```
+
+### Cross-Cutting Concerns
+
+Shared code belongs in the `Common/` folder. Only extract shared code when it is used by **two or more features**. Do not create premature abstractions.
+
+**What belongs in Common:**
+
+- Global error-handling middleware
+- Shared response models (`ApiResponse<T>`, `PagedResult<T>`)
+- Validation endpoint filters
+- Authentication/authorization middleware
+- Extension methods for service registration
+
+**What does NOT belong in Common:**
+
+- Feature-specific business logic
+- Feature-specific DTOs or entities
+- Feature-specific validators
+
+## SOLID and DRY Principles
+
+### Single Responsibility Principle (SRP)
+
+Each class should have a single responsibility or reason to change.
+
+**Before:**
+
+```csharp
+// A single class handling validation, business logic, and data access
+public class CampManager
+{
+    private readonly AbuviDbContext _db;
+
+    public async Task<Camp> CreateCamp(CreateCampRequest request)
+    {
+        // Validation mixed with business logic
+        if (string.IsNullOrEmpty(request.Name))
+            throw new ArgumentException("Name is required");
+        if (request.StartDate >= request.EndDate)
+            throw new ArgumentException("Invalid date range");
+
+        // Business logic mixed with data access
+        var camp = new Camp { Name = request.Name, StartDate = request.StartDate };
+        _db.Camps.Add(camp);
+        await _db.SaveChangesAsync();
+
+        // Notification mixed with creation
+        await SendEmailNotification(camp);
+        return camp;
+    }
+}
+```
+
+**After:**
+
+```csharp
+// Validation is handled by FluentValidation
+public class CreateCampValidator : AbstractValidator<CreateCampRequest>
+{
+    public CreateCampValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.EndDate).GreaterThan(x => x.StartDate);
+    }
+}
+
+// Business logic in the service
+public class CampsService(ICampsRepository repository)
+{
+    public async Task<CampResponse> CreateAsync(CreateCampRequest request, CancellationToken ct)
+    {
+        var camp = new Camp
+        {
+            Id = Guid.NewGuid(),
+            Name = request.Name,
+            StartDate = request.StartDate,
+            EndDate = request.EndDate
+        };
+
+        await repository.AddAsync(camp, ct);
+        return camp.ToResponse();
+    }
+}
+
+// Data access in the repository
+public class CampsRepository(AbuviDbContext db) : ICampsRepository
+{
+    public async Task AddAsync(Camp camp, CancellationToken ct)
+    {
+        db.Camps.Add(camp);
+        await db.SaveChangesAsync(ct);
+    }
+}
+```
+
+**Explanation**: Each class has one reason to change — the validator handles validation rules, the service handles business logic, and the repository handles data access.
+
+### Open/Closed Principle (OCP)
+
+Software entities should be open for extension but closed for modification.
+
+**Before:**
+
+```csharp
+// Adding a new payment method requires modifying the existing class
+public class PaymentProcessor
+{
+    public async Task ProcessPayment(Payment payment)
+    {
+        if (payment.Method == PaymentMethod.Card)
+        {
+            // Process card payment via Redsys
+        }
+        else if (payment.Method == PaymentMethod.Transfer)
+        {
+            // Process bank transfer
+        }
+        // Adding Cash requires modifying this method
+    }
+}
+```
+
+**After:**
+
+```csharp
+// Define an interface for payment processing
+public interface IPaymentHandler
+{
+    PaymentMethod Method { get; }
+    Task<PaymentResult> ProcessAsync(Payment payment, CancellationToken ct);
+}
+
+// Each payment method is a separate implementation
+public class CardPaymentHandler(IRedsysClient redsys) : IPaymentHandler
+{
+    public PaymentMethod Method => PaymentMethod.Card;
+
+    public async Task<PaymentResult> ProcessAsync(Payment payment, CancellationToken ct)
+    {
+        // Process card payment via Redsys
+        return await redsys.ChargeAsync(payment, ct);
+    }
+}
+
+public class TransferPaymentHandler : IPaymentHandler
+{
+    public PaymentMethod Method => PaymentMethod.Transfer;
+
+    public async Task<PaymentResult> ProcessAsync(Payment payment, CancellationToken ct)
+    {
+        // Record transfer as pending verification
+        return PaymentResult.Pending("Awaiting bank transfer confirmation");
+    }
+}
+
+// Processor delegates to the right handler — no modification needed for new methods
+public class PaymentProcessor(IEnumerable<IPaymentHandler> handlers)
+{
+    public async Task<PaymentResult> ProcessAsync(Payment payment, CancellationToken ct)
+    {
+        var handler = handlers.FirstOrDefault(h => h.Method == payment.Method)
+            ?? throw new NotSupportedException($"Payment method {payment.Method} is not supported");
+
+        return await handler.ProcessAsync(payment, ct);
+    }
+}
+```
+
+**Explanation**: Adding a new payment method (e.g., Cash) only requires creating a new `IPaymentHandler` implementation and registering it in DI — without modifying existing code.
+
+### Liskov Substitution Principle (LSP)
+
+Objects of a derived class should be replaceable with objects of the base class without altering program correctness.
+
+**Before:**
+
+```csharp
+// Subclass violates the base class contract
+public abstract class BaseRepository<T>
+{
+    public abstract Task<T> GetByIdAsync(Guid id, CancellationToken ct);
+    public abstract Task DeleteAsync(Guid id, CancellationToken ct);
+}
+
+public class MemoryRepository : BaseRepository<Memory>
+{
+    public override async Task DeleteAsync(Guid id, CancellationToken ct)
+    {
+        // Memories cannot be deleted, only archived — this violates LSP
+        throw new NotSupportedException("Memories cannot be deleted");
+    }
+}
+```
+
+**After:**
+
+```csharp
+// Use separate interfaces for read and write operations
+public interface IReadRepository<T>
+{
+    Task<T?> GetByIdAsync(Guid id, CancellationToken ct);
+    Task<IReadOnlyList<T>> GetAllAsync(CancellationToken ct);
+}
+
+public interface IDeletableRepository<T> : IReadRepository<T>
+{
+    Task DeleteAsync(Guid id, CancellationToken ct);
+}
+
+// Memories only implement read + archive, not delete
+public interface IMemoriesRepository : IReadRepository<Memory>
+{
+    Task AddAsync(Memory memory, CancellationToken ct);
+    Task ArchiveAsync(Guid id, CancellationToken ct);
+}
+```
+
+**Explanation**: By separating read and delete capabilities into different interfaces, classes only implement the operations they truly support. Code that depends on `IReadRepository<T>` works correctly with any implementation.
+
+### Interface Segregation Principle (ISP)
+
+Many specific interfaces are better than a single general interface.
+
+**Before:**
+
+```csharp
+// A large interface that forces implementations to include methods they do not need
+public interface ICampOperations
+{
+    Task<Camp> CreateAsync(CreateCampRequest request, CancellationToken ct);
+    Task<Camp> UpdateAsync(Guid id, UpdateCampRequest request, CancellationToken ct);
+    Task DeleteAsync(Guid id, CancellationToken ct);
+    Task<PaymentResult> ProcessPaymentAsync(Payment payment, CancellationToken ct);
+    Task SendNotificationAsync(Guid campId, string message, CancellationToken ct);
+    Task<byte[]> GenerateReportAsync(Guid campId, CancellationToken ct);
+}
+```
+
+**After:**
+
+```csharp
+// Segregated interfaces — each focused on a single concern
+public interface ICampsService
+{
+    Task<CampResponse> CreateAsync(CreateCampRequest request, CancellationToken ct);
+    Task<CampResponse> UpdateAsync(Guid id, UpdateCampRequest request, CancellationToken ct);
+    Task DeleteAsync(Guid id, CancellationToken ct);
+}
+
+public interface IPaymentProcessor
+{
+    Task<PaymentResult> ProcessAsync(Payment payment, CancellationToken ct);
+}
+
+public interface INotificationService
+{
+    Task SendAsync(Guid campId, string message, CancellationToken ct);
+}
+```
+
+**Explanation**: Each interface represents a single concern. Classes only implement the interfaces relevant to their responsibility, keeping implementations focused and testable.
+
+### Dependency Inversion Principle (DIP)
+
+High-level modules should not depend on low-level modules; both should depend on abstractions.
+
+**Before:**
+
+```csharp
+// Service directly depends on concrete EF Core DbContext
+public class CampsService
+{
+    private readonly AbuviDbContext _db;
+
+    public CampsService()
+    {
+        _db = new AbuviDbContext(); // Direct instantiation of concrete dependency
+    }
+
+    public async Task<Camp?> GetByIdAsync(Guid id, CancellationToken ct)
+    {
+        return await _db.Camps.FindAsync([id], ct);
+    }
+}
+```
+
+**After:**
+
+```csharp
+// Service depends on an abstraction (interface)
+public interface ICampsRepository
+{
+    Task<Camp?> GetByIdAsync(Guid id, CancellationToken ct);
+    Task AddAsync(Camp camp, CancellationToken ct);
+}
+
+// Concrete implementation injected via DI
+public class CampsRepository(AbuviDbContext db) : ICampsRepository
+{
+    public async Task<Camp?> GetByIdAsync(Guid id, CancellationToken ct)
+        => await db.Camps.FindAsync([id], ct);
+
+    public async Task AddAsync(Camp camp, CancellationToken ct)
+    {
+        db.Camps.Add(camp);
+        await db.SaveChangesAsync(ct);
+    }
+}
+
+// Service receives the abstraction through constructor injection
+public class CampsService(ICampsRepository repository)
+{
+    public async Task<CampResponse?> GetByIdAsync(Guid id, CancellationToken ct)
+    {
+        var camp = await repository.GetByIdAsync(id, ct);
+        return camp?.ToResponse();
+    }
+}
+
+// Registration in Program.cs
+builder.Services.AddScoped<ICampsRepository, CampsRepository>();
+builder.Services.AddScoped<CampsService>();
+```
+
+**Explanation**: `CampsService` depends on the `ICampsRepository` interface, not the concrete `CampsRepository`. This allows swapping implementations (e.g., for testing with NSubstitute) without modifying the service.
+
+### DRY (Don't Repeat Yourself)
+
+Each piece of knowledge should have a single, unambiguous, and authoritative representation.
+
+**Before:**
+
+```csharp
+// Repeated response mapping in multiple endpoints
+public static async Task<IResult> GetCampById(Guid id, CampsService service, CancellationToken ct)
+{
+    var camp = await service.GetByIdAsync(id, ct);
+    if (camp is null)
+        return Results.NotFound(new { success = false, error = new { message = "Camp not found" } });
+    return Results.Ok(new { success = true, data = camp });
+}
+
+public static async Task<IResult> GetRegistrationById(Guid id, RegistrationsService service, CancellationToken ct)
+{
+    var registration = await service.GetByIdAsync(id, ct);
+    if (registration is null)
+        return Results.NotFound(new { success = false, error = new { message = "Registration not found" } });
+    return Results.Ok(new { success = true, data = registration });
+}
+```
+
+**After:**
+
+```csharp
+// Shared response wrapper in Common/Models/
+public record ApiResponse<T>(bool Success, T? Data = default, ApiError? Error = null)
+{
+    public static ApiResponse<T> Ok(T data) => new(true, data);
+    public static ApiResponse<T> NotFound(string message) =>
+        new(false, Error: new ApiError(message, "NOT_FOUND"));
+    public static ApiResponse<T> Fail(string message, string code) =>
+        new(false, Error: new ApiError(message, code));
+}
+
+public record ApiError(string Message, string Code);
+
+// Endpoints use the shared wrapper
+public static async Task<IResult> GetCampById(Guid id, CampsService service, CancellationToken ct)
+{
+    var camp = await service.GetByIdAsync(id, ct);
+    return camp is not null
+        ? Results.Ok(ApiResponse<CampResponse>.Ok(camp))
+        : Results.NotFound(ApiResponse<CampResponse>.NotFound("Camp not found"));
+}
+```
+
+**Explanation**: The response format is centralized in `ApiResponse<T>`, eliminating duplication across endpoints and ensuring consistent API responses.
+
+## Coding Standards
+
+### Naming Conventions
+
+- **Classes, Methods, Properties**: PascalCase (`CampsService`, `GetByIdAsync`, `MaxParticipants`)
+- **Local Variables, Parameters**: camelCase (`campId`, `cancellationToken`)
+- **Constants**: PascalCase (`MaxCampsPerPage`) — following .NET conventions
+- **Interfaces**: PascalCase prefixed with `I` (`ICampsRepository`, `IPaymentHandler`)
+- **Enums**: PascalCase for type and members (`CampStatus.Open`)
+- **File Naming**: PascalCase matching the primary type (`CampsService.cs`, `CampsEndpoints.cs`)
+- **Private Fields**: camelCase with underscore prefix (`_repository`, `_logger`)
+
+**Examples:**
+
+```csharp
+// Good: .NET naming conventions
+public class CampsService(ICampsRepository repository, ILogger<CampsService> logger)
+{
+    public async Task<CampResponse?> GetByIdAsync(Guid campId, CancellationToken ct)
+    {
+        var camp = await repository.GetByIdAsync(campId, ct);
+        if (camp is null)
+        {
+            logger.LogWarning("Camp {CampId} not found", campId);
+            return null;
+        }
+        return camp.ToResponse();
+    }
+}
+
+// Avoid: non-.NET naming conventions
+public class camps_service
+{
+    public async Task<CampResponse?> get_by_id(Guid camp_id)
+    {
+        // snake_case and missing CancellationToken
+    }
+}
+```
+
+### C# and .NET Usage
+
+- **Nullable Reference Types**: Always enable (`<Nullable>enable</Nullable>` in `.csproj`)
+- **Primary Constructors**: Use for dependency injection (`public class CampsService(ICampsRepository repo)`)
+- **Record Types**: Use for DTOs and Value Objects (`public record CreateCampRequest(...)`)
+- **Pattern Matching**: Prefer over type checking and null comparison
+- **File-Scoped Namespaces**: Use `namespace Abuvi.API.Features.Camps;` (not block-scoped)
+- **Avoid `var` abuse**: Use `var` when the type is obvious from the right side; use explicit types otherwise
+- **CancellationToken**: Always accept and pass `CancellationToken` in async methods
+
+```csharp
+// Good: Modern C# patterns
+namespace Abuvi.API.Features.Camps;
+
+public record CreateCampRequest(string Name, DateOnly StartDate, DateOnly EndDate);
+
+public class CampsService(ICampsRepository repository)
+{
+    public async Task<CampResponse?> GetByIdAsync(Guid id, CancellationToken ct)
+    {
+        var camp = await repository.GetByIdAsync(id, ct);
+        return camp switch
+        {
+            null => null,
+            { Status: CampStatus.Draft } => throw new InvalidOperationException("Draft camps are not visible"),
+            _ => camp.ToResponse()
+        };
+    }
+}
+
+// Avoid: Legacy C# patterns
+namespace Abuvi.API.Features.Camps
+{
+    public class CreateCampRequest
+    {
+        public string Name { get; set; }  // Should be a record
+        public DateTime StartDate { get; set; }  // Should be DateOnly
+    }
+
+    public class CampsService
+    {
+        private readonly ICampsRepository _repository;
+        public CampsService(ICampsRepository repository)  // Should use primary constructor
+        {
+            _repository = repository;
+        }
+    }
+}
+```
+
+### Error Handling
+
+- **Custom Exception Classes**: Create domain-specific exceptions for expected error conditions
+- **Global Error Middleware**: Use a centralized middleware for consistent error responses
+- **Error Messages**: Provide descriptive messages in English
+- **Do Not Catch Generic Exceptions**: Only catch specific exceptions you can handle
+
+```csharp
+// Domain-specific exceptions
+public class NotFoundException(string entityName, Guid id)
+    : Exception($"{entityName} with ID '{id}' was not found");
+
+public class BusinessRuleException(string message)
+    : Exception(message);
+
+// Global error-handling middleware
+public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
+{
+    public async Task InvokeAsync(HttpContext context)
+    {
+        try
+        {
+            await next(context);
+        }
+        catch (NotFoundException ex)
+        {
+            logger.LogWarning(ex, "Resource not found");
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            await context.Response.WriteAsJsonAsync(
+                ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            logger.LogWarning(ex, "Business rule violation");
+            context.Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
+            await context.Response.WriteAsJsonAsync(
+                ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unhandled exception");
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            await context.Response.WriteAsJsonAsync(
+                ApiResponse<object>.Fail("An unexpected error occurred", "INTERNAL_ERROR"));
+        }
+    }
+}
+```
+
+### Logging Standards
+
+- **Use ILogger\<T\>**: Use the built-in `ILogger<T>` from Microsoft.Extensions.Logging
+- **Structured Logging**: Use message templates with named parameters (not string interpolation)
+- **Log Levels**: Use appropriate levels — `Information` for business events, `Warning` for recoverable issues, `Error` for failures
+
+```csharp
+// Good: Structured logging with named parameters
+logger.LogInformation("Camp {CampId} created by user {UserId}", camp.Id, userId);
+logger.LogWarning("Registration {RegistrationId} cancelled: {Reason}", registration.Id, reason);
+logger.LogError(ex, "Failed to process payment {PaymentId}", payment.Id);
+
+// Avoid: String interpolation in log messages (defeats structured logging)
+logger.LogInformation($"Camp {camp.Id} created by user {userId}");
+```
+
+## Minimal API Design Standards
+
+### Endpoint Definitions
+
+- **Resource-Based URLs**: URLs represent resources, not actions
+- **MapGroup**: Group endpoints by feature with shared prefix
+- **HTTP Methods**: Use appropriate methods (GET, POST, PUT, DELETE, PATCH)
+- **WithTags**: Add OpenAPI tags for documentation grouping
+- **CancellationToken**: Always accept in endpoint handlers
+
+```csharp
+public static class CampsEndpoints
+{
+    public static void MapCampsEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/camps")
+            .WithTags("Camps");
+
+        group.MapGet("/", GetAllCamps)
+            .WithName("GetAllCamps")
+            .Produces<ApiResponse<IReadOnlyList<CampResponse>>>();
+
+        group.MapGet("/{id:guid}", GetCampById)
+            .WithName("GetCampById")
+            .Produces<ApiResponse<CampResponse>>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPost("/", CreateCamp)
+            .WithName("CreateCamp")
+            .Produces<ApiResponse<CampResponse>>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status400BadRequest);
+
+        group.MapPut("/{id:guid}", UpdateCamp)
+            .WithName("UpdateCamp");
+
+        group.MapDelete("/{id:guid}", DeleteCamp)
+            .WithName("DeleteCamp")
+            .Produces(StatusCodes.Status204NoContent);
+    }
+
+    private static async Task<IResult> GetCampById(
+        Guid id,
+        CampsService service,
+        CancellationToken ct)
+    {
+        var camp = await service.GetByIdAsync(id, ct);
+        return camp is not null
+            ? Results.Ok(ApiResponse<CampResponse>.Ok(camp))
+            : Results.NotFound(ApiResponse<CampResponse>.NotFound("Camp not found"));
+    }
+
+    private static async Task<IResult> CreateCamp(
+        CreateCampRequest request,
+        CampsService service,
+        CancellationToken ct)
+    {
+        var camp = await service.CreateAsync(request, ct);
+        return Results.Created($"/api/camps/{camp.Id}", ApiResponse<CampResponse>.Ok(camp));
+    }
+}
+
+// Register in Program.cs
+app.MapCampsEndpoints();
+app.MapRegistrationsEndpoints();
+```
+
+### Request and Response Patterns
+
+- **JSON Format**: Use JSON for all request and response bodies
+- **Consistent Structure**: All responses wrapped in `ApiResponse<T>`
+- **Use Records**: DTOs should be immutable `record` types
+
+```csharp
+// Success response
+{
+    "success": true,
+    "data": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "Summer Camp 2025",
+        "status": "Open"
+    },
+    "error": null
+}
+
+// Error response
+{
+    "success": false,
+    "data": null,
+    "error": {
+        "message": "Camp not found",
+        "code": "NOT_FOUND"
+    }
+}
+```
+
+### Error Response Format
+
+- **400 Bad Request**: Validation errors with field-level details
+- **404 Not Found**: Resource not found
+- **409 Conflict**: Business rule violations (e.g., duplicate registration)
+- **422 Unprocessable Entity**: Valid syntax but invalid business logic
+- **500 Internal Server Error**: Unexpected server errors
+
+```csharp
+// 400 Bad Request — validation failure
+{
+    "success": false,
+    "data": null,
+    "error": {
+        "message": "Validation failed",
+        "code": "VALIDATION_ERROR",
+        "details": [
+            { "field": "Name", "message": "'Name' must not be empty." },
+            { "field": "EndDate", "message": "'End Date' must be greater than 'Start Date'." }
+        ]
+    }
+}
+```
+
+### CORS Configuration
+
+```csharp
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins(builder.Configuration["AllowedOrigins"] ?? "http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
+app.UseCors();
+```
+
+## Validation Patterns
+
+### FluentValidation Setup
+
+Define one validator per request DTO. Place validators in the same feature folder.
+
+```csharp
+// Features/Camps/CreateCampValidator.cs
+public class CreateCampValidator : AbstractValidator<CreateCampRequest>
+{
+    public CreateCampValidator()
+    {
+        RuleFor(x => x.Name)
+            .NotEmpty()
+            .MaximumLength(200);
+
+        RuleFor(x => x.StartDate)
+            .GreaterThan(DateOnly.FromDateTime(DateTime.UtcNow))
+            .WithMessage("Start date must be in the future");
+
+        RuleFor(x => x.EndDate)
+            .GreaterThan(x => x.StartDate)
+            .WithMessage("End date must be after start date");
+
+        RuleFor(x => x.MaxParticipants)
+            .InclusiveBetween(1, 500);
+
+        RuleFor(x => x.PricePerPerson)
+            .GreaterThanOrEqualTo(0)
+            .PrecisionScale(10, 2, ignoreTrailingZeros: true);
+    }
+}
+```
+
+### Validation Pipeline
+
+Register FluentValidation and create an endpoint filter for automatic validation:
+
+```csharp
+// Program.cs — register validators
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+
+// Common/Filters/ValidationFilter.cs
+public class ValidationFilter<T> : IEndpointFilter where T : class
+{
+    public async ValueTask<object?> InvokeAsync(
+        EndpointFilterInvocationContext context,
+        EndpointFilterDelegate next)
+    {
+        var validator = context.HttpContext.RequestServices.GetService<IValidator<T>>();
+        if (validator is null)
+            return await next(context);
+
+        var request = context.Arguments.OfType<T>().FirstOrDefault();
+        if (request is null)
+            return await next(context);
+
+        var result = await validator.ValidateAsync(request);
+        if (!result.IsValid)
+        {
+            var errors = result.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage });
+            return Results.BadRequest(ApiResponse<object>.Fail("Validation failed", "VALIDATION_ERROR"));
+        }
+
+        return await next(context);
+    }
+}
+
+// Usage in endpoint registration
+group.MapPost("/", CreateCamp)
+    .AddEndpointFilter<ValidationFilter<CreateCampRequest>>();
+```
+
+## Database Patterns
+
+### EF Core Configuration
+
+```csharp
+// Data/AbuviDbContext.cs
+public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContext(options)
+{
+    public DbSet<Camp> Camps => Set<Camp>();
+    public DbSet<Registration> Registrations => Set<Registration>();
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<User> Users => Set<User>();
+    public DbSet<FamilyUnit> FamilyUnits => Set<FamilyUnit>();
+    public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
+    public DbSet<Memory> Memories => Set<Memory>();
+    public DbSet<PhotoAlbum> PhotoAlbums => Set<PhotoAlbum>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AbuviDbContext).Assembly);
+    }
+}
+
+// Program.cs — register DbContext
+builder.Services.AddDbContext<AbuviDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+```
+
+### Entity Configuration
+
+Use Fluent API in separate configuration classes. Follow the data model conventions: UUIDs as primary keys, `decimal` for money fields.
+
+```csharp
+// Data/Configurations/CampConfiguration.cs
+public class CampConfiguration : IEntityTypeConfiguration<Camp>
+{
+    public void Configure(EntityTypeBuilder<Camp> builder)
+    {
+        builder.HasKey(c => c.Id);
+        builder.Property(c => c.Id).HasDefaultValueSql("gen_random_uuid()");
+
+        builder.Property(c => c.Name)
+            .IsRequired()
+            .HasMaxLength(200);
+
+        builder.Property(c => c.PricePerPerson)
+            .HasPrecision(10, 2);
+
+        builder.Property(c => c.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        builder.HasMany(c => c.Registrations)
+            .WithOne(r => r.Camp)
+            .HasForeignKey(r => r.CampId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+```
+
+### Migrations
+
+- **Version Control**: All database changes must go through EF Core migrations
+- **Descriptive Names**: Use descriptive migration names
+- **Review Before Applying**: Always review generated migration files
+
+```bash
+# Create a new migration
+dotnet ef migrations add AddCampCapacityField --project src/Abuvi.API
+
+# Apply migrations
+dotnet ef database update --project src/Abuvi.API
+
+# Generate SQL script for production
+dotnet ef migrations script --idempotent --project src/Abuvi.API
+```
+
+### Repository Pattern
+
+Each feature defines its own repository interface and implementation:
+
+```csharp
+// Repository interface — in the feature folder
+public interface ICampsRepository
+{
+    Task<Camp?> GetByIdAsync(Guid id, CancellationToken ct);
+    Task<IReadOnlyList<Camp>> GetAllAsync(CancellationToken ct);
+    Task<IReadOnlyList<Camp>> GetByStatusAsync(CampStatus status, CancellationToken ct);
+    Task AddAsync(Camp camp, CancellationToken ct);
+    Task UpdateAsync(Camp camp, CancellationToken ct);
+    Task DeleteAsync(Guid id, CancellationToken ct);
+}
+
+// Implementation — also in the feature folder
+public class CampsRepository(AbuviDbContext db) : ICampsRepository
+{
+    public async Task<Camp?> GetByIdAsync(Guid id, CancellationToken ct)
+        => await db.Camps
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
+
+    public async Task<IReadOnlyList<Camp>> GetByStatusAsync(CampStatus status, CancellationToken ct)
+        => await db.Camps
+            .AsNoTracking()
+            .Where(c => c.Status == status)
+            .OrderByDescending(c => c.StartDate)
+            .ToListAsync(ct);
+
+    public async Task UpdateAsync(Camp camp, CancellationToken ct)
+    {
+        db.Camps.Update(camp);
+        await db.SaveChangesAsync(ct);
+    }
+}
+```
+
+## Testing Standards
+
+### Test Organization
+
+- Place test files in a structure mirroring the source code
+- Use separate projects for unit and integration tests
+- Use xUnit with FluentAssertions and NSubstitute
+
+```text
+Abuvi.Tests/
+├── Unit/
+│   └── Features/
+│       ├── Camps/
+│       │   ├── CampsServiceTests.cs
+│       │   ├── CampsEndpointsTests.cs
+│       │   └── CreateCampValidatorTests.cs
+│       └── Registrations/
+│           ├── RegistrationsServiceTests.cs
+│           └── RegistrationsEndpointsTests.cs
+├── Integration/
+│   └── Features/
+│       ├── CampsIntegrationTests.cs
+│       └── RegistrationsIntegrationTests.cs
+└── Helpers/
+    ├── Builders/
+    │   └── CampBuilder.cs
+    └── Fixtures/
+        └── WebAppFixture.cs
+```
+
+### Test Naming Convention
+
+Use the pattern: `MethodName_StateUnderTest_ExpectedBehavior`
+
+```csharp
+public class CampsServiceTests
+{
+    [Fact]
+    public async Task GetByIdAsync_WhenCampExists_ReturnsCampResponse()
+    {
+        // ...
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenCampDoesNotExist_ReturnsNull()
+    {
+        // ...
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenValidRequest_CreatesCampAndReturnsResponse()
+    {
+        // ...
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenEndDateBeforeStartDate_ThrowsBusinessRuleException()
+    {
+        // ...
+    }
+}
+```
+
+### Test Structure (AAA Pattern)
+
+Always follow the Arrange-Act-Assert pattern:
+
+```csharp
+public class CampsServiceTests
+{
+    private readonly ICampsRepository _repository;
+    private readonly CampsService _sut;
+
+    public CampsServiceTests()
+    {
+        _repository = Substitute.For<ICampsRepository>();
+        _sut = new CampsService(_repository);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenCampExists_ReturnsCampResponse()
+    {
+        // Arrange
+        var campId = Guid.NewGuid();
+        var camp = new CampBuilder().WithId(campId).WithName("Summer Camp").Build();
+        _repository.GetByIdAsync(campId, Arg.Any<CancellationToken>()).Returns(camp);
+
+        // Act
+        var result = await _sut.GetByIdAsync(campId, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(campId);
+        result.Name.Should().Be("Summer Camp");
+        await _repository.Received(1).GetByIdAsync(campId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenCampDoesNotExist_ReturnsNull()
+    {
+        // Arrange
+        var campId = Guid.NewGuid();
+        _repository.GetByIdAsync(campId, Arg.Any<CancellationToken>()).Returns((Camp?)null);
+
+        // Act
+        var result = await _sut.GetByIdAsync(campId, CancellationToken.None);
+
+        // Assert
+        result.Should().BeNull();
+    }
+}
+```
+
+### Mocking with NSubstitute
+
+- Use `Substitute.For<T>()` to create mocks for interfaces
+- Use `Arg.Any<T>()` for flexible argument matching
+- Use `.Returns()` for setting up return values
+- Use `.Received()` for verifying method calls
+- Use `.ThrowsAsync()` for simulating exceptions
+
+```csharp
+// Create a substitute
+var repository = Substitute.For<ICampsRepository>();
+
+// Setup return value
+repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+    .Returns(new Camp { Id = Guid.NewGuid(), Name = "Test Camp" });
+
+// Setup exception
+repository.AddAsync(Arg.Any<Camp>(), Arg.Any<CancellationToken>())
+    .ThrowsAsync(new DbUpdateException("Database error", (Exception?)null));
+
+// Verify calls
+await repository.Received(1).AddAsync(
+    Arg.Is<Camp>(c => c.Name == "Summer Camp"),
+    Arg.Any<CancellationToken>());
+
+// Verify no calls
+await repository.DidNotReceive().DeleteAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+```
+
+### Integration Testing
+
+Use `WebApplicationFactory` for testing the full HTTP pipeline:
+
+```csharp
+public class CampsIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly HttpClient _client;
+
+    public CampsIntegrationTests(WebApplicationFactory<Program> factory)
+    {
+        _client = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                // Replace real DB with in-memory or Testcontainers
+                services.RemoveAll<DbContextOptions<AbuviDbContext>>();
+                services.AddDbContext<AbuviDbContext>(options =>
+                    options.UseInMemoryDatabase("TestDb"));
+            });
+        }).CreateClient();
+    }
+
+    [Fact]
+    public async Task CreateCamp_WithValidData_Returns201Created()
+    {
+        // Arrange
+        var request = new CreateCampRequest(
+            "Summer Camp 2025", "Mountain Lodge",
+            new DateOnly(2025, 7, 1), new DateOnly(2025, 7, 15),
+            50, 150.00m);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/camps", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CampResponse>>();
+        body.Should().NotBeNull();
+        body!.Success.Should().BeTrue();
+        body.Data!.Name.Should().Be("Summer Camp 2025");
+    }
+
+    [Fact]
+    public async Task CreateCamp_WithInvalidData_Returns400BadRequest()
+    {
+        // Arrange
+        var request = new CreateCampRequest(
+            "", "Mountain Lodge",
+            new DateOnly(2025, 7, 15), new DateOnly(2025, 7, 1), // End before start
+            50, 150.00m);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/camps", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+}
+```
+
+### Test Coverage Requirements
+
+- **Comprehensive test coverage** — include these categories for each feature:
+  1. **Happy Path Tests**: Valid inputs producing expected outputs
+  2. **Error Handling Tests**: Invalid inputs, missing data, database errors
+  3. **Edge Cases**: Boundary values, null inputs, empty collections
+  4. **Validation Tests**: FluentValidation rule enforcement
+  5. **Integration Points**: Database operations, external service calls
+
+- **Threshold**: 90% for branches, functions, lines, and statements
+- **Coverage Reports**: Generate with `dotnet test --collect:"XPlat Code Coverage"`
+
+### Test Data Builders
+
+Use the Builder pattern for creating test data:
+
+```csharp
+// Helpers/Builders/CampBuilder.cs
+public class CampBuilder
+{
+    private Guid _id = Guid.NewGuid();
+    private string _name = "Test Camp";
+    private DateOnly _startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(1));
+    private DateOnly _endDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(1).AddDays(7));
+    private int _maxParticipants = 50;
+    private decimal _pricePerPerson = 100.00m;
+    private CampStatus _status = CampStatus.Draft;
+
+    public CampBuilder WithId(Guid id) { _id = id; return this; }
+    public CampBuilder WithName(string name) { _name = name; return this; }
+    public CampBuilder WithStatus(CampStatus status) { _status = status; return this; }
+    public CampBuilder WithDates(DateOnly start, DateOnly end) { _startDate = start; _endDate = end; return this; }
+    public CampBuilder WithMaxParticipants(int max) { _maxParticipants = max; return this; }
+
+    public Camp Build() => new()
+    {
+        Id = _id,
+        Name = _name,
+        StartDate = _startDate,
+        EndDate = _endDate,
+        MaxParticipants = _maxParticipants,
+        PricePerPerson = _pricePerPerson,
+        Status = _status
+    };
+}
+```
+
+### Common Anti-Patterns to Avoid
+
+- Do not test implementation details — test behavior
+- Do not create overly complex test setups
+- Do not ignore failing tests or skip error scenarios
+- Do not use real database connections in unit tests
+- Do not write tests that depend on external services
+- Do not use `Thread.Sleep` — use async patterns instead
+
+## Performance Best Practices
+
+### Async and Await Patterns
+
+- **Always use async/await**: All I/O operations must be asynchronous
+- **CancellationToken**: Always propagate cancellation tokens
+- **Parallel Operations**: Use `Task.WhenAll()` for independent operations
+
+```csharp
+// Good: Parallel independent operations
+var (camps, totalCount) = await (
+    repository.GetPageAsync(page, pageSize, ct),
+    repository.GetCountAsync(ct)
+);
+
+// Avoid: Sequential when parallel is safe
+var camps = await repository.GetPageAsync(page, pageSize, ct);
+var totalCount = await repository.GetCountAsync(ct);
+```
+
+### EF Core Query Optimization
+
+- **AsNoTracking**: Use for read-only queries
+- **Projection**: Select only needed fields with `.Select()`
+- **Avoid N+1**: Use `.Include()` for related data
+- **Pagination**: Always paginate list endpoints
+
+```csharp
+// Good: Projection query — only loads needed fields
+public async Task<IReadOnlyList<CampSummaryResponse>> GetSummariesAsync(CancellationToken ct)
+    => await db.Camps
+        .AsNoTracking()
+        .Where(c => c.Status == CampStatus.Open)
+        .Select(c => new CampSummaryResponse(c.Id, c.Name, c.StartDate, c.MaxParticipants))
+        .ToListAsync(ct);
+
+// Good: Include related data to avoid N+1
+public async Task<Camp?> GetWithRegistrationsAsync(Guid id, CancellationToken ct)
+    => await db.Camps
+        .AsNoTracking()
+        .Include(c => c.Registrations)
+            .ThenInclude(r => r.Members)
+        .FirstOrDefaultAsync(c => c.Id == id, ct);
+
+// Avoid: Loading full entities when only a summary is needed
+public async Task<IReadOnlyList<Camp>> GetAllAsync(CancellationToken ct)
+    => await db.Camps.ToListAsync(ct); // Loads all columns, all rows
+```
+
+### Pagination
+
+Use a shared `PagedResult<T>` model for all paginated endpoints:
+
+```csharp
+// Common/Models/PagedResult.cs
+public record PagedResult<T>(
+    IReadOnlyList<T> Items,
+    int TotalCount,
+    int Page,
+    int PageSize)
+{
+    public int TotalPages => (int)Math.Ceiling(TotalCount / (double)PageSize);
+    public bool HasNextPage => Page < TotalPages;
+    public bool HasPreviousPage => Page > 1;
+}
+
+// Repository usage
+public async Task<PagedResult<CampResponse>> GetPagedAsync(
+    int page, int pageSize, CancellationToken ct)
+{
+    var query = db.Camps.AsNoTracking().Where(c => c.Status != CampStatus.Draft);
+
+    var totalCount = await query.CountAsync(ct);
+    var items = await query
+        .OrderByDescending(c => c.StartDate)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .Select(c => c.ToResponse())
+        .ToListAsync(ct);
+
+    return new PagedResult<CampResponse>(items, totalCount, page, pageSize);
+}
+```
+
+## Security Best Practices
+
+### Input Validation
+
+- **Validate All Inputs**: Use FluentValidation for all request DTOs at the API boundary
+- **Parameterized Queries**: EF Core uses parameterized queries by default — never use raw SQL string interpolation
+- **Type Checking**: Leverage C# strong typing and route constraints (`{id:guid}`)
+
+### Sensitive Data (RGPD)
+
+- **Encryption at Rest**: Encrypt medical notes, allergies, and other sensitive fields as required by Spanish GDPR (RGPD)
+- **Access Control**: Restrict access to sensitive data based on user roles
+- **Data Minimization**: Only collect and store data that is necessary
+
+```csharp
+// Entity with encrypted sensitive fields
+public class FamilyMember
+{
+    public Guid Id { get; set; }
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+
+    // Sensitive fields — encrypted at rest
+    public string? MedicalNotesEncrypted { get; set; }
+    public string? AllergiesEncrypted { get; set; }
+}
+```
+
+### Environment Configuration
+
+- **Never Commit Secrets**: Never commit `appsettings.Development.json` with real credentials or connection strings
+- **User Secrets**: Use `dotnet user-secrets` for local development secrets
+- **Environment Variables**: Use environment variables for production configuration
+- **Validate on Startup**: Validate required configuration values at application startup
+
+```csharp
+// Program.cs — validate required configuration
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is required");
+
+var redsysKey = builder.Configuration["Redsys:SecretKey"]
+    ?? throw new InvalidOperationException("Redsys secret key is required");
+```
+
+### Redsys Payment Security
+
+- **SHA-256 Signatures**: Always validate Redsys callback signatures using SHA-256
+- **HTTPS Only**: All payment-related endpoints must use HTTPS
+- **Idempotency**: Payment processing must be idempotent to handle duplicate callbacks
+- **Audit Trail**: Log all payment events for reconciliation
+
+## CSnakes and Python Integration
+
+Python scripts for data analysis and science tasks are managed via CSnakes:
+
+- **Script Location**: `src/Abuvi.Analysis/`
+- **Type-Safe Wrappers**: Use the type-safe C# wrappers generated by CSnakes
+- **Exception Handling**: Map Python exceptions to appropriate HTTP status codes (500 for unexpected errors, 422 for invalid data)
+- **Isolation**: Python operations should not block the main API thread — use background processing when appropriate
+
+```csharp
+// Example: Calling a Python script via CSnakes
+public class AnalysisService(IPythonEnvironment python)
+{
+    public async Task<AnalysisResult> RunCampAnalysisAsync(Guid campId, CancellationToken ct)
+    {
+        try
+        {
+            var result = await Task.Run(() =>
+                python.CampAnalysis().Analyze(campId.ToString()), ct);
+
+            return new AnalysisResult(result.Summary, result.Metrics);
+        }
+        catch (PythonException ex)
+        {
+            throw new BusinessRuleException($"Analysis failed: {ex.Message}");
+        }
+    }
+}
+```
+
+## Development Workflow
+
+### Git Workflow
+
+- **Feature Branches**: Develop features in separate branches with the `-backend` suffix (e.g., `feature/camp-registration-backend`)
+- **Descriptive Commits**: Write descriptive commit messages in English
+- **Code Review**: Code review before merging to main
+- **Small Branches**: Keep branches small and focused on a single feature
+
+### Development Commands
+
+```bash
+# Restore dependencies
+dotnet restore
+
+# Build
+dotnet build
+
+# Run development server
+dotnet run --project src/Abuvi.API
+
+# Run tests
+dotnet test
+
+# Run tests with coverage
+dotnet test --collect:"XPlat Code Coverage"
+
+# EF Core migrations
+dotnet ef migrations add MigrationName --project src/Abuvi.API
+dotnet ef database update --project src/Abuvi.API
+
+# User secrets (local development)
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;..." --project src/Abuvi.API
+```
+
+### Code Quality
+
+- **.NET Analyzers**: Enable built-in .NET analyzers in the project file
+- **Code Formatting**: Use `dotnet format` for consistent formatting
+- **All Tests Passing**: Ensure all tests pass before committing
+- **Review**: Review code for adherence to these standards
+
+```xml
+<!-- In .csproj — enable analyzers -->
+<PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+</PropertyGroup>
+```
+
+This document serves as the foundation for maintaining code quality and consistency across the ABUVI backend application. All team members and AI agents should follow these practices to ensure a maintainable, scalable, and testable codebase.
