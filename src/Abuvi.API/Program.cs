@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Abuvi.API.Data;
 using Abuvi.API.Common.Middleware;
+using Abuvi.API.Features.Users;
 using FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,6 +32,11 @@ builder.Services.AddSwaggerGen();
 // Validation
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
+// Feature Services
+// Users
+builder.Services.AddScoped<IUsersRepository, UsersRepository>();
+builder.Services.AddScoped<UsersService>();
+
 var app = builder.Build();
 
 // Middleware pipeline
@@ -49,8 +55,8 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = Dat
     .WithName("HealthCheck")
     .WithTags("System");
 
-// API endpoints will be mapped here
-// Example: app.MapCampsEndpoints();
+// API endpoints
+app.MapUsersEndpoints();
 
 app.Run();
 
