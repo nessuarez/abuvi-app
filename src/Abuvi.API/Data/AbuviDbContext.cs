@@ -1,11 +1,12 @@
+using Abuvi.API.Features.Users;
 using Microsoft.EntityFrameworkCore;
 
 namespace Abuvi.API.Data;
 
 public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContext(options)
 {
-    // DbSets will be added as entities are created
-    // Example: public DbSet<Camp> Camps => Set<Camp>();
+    // Entity DbSets
+    public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
