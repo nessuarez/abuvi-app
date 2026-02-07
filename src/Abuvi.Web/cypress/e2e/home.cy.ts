@@ -1,3 +1,5 @@
+/// <reference types="cypress" />
+
 describe('Home Page', () => {
   it('should display welcome message', () => {
     cy.visit('/')
