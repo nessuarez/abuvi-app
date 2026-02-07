@@ -82,7 +82,7 @@ abuvi-app/                  # Root directory
 4. **Initialize the Frontend**:
 
    ```bash
-   cd src/Abuvi.Web && npm install && npm run dev
+   cd frontend && npm install && npm run dev
    ```
 
 ## **🏃 Quick Start (Current Backend Scaffolding)**
@@ -90,23 +90,27 @@ abuvi-app/                  # Root directory
 ### Running the Backend API
 
 1. **Start PostgreSQL**:
+
    ```bash
    docker compose up -d
    ```
 
 2. **Run database migrations** (first time only):
+
    ```bash
    dotnet ef database update --project src/Abuvi.API
    ```
 
 3. **Start the Backend API**:
+
    ```bash
    dotnet run --project src/Abuvi.API
-   ```
+
+```
 
 4. **Verify the application**:
-   - API: http://localhost:5000/health
-   - Swagger UI: http://localhost:5000/swagger
+   - API: http://localhost:5079/health
+   - Swagger UI: http://localhost:5079/swagger
 
 ## **💻 Development Commands**
 
@@ -119,6 +123,19 @@ abuvi-app/                  # Root directory
 - `dotnet ef migrations add <MigrationName> --project src/Abuvi.API` - Create a new migration
 - `dotnet ef database update --project src/Abuvi.API` - Apply migrations to the database
 - `dotnet ef migrations list --project src/Abuvi.API` - List all migrations
+
+### Frontend (Vue 3)
+
+- `cd frontend && npm install` - Install dependencies
+- `npm run dev` - Start development server (http://localhost:5173)
+- `npm run build` - Build for production
+- `npm run test` - Run Vitest unit tests in watch mode
+- `npm run test:run` - Run tests once
+- `npm run test:ui` - Run tests with Vitest UI
+- `npm run cypress` - Open Cypress E2E test runner
+- `npm run cypress:run` - Run Cypress tests headlessly
+- `npm run lint` - Lint code
+- `npm run format` - Format code with Prettier
 
 ### Database (Docker)
 
@@ -150,15 +167,42 @@ abuvi-app/
 │   │   │   └── Migrations/     # EF Core migrations
 │   │   ├── Program.cs          # Application entry point
 │   │   └── appsettings.json    # Application configuration
-│   ├── Abuvi.Tests/            # xUnit test project
-│   │   ├── Unit/               # Unit tests
-│   │   ├── Integration/        # Integration tests (HealthCheckTests)
-│   │   └── Helpers/            # Test utilities
-│   │       ├── Builders/       # Test data builders (empty)
-│   │       └── Fixtures/       # Test fixtures (empty)
-│   └── Abuvi.Analysis/         # Python integration (CSnakes)
-│       ├── requirements.txt    # Python dependencies
-│       └── __init__.py         # Python module initialization
+│   ├── Abuvi.Analysis/         # Python integration (CSnakes)
+│   │   ├── requirements.txt    # Python dependencies
+│   │   └── __init__.py         # Python module initialization
+│   └── Abuvi.Tests/            # xUnit test project
+│       ├── Unit/               # Unit tests
+│       ├── Integration/        # Integration tests (HealthCheckTests)
+│       └── Helpers/            # Test utilities
+│           ├── Builders/       # Test data builders (empty)
+│           └── Fixtures/       # Test fixtures (empty)
+├── frontend/                   # Vue 3 Frontend
+│   ├── src/
+│   │   ├── assets/             # Images, fonts, styles
+│   │   ├── components/         # Vue components
+│   │   │   └── common/         # Shared components
+│   │   ├── composables/        # Reusable logic (useXxx)
+│   │   ├── layouts/            # Page layouts
+│   │   ├── pages/              # Route-level pages
+│   │   │   └── HomePage.vue    # Home page component
+│   │   ├── router/             # Vue Router config
+│   │   │   └── index.ts        # Router configuration
+│   │   ├── stores/             # Pinia state stores
+│   │   ├── types/              # TypeScript types
+│   │   │   └── api.ts          # API response types
+│   │   ├── utils/              # Utilities (API client)
+│   │   │   └── api.ts          # Axios API client
+│   │   ├── App.vue             # Root component
+│   │   └── main.ts             # Entry point
+│   ├── cypress/                # E2E tests
+│   │   ├── e2e/                # E2E test specs
+│   │   ├── fixtures/           # Test data
+│   │   └── support/            # Cypress commands
+│   ├── index.html              # HTML entry
+│   ├── vite.config.ts          # Vite configuration
+│   ├── tsconfig.json           # TypeScript config
+│   ├── tailwind.config.js      # Tailwind configuration
+│   └── package.json            # NPM dependencies
 ├── ai-specs/                   # Specifications (SDD approach)
 │   ├── .agents/                # AI agent configurations
 │   ├── .commands/              # Custom AI commands
@@ -171,13 +215,15 @@ abuvi-app/
 
 ## **🔍 Health Checks & Endpoints**
 
-- **Backend API Health Check**: http://localhost:5000/health
-  - Returns: `{"status":"healthy","timestamp":"2026-02-06T..."}`
-- **Swagger UI (API Documentation)**: http://localhost:5000/swagger
-- **PostgreSQL Database**: `localhost:5432`
-  - Database: `abuvi`
-  - Username: `abuvi_user`
-  - Password: `dev_password` (local dev only)
+* **Frontend**: <http://localhost:5173>
+  * Displays "Welcome to ABUVI" message
+* **Backend API Health Check**: <http://localhost:5079/health>
+  * Returns: `{"status":"healthy","timestamp":"2026-02-06T..."}`
+* **Swagger UI (API Documentation)**: <http://localhost:5079/swagger>
+* **PostgreSQL Database**: `localhost:5432`
+  * Database: `abuvi`
+  * Username: `abuvi_user`
+  * Password: `dev_password` (local dev only)
 
 ## **🛠️ Troubleshooting**
 
