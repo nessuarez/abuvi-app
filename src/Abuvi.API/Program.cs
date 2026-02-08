@@ -47,6 +47,7 @@ builder.Services.AddScoped<UsersService>();
 
 // Auth
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<JwtTokenService>();
 
 var app = builder.Build();
 
