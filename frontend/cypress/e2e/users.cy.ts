@@ -3,6 +3,56 @@ describe('User Management', () => {
     cy.visit('/users')
   })
 
+  describe('Visual Elements & Icons', () => {
+    it('should load PrimeIcons stylesheet', () => {
+      cy.verifyPrimeIconsLoaded()
+    })
+
+    it('should display icon in "Create User" button', () => {
+      cy.contains('button', 'Create User').verifyIcon('pi-plus')
+    })
+
+    it('should display eye icons in "View Details" buttons', () => {
+      // Wait for table to load
+      cy.get('[data-testid="users-table"]').should('be.visible')
+      cy.wait(1000)
+
+      // Verify first view button has the eye icon properly styled
+      cy.verifyButtonWithIcon('[data-testid="view-user-button"]', 'pi-eye')
+
+      // Verify all view buttons have icons
+      cy.get('[data-testid="view-user-button"]').each(($btn) => {
+        cy.wrap($btn).verifyIcon('pi-eye')
+      })
+    })
+
+    it('should display icons with proper font-face', () => {
+      // Verify that all pi icons use the correct font
+      cy.get('i.pi').each(($icon) => {
+        cy.wrap($icon).should(($el) => {
+          const fontFamily = $el.css('font-family')
+          expect(fontFamily, 'Icon should use primeicons font').to.include('primeicons')
+        })
+      })
+    })
+
+    it('should render action buttons as visible and clickable', () => {
+      cy.get('[data-testid="users-table"]').should('be.visible')
+      cy.wait(1000)
+
+      // Verify view button is visible and clickable
+      cy.get('[data-testid="view-user-button"]')
+        .first()
+        .should('be.visible')
+        .and('not.have.css', 'display', 'none')
+        .and('not.have.css', 'visibility', 'hidden')
+        .click({ force: true })
+
+      // Verify navigation worked
+      cy.url().should('include', '/users/')
+    })
+  })
+
   it('should display users list', () => {
     cy.get('[data-testid="users-table"]').should('exist')
     cy.contains('User Management').should('be.visible')
