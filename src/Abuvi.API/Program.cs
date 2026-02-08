@@ -3,8 +3,15 @@ using Abuvi.API.Data;
 using Abuvi.API.Common.Middleware;
 using Abuvi.API.Features.Users;
 using FluentValidation;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure JSON serialization
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")

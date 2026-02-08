@@ -30,6 +30,7 @@ All service layer business logic is tested with proper mocking of the repository
 Tests for FluentValidation validators:
 
 #### CreateUserRequestValidator (18 tests)
+
 - Email validation: empty, invalid format, too long ✅
 - Password validation: empty, too short ✅
 - FirstName validation: empty ✅
@@ -38,6 +39,7 @@ Tests for FluentValidation validators:
 - Role validation: enum validation ✅
 
 #### UpdateUserRequestValidator (8 tests)
+
 - FirstName validation: empty ✅
 - LastName validation: empty ✅
 - Phone validation: valid formats, null allowed ✅
@@ -61,6 +63,7 @@ Integration tests were initially created but encountered issues with:
 For Phase 2, integration tests will be implemented using one of these approaches:
 
 **Option 1: Testcontainers (Recommended)**
+
 ```csharp
 // Use real PostgreSQL container for integration tests
 public class TestWebApplicationFactory : WebApplicationFactory<Program>
@@ -81,6 +84,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
 ```
 
 **Option 2: Respawn Library**
+
 ```csharp
 // Reset database state between tests
 public class IntegrationTestBase : IAsyncLifetime
@@ -100,6 +104,7 @@ public class IntegrationTestBase : IAsyncLifetime
 ```
 
 **Option 3: Database per Test Class**
+
 ```csharp
 // Create isolated database for each test class
 public class UsersIntegrationTests : IClassFixture<DatabaseFixture>
@@ -113,18 +118,21 @@ public class UsersIntegrationTests : IClassFixture<DatabaseFixture>
 ## Running Tests
 
 ### Run All Unit Tests
+
 ```bash
 cd src/Abuvi.Tests
 dotnet test --filter "FullyQualifiedName~Unit"
 ```
 
 ### Run Users Unit Tests Only
+
 ```bash
 cd src/Abuvi.Tests
 dotnet test --filter "FullyQualifiedName~Unit.Features.Users"
 ```
 
 ### Run with Coverage
+
 ```bash
 cd src/Abuvi.Tests
 dotnet test /p:CollectCoverage=true /p:CoverageReporter=html
@@ -145,6 +153,7 @@ Target coverage: 90%+ (as per project standards)
 Until integration tests are implemented in Phase 2, manual testing is recommended:
 
 1. **Start API**:
+
    ```bash
    cd src/Abuvi.API
    dotnet run

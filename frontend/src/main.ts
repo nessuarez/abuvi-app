@@ -1,19 +1,21 @@
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-import PrimeVue from 'primevue/config'
-import App from './App.vue'
-import router from './router'
+import { createApp } from "vue";
+import { createPinia } from "pinia";
+import PrimeVue from "primevue/config";
+import App from "./App.vue";
+import router from "./router";
+import Aura from "@primeuix/themes/aura";
 
-// Note: PrimeVue CSS imports commented out due to Vite build issues
-// Can be added via CDN in index.html or with proper Vite configuration
-// import 'primevue/resources/themes/lara-light-blue/theme.css'
-// import 'primeicons/primeicons.css'
-import './assets/main.css'
+import "primeicons/primeicons.css";
+import "./assets/main.css";
 
-const app = createApp(App)
+const app = createApp(App);
 
-app.use(createPinia())
-app.use(router)
-app.use(PrimeVue)
+app.use(createPinia());
+app.use(router);
+app.use(PrimeVue, {
+	theme: {
+		preset: Aura
+	}
+});
 
-app.mount('#app')
+app.mount("#app");

@@ -212,12 +212,38 @@ abuvi-app/
 └── README.md                   # This file
 ```
 
+## **✨ Implemented Features**
+
+### Phase 1: User Management (CRUD)
+
+* **Backend** (`feature/phase1-user-crud-backend`):
+  * User entity with roles (Admin, Board, Member)
+  * REST API endpoints: GET, POST, PUT for users
+  * Vertical Slice Architecture implementation
+  * Comprehensive unit and integration tests
+
+* **Frontend** (`feature/phase1-user-crud-frontend`):
+  * User list page with DataTable (pagination, sorting)
+  * User detail page with view/edit modes
+  * Create user dialog with validation
+  * Composable-based API communication
+  * PrimeVue + Tailwind CSS styling
+  * Comprehensive Vitest + Cypress tests
+
+**Note**: Phase 1 has no authentication. Phase 2 will add JWT authentication and role-based authorization.
+
 ## **🔍 Health Checks & Endpoints**
 
 * **Frontend**: <http://localhost:5173>
-  * Displays "Welcome to ABUVI" message
+  * Home: Displays "Welcome to ABUVI" message
+  * Users: <http://localhost:5173/users> (User management interface)
 * **Backend API Health Check**: <http://localhost:5079/health>
   * Returns: `{"status":"healthy","timestamp":"2026-02-06T..."}`
+* **Backend API Endpoints**:
+  * `GET /api/users` - Get all users
+  * `GET /api/users/:id` - Get user by ID
+  * `POST /api/users` - Create new user
+  * `PUT /api/users/:id` - Update user
 * **Swagger UI (API Documentation)**: <http://localhost:5079/swagger>
 * **PostgreSQL Database**: `localhost:5432`
   * Database: `abuvi`

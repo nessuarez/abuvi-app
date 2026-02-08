@@ -66,9 +66,11 @@ public enum UserRole
 ## Files to Create
 
 ### 1. UsersModels.cs
+
 **Path**: `src/Abuvi.API/Features/Users/UsersModels.cs`
 
 **Contents**:
+
 - `User` entity class
 - `UserRole` enum
 - `CreateUserRequest` record
@@ -76,6 +78,7 @@ public enum UserRole
 - `UserResponse` record
 
 **Example DTOs**:
+
 ```csharp
 public record CreateUserRequest(
     string Email,
@@ -107,11 +110,13 @@ public record UserResponse(
 ```
 
 ### 2. UserConfiguration.cs
+
 **Path**: `src/Abuvi.API/Data/Configurations/UserConfiguration.cs`
 
 **Purpose**: EF Core Fluent API configuration
 
 **Key configurations**:
+
 - UUID primary key
 - Email unique index: `builder.HasIndex(u => u.Email).IsUnique()`
 - Role stored as string: `builder.Property(u => u.Role).HasConversion<string>()`
@@ -119,6 +124,7 @@ public record UserResponse(
 - Default timestamps
 
 **Example**:
+
 ```csharp
 public class UserConfiguration : IEntityTypeConfiguration<User>
 {
@@ -143,13 +149,16 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 ```
 
 ### 3. UsersRepository.cs
+
 **Path**: `src/Abuvi.API/Features/Users/UsersRepository.cs`
 
 **Contents**:
+
 - `IUsersRepository` interface
 - `UsersRepository` implementation
 
 **Interface methods**:
+
 ```csharp
 public interface IUsersRepository
 {
@@ -162,22 +171,26 @@ public interface IUsersRepository
 ```
 
 **Implementation uses**:
+
 - `AbuviDbContext`
 - Async/await with EF Core
 - `AsNoTracking()` for read operations
 
 ### 4. UsersService.cs
+
 **Path**: `src/Abuvi.API/Features/Users/UsersService.cs`
 
 **Purpose**: Business logic layer
 
 **Responsibilities**:
+
 - Validate email uniqueness before creation
 - Set timestamps (CreatedAt, UpdatedAt)
 - Map between entity and DTOs
 - Apply business rules
 
 **Key methods**:
+
 ```csharp
 public class UsersService
 {
@@ -192,11 +205,13 @@ public class UsersService
 **Note**: For Phase 1, password will be hashed with a simple placeholder (e.g., SHA256). Real BCrypt hashing comes in Phase 2.
 
 ### 5. CreateUserValidator.cs
+
 **Path**: `src/Abuvi.API/Features/Users/CreateUserValidator.cs`
 
 **Purpose**: FluentValidation for CreateUserRequest
 
 **Validation rules**:
+
 ```csharp
 public class CreateUserValidator : AbstractValidator<CreateUserRequest>
 {
@@ -230,22 +245,26 @@ public class CreateUserValidator : AbstractValidator<CreateUserRequest>
 ```
 
 ### 6. UpdateUserValidator.cs
+
 **Path**: `src/Abuvi.API/Features/Users/UpdateUserValidator.cs`
 
 Similar validation for UpdateUserRequest.
 
 ### 7. UsersEndpoints.cs
+
 **Path**: `src/Abuvi.API/Features/Users/UsersEndpoints.cs`
 
 **Purpose**: Minimal API endpoint definitions
 
 **Endpoints**:
+
 - `GET /api/users` - List all users (will be protected in Phase 2)
 - `GET /api/users/{id}` - Get user by ID
 - `POST /api/users` - Create new user
 - `PUT /api/users/{id}` - Update user
 
 **Example structure**:
+
 ```csharp
 public static class UsersEndpoints
 {
@@ -273,19 +292,23 @@ public static class UsersEndpoints
 ## Files to Modify
 
 ### 1. AbuviDbContext.cs
+
 **Path**: `src/Abuvi.API/Data/AbuviDbContext.cs`
 
 **Change**: Add Users DbSet
+
 ```csharp
 public DbSet<User> Users => Set<User>();
 ```
 
 ### 2. Program.cs
+
 **Path**: `src/Abuvi.API/Program.cs`
 
 **Changes**:
 
 **Add service registrations** (before `var app = builder.Build();`):
+
 ```csharp
 // User feature services
 builder.Services.AddScoped<IUsersRepository, UsersRepository>();
@@ -293,6 +316,7 @@ builder.Services.AddScoped<UsersService>();
 ```
 
 **Map endpoints** (after middleware pipeline, before `app.Run()`):
+
 ```csharp
 // Map feature endpoints
 app.MapUsersEndpoints();
@@ -303,9 +327,10 @@ app.MapUsersEndpoints();
 ### Commands
 
 1. **Create migration**:
-```bash
-dotnet ef migrations add AddUserEntity --project src/Abuvi.API
-```
+
+    ```bash
+    dotnet ef migrations add AddUserEntity --project src/Abuvi.API
+    ```
 
 2. **Review generated migration** in `src/Abuvi.API/Data/Migrations/`:
    - Check table name is `users`
@@ -314,16 +339,19 @@ dotnet ef migrations add AddUserEntity --project src/Abuvi.API
    - Check default values for IsActive, CreatedAt, UpdatedAt
 
 3. **Apply migration**:
-```bash
-dotnet ef database update --project src/Abuvi.API
-```
+
+    ```bash
+    dotnet ef database update --project src/Abuvi.API
+    ```
 
 4. **Verify in PostgreSQL**:
-```bash
-docker exec -it abuvi-postgres psql -U abuvi_user -d abuvi -c "\d users"
-```
+
+    ```bash
+    docker exec -it abuvi-postgres psql -U abuvi_user -d abuvi -c "\d users"
+    ```
 
 Expected table structure:
+
 - id (uuid, PK)
 - email (varchar(255), unique)
 - password_hash (text)
@@ -341,9 +369,11 @@ Expected table structure:
 ### Unit Tests
 
 #### 1. UsersServiceTests.cs
+
 **Path**: `src/Abuvi.Tests/Unit/Features/Users/UsersServiceTests.cs`
 
 **Test cases**:
+
 - CreateAsync_WithValidData_ReturnsCreatedUser
 - CreateAsync_WithDuplicateEmail_ThrowsException
 - GetByIdAsync_WithExistingUser_ReturnsUser
@@ -354,6 +384,7 @@ Expected table structure:
 **Mocking**: Use NSubstitute to mock IUsersRepository
 
 **Example**:
+
 ```csharp
 [Fact]
 public async Task CreateAsync_WithValidData_ReturnsCreatedUser()
@@ -385,9 +416,11 @@ public async Task CreateAsync_WithValidData_ReturnsCreatedUser()
 ```
 
 #### 2. CreateUserValidatorTests.cs
+
 **Path**: `src/Abuvi.Tests/Unit/Features/Users/CreateUserValidatorTests.cs`
 
 **Test cases**:
+
 - Validate_WithValidData_Passes
 - Validate_WithEmptyEmail_Fails
 - Validate_WithInvalidEmailFormat_Fails
@@ -397,6 +430,7 @@ public async Task CreateAsync_WithValidData_ReturnsCreatedUser()
 - Validate_WithInvalidRole_Fails
 
 **Example**:
+
 ```csharp
 [Fact]
 public void Validate_WithInvalidEmailFormat_Fails()
@@ -424,9 +458,11 @@ public void Validate_WithInvalidEmailFormat_Fails()
 ### Integration Tests
 
 #### 3. UsersIntegrationTests.cs
+
 **Path**: `src/Abuvi.Tests/Integration/Features/UsersIntegrationTests.cs`
 
 **Test cases**:
+
 - GetAllUsers_ReturnsEmptyList_WhenNoUsers
 - CreateUser_ReturnsCreated_WithValidData
 - CreateUser_ReturnsBadRequest_WithInvalidEmail
@@ -438,6 +474,7 @@ public void Validate_WithInvalidEmailFormat_Fails()
 **Setup**: Use WebApplicationFactory with test database
 
 **Example**:
+
 ```csharp
 public class UsersIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 {
@@ -479,12 +516,14 @@ public class UsersIntegrationTests : IClassFixture<WebApplicationFactory<Program
 After completing Phase 1, verify:
 
 ### Database
+
 - [ ] Table `users` exists in PostgreSQL
 - [ ] Email column has unique constraint
 - [ ] Role is stored as string
 - [ ] Timestamps have default values
 
-### API Endpoints (via Swagger: http://localhost:5079/swagger)
+### API Endpoints (via Swagger: <http://localhost:5079/swagger>)
+
 - [ ] GET /api/users returns empty array (200 OK)
 - [ ] POST /api/users with valid data creates user (201 Created)
 - [ ] POST /api/users with invalid email returns 400 Bad Request with validation errors
@@ -494,12 +533,14 @@ After completing Phase 1, verify:
 - [ ] PUT /api/users/{id} updates user (200 OK)
 
 ### Tests
+
 - [ ] All unit tests pass: `dotnet test --filter FullyQualifiedName~Users`
 - [ ] All integration tests pass
 - [ ] Test coverage >= 90%
 - [ ] No console errors or warnings
 
 ### Code Quality
+
 - [ ] No compiler warnings
 - [ ] Follows Vertical Slice Architecture pattern
 - [ ] FluentValidation configured correctly
@@ -509,6 +550,7 @@ After completing Phase 1, verify:
 ## Next Steps
 
 After Phase 1 is complete and verified:
+
 1. Review the Vertical Slice pattern with the team
 2. Identify any architectural improvements needed
 3. Proceed to **Phase 2: Authentication Layer** (`phase2_authentication_layer.md`)
