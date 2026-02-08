@@ -37,7 +37,9 @@
       "Bash(gh pr view:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: implement Phase 1 User CRUD frontend with Vue 3 Composition API\n\nImplemented complete user management interface following Vue 3 Composition API patterns,\nPrimeVue components, and Tailwind CSS styling. All code follows project standards with\nTypeScript strict mode and composable-based architecture.\n\n## Features Implemented\n- User list page with DataTable \\(pagination, sorting, filtering\\)\n- User detail page with view/edit toggle\n- Create user dialog with form validation\n- Edit user functionality\n- Comprehensive error handling \\(404, 409 conflict, validation errors\\)\n\n## Components Created\n- UserCard: Reusable user display card with role badges\n- UserForm: Dual-mode form \\(create/edit\\) with validation\n- UsersPage: User list with DataTable and create dialog\n- UserDetailPage: User detail view with edit capability\n\n## Technical Implementation\n- TypeScript types: User, CreateUserRequest, UpdateUserRequest, UserRole\n- useUsers composable: Centralized API communication and state management\n- Router: Added /users and /users/:id routes with lazy loading\n- Error handling: User-friendly messages for all error scenarios\n- Responsive design: Mobile-first with Tailwind breakpoints\n\n## Testing\n- Vitest unit tests for useUsers composable\n- Vitest component tests for UserCard and UserForm\n- Cypress E2E tests for complete user workflows\n\n## Documentation\n- Created implementation summary in ai-specs/changes/\n- Updated README with Phase 1 features and endpoints\n- All code documented with TypeScript types\n\n## Notes\n- Phase 1 has no authentication \\(public routes\\)\n- Backend integration ready via ApiResponse<T> envelope\n- Phase 2 will add JWT authentication and route guards\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push:*)",
-      "Bash(gh pr create:*)"
+      "Bash(gh pr create:*)",
+      "Bash(npx cypress run)",
+      "Bash(npx cypress:*)"
     ]
   }
 }
