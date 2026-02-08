@@ -139,7 +139,9 @@ const formatDate = (dateString: string) => {
             icon="pi pi-eye"
             text
             rounded
+            severity="info"
             aria-label="View Details"
+            data-testid="view-user-button"
             @click="viewUserDetail(data.id)"
           />
         </template>
