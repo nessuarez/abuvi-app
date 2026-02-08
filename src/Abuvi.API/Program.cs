@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Abuvi.API.Data;
 using Abuvi.API.Common.Middleware;
 using Abuvi.API.Features.Users;
+using Abuvi.API.Features.Auth;
 using FluentValidation;
 using System.Text.Json.Serialization;
 
@@ -43,6 +44,9 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 // Users
 builder.Services.AddScoped<IUsersRepository, UsersRepository>();
 builder.Services.AddScoped<UsersService>();
+
+// Auth
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 
 var app = builder.Build();
 
