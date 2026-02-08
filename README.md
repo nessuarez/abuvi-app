@@ -105,8 +105,7 @@ abuvi-app/                  # Root directory
 
    ```bash
    dotnet run --project src/Abuvi.API
-
-```
+   ```
 
 4. **Verify the application**:
    - API: http://localhost:5079/health
