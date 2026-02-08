@@ -100,7 +100,7 @@ describe('useUsers', () => {
       const result = await createUser(request)
 
       expect(result).toEqual(mockUser)
-      expect(users.value).toContain(mockUser)
+      expect(users.value).toContainEqual(mockUser)
       expect(api.post).toHaveBeenCalledWith('/users', request)
     })
 
