@@ -1,0 +1,167 @@
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useUsers } from '@/composables/useUsers'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
+import ProgressSpinner from 'primevue/progressspinner'
+import Message from 'primevue/message'
+import Tag from 'primevue/tag'
+import UserForm from '@/components/users/UserForm.vue'
+import type { CreateUserRequest } from '@/types/user'
+
+const router = useRouter()
+const { users, loading, error, fetchUsers, createUser, clearError } = useUsers()
+
+const showCreateDialog = ref(false)
+const creatingUser = ref(false)
+
+onMounted(() => {
+  fetchUsers()
+})
+
+const openCreateDialog = () => {
+  showCreateDialog.value = true
+  clearError()
+}
+
+const closeCreateDialog = () => {
+  showCreateDialog.value = false
+  clearError()
+}
+
+const handleCreateUser = async (data: CreateUserRequest) => {
+  creatingUser.value = true
+  const newUser = await createUser(data)
+  creatingUser.value = false
+
+  if (newUser) {
+    closeCreateDialog()
+    // Optional: Show success toast
+  }
+}
+
+const viewUserDetail = (userId: string) => {
+  router.push(`/users/${userId}`)
+}
+
+const getRoleSeverity = (role: string): 'success' | 'info' | 'warning' => {
+  switch (role) {
+    case 'Admin':
+      return 'success'
+    case 'Board':
+      return 'info'
+    case 'Member':
+      return 'warning'
+    default:
+      return 'info'
+  }
+}
+
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
+}
+</script>
+
+<template>
+  <div class="container mx-auto p-4">
+    <div class="mb-6 flex items-center justify-between">
+      <h1 class="text-3xl font-bold text-gray-900">User Management</h1>
+      <Button label="Create User" icon="pi pi-plus" @click="openCreateDialog" />
+    </div>
+
+    <!-- Loading state -->
+    <div v-if="loading && users.length === 0" class="flex justify-center p-12">
+      <ProgressSpinner />
+    </div>
+
+    <!-- Error state -->
+    <Message v-else-if="error" severity="error" :closable="false" class="mb-4">
+      {{ error }}
+      <Button
+        label="Retry"
+        text
+        size="small"
+        class="ml-2"
+        @click="fetchUsers"
+      />
+    </Message>
+
+    <!-- Users DataTable -->
+    <DataTable
+      v-else
+      :value="users"
+      striped-rows
+      paginator
+      :rows="10"
+      :rows-per-page-options="[5, 10, 20, 50]"
+      class="rounded-lg"
+      data-testid="users-table"
+    >
+      <Column field="firstName" header="Name" sortable>
+        <template #body="{ data }">
+          <span class="font-medium">{{ data.firstName }} {{ data.lastName }}</span>
+        </template>
+      </Column>
+      <Column field="email" header="Email" sortable />
+      <Column field="role" header="Role" sortable>
+        <template #body="{ data }">
+          <Tag :value="data.role" :severity="getRoleSeverity(data.role)" />
+        </template>
+      </Column>
+      <Column field="phone" header="Phone">
+        <template #body="{ data }">
+          <span class="text-gray-600">{{ data.phone || '—' }}</span>
+        </template>
+      </Column>
+      <Column field="isActive" header="Status" sortable>
+        <template #body="{ data }">
+          <Tag
+            :value="data.isActive ? 'Active' : 'Inactive'"
+            :severity="data.isActive ? 'success' : 'danger'"
+          />
+        </template>
+      </Column>
+      <Column field="createdAt" header="Created" sortable>
+        <template #body="{ data }">
+          <span class="text-sm text-gray-600">{{ formatDate(data.createdAt) }}</span>
+        </template>
+      </Column>
+      <Column header="Actions">
+        <template #body="{ data }">
+          <Button
+            icon="pi pi-eye"
+            text
+            rounded
+            aria-label="View Details"
+            @click="viewUserDetail(data.id)"
+          />
+        </template>
+      </Column>
+    </DataTable>
+
+    <!-- Create User Dialog -->
+    <Dialog
+      v-model:visible="showCreateDialog"
+      header="Create New User"
+      modal
+      class="w-full max-w-md"
+    >
+      <UserForm
+        mode="create"
+        :loading="creatingUser"
+        @submit="handleCreateUser"
+        @cancel="closeCreateDialog"
+      />
+      <Message v-if="error" severity="error" :closable="false" class="mt-4">
+        {{ error }}
+      </Message>
+    </Dialog>
+  </div>
+</template>

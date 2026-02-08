@@ -8,6 +8,22 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomePage
+    },
+    {
+      path: '/users',
+      name: 'users',
+      component: () => import('@/pages/UsersPage.vue'),
+      meta: {
+        title: 'User Management'
+      }
+    },
+    {
+      path: '/users/:id',
+      name: 'user-detail',
+      component: () => import('@/pages/UserDetailPage.vue'),
+      meta: {
+        title: 'User Details'
+      }
     }
   ]
 })
