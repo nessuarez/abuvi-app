@@ -790,8 +790,8 @@ JWT-based authentication system fully implemented and tested.
 2. ✅ **Ticket 2**: JWT Configuration (0.5h) - **COMPLETED**
 3. ✅ **Ticket 3**: JWT Token Service (2-3h) - TDD - **COMPLETED**
 4. ✅ **Ticket 4**: Authentication Middleware (1h) - **COMPLETED**
-5. **Ticket 5**: Auth Models & Validators (1-2h) - TDD
-6. **Ticket 6**: Auth Service (2-3h) - TDD
+5. ✅ **Ticket 5**: Auth Models & Validators (1-2h) - TDD - **COMPLETED**
+6. ✅ **Ticket 6**: Auth Service (2-3h) - TDD - **COMPLETED**
 7. **Ticket 7**: Auth Endpoints (2-3h) - TDD
 8. **Ticket 8**: Protect Endpoints (2-3h) - TDD
 9. **Ticket 9**: Update UsersService (1-2h) - TDD
