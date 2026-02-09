@@ -18,42 +18,55 @@ public static class UsersEndpoints
             .WithTags("Users")
             .WithOpenApi();
 
-        // GET /api/users - Get all users
+        // GET /api/users - Get all users (Admin only)
         group.MapGet("/", GetAllUsers)
             .WithName("GetAllUsers")
             .WithSummary("Get all users")
-            .Produces<ApiResponse<List<UserResponse>>>();
+            .RequireAuthorization(policy => policy.RequireRole("Admin"))
+            .Produces<ApiResponse<List<UserResponse>>>()
+            .Produces(401)
+            .Produces(403);
 
-        // GET /api/users/{id} - Get user by ID
+        // GET /api/users/{id} - Get user by ID (Authenticated users)
         group.MapGet("/{id:guid}", GetUserById)
             .WithName("GetUserById")
             .WithSummary("Get user by ID")
+            .RequireAuthorization()
             .Produces<ApiResponse<UserResponse>>()
+            .Produces(401)
             .Produces(404);
 
-        // POST /api/users - Create new user
+        // POST /api/users - Create new user (Admin only)
         group.MapPost("/", CreateUser)
             .WithName("CreateUser")
             .WithSummary("Create a new user")
+            .RequireAuthorization(policy => policy.RequireRole("Admin"))
             .AddEndpointFilter<ValidationFilter<CreateUserRequest>>()
             .Produces<ApiResponse<UserResponse>>(201)
             .Produces(400)
+            .Produces(401)
+            .Produces(403)
             .Produces(409);
 
-        // PUT /api/users/{id} - Update existing user
+        // PUT /api/users/{id} - Update existing user (Authenticated users)
         group.MapPut("/{id:guid}", UpdateUser)
             .WithName("UpdateUser")
             .WithSummary("Update an existing user")
+            .RequireAuthorization()
             .AddEndpointFilter<ValidationFilter<UpdateUserRequest>>()
             .Produces<ApiResponse<UserResponse>>()
             .Produces(400)
+            .Produces(401)
             .Produces(404);
 
-        // DELETE /api/users/{id} - Delete user
+        // DELETE /api/users/{id} - Delete user (Admin only)
         group.MapDelete("/{id:guid}", DeleteUser)
             .WithName("DeleteUser")
             .WithSummary("Delete a user")
+            .RequireAuthorization(policy => policy.RequireRole("Admin"))
             .Produces(204)
+            .Produces(401)
+            .Produces(403)
             .Produces(404);
 
         return app;

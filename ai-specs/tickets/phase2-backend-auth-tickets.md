@@ -527,13 +527,13 @@ curl -X POST http://localhost:5079/api/auth/register \
 
 **Acceptance Criteria**:
 
-- [ ] GET /api/users requires Admin role
-- [ ] GET /api/users/{id} requires authentication (any role)
-- [ ] POST /api/users requires Admin role
-- [ ] PUT /api/users/{id} requires authentication (any role)
-- [ ] DELETE /api/users/{id} requires Admin role
-- [ ] POST /api/auth/register remains public (no auth required)
-- [ ] All authorization tests pass (TDD approach)
+- [x] GET /api/users requires Admin role
+- [x] GET /api/users/{id} requires authentication (any role)
+- [x] POST /api/users requires Admin role
+- [x] PUT /api/users/{id} requires authentication (any role)
+- [x] DELETE /api/users/{id} requires Admin role
+- [x] POST /api/auth/register remains public (no auth required)
+- [x] All authorization tests pass (TDD approach)
 
 **Files to Modify**:
 
@@ -555,8 +555,8 @@ Add to existing integration tests or create `ProtectedEndpointsTests.cs`:
 **Implementation Steps** (TDD):
 
 1. ✅ Write failing tests first (create helper method to get tokens for different roles)
-2. Modify UsersEndpoints.cs to add RequireAuthorization
-3. Verify all tests pass: `dotnet test --filter "ProtectedEndpointsTests"`
+2. ✅ Modify UsersEndpoints.cs to add RequireAuthorization
+3. ✅ Verify all tests pass: `dotnet test --filter "ProtectedEndpointsTests"`
 
 **Code Changes** (UsersEndpoints.cs):
 
@@ -869,7 +869,7 @@ JWT-based authentication system fully implemented and tested.
 5. ✅ **Ticket 5**: Auth Models & Validators (1-2h) - TDD - **COMPLETED**
 6. ✅ **Ticket 6**: Auth Service (2-3h) - TDD - **COMPLETED**
 7. ✅ **Ticket 7**: Auth Endpoints (2-3h) - TDD - **COMPLETED**
-8. **Ticket 8**: Protect Endpoints (2-3h) - TDD
+8. ✅ **Ticket 8**: Protect Endpoints (2-3h) - TDD - **COMPLETED**
 9. **Ticket 9**: Update UsersService (1-2h) - TDD
 10. **Ticket 10**: Testing & Documentation (2-3h)
 
