@@ -7,7 +7,7 @@ Connect the Vue 3 frontend to the authenticated backend, implementing login UI, 
 ## Prerequisites
 
 - **Phase 1 & 2 completed**: Backend auth fully functional
-- Backend running at http://localhost:5079
+- Backend running at <http://localhost:5079>
 - Test users created for frontend testing
 - JWT authentication tested with Postman/curl
 
@@ -59,6 +59,7 @@ Connect the Vue 3 frontend to the authenticated backend, implementing login UI, 
 ## Files to Create
 
 ### 1. Auth Types
+
 **Path**: `frontend/src/types/auth.ts`
 
 ```typescript
@@ -95,6 +96,7 @@ export interface AuthState {
 ```
 
 ### 2. Auth Store
+
 **Path**: `frontend/src/stores/auth.ts`
 
 ```typescript
@@ -188,12 +190,14 @@ export const useAuthStore = defineStore('auth', () => {
 ```
 
 **Features**:
+
 - Token and user persistence in localStorage
 - Computed properties for role checks
 - Error handling
 - Initialize from localStorage on app mount
 
 ### 3. Login Page
+
 **Path**: `frontend/src/pages/LoginPage.vue`
 
 ```vue
@@ -284,6 +288,7 @@ async function handleLogin() {
 ```
 
 **Features**:
+
 - PrimeVue components (InputText, Button, Message)
 - Tailwind CSS styling
 - Loading state
@@ -292,6 +297,7 @@ async function handleLogin() {
 - Redirect to home on success
 
 ### 4. Main Layout with User Info
+
 **Path**: `frontend/src/layouts/MainLayout.vue`
 
 ```vue
@@ -341,12 +347,14 @@ function handleLogout() {
 ```
 
 **Features**:
+
 - Header with user info
 - Logout button
 - Role display
 - Slot for page content
 
 ### 5. Protected Home Page
+
 **Path**: `frontend/src/pages/HomePage.vue` (Update existing)
 
 ```vue
@@ -370,6 +378,7 @@ const authStore = useAuthStore()
 ## Files to Modify
 
 ### 1. API Client (Add Interceptors)
+
 **Path**: `frontend/src/utils/api.ts`
 
 ```typescript
@@ -423,11 +432,13 @@ api.interceptors.response.use(
 ```
 
 **Changes**:
+
 - Request interceptor adds JWT token from localStorage
 - Response interceptor handles 401 (auto-logout and redirect)
 - Uses localStorage directly in request interceptor to avoid circular dependency
 
 ### 2. Router (Add Guards and Login Route)
+
 **Path**: `frontend/src/router/index.ts`
 
 ```typescript
@@ -473,6 +484,7 @@ export default router
 ```
 
 **Features**:
+
 - `requiresAuth` meta field for routes
 - beforeEach guard checks authentication
 - Redirect to login if not authenticated
@@ -480,6 +492,7 @@ export default router
 - Preserves intended destination in query param
 
 ### 3. Main App Entry (Initialize Auth)
+
 **Path**: `frontend/src/main.ts`
 
 ```typescript
@@ -507,10 +520,12 @@ app.mount('#app')
 ```
 
 **Changes**:
+
 - Initialize auth store after Pinia is registered
 - Restores token and user from localStorage on app load
 
 ### 4. App.vue (Use Layout)
+
 **Path**: `frontend/src/App.vue`
 
 ```vue
@@ -530,6 +545,7 @@ const route = useRoute()
 ```
 
 **Features**:
+
 - Conditionally show layout only for authenticated routes
 - Login page doesn't show header/nav
 
@@ -538,6 +554,7 @@ const route = useRoute()
 ### Unit Tests (Vitest)
 
 #### 1. Auth Store Tests
+
 **Path**: `frontend/src/stores/auth.test.ts`
 
 ```typescript
@@ -630,6 +647,7 @@ describe('Auth Store', () => {
 ### E2E Tests (Cypress)
 
 #### 2. Auth E2E Tests
+
 **Path**: `frontend/cypress/e2e/auth.cy.ts`
 
 ```typescript
@@ -751,6 +769,7 @@ describe('Authentication', () => {
 After completing Phase 3, verify:
 
 ### Authentication Flow
+
 - [ ] Accessing protected route (/) redirects to /login
 - [ ] Login page displays correctly with form
 - [ ] Login with valid credentials succeeds and redirects to home
@@ -759,23 +778,27 @@ After completing Phase 3, verify:
 - [ ] User info is stored in localStorage after login
 
 ### State Management
+
 - [ ] Auth store tracks user and token correctly
 - [ ] isAuthenticated computed property works
 - [ ] Role computed properties (isAdmin, isBoard) work correctly
 - [ ] Initialize() restores auth from localStorage on app mount
 
 ### API Integration
+
 - [ ] Axios request interceptor adds Authorization header
 - [ ] Axios response interceptor handles 401 and logs out
 - [ ] Protected API calls work with token
 - [ ] Protected API calls fail without token
 
 ### Router Guards
+
 - [ ] Protected routes redirect to /login when not authenticated
 - [ ] Login route redirects to home when already authenticated
 - [ ] Navigation preserves intended destination in redirect query
 
 ### UI/UX
+
 - [ ] Login form validates input
 - [ ] Loading state shows during login
 - [ ] Error messages display for failed login
@@ -784,6 +807,7 @@ After completing Phase 3, verify:
 - [ ] Page reload preserves authentication
 
 ### Tests
+
 - [ ] All Vitest unit tests pass
 - [ ] All Cypress E2E tests pass
 - [ ] Test coverage >= 80%
@@ -791,22 +815,26 @@ After completing Phase 3, verify:
 ## Manual Testing Steps
 
 ### 1. Start Backend
+
 ```bash
 cd src/Abuvi.API
 dotnet run
 ```
 
 ### 2. Start Frontend
+
 ```bash
 cd frontend
 npm run dev
 ```
 
 ### 3. Test Flow
-1. Open http://localhost:5173
+
+1. Open <http://localhost:5173>
 2. Should redirect to /login
 3. Try invalid credentials → see error
 4. Register a user via Postman:
+
    ```bash
    curl -X POST http://localhost:5079/api/auth/register \
      -H "Content-Type: application/json" \
@@ -817,6 +845,7 @@ npm run dev
        "lastName": "User"
      }'
    ```
+
 5. Login with valid credentials
 6. Should redirect to home and show user info
 7. Check localStorage → token and user present
@@ -825,6 +854,7 @@ npm run dev
 10. Check localStorage → token and user cleared
 
 ### 4. Run Tests
+
 ```bash
 # Unit tests
 npm run test
@@ -840,6 +870,7 @@ Ensure PrimeVue is properly configured. If CSS is commented out in `main.ts`, us
 **Path**: `frontend/index.html`
 
 Add in `<head>`:
+
 ```html
 <link rel="stylesheet" href="https://unpkg.com/primevue/resources/themes/lara-light-blue/theme.css" />
 <link rel="stylesheet" href="https://unpkg.com/primeicons/primeicons.css" />
@@ -848,6 +879,7 @@ Add in `<head>`:
 Or configure Vite properly:
 
 **Path**: `frontend/vite.config.ts`
+
 ```typescript
 export default defineConfig({
   plugins: [vue()],
@@ -869,6 +901,7 @@ export default defineConfig({
 ## Next Steps
 
 After Phase 3 is complete:
+
 1. **User authentication system is fully functional** end-to-end
 2. Test thoroughly with real user scenarios
 3. Add more features:
@@ -897,22 +930,26 @@ After Phase 3 is complete:
 
 ## Troubleshooting
 
-### Token not being sent with requests
+# **## Token not being sent with requests
+
 - Check axios interceptor is configured
 - Verify token exists in localStorage
 - Check Authorization header in Network tab
 
 ### 401 errors on valid token
+
 - Check JWT secret matches between backend and frontend
 - Verify token hasn't expired
 - Check token format (should start with "eyJ")
 
 ### Login successful but redirects back to login
+
 - Check router guard logic
 - Verify isAuthenticated computed property
 - Check localStorage is not being cleared
 
 ### CORS errors
+
 - Verify backend CORS allows localhost:5173
 - Check credentials are allowed in CORS config
 - Ensure Origin header is correct
