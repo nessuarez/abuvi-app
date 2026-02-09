@@ -442,3 +442,4 @@ coverage/
 __pycache__/
 *.pyc
 .venv/
+nul
