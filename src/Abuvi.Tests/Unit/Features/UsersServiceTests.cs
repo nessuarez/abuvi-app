@@ -1,3 +1,4 @@
+using Abuvi.API.Features.Auth;
 using Abuvi.API.Features.Users;
 using FluentAssertions;
 using NSubstitute;
@@ -11,12 +12,14 @@ namespace Abuvi.Tests.Unit.Features;
 public class UsersServiceTests
 {
     private readonly IUsersRepository _repository;
+    private readonly IPasswordHasher _passwordHasher;
     private readonly UsersService _service;
 
     public UsersServiceTests()
     {
         _repository = Substitute.For<IUsersRepository>();
-        _service = new UsersService(_repository);
+        _passwordHasher = Substitute.For<IPasswordHasher>();
+        _service = new UsersService(_repository, _passwordHasher);
     }
 
     [Fact]
@@ -122,6 +125,9 @@ public class UsersServiceTests
         _repository.EmailExistsAsync(request.Email, Arg.Any<CancellationToken>())
             .Returns(false);
 
+        _passwordHasher.HashPassword(request.Password)
+            .Returns("$2a$12$hashed_password_value");
+
         _repository.CreateAsync(Arg.Any<User>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
@@ -143,8 +149,10 @@ public class UsersServiceTests
         result.Role.Should().Be(UserRole.Member);
         result.IsActive.Should().BeTrue();
 
+        _passwordHasher.Received(1).HashPassword(request.Password);
+
         await _repository.Received(1).CreateAsync(
-            Arg.Is<User>(u => u.Email == request.Email),
+            Arg.Is<User>(u => u.Email == request.Email && u.PasswordHash == "$2a$12$hashed_password_value"),
             Arg.Any<CancellationToken>()
         );
     }
@@ -172,8 +180,56 @@ public class UsersServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("A user with this email already exists");
 
+        _passwordHasher.DidNotReceive().HashPassword(Arg.Any<string>());
+
         await _repository.DidNotReceive().CreateAsync(
             Arg.Any<User>(),
+            Arg.Any<CancellationToken>()
+        );
+    }
+
+    [Fact]
+    public async Task CreateAsync_HashesPasswordWithBCrypt()
+    {
+        // Arrange
+        var request = new CreateUserRequest(
+            "test@example.com",
+            "MySecurePassword123!",
+            "Test",
+            "User",
+            null,
+            UserRole.Member
+        );
+
+        var bcryptHash = "$2a$12$KIXqFc4MYYzRhJqOjvQmFu.xF3Z4YzLbF3Z4YzLbF3Z4YzLb";
+
+        _repository.EmailExistsAsync(request.Email, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        _passwordHasher.HashPassword(request.Password)
+            .Returns(bcryptHash);
+
+        _repository.CreateAsync(Arg.Any<User>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var user = callInfo.Arg<User>();
+                user.Id = Guid.NewGuid();
+                user.CreatedAt = DateTime.UtcNow;
+                user.UpdatedAt = DateTime.UtcNow;
+                return user;
+            });
+
+        // Act
+        await _service.CreateAsync(request);
+
+        // Assert
+        _passwordHasher.Received(1).HashPassword("MySecurePassword123!");
+
+        await _repository.Received(1).CreateAsync(
+            Arg.Is<User>(u =>
+                u.PasswordHash == bcryptHash &&
+                u.PasswordHash.StartsWith("$2a$") // BCrypt format
+            ),
             Arg.Any<CancellationToken>()
         );
     }

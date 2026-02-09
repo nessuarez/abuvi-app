@@ -640,11 +640,11 @@ curl -X GET http://localhost:5079/api/users
 
 **Acceptance Criteria**:
 
-- [ ] UsersService constructor injects IPasswordHasher
-- [ ] CreateAsync method uses IPasswordHasher.HashPassword instead of SHA256
-- [ ] Old HashPassword method removed from UsersService
-- [ ] All existing UsersService tests updated and passing
-- [ ] No plaintext passwords stored in database
+- [x] UsersService constructor injects IPasswordHasher
+- [x] CreateAsync method uses IPasswordHasher.HashPassword instead of SHA256
+- [x] Old HashPassword method removed from UsersService
+- [x] All existing UsersService tests updated and passing
+- [x] No plaintext passwords stored in database
 
 **Files to Modify**:
 
@@ -870,7 +870,7 @@ JWT-based authentication system fully implemented and tested.
 6. ✅ **Ticket 6**: Auth Service (2-3h) - TDD - **COMPLETED**
 7. ✅ **Ticket 7**: Auth Endpoints (2-3h) - TDD - **COMPLETED**
 8. ✅ **Ticket 8**: Protect Endpoints (2-3h) - TDD - **COMPLETED**
-9. **Ticket 9**: Update UsersService (1-2h) - TDD
+9. ✅ **Ticket 9**: Update UsersService (1-2h) - TDD - **COMPLETED**
 10. **Ticket 10**: Testing & Documentation (2-3h)
 
 ## Development Workflow
