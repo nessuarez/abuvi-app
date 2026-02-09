@@ -1,12 +1,11 @@
-using System.Security.Cryptography;
-using System.Text;
+using Abuvi.API.Features.Auth;
 
 namespace Abuvi.API.Features.Users;
 
 /// <summary>
 /// Service for handling user business logic
 /// </summary>
-public class UsersService(IUsersRepository repository)
+public class UsersService(IUsersRepository repository, IPasswordHasher passwordHasher)
 {
     /// <summary>
     /// Gets a user by ID
@@ -40,7 +39,7 @@ public class UsersService(IUsersRepository repository)
         var user = new User
         {
             Email = request.Email,
-            PasswordHash = HashPassword(request.Password), // TODO: Replace with BCrypt in Phase 2
+            PasswordHash = passwordHasher.HashPassword(request.Password),
             FirstName = request.FirstName,
             LastName = request.LastName,
             Phone = request.Phone,
@@ -92,13 +91,4 @@ public class UsersService(IUsersRepository repository)
         user.CreatedAt,
         user.UpdatedAt
     );
-
-    /// <summary>
-    /// Hashes a password using SHA-256 (placeholder - will be replaced with BCrypt in Phase 2)
-    /// </summary>
-    private static string HashPassword(string password)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
-        return Convert.ToBase64String(bytes);
-    }
 }

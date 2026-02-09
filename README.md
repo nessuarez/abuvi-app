@@ -101,13 +101,20 @@ abuvi-app/                  # Root directory
    dotnet ef database update --project src/Abuvi.API
    ```
 
-3. **Start the Backend API**:
+3. **Configure JWT secret** (first time only):
+
+   ```bash
+   cd src/Abuvi.API
+   dotnet user-secrets set "Jwt:Secret" "your-strong-secret-key-at-least-32-characters-long-change-this"
+   ```
+
+4. **Start the Backend API**:
 
    ```bash
    dotnet run --project src/Abuvi.API
    ```
 
-4. **Verify the application**:
+5. **Verify the application**:
    - API: http://localhost:5079/health
    - Swagger UI: http://localhost:5079/swagger
 
@@ -230,7 +237,32 @@ abuvi-app/
   * PrimeVue + Tailwind CSS styling
   * Comprehensive Vitest + Cypress tests
 
-**Note**: Phase 1 has no authentication. Phase 2 will add JWT authentication and role-based authorization.
+### Phase 2: Authentication Layer ✅ **COMPLETED**
+
+* **Backend** (`feature/phase2-authentication-backend`):
+  * BCrypt password hashing (work factor 12)
+  * JWT token generation with configurable expiry (24h)
+  * Authentication middleware with Bearer token validation
+  * Login endpoint: POST /api/auth/login
+  * Register endpoint: POST /api/auth/register
+  * Role-based authorization (Admin, Board, Member)
+  * Protected user endpoints with JWT authentication
+  * Comprehensive unit tests (67 tests) and integration tests (47 tests)
+  * **Total: 114/114 tests passing (100% success rate)**
+
+* **Security Features**:
+  * JWT secret stored in user-secrets (not in source code)
+  * Password requirements: min 8 chars, uppercase, lowercase, number
+  * Token validation: Issuer, Audience, Lifetime, SigningKey
+  * Role-based access control on all endpoints
+  * Active user status verification on login
+
+* **API Endpoints**:
+  * Public: POST /api/auth/register, POST /api/auth/login
+  * Authenticated: GET /api/users/{id}, PUT /api/users/{id}
+  * Admin Only: GET /api/users, POST /api/users, DELETE /api/users/{id}
+
+**Next**: Phase 3 will implement frontend authentication integration.
 
 ## **🔍 Health Checks & Endpoints**
 
@@ -240,10 +272,15 @@ abuvi-app/
 * **Backend API Health Check**: <http://localhost:5079/health>
   * Returns: `{"status":"healthy","timestamp":"2026-02-06T..."}`
 * **Backend API Endpoints**:
-  * `GET /api/users` - Get all users
-  * `GET /api/users/:id` - Get user by ID
-  * `POST /api/users` - Create new user
-  * `PUT /api/users/:id` - Update user
+  * **Authentication (Public)**:
+    * `POST /api/auth/register` - Register new user
+    * `POST /api/auth/login` - Login and receive JWT token
+  * **Users (Protected)**:
+    * `GET /api/users` - Get all users (Admin only)
+    * `GET /api/users/:id` - Get user by ID (Authenticated)
+    * `POST /api/users` - Create new user (Admin only)
+    * `PUT /api/users/:id` - Update user (Authenticated)
+    * `DELETE /api/users/:id` - Delete user (Admin only)
 * **Swagger UI (API Documentation)**: <http://localhost:5079/swagger>
 * **PostgreSQL Database**: `localhost:5432`
   * Database: `abuvi`

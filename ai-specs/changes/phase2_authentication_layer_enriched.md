@@ -29,6 +29,7 @@ Add complete JWT-based authentication to the backend, including secure password 
 ## Development Approach
 
 **CRITICAL**: Follow Test-Driven Development (TDD) throughout this phase:
+
 1. ✅ Write failing test first
 2. ✅ Implement minimum code to make test pass
 3. ✅ Refactor if needed
@@ -41,6 +42,7 @@ Add complete JWT-based authentication to the backend, including secure password 
 Complete these subtasks **one at a time** in order:
 
 ### Subtask 1: Password Hashing Service (TDD)
+
 1. Write failing tests for password hashing and verification
 2. Install BCrypt.Net-Next package
 3. Implement `IPasswordHasher` interface and `PasswordHasher` class
@@ -48,23 +50,27 @@ Complete these subtasks **one at a time** in order:
 5. Register service in DI container
 
 ### Subtask 2: JWT Configuration
+
 1. Add JWT settings to appsettings.json
 2. Configure JWT secret using user-secrets (development)
 3. Install Microsoft.AspNetCore.Authentication.JwtBearer package
 4. Verify configuration loads correctly
 
 ### Subtask 3: JWT Token Service (TDD)
+
 1. Write failing tests for token generation
 2. Implement `JwtTokenService` with token generation
 3. Verify token structure and claims
 4. Ensure all tests pass
 
 ### Subtask 4: Authentication Middleware Setup
+
 1. Configure JWT Bearer authentication in Program.cs
 2. Add UseAuthentication() and UseAuthorization() middleware
 3. Verify middleware is correctly registered
 
 ### Subtask 5: Auth Feature Implementation (TDD)
+
 1. Write failing integration tests for login endpoint
 2. Create AuthModels.cs (LoginRequest, LoginResponse, RegisterRequest, UserInfo)
 3. Create FluentValidation validators (LoginRequestValidator, RegisterRequestValidator)
@@ -73,6 +79,7 @@ Complete these subtasks **one at a time** in order:
 6. Verify all tests pass (unit + integration)
 
 ### Subtask 6: Endpoint Protection (TDD)
+
 1. Write failing tests for protected endpoints without token (expect 401)
 2. Write failing tests for protected endpoints with token (expect 200)
 3. Add RequireAuthorization to UsersEndpoints
@@ -80,6 +87,7 @@ Complete these subtasks **one at a time** in order:
 5. Verify all tests pass
 
 ### Subtask 7: Update Phase 1 User Creation (TDD)
+
 1. Write failing tests for CreateAsync using hashed passwords
 2. Update UsersService to inject IPasswordHasher
 3. Modify CreateAsync to use PasswordHasher instead of plaintext
@@ -87,6 +95,7 @@ Complete these subtasks **one at a time** in order:
 5. Verify all tests pass
 
 ### Subtask 8: Comprehensive Testing & Documentation
+
 1. Run full test suite (aim for >=90% coverage)
 2. Manual testing with Postman/curl
 3. Verify all checklist items
@@ -121,6 +130,7 @@ Complete these subtasks **one at a time** in order:
 ```
 
 **Architecture Notes:**
+
 - Follows **Vertical Slice Architecture**: All auth code lives in `Features/Auth/`
 - Adheres to **SOLID principles**:
   - **SRP**: PasswordHasher handles hashing, JwtTokenService handles tokens, AuthService handles auth logic
@@ -135,11 +145,13 @@ Complete these subtasks **one at a time** in order:
 ## NuGet Packages to Add
 
 ### 1. JWT Bearer Authentication
+
 ```xml
 <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.*" />
 ```
 
 ### 2. BCrypt for Password Hashing
+
 ```xml
 <PackageReference Include="BCrypt.Net-Next" Version="4.0.*" />
 ```
@@ -147,6 +159,7 @@ Complete these subtasks **one at a time** in order:
 **Add to**: `src/Abuvi.API/Abuvi.API.csproj`
 
 **Command**:
+
 ```bash
 dotnet add src/Abuvi.API package Microsoft.AspNetCore.Authentication.JwtBearer
 dotnet add src/Abuvi.API package BCrypt.Net-Next
@@ -158,9 +171,11 @@ dotnet restore
 ## Configuration
 
 ### 1. JWT Settings in appsettings.json
+
 **Path**: `src/Abuvi.API/appsettings.json`
 
 **Add JWT section**:
+
 ```json
 {
   "ConnectionStrings": {
@@ -176,9 +191,11 @@ dotnet restore
 ```
 
 ### 2. JWT Secret in Development Settings
+
 **DO NOT commit secrets to git!**
 
 **Setup user secrets (REQUIRED for development)**:
+
 ```bash
 cd src/Abuvi.API
 dotnet user-secrets init
@@ -192,6 +209,7 @@ dotnet user-secrets set "Jwt:Secret" "your-strong-secret-key-at-least-32-charact
 ## Files to Create
 
 ### 1. IPasswordHasher.cs
+
 **Path**: `src/Abuvi.API/Features/Auth/IPasswordHasher.cs`
 
 **Purpose**: Interface for password hashing operations
@@ -222,9 +240,11 @@ public interface IPasswordHasher
 ```
 
 ### 2. PasswordHasher.cs
+
 **Path**: `src/Abuvi.API/Features/Auth/PasswordHasher.cs`
 
 **Implementation using BCrypt**:
+
 ```csharp
 namespace Abuvi.API.Features.Auth;
 
@@ -248,6 +268,7 @@ public class PasswordHasher : IPasswordHasher
 ```
 
 **Security notes**:
+
 - Work factor 12 provides strong security (2^12 = 4096 iterations)
 - BCrypt automatically generates and stores salt in the hash
 - Each hash is unique even for the same password (salted)
@@ -255,6 +276,7 @@ public class PasswordHasher : IPasswordHasher
 **TDD**: Write tests first in `src/Abuvi.Tests/Unit/Features/Auth/PasswordHasherTests.cs`
 
 ### 3. JwtTokenService.cs
+
 **Path**: `src/Abuvi.API/Features/Auth/JwtTokenService.cs`
 
 **Purpose**: Generate JWT tokens with user claims
@@ -319,6 +341,7 @@ public class JwtTokenService
 ```
 
 **Claims included**:
+
 - `sub`: User ID (subject) - standard JWT claim
 - `email`: User email
 - `role`: User role (Admin, Board, Member) - for authorization
@@ -327,9 +350,11 @@ public class JwtTokenService
 **TDD**: Write tests first in `src/Abuvi.Tests/Unit/Features/Auth/JwtTokenServiceTests.cs`
 
 ### 4. AuthModels.cs
+
 **Path**: `src/Abuvi.API/Features/Auth/AuthModels.cs`
 
 **DTOs using C# records**:
+
 ```csharp
 namespace Abuvi.API.Features.Auth;
 
@@ -373,11 +398,13 @@ public record UserInfo(
 ```
 
 **Design notes**:
+
 - Uses C# records (immutable DTOs)
 - Follows naming conventions from backend standards
 - Aligns with User entity structure from data model
 
 ### 5. LoginRequestValidator.cs
+
 **Path**: `src/Abuvi.API/Features/Auth/LoginRequestValidator.cs`
 
 ```csharp
@@ -402,6 +429,7 @@ public class LoginRequestValidator : AbstractValidator<LoginRequest>
 ```
 
 ### 6. RegisterRequestValidator.cs
+
 **Path**: `src/Abuvi.API/Features/Auth/RegisterRequestValidator.cs`
 
 ```csharp
@@ -445,11 +473,13 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
 ```
 
 **Validation notes**:
+
 - Aligns with User entity constraints from data model
 - Strong password requirements for security
 - Uses FluentValidation following backend standards
 
 ### 7. AuthService.cs
+
 **Path**: `src/Abuvi.API/Features/Auth/AuthService.cs`
 
 **Purpose**: Business logic for authentication and registration
@@ -556,6 +586,7 @@ public class AuthService
 ```
 
 **Design notes**:
+
 - Follows **Single Responsibility Principle**: AuthService handles auth logic only
 - Depends on abstractions (IUsersRepository, IPasswordHasher) following **Dependency Inversion**
 - Returns null for failed login (not throwing exceptions for authentication failures)
@@ -565,9 +596,11 @@ public class AuthService
 **TDD**: Write tests first in `src/Abuvi.Tests/Unit/Features/Auth/AuthServiceTests.cs`
 
 ### 8. AuthEndpoints.cs
+
 **Path**: `src/Abuvi.API/Features/Auth/AuthEndpoints.cs`
 
 **Endpoints using Minimal API**:
+
 ```csharp
 using Microsoft.AspNetCore.Mvc;
 using Abuvi.API.Common.Models;
@@ -633,6 +666,7 @@ public static class AuthEndpoints
 ```
 
 **Design notes**:
+
 - Follows **Minimal API** pattern from backend standards
 - Uses shared `ApiResponse<T>` wrapper for consistency
 - Validation handled by FluentValidation endpoint filter (configured in Program.cs)
@@ -645,6 +679,7 @@ public static class AuthEndpoints
 ## Files to Modify
 
 ### 1. Program.cs
+
 **Path**: `src/Abuvi.API/Program.cs`
 
 **Add authentication and authorization** (after services registration, before `var app = builder.Build();`):
@@ -707,10 +742,12 @@ app.MapUsersEndpoints();
 ```
 
 **Configuration validation note**:
+
 - The JWT secret validation throws a clear error message if not configured
 - Helps developers quickly identify configuration issues on startup
 
 ### 2. UsersEndpoints.cs (Protect Endpoints)
+
 **Path**: `src/Abuvi.API/Features/Users/UsersEndpoints.cs`
 
 **Add RequireAuthorization**:
@@ -749,6 +786,7 @@ public static void MapUsersEndpoints(this WebApplication app)
 ```
 
 **Authorization notes**:
+
 - **Admin-only endpoints**: List all users, Create user (via admin), Delete user
 - **Authenticated endpoints**: Get user by ID, Update user
 - **Public endpoint**: Register (POST /api/auth/register) - no authentication required
@@ -757,6 +795,7 @@ public static void MapUsersEndpoints(this WebApplication app)
 **Future enhancement**: Add self-authorization check for UpdateUser (users can only update their own profile unless Admin)
 
 ### 3. UsersService.cs (Update to Use PasswordHasher)
+
 **Path**: `src/Abuvi.API/Features/Users/UsersService.cs`
 
 **Inject IPasswordHasher** and update CreateAsync:
@@ -810,11 +849,13 @@ public class UsersService
 ```
 
 **Migration note**:
+
 - Existing users with plaintext passwords in the database will NOT work after this change
 - **Action required**: Either reset the database or migrate existing passwords to BCrypt hashes
 - For development: Reset database and recreate test users with hashed passwords
 
 ### 4. IUsersRepository.cs (Verify Method Exists)
+
 **Path**: `src/Abuvi.API/Features/Users/IUsersRepository.cs`
 
 **Ensure GetByEmailAsync exists**:
@@ -834,6 +875,7 @@ public interface IUsersRepository
 **If GetByEmailAsync does NOT exist**, add it to the repository interface and implementation.
 
 **UsersRepository.cs implementation**:
+
 ```csharp
 public async Task<User?> GetByEmailAsync(string email)
 {
@@ -868,6 +910,7 @@ Abuvi.Tests/
 ### Unit Tests
 
 #### 1. PasswordHasherTests.cs
+
 **Path**: `src/Abuvi.Tests/Unit/Features/Auth/PasswordHasherTests.cs`
 
 **Write these tests FIRST (TDD)**:
@@ -962,6 +1005,7 @@ public class PasswordHasherTests
 ```
 
 #### 2. JwtTokenServiceTests.cs
+
 **Path**: `src/Abuvi.Tests/Unit/Features/Auth/JwtTokenServiceTests.cs`
 
 ```csharp
@@ -1067,6 +1111,7 @@ public class JwtTokenServiceTests
 ```
 
 #### 3. AuthServiceTests.cs
+
 **Path**: `src/Abuvi.Tests/Unit/Features/Auth/AuthServiceTests.cs`
 
 ```csharp
@@ -1226,6 +1271,7 @@ public class AuthServiceTests
 ### Integration Tests
 
 #### AuthIntegrationTests.cs
+
 **Path**: `src/Abuvi.Tests/Integration/Features/AuthIntegrationTests.cs`
 
 ```csharp
@@ -1414,6 +1460,7 @@ public class AuthIntegrationTests : IClassFixture<WebApplicationFactory<Program>
 After completing Phase 2, verify the following:
 
 ### Configuration
+
 - [ ] JWT settings present in appsettings.json (Issuer, Audience, ExpiryInHours)
 - [ ] JWT secret configured in user-secrets (NOT in appsettings.Development.json)
 - [ ] Authentication/Authorization registered in Program.cs
@@ -1421,6 +1468,7 @@ After completing Phase 2, verify the following:
 - [ ] All auth services registered in DI container
 
 ### Password Security
+
 - [ ] BCrypt.Net-Next package installed
 - [ ] IPasswordHasher and PasswordHasher implemented
 - [ ] UsersService uses PasswordHasher.HashPassword() for new users
@@ -1429,6 +1477,7 @@ After completing Phase 2, verify the following:
 - [ ] Work factor is 12 (strong security)
 
 ### Authentication Endpoints
+
 - [ ] POST /api/auth/register creates new user with Member role (200 OK)
 - [ ] POST /api/auth/register with duplicate email returns 400 with "EMAIL_EXISTS"
 - [ ] POST /api/auth/register validates password strength (8+ chars, uppercase, lowercase, number)
@@ -1439,6 +1488,7 @@ After completing Phase 2, verify the following:
 - [ ] LoginResponse includes both token and user info
 
 ### Authorization
+
 - [ ] GET /api/users without token returns 401 Unauthorized
 - [ ] GET /api/users with Member token returns 403 Forbidden (Admin only)
 - [ ] GET /api/users with Admin token returns 200 OK
@@ -1447,6 +1497,7 @@ After completing Phase 2, verify the following:
 - [ ] POST /api/users with Member token returns 403 Forbidden
 
 ### JWT Token
+
 - [ ] Token contains `sub` claim (User ID)
 - [ ] Token contains `email` claim
 - [ ] Token contains `role` claim (Admin, Board, or Member)
@@ -1456,6 +1507,7 @@ After completing Phase 2, verify the following:
 - [ ] Token can be decoded and validated by JWT middleware
 
 ### Tests
+
 - [ ] All unit tests pass (PasswordHasher, JwtTokenService, AuthService)
 - [ ] All integration tests pass (register, login, protected endpoints)
 - [ ] Test coverage >= 90% for Auth feature
@@ -1463,6 +1515,7 @@ After completing Phase 2, verify the following:
 - [ ] Tests use descriptive names (MethodName_StateUnderTest_ExpectedBehavior)
 
 ### Code Quality
+
 - [ ] All code follows Vertical Slice Architecture (Features/Auth/)
 - [ ] All code follows SOLID principles
 - [ ] All code uses C# 13 features (primary constructors, records, file-scoped namespaces)
@@ -1475,6 +1528,7 @@ After completing Phase 2, verify the following:
 ## Testing with Postman/curl
 
 ### 1. Register a new user
+
 ```bash
 curl -X POST http://localhost:5079/api/auth/register \
   -H "Content-Type: application/json" \
@@ -1488,6 +1542,7 @@ curl -X POST http://localhost:5079/api/auth/register \
 ```
 
 **Expected response**:
+
 ```json
 {
   "success": true,
@@ -1503,6 +1558,7 @@ curl -X POST http://localhost:5079/api/auth/register \
 ```
 
 ### 2. Login
+
 ```bash
 curl -X POST http://localhost:5079/api/auth/login \
   -H "Content-Type: application/json" \
@@ -1513,6 +1569,7 @@ curl -X POST http://localhost:5079/api/auth/login \
 ```
 
 **Expected response**:
+
 ```json
 {
   "success": true,
@@ -1531,6 +1588,7 @@ curl -X POST http://localhost:5079/api/auth/login \
 ```
 
 ### 3. Access protected endpoint (without token - should fail)
+
 ```bash
 curl -X GET http://localhost:5079/api/users
 ```
@@ -1538,6 +1596,7 @@ curl -X GET http://localhost:5079/api/users
 **Expected response**: `401 Unauthorized`
 
 ### 4. Access protected endpoint (with token - should succeed)
+
 ```bash
 curl -X GET http://localhost:5079/api/users/{userId} \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -1546,6 +1605,7 @@ curl -X GET http://localhost:5079/api/users/{userId} \
 **Expected response**: `200 OK` with user data
 
 ### 5. Access admin-only endpoint with Member token (should fail)
+
 ```bash
 curl -X GET http://localhost:5079/api/users \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -1562,6 +1622,7 @@ curl -X GET http://localhost:5079/api/users \
 **Options**:
 
 1. **Reset database** (recommended for development):
+
    ```bash
    dotnet ef database drop --project src/Abuvi.API --force
    dotnet ef database update --project src/Abuvi.API
@@ -1578,11 +1639,13 @@ curl -X GET http://localhost:5079/api/users \
 ## Security Notes
 
 ### Development
+
 - ✅ Use `dotnet user-secrets` for JWT secret
 - ✅ NEVER commit `appsettings.Development.json` with secrets
 - ✅ JWT secret must be at least 32 characters for HMACSHA256
 
 ### Production
+
 - ✅ Use Environment Variables or Azure Key Vault for JWT secret
 - ✅ Set token expiry to 1 hour (not 24 hours)
 - ✅ Implement refresh tokens (future enhancement)
@@ -1591,6 +1654,7 @@ curl -X GET http://localhost:5079/api/users \
 - ✅ Use HTTPS only in production
 
 ### Password Security
+
 - ✅ BCrypt work factor 12 (strong, but not too slow)
 - ✅ Passwords never stored in plaintext
 - ✅ Passwords never logged
@@ -1613,18 +1677,23 @@ After Phase 2 is complete and verified:
 ## Common Issues & Troubleshooting
 
 ### Issue: "JWT secret not configured" error
+
 **Solution**: Run `dotnet user-secrets set "Jwt:Secret" "your-strong-secret-key-at-least-32-characters-long" --project src/Abuvi.API`
 
 ### Issue: Token validation fails
+
 **Solution**: Ensure `ValidateIssuerSigningKey = true` and secret matches between token generation and validation
 
 ### Issue: Existing users can't login
+
 **Solution**: Existing passwords are plaintext. Reset database or migrate passwords to BCrypt hashes
 
 ### Issue: 401 Unauthorized on all endpoints
+
 **Solution**: Verify `UseAuthentication()` is called BEFORE `UseAuthorization()` in Program.cs
 
 ### Issue: 403 Forbidden on admin endpoints
+
 **Solution**: Verify role claim is correctly set in JWT token and matches `RequireRole("Admin")`
 
 ---
