@@ -24,7 +24,7 @@ public class JwtTokenService
     /// <param name="user">The user to generate a token for</param>
     /// <returns>JWT token string</returns>
     /// <exception cref="InvalidOperationException">Thrown when JWT secret is not configured</exception>
-    public string GenerateToken(User user)
+    public virtual string GenerateToken(User user)
     {
         var secret = _configuration["Jwt:Secret"]
             ?? throw new InvalidOperationException("JWT secret not configured");
