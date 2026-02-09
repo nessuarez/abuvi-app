@@ -75,7 +75,7 @@ describe('Auth Store', () => {
       expect(store.isAuthenticated).toBe(true)
     })
 
-    it('should save token to localStorage', () => {
+    it('should save both token and user to localStorage', () => {
       const store = useAuthStore()
       const authData = {
         user: mockUser,
@@ -84,7 +84,8 @@ describe('Auth Store', () => {
 
       store.setAuth(authData)
 
-      expect(localStorage.getItem('authToken')).toBe('mock-jwt-token')
+      expect(localStorage.getItem('abuvi_auth_token')).toBe('mock-jwt-token')
+      expect(localStorage.getItem('abuvi_user')).toBe(JSON.stringify(mockUser))
     })
 
     it('should update isAuthenticated computed property', () => {
@@ -122,7 +123,7 @@ describe('Auth Store', () => {
       expect(store.isAuthenticated).toBe(false)
     })
 
-    it('should remove token from localStorage', () => {
+    it('should remove both token and user from localStorage', () => {
       const store = useAuthStore()
 
       // First set auth
@@ -131,12 +132,14 @@ describe('Auth Store', () => {
         token: 'mock-jwt-token'
       })
 
-      expect(localStorage.getItem('authToken')).toBe('mock-jwt-token')
+      expect(localStorage.getItem('abuvi_auth_token')).toBe('mock-jwt-token')
+      expect(localStorage.getItem('abuvi_user')).toBe(JSON.stringify(mockUser))
 
       // Then clear it
       store.clearAuth()
 
-      expect(localStorage.getItem('authToken')).toBeNull()
+      expect(localStorage.getItem('abuvi_auth_token')).toBeNull()
+      expect(localStorage.getItem('abuvi_user')).toBeNull()
     })
 
     it('should reset role-based flags', () => {
@@ -159,47 +162,74 @@ describe('Auth Store', () => {
   })
 
   describe('restoreSession', () => {
-    it('should restore token from localStorage', () => {
+    it('should restore both token and user from localStorage', () => {
       const store = useAuthStore()
 
-      // Simulate token in localStorage
-      localStorage.setItem('authToken', 'saved-token')
+      // Simulate both in localStorage
+      localStorage.setItem('abuvi_auth_token', 'saved-token')
+      localStorage.setItem('abuvi_user', JSON.stringify(mockUser))
 
       store.restoreSession()
 
       expect(store.token).toBe('saved-token')
+      expect(store.user).toEqual(mockUser)
+      expect(store.isAuthenticated).toBe(true)
     })
 
-    it('should not restore if no token in localStorage', () => {
+    it('should not restore if no data in localStorage', () => {
       const store = useAuthStore()
 
       store.restoreSession()
 
       expect(store.token).toBeNull()
+      expect(store.user).toBeNull()
     })
 
-    it('should mark as authenticated after restoring token', () => {
+    it('should clear auth if user data is corrupted', () => {
       const store = useAuthStore()
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-      localStorage.setItem('authToken', 'saved-token')
+      localStorage.setItem('abuvi_auth_token', 'valid-token')
+      localStorage.setItem('abuvi_user', '{invalid json}')
 
+      store.restoreSession()
+
+      expect(store.token).toBeNull()
+      expect(store.user).toBeNull()
       expect(store.isAuthenticated).toBe(false)
+      expect(consoleErrorSpy).toHaveBeenCalled()
 
-      store.restoreSession()
-
-      expect(store.isAuthenticated).toBe(true)
+      consoleErrorSpy.mockRestore()
     })
 
-    it('should not restore user data (only token)', () => {
+    it('should clear auth if only token exists without user', () => {
       const store = useAuthStore()
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-      // Token in localStorage but no user data
-      localStorage.setItem('authToken', 'saved-token')
+      localStorage.setItem('abuvi_auth_token', 'token-without-user')
+      // No user data in localStorage
 
       store.restoreSession()
 
-      expect(store.token).toBe('saved-token')
-      expect(store.user).toBeNull() // User data not stored in localStorage
+      expect(store.token).toBeNull()
+      expect(store.user).toBeNull()
+      expect(store.isAuthenticated).toBe(false)
+      expect(consoleWarnSpy).toHaveBeenCalledWith('Inconsistent auth state detected, clearing storage')
+
+      consoleWarnSpy.mockRestore()
+    })
+
+    it('should not restore if only user exists without token', () => {
+      const store = useAuthStore()
+
+      // Only user data, no token
+      localStorage.setItem('abuvi_user', JSON.stringify(mockUser))
+
+      store.restoreSession()
+
+      expect(store.token).toBeNull()
+      expect(store.user).toBeNull()
+      expect(store.isAuthenticated).toBe(false)
     })
   })
 
@@ -210,7 +240,21 @@ describe('Auth Store', () => {
       expect(store.isAuthenticated).toBe(false)
     })
 
-    it('should be true when token is set', () => {
+    it('should be false when user is null', () => {
+      const store = useAuthStore()
+      store.token = 'some-token'
+
+      expect(store.isAuthenticated).toBe(false)
+    })
+
+    it('should be false when token is null but user exists', () => {
+      const store = useAuthStore()
+      store.user = mockUser
+
+      expect(store.isAuthenticated).toBe(false)
+    })
+
+    it('should be true when both token and user are set', () => {
       const store = useAuthStore()
 
       store.setAuth({
@@ -352,13 +396,16 @@ describe('Auth Store', () => {
     it('should handle restoring session multiple times', () => {
       const store = useAuthStore()
 
-      localStorage.setItem('authToken', 'saved-token')
+      localStorage.setItem('abuvi_auth_token', 'saved-token')
+      localStorage.setItem('abuvi_user', JSON.stringify(mockUser))
 
       store.restoreSession()
       expect(store.token).toBe('saved-token')
+      expect(store.user).toEqual(mockUser)
 
       store.restoreSession() // Should not cause issues
       expect(store.token).toBe('saved-token')
+      expect(store.user).toEqual(mockUser)
     })
 
     it('should handle role case sensitivity', () => {
@@ -376,7 +423,7 @@ describe('Auth Store', () => {
   })
 
   describe('localStorage integration', () => {
-    it('should persist token across store instances', () => {
+    it('should persist both token and user across store instances', () => {
       const store1 = useAuthStore()
 
       store1.setAuth({
@@ -388,31 +435,15 @@ describe('Auth Store', () => {
       setActivePinia(createPinia())
       const store2 = useAuthStore()
 
-      // Token should not be in new instance yet
+      // Neither should be in new instance yet
       expect(store2.token).toBeNull()
+      expect(store2.user).toBeNull()
 
       // But should be restored from localStorage
       store2.restoreSession()
       expect(store2.token).toBe('persistent-token')
-    })
-
-    it('should not persist user data', () => {
-      const store1 = useAuthStore()
-
-      store1.setAuth({
-        user: mockUser,
-        token: 'token'
-      })
-
-      // Create new store instance
-      setActivePinia(createPinia())
-      const store2 = useAuthStore()
-
-      store2.restoreSession()
-
-      // Token restored but user data not persisted
-      expect(store2.token).toBe('token')
-      expect(store2.user).toBeNull()
+      expect(store2.user).toEqual(mockUser)
+      expect(store2.isAuthenticated).toBe(true)
     })
   })
 })
