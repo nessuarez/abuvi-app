@@ -51,6 +51,14 @@ public record UpdateUserRequest(
 );
 
 /// <summary>
+/// Request to update a user's role (Admin/Board only)
+/// </summary>
+public record UpdateUserRoleRequest(
+    UserRole NewRole,
+    string? Reason  // Optional reason for the role change (for audit purposes)
+);
+
+/// <summary>
 /// User response DTO
 /// </summary>
 public record UserResponse(
@@ -64,3 +72,18 @@ public record UserResponse(
     DateTime CreatedAt,
     DateTime UpdatedAt
 );
+
+/// <summary>
+/// Audit log entry for user role changes
+/// </summary>
+public class UserRoleChangeLog
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public Guid ChangedByUserId { get; set; }
+    public UserRole PreviousRole { get; set; }
+    public UserRole NewRole { get; set; }
+    public string? Reason { get; set; }
+    public string IpAddress { get; set; } = string.Empty;
+    public DateTime ChangedAt { get; set; }
+}

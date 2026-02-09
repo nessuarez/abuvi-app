@@ -5,7 +5,10 @@ namespace Abuvi.API.Features.Users;
 /// <summary>
 /// Service for handling user business logic
 /// </summary>
-public class UsersService(IUsersRepository repository, IPasswordHasher passwordHasher)
+public class UsersService(
+    IUsersRepository repository,
+    IPasswordHasher passwordHasher,
+    IUserRoleChangeLogsRepository auditLogRepository)
 {
     /// <summary>
     /// Gets a user by ID
@@ -75,6 +78,80 @@ public class UsersService(IUsersRepository repository, IPasswordHasher passwordH
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await repository.DeleteAsync(id, cancellationToken);
+    }
+
+    /// <summary>
+    /// Updates a user's role with security checks and audit logging
+    /// </summary>
+    /// <param name="targetUserId">The ID of the user whose role will be changed</param>
+    /// <param name="newRole">The new role to assign</param>
+    /// <param name="requestingUserId">The ID of the user making the change</param>
+    /// <param name="reason">Optional reason for the change</param>
+    /// <param name="ipAddress">IP address of the requester for audit trail</param>
+    public async Task<UserResponse?> UpdateRoleAsync(
+        Guid targetUserId,
+        UserRole newRole,
+        Guid requestingUserId,
+        string? reason = null,
+        string? ipAddress = null,
+        CancellationToken cancellationToken = default)
+    {
+        // 1. Prevent self-role changes
+        if (targetUserId == requestingUserId)
+            throw new InvalidOperationException("Users cannot change their own role");
+
+        // 2. Get target user
+        var user = await repository.GetByIdAsync(targetUserId, cancellationToken);
+        if (user is null)
+            return null;
+
+        // 3. Get requesting user for authorization check
+        var requestingUser = await repository.GetByIdAsync(requestingUserId, cancellationToken);
+        if (requestingUser is null)
+            throw new InvalidOperationException("Requesting user not found");
+
+        // 4. Validate authorization
+        if (!CanChangeRole(requestingUser.Role, user.Role, newRole))
+            throw new UnauthorizedAccessException("Insufficient privileges to change this role");
+
+        // 5. Store previous role for audit
+        var previousRole = user.Role;
+
+        // 6. Update role
+        user.Role = newRole;
+        user.UpdatedAt = DateTime.UtcNow;
+        var updatedUser = await repository.UpdateAsync(user, cancellationToken);
+
+        // 7. Create audit log entry
+        await auditLogRepository.LogRoleChangeAsync(new UserRoleChangeLog
+        {
+            UserId = targetUserId,
+            ChangedByUserId = requestingUserId,
+            PreviousRole = previousRole,
+            NewRole = newRole,
+            Reason = reason,
+            IpAddress = ipAddress ?? "Unknown",
+            ChangedAt = DateTime.UtcNow
+        }, cancellationToken);
+
+        return MapToResponse(updatedUser);
+    }
+
+    /// <summary>
+    /// Determines if a user can change another user's role
+    /// </summary>
+    private static bool CanChangeRole(UserRole requestingRole, UserRole currentRole, UserRole newRole)
+    {
+        // Admin can change any role
+        if (requestingRole == UserRole.Admin)
+            return true;
+
+        // Board can only change Member roles (not their own, not Admin, not other Board members)
+        if (requestingRole == UserRole.Board)
+            return currentRole == UserRole.Member && newRole == UserRole.Member;
+
+        // Members cannot change roles
+        return false;
     }
 
     /// <summary>
