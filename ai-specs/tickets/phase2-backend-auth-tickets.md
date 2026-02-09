@@ -344,14 +344,14 @@ dotnet test --filter "AuthServiceTests"
 **Story**: As a frontend developer, I need login and registration endpoints so that users can authenticate and create accounts via the API.
 
 **Acceptance Criteria**:
-- [ ] POST /api/auth/login endpoint created
-- [ ] POST /api/auth/register endpoint created
-- [ ] Both endpoints use Minimal API pattern
-- [ ] Both endpoints use ApiResponse<T> wrapper
-- [ ] Login returns 200 with token on success, 401 on failure
-- [ ] Register returns 200 on success, 400 on duplicate email or validation failure
-- [ ] All integration tests pass (TDD approach)
-- [ ] Endpoints mapped in Program.cs
+- [x] POST /api/auth/login endpoint created
+- [x] POST /api/auth/register endpoint created
+- [x] Both endpoints use Minimal API pattern
+- [x] Both endpoints use ApiResponse<T> wrapper
+- [x] Login returns 200 with token on success, 401 on failure
+- [x] Register returns 200 on success, 400 on duplicate email or validation failure
+- [x] All integration tests pass (TDD approach)
+- [x] Endpoints mapped in Program.cs
 
 **Files to Create**:
 - `src/Abuvi.API/Features/Auth/AuthEndpoints.cs`
@@ -792,7 +792,7 @@ JWT-based authentication system fully implemented and tested.
 4. ✅ **Ticket 4**: Authentication Middleware (1h) - **COMPLETED**
 5. ✅ **Ticket 5**: Auth Models & Validators (1-2h) - TDD - **COMPLETED**
 6. ✅ **Ticket 6**: Auth Service (2-3h) - TDD - **COMPLETED**
-7. **Ticket 7**: Auth Endpoints (2-3h) - TDD
+7. ✅ **Ticket 7**: Auth Endpoints (2-3h) - TDD - **COMPLETED**
 8. **Ticket 8**: Protect Endpoints (2-3h) - TDD
 9. **Ticket 9**: Update UsersService (1-2h) - TDD
 10. **Ticket 10**: Testing & Documentation (2-3h)
