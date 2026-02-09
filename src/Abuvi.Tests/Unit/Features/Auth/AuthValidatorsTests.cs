@@ -33,7 +33,7 @@ public class AuthValidatorsTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData(null)]
-    public void LoginRequestValidator_WithEmptyEmail_FailsValidation(string email)
+    public void LoginRequestValidator_WithEmptyEmail_FailsValidation(string? email)
     {
         // Arrange
         var validator = new LoginRequestValidator();
@@ -73,7 +73,7 @@ public class AuthValidatorsTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData(null)]
-    public void LoginRequestValidator_WithEmptyPassword_FailsValidation(string password)
+    public void LoginRequestValidator_WithEmptyPassword_FailsValidation(string? password)
     {
         // Arrange
         var validator = new LoginRequestValidator();
@@ -117,7 +117,7 @@ public class AuthValidatorsTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData(null)]
-    public void RegisterRequestValidator_WithEmptyEmail_FailsValidation(string email)
+    public void RegisterRequestValidator_WithEmptyEmail_FailsValidation(string? email)
     {
         // Arrange
         var validator = new RegisterRequestValidator();
@@ -208,7 +208,7 @@ public class AuthValidatorsTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData(null)]
-    public void RegisterRequestValidator_WithEmptyFirstName_FailsValidation(string firstName)
+    public void RegisterRequestValidator_WithEmptyFirstName_FailsValidation(string? firstName)
     {
         // Arrange
         var validator = new RegisterRequestValidator();
@@ -251,7 +251,7 @@ public class AuthValidatorsTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData(null)]
-    public void RegisterRequestValidator_WithEmptyLastName_FailsValidation(string lastName)
+    public void RegisterRequestValidator_WithEmptyLastName_FailsValidation(string? lastName)
     {
         // Arrange
         var validator = new RegisterRequestValidator();
