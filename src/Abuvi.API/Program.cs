@@ -72,6 +72,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 // Feature Services
 // Users
 builder.Services.AddScoped<IUsersRepository, UsersRepository>();
+builder.Services.AddScoped<IUserRoleChangeLogsRepository, UserRoleChangeLogsRepository>();
 builder.Services.AddScoped<UsersService>();
 
 // Auth

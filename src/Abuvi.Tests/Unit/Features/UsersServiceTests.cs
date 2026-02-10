@@ -13,13 +13,15 @@ public class UsersServiceTests
 {
     private readonly IUsersRepository _repository;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IUserRoleChangeLogsRepository _auditLogRepository;
     private readonly UsersService _service;
 
     public UsersServiceTests()
     {
         _repository = Substitute.For<IUsersRepository>();
         _passwordHasher = Substitute.For<IPasswordHasher>();
-        _service = new UsersService(_repository, _passwordHasher);
+        _auditLogRepository = Substitute.For<IUserRoleChangeLogsRepository>();
+        _service = new UsersService(_repository, _passwordHasher, _auditLogRepository);
     }
 
     [Fact]

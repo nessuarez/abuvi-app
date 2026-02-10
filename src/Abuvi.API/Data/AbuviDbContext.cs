@@ -7,6 +7,7 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
 {
     // Entity DbSets
     public DbSet<User> Users => Set<User>();
+    public DbSet<UserRoleChangeLog> UserRoleChangeLogs => Set<UserRoleChangeLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -58,3 +58,21 @@ public class UpdateUserRequestValidator : AbstractValidator<UpdateUserRequest>
             .When(x => !string.IsNullOrWhiteSpace(x.Phone));
     }
 }
+
+/// <summary>
+/// Validator for UpdateUserRoleRequest
+/// </summary>
+public class UpdateUserRoleRequestValidator : AbstractValidator<UpdateUserRoleRequest>
+{
+    public UpdateUserRoleRequestValidator()
+    {
+        RuleFor(x => x.NewRole)
+            .IsInEnum()
+            .WithMessage("Invalid role specified. Must be Admin, Board, or Member.");
+
+        RuleFor(x => x.Reason)
+            .MaximumLength(500)
+            .When(x => x.Reason is not null)
+            .WithMessage("Reason must not exceed 500 characters.");
+    }
+}

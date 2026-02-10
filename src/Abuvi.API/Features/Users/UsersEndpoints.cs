@@ -1,3 +1,4 @@
+using Abuvi.API.Common.Extensions;
 using Abuvi.API.Common.Filters;
 using Abuvi.API.Common.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -68,6 +69,18 @@ public static class UsersEndpoints
             .Produces(401)
             .Produces(403)
             .Produces(404);
+
+        // PATCH /api/users/{id}/role - Update user role (Admin/Board only)
+        group.MapPatch("/{id:guid}/role", UpdateUserRole)
+            .WithName("UpdateUserRole")
+            .WithSummary("Update a user's role")
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"))
+            .AddEndpointFilter<ValidationFilter<UpdateUserRoleRequest>>()
+            .Produces<ApiResponse<UserResponse>>()
+            .Produces(400)  // Bad Request - validation or self-change
+            .Produces(401)  // Unauthorized - not authenticated
+            .Produces(403)  // Forbidden - insufficient privileges
+            .Produces(404); // Not Found - user doesn't exist
 
         return app;
     }
@@ -165,5 +178,54 @@ public static class UsersEndpoints
         }
 
         return Results.NoContent();
+    }
+
+    /// <summary>
+    /// Update a user's role
+    /// </summary>
+    private static async Task<IResult> UpdateUserRole(
+        [FromRoute] Guid id,
+        [FromBody] UpdateUserRoleRequest request,
+        [FromServices] UsersService service,
+        HttpContext httpContext,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Get requesting user ID from claims
+            var requestingUserId = httpContext.User.GetUserId();
+            if (requestingUserId is null)
+                return Results.Unauthorized();
+
+            // Get IP address for audit trail
+            var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString();
+
+            var user = await service.UpdateRoleAsync(
+                id,
+                request.NewRole,
+                requestingUserId.Value,
+                request.Reason,
+                ipAddress,
+                cancellationToken);
+
+            if (user is null)
+            {
+                return Results.NotFound(
+                    ApiResponse<UserResponse>.NotFound($"User with ID {id} not found")
+                );
+            }
+
+            return Results.Ok(ApiResponse<UserResponse>.Ok(user));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(
+                ApiResponse<UserResponse>.Fail(ex.Message, "INVALID_OPERATION")
+            );
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Results.StatusCode(403); // Forbidden
+        }
     }
 }
