@@ -33,7 +33,7 @@ const router = createRouter({
       meta: {
         title: 'User Management',
         requiresAuth: true,
-        requiresAdmin: true // Admin only endpoint per backend
+        requiresBoard: true // Admin and Board can access user management
       }
     },
     {
@@ -64,6 +64,13 @@ router.beforeEach((to, from, next) => {
 
   // Check if route requires admin role
   if (to.meta.requiresAdmin && !authStore.isAdmin) {
+    // Redirect to home page (or show 403 page)
+    next({ path: '/' })
+    return
+  }
+
+  // Check if route requires board role (Admin or Board)
+  if (to.meta.requiresBoard && !authStore.isBoard) {
     // Redirect to home page (or show 403 page)
     next({ path: '/' })
     return
