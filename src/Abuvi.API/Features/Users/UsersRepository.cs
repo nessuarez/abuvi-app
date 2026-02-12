@@ -22,6 +22,19 @@ public class UsersRepository(AbuviDbContext context) : IUsersRepository
             .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
     }
 
+    public async Task<User?> GetByDocumentNumberAsync(string documentNumber, CancellationToken cancellationToken = default)
+    {
+        return await context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.DocumentNumber == documentNumber, cancellationToken);
+    }
+
+    public async Task<User?> GetByVerificationTokenAsync(string token, CancellationToken cancellationToken = default)
+    {
+        return await context.Users
+            .FirstOrDefaultAsync(u => u.EmailVerificationToken == token, cancellationToken);
+    }
+
     public async Task<List<User>> GetAllAsync(int skip = 0, int take = 100, CancellationToken cancellationToken = default)
     {
         return await context.Users

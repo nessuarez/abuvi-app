@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Abuvi.API.Common.Models;
 using Abuvi.API.Common.Filters;
+using Abuvi.API.Common.Exceptions;
+using Abuvi.API.Features.Users;
 
 namespace Abuvi.API.Features.Auth;
 
@@ -26,6 +28,27 @@ public static class AuthEndpoints
             .WithName("Register")
             .Produces<ApiResponse<UserInfo>>()
             .Produces(StatusCodes.Status400BadRequest);
+
+        // New registration workflow with email verification
+        group.MapPost("/register-user", RegisterUser)
+            .AddEndpointFilter<ValidationFilter<RegisterUserRequest>>()
+            .WithName("RegisterUser")
+            .Produces<ApiResponse<UserResponse>>()
+            .Produces(StatusCodes.Status400BadRequest);
+
+        group.MapPost("/verify-email", VerifyEmail)
+            .AddEndpointFilter<ValidationFilter<VerifyEmailRequest>>()
+            .WithName("VerifyEmail")
+            .Produces<ApiResponse<object>>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPost("/resend-verification", ResendVerification)
+            .AddEndpointFilter<ValidationFilter<ResendVerificationRequest>>()
+            .WithName("ResendVerification")
+            .Produces<ApiResponse<object>>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound);
     }
 
     /// <summary>
@@ -33,7 +56,7 @@ public static class AuthEndpoints
     /// </summary>
     private static async Task<IResult> Login(
         [FromBody] LoginRequest request,
-        AuthService authService,
+        IAuthService authService,
         CancellationToken cancellationToken)
     {
         var result = await authService.LoginAsync(request, cancellationToken);
@@ -57,7 +80,7 @@ public static class AuthEndpoints
     /// </summary>
     private static async Task<IResult> Register(
         [FromBody] RegisterRequest request,
-        AuthService authService,
+        IAuthService authService,
         CancellationToken cancellationToken)
     {
         try
@@ -69,6 +92,87 @@ public static class AuthEndpoints
         {
             return Results.Json(
                 ApiResponse<UserInfo>.Fail(ex.Message, "EMAIL_EXISTS"),
+                statusCode: 400
+            );
+        }
+    }
+
+    /// <summary>
+    /// Registers a new user with email verification workflow
+    /// </summary>
+    internal static async Task<IResult> RegisterUser(
+        [FromBody] RegisterUserRequest request,
+        IAuthService authService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var user = await authService.RegisterUserAsync(request, cancellationToken);
+            return Results.Ok(ApiResponse<UserResponse>.Ok(user));
+        }
+        catch (BusinessRuleException ex)
+        {
+            var errorCode = ex.Message.Contains("email") ? "EMAIL_EXISTS" : "DOCUMENT_EXISTS";
+            return Results.Json(
+                ApiResponse<UserResponse>.Fail(ex.Message, errorCode),
+                statusCode: 400
+            );
+        }
+    }
+
+    /// <summary>
+    /// Verifies user email with token
+    /// </summary>
+    internal static async Task<IResult> VerifyEmail(
+        [FromBody] VerifyEmailRequest request,
+        IAuthService authService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await authService.VerifyEmailAsync(request.Token, cancellationToken);
+            return Results.Ok(ApiResponse<object>.Ok(new { message = "Email verified successfully" }));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.Json(
+                ApiResponse<object>.Fail(ex.Message, "NOT_FOUND"),
+                statusCode: 404
+            );
+        }
+        catch (BusinessRuleException ex)
+        {
+            return Results.Json(
+                ApiResponse<object>.Fail(ex.Message, "VERIFICATION_FAILED"),
+                statusCode: 400
+            );
+        }
+    }
+
+    /// <summary>
+    /// Resends verification email to user
+    /// </summary>
+    internal static async Task<IResult> ResendVerification(
+        [FromBody] ResendVerificationRequest request,
+        IAuthService authService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await authService.ResendVerificationAsync(request.Email, cancellationToken);
+            return Results.Ok(ApiResponse<object>.Ok(new { message = "Verification email sent" }));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.Json(
+                ApiResponse<object>.Fail(ex.Message, "NOT_FOUND"),
+                statusCode: 404
+            );
+        }
+        catch (BusinessRuleException ex)
+        {
+            return Results.Json(
+                ApiResponse<object>.Fail(ex.Message, "RESEND_FAILED"),
                 statusCode: 400
             );
         }

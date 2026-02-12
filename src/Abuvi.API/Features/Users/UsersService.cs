@@ -165,6 +165,7 @@ public class UsersService(
         user.Phone,
         user.Role,
         user.IsActive,
+        user.EmailVerified,
         user.CreatedAt,
         user.UpdatedAt
     );
