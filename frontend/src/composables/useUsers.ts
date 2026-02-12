@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue'
 import { api } from '@/utils/api'
-import type { User, CreateUserRequest, UpdateUserRequest } from '@/types/user'
+import type { User, CreateUserRequest, UpdateUserRequest, UpdateUserRoleRequest } from '@/types/user'
 import type { ApiResponse } from '@/types/api'
 
 export function useUsers() {
@@ -119,6 +119,52 @@ export function useUsers() {
   }
 
   /**
+   * Update a user's role (Admin/Board only)
+   * Calls the backend PATCH /api/users/{id}/role endpoint
+   */
+  const updateUserRole = async (
+    userId: string,
+    request: UpdateUserRoleRequest
+  ): Promise<User | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.patch<ApiResponse<User>>(
+        `/users/${userId}/role`,
+        request
+      )
+      if (response.data.data) {
+        // Update user in the list
+        const index = users.value.findIndex((u) => u.id === userId)
+        if (index !== -1) {
+          users.value[index] = response.data.data
+        }
+        // Update selected user if it's the same
+        if (selectedUser.value?.id === userId) {
+          selectedUser.value = response.data.data
+        }
+        return response.data.data
+      }
+      return null
+    } catch (err: any) {
+      if (err.response?.status === 400) {
+        // Self-role change attempt or invalid operation
+        error.value = err.response.data?.error?.message || 'Invalid role change operation'
+      } else if (err.response?.status === 403) {
+        error.value = 'Insufficient privileges to change this role'
+      } else if (err.response?.status === 404) {
+        error.value = 'User not found'
+      } else {
+        error.value = 'Failed to update user role. Please try again.'
+      }
+      console.error('updateUserRole error:', err)
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * Clear error state
    */
   const clearError = () => {
@@ -134,6 +180,7 @@ export function useUsers() {
     fetchUserById,
     createUser,
     updateUser,
+    updateUserRole,
     clearError
   }
 }

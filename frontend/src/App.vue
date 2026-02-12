@@ -3,6 +3,7 @@ import { onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useAuth } from '@/composables/useAuth'
 import Button from 'primevue/button'
+import Toast from 'primevue/toast'
 
 const authStore = useAuthStore()
 const { logout } = useAuth()
@@ -13,6 +14,7 @@ onMounted(() => {
 </script>
 
 <template>
+  <Toast />
   <div class="min-h-screen bg-gray-50">
     <!-- Navigation Header -->
     <header class="bg-white shadow">

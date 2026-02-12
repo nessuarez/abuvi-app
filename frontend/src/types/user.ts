@@ -31,3 +31,11 @@ export interface UpdateUserRequest {
   phone: string | null
   isActive: boolean
 }
+
+/**
+ * Request to update a user's role (Admin/Board only)
+ */
+export interface UpdateUserRoleRequest {
+  newRole: UserRole
+  reason?: string | null
+}

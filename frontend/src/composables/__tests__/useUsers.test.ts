@@ -172,4 +172,134 @@ describe('useUsers', () => {
       expect(error.value).toBe('User not found.')
     })
   })
+
+  describe('updateUserRole', () => {
+    it('should update user role successfully', async () => {
+      const updatedUser = { ...mockUser, role: 'Board' as const }
+      vi.mocked(api.patch).mockResolvedValue({
+        data: { success: true, data: updatedUser, error: null }
+      })
+
+      const { users, updateUserRole } = useUsers()
+      users.value = [mockUser]
+
+      const request = {
+        newRole: 'Board' as const,
+        reason: 'Promotion to board member'
+      }
+
+      const result = await updateUserRole('1', request)
+
+      expect(result).toEqual(updatedUser)
+      expect(users.value[0].role).toBe('Board')
+      expect(api.patch).toHaveBeenCalledWith('/users/1/role', request)
+    })
+
+    it('should handle 400 error for self-role change', async () => {
+      vi.mocked(api.patch).mockRejectedValue({
+        response: {
+          status: 400,
+          data: {
+            error: { message: 'Users cannot change their own role' }
+          }
+        }
+      })
+
+      const { error, updateUserRole } = useUsers()
+
+      const request = {
+        newRole: 'Admin' as const,
+        reason: null
+      }
+
+      const result = await updateUserRole('1', request)
+
+      expect(result).toBeNull()
+      expect(error.value).toBe('Users cannot change their own role')
+    })
+
+    it('should handle 403 error for insufficient privileges', async () => {
+      vi.mocked(api.patch).mockRejectedValue({
+        response: { status: 403 }
+      })
+
+      const { error, updateUserRole } = useUsers()
+
+      const request = {
+        newRole: 'Admin' as const,
+        reason: null
+      }
+
+      const result = await updateUserRole('1', request)
+
+      expect(result).toBeNull()
+      expect(error.value).toBe('Insufficient privileges to change this role')
+    })
+
+    it('should handle 404 error when user not found', async () => {
+      vi.mocked(api.patch).mockRejectedValue({
+        response: { status: 404 }
+      })
+
+      const { error, updateUserRole } = useUsers()
+
+      const request = {
+        newRole: 'Board' as const,
+        reason: null
+      }
+
+      const result = await updateUserRole('nonexistent-user', request)
+
+      expect(result).toBeNull()
+      expect(error.value).toBe('User not found')
+    })
+
+    it('should update user in list after successful role change', async () => {
+      const updatedUser = { ...mockUser, role: 'Board' as const }
+
+      vi.mocked(api.get).mockResolvedValue({
+        data: { success: true, data: [mockUser], error: null }
+      })
+
+      vi.mocked(api.patch).mockResolvedValue({
+        data: { success: true, data: updatedUser, error: null }
+      })
+
+      const { users, fetchUsers, updateUserRole } = useUsers()
+      await fetchUsers()
+
+      const request = {
+        newRole: 'Board' as const,
+        reason: null
+      }
+
+      await updateUserRole('1', request)
+
+      expect(users.value[0].role).toBe('Board')
+    })
+
+    it('should update selectedUser if it matches the updated user', async () => {
+      const updatedUser = { ...mockUser, role: 'Board' as const }
+
+      vi.mocked(api.get).mockResolvedValue({
+        data: { success: true, data: mockUser, error: null }
+      })
+
+      vi.mocked(api.patch).mockResolvedValue({
+        data: { success: true, data: updatedUser, error: null }
+      })
+
+      const { selectedUser, fetchUserById, updateUserRole } = useUsers()
+      await fetchUserById('1')
+
+      const request = {
+        newRole: 'Board' as const,
+        reason: 'Promotion'
+      }
+
+      await updateUserRole('1', request)
+
+      expect(selectedUser.value?.role).toBe('Board')
+    })
+  })
 })

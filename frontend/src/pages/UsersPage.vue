@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUsers } from '@/composables/useUsers'
+import { useToast } from 'primevue/usetoast'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -10,13 +11,20 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import Tag from 'primevue/tag'
 import UserForm from '@/components/users/UserForm.vue'
-import type { CreateUserRequest } from '@/types/user'
+import UserRoleCell from '@/components/users/UserRoleCell.vue'
+import UserRoleDialog from '@/components/users/UserRoleDialog.vue'
+import type { CreateUserRequest, User } from '@/types/user'
 
 const router = useRouter()
+const toast = useToast()
 const { users, loading, error, fetchUsers, createUser, clearError } = useUsers()
 
 const showCreateDialog = ref(false)
 const creatingUser = ref(false)
+
+// Role management state
+const showRoleDialog = ref(false)
+const selectedUser = ref<User | null>(null)
 
 onMounted(() => {
   fetchUsers()
@@ -45,6 +53,22 @@ const handleCreateUser = async (data: CreateUserRequest) => {
 
 const viewUserDetail = (userId: string) => {
   router.push(`/users/${userId}`)
+}
+
+// Handle edit role click from UserRoleCell
+const handleEditRole = (user: User) => {
+  selectedUser.value = user
+  showRoleDialog.value = true
+}
+
+// Handle role update success
+const handleRoleUpdated = (updatedUser: User) => {
+  toast.add({
+    severity: 'success',
+    summary: 'Role Updated',
+    detail: `${updatedUser.firstName} ${updatedUser.lastName}'s role has been updated to ${updatedUser.role}`,
+    life: 5000
+  })
 }
 
 const getRoleSeverity = (role: string): 'success' | 'info' | 'warning' => {
@@ -112,7 +136,7 @@ const formatDate = (dateString: string) => {
       <Column field="email" header="Email" sortable />
       <Column field="role" header="Role" sortable>
         <template #body="{ data }">
-          <Tag :value="data.role" :severity="getRoleSeverity(data.role)" />
+          <UserRoleCell :user="data" @edit-role="handleEditRole" />
         </template>
       </Column>
       <Column field="phone" header="Phone">
@@ -165,5 +189,12 @@ const formatDate = (dateString: string) => {
         {{ error }}
       </Message>
     </Dialog>
+
+    <!-- Role Update Dialog -->
+    <UserRoleDialog
+      v-model:visible="showRoleDialog"
+      :user="selectedUser"
+      @role-updated="handleRoleUpdated"
+    />
   </div>
 </template>
