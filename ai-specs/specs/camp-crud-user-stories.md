@@ -4,9 +4,9 @@
 
 This document defines user stories for Camp management in ABUVI. The domain supports:
 
-- **One active camp per year** (current running event)
-- **Historical camp inventory** (archive of past camps)
-- **Separation of concerns**: Static camp template information vs. active camp instances
+- **One active camp edition per year** (current running event)
+- **Historical camp inventory** (archive of past editions)
+- **Separation of concerns**: Static camp location/template info vs. yearly camp editions
 
 ## Proposed Data Model Enhancement
 
@@ -14,40 +14,41 @@ This document defines user stories for Camp management in ABUVI. The domain supp
 
 Currently, the `Camp` entity conflates two concerns:
 
-1. **Recurring/Template Information**: Name, description, age requirements, base pricing structure
-2. **Instance Information**: Specific year, dates, location, capacity, status
+1. **Recurring/Location Information**: Name, description, coordinates (for map), pricing base, historical status
+2. **Instance Information**: Specific year, dates, age requirements, capacity, registration status
 
 **Proposed Approach**:
 
-- Create `CampTemplate` to store reusable camp information (name, description, rules, pricing template)
-- Keep `Camp` as the instance/edition (specific year, dates, location, actual pricing, status)
-- One-to-many relationship: `CampTemplate` → `Camp` (editions)
+- Create `Camp` to store reusable camp location/concept (name, description, coordinates, pricing template, status for historical tracking)
+- Create `CampEdition` for each yearly instance (year, dates, age requirements, capacity, registration status)
+- One-to-many relationship: `Camp` → `CampEdition` (yearly editions)
 
 ### Updated Data Model
 
 ```
-CampTemplate
+Camp (the recurring location/concept)
 ├── id (PK, UUID)
 ├── name (e.g., "Mountain Camp", "Beach Camp")
-├── description (rich text, reusable info)
-├── minAge (default minimum)
-├── maxAge (default maximum)
-├── basePriceTemplate (default pricing)
+├── description (rich text, reusable info about the camp concept)
+├── latitude (for map display)
+├── longitude (for map display)
+├── basePriceTemplate (default pricing structure)
+├── status (Active | Inactive | HistoricalArchive)
 ├── createdAt
 └── updatedAt
 
-Camp (renamed/clarified as CampEdition conceptually, but keep name as Camp)
+CampEdition (the yearly instance)
 ├── id (PK, UUID)
-├── campTemplateId (FK → CampTemplate)
+├── campId (FK → Camp)
 ├── year (e.g., 2026)
 ├── startDate
 ├── endDate
-├── location (specific for this year)
-├── description (can override template, or null to use template)
-├── basePrice (can override template default)
-├── minAge (can override template default)
-├── maxAge (can override template default)
-├── maxCapacity (specific for this year/location)
+├── location (specific description for this year, e.g. "Swiss Alps region")
+├── description (can override camp concept, or null to use camp description)
+├── basePrice (can override camp default)
+├── minAge (age requirement for this edition)
+├── maxAge (age requirement for this edition)
+├── maxCapacity (specific for this year/instance)
 ├── contactEmail
 ├── contactPhone
 ├── status (Draft | Open | Closed | Completed)
@@ -72,7 +73,7 @@ Camp (renamed/clarified as CampEdition conceptually, but keep name as Camp)
 - Support filtering by name or search
 - Sort alphabetically
 
-**UI**: Admin Dashboard → Camp Management → Templates
+**UI**: Admin Dashboard → Camp Management → Camp Locations
 
 ---
 
