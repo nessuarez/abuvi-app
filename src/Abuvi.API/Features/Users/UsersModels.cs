@@ -11,9 +11,16 @@ public class User
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string? Phone { get; set; }
-    public UserRole Role { get; set; }
+
+    // NEW FIELDS FOR EMAIL VERIFICATION
+    public string? DocumentNumber { get; set; }
+    public UserRole Role { get; set; } = UserRole.Member;
     public Guid? FamilyUnitId { get; set; }
-    public bool IsActive { get; set; } = true;
+    public bool IsActive { get; set; } = false; // Changed default to false
+    public bool EmailVerified { get; set; } = false;
+    public string? EmailVerificationToken { get; set; }
+    public DateTime? EmailVerificationTokenExpiry { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -69,6 +76,7 @@ public record UserResponse(
     string? Phone,
     UserRole Role,
     bool IsActive,
+    bool EmailVerified, // NEW: Email verification status
     DateTime CreatedAt,
     DateTime UpdatedAt
 );

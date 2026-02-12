@@ -10,6 +10,7 @@ namespace Abuvi.Tests.Unit.Features.Auth;
 /// </summary>
 public class AuthValidatorsTests
 {
+#pragma warning disable CS8604 // Possible null reference argument.
     #region LoginRequestValidator Tests
 
     [Fact]
@@ -332,3 +333,5 @@ public class AuthValidatorsTests
 
     #endregion
 }
+
+#pragma warning restore CS8604 // Possible null reference argument.

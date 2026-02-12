@@ -8,10 +8,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Abuvi.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Core Framework -->
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.*" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.*" />
+    <PackageReference Include="Resend" Version="0.2.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.*" />
 
     <!-- Database -->

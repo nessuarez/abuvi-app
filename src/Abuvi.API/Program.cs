@@ -78,7 +78,10 @@ builder.Services.AddScoped<UsersService>();
 // Auth
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<JwtTokenService>();
-builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+
+// Email
+builder.Services.AddScoped<Abuvi.API.Common.Services.IEmailService, Abuvi.API.Common.Services.ResendEmailService>();
 
 var app = builder.Build();
 

@@ -49,6 +49,16 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(20)
             .HasColumnName("phone");
 
+        // NEW: Document number: optional, max 50, unique index when not null
+        builder.Property(u => u.DocumentNumber)
+            .HasMaxLength(50)
+            .HasColumnName("document_number");
+
+        builder.HasIndex(u => u.DocumentNumber)
+            .IsUnique()
+            .HasDatabaseName("IX_Users_DocumentNumber")
+            .HasFilter("document_number IS NOT NULL"); // Partial index - only enforces uniqueness for non-null values
+
         // Role: stored as string, max 20
         builder.Property(u => u.Role)
             .HasConversion<string>()
@@ -60,11 +70,24 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.FamilyUnitId)
             .HasColumnName("family_unit_id");
 
-        // IsActive: required, default true
+        // IsActive: required, default false (changed from true)
         builder.Property(u => u.IsActive)
             .IsRequired()
-            .HasDefaultValue(true)
+            .HasDefaultValue(false)
             .HasColumnName("is_active");
+
+        // NEW: Email verification fields
+        builder.Property(u => u.EmailVerified)
+            .IsRequired()
+            .HasDefaultValue(false)
+            .HasColumnName("email_verified");
+
+        builder.Property(u => u.EmailVerificationToken)
+            .HasMaxLength(512)
+            .HasColumnName("email_verification_token");
+
+        builder.Property(u => u.EmailVerificationTokenExpiry)
+            .HasColumnName("email_verification_token_expiry");
 
         // Timestamps: required, default NOW()
         builder.Property(u => u.CreatedAt)

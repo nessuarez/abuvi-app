@@ -15,18 +15,30 @@ Represents a platform account for accessing the application. Each user is a memb
 - `passwordHash`: Hashed password for authentication (required)
 - `firstName`: User first name (required, max 100 characters)
 - `lastName`: User last name (required, max 100 characters)
-- `phone`: Contact phone number (optional, max 20 characters)
-- `role`: User role in the system (required, enum: `Admin` | `Board` | `Member`)
+- `phone`: Contact phone number (optional, max 20 characters, E.164 format)
+- `documentNumber`: National ID/passport number (optional, max 50 characters, unique when not null, uppercase alphanumeric)
+- `role`: User role in the system (required, enum: `Admin` | `Board` | `Member`, default: `Member`)
 - `familyUnitId`: Reference to the FamilyUnit this user represents (optional, FK -> FamilyUnit)
-- `isActive`: Whether the account is active (required, default: true)
+- `isActive`: Whether the account is active (required, default: false)
+- `emailVerified`: Whether the email has been verified (required, default: false)
+- `emailVerificationToken`: Token for email verification (optional, max 512 characters, URL-safe base64)
+- `emailVerificationTokenExpiry`: Token expiration datetime (optional, defaults to 24 hours from creation)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
 **Validation rules:**
 
 - Email must be unique across all users
+- DocumentNumber must be unique across all users when provided (partial unique index)
+- DocumentNumber format: uppercase letters and numbers only (e.g., "12345678A", "AB123456")
 - Role determines access level: Admin (full system access), Board (camp management, registration oversight, payment control), Member (basic access, family registration)
 - A user with role Board must have an active BoardTerm to exercise board privileges
+- If familyUnitId is set, the user must have role Member and be the representative of that family unit
+- Inactive users (isActive = false) cannot log in or perform any actions
+- New users start with isActive = false and emailVerified = false
+- Users must verify their email before the account becomes active
+- Email verification tokens expire after 24 hours
+- Once email is verified, both emailVerified and isActive become true
 
 **Relationships:**
 
@@ -106,10 +118,9 @@ A camp event/edition organized by the association. Represents a specific camp ha
 - `startDate`: Camp start date (required)
 - `endDate`: Camp end date (required)
 - `location`: Camp location description (required, max 500 characters)
+- `coordinates`: Geographic coordinates for the camp location (optional, e.g. "40.4168,-3.7038")
 - `description`: Detailed camp description (optional, rich text)
 - `basePrice`: Base price per person in euros (required, decimal, >= 0)
-- `minAge`: Minimum participant age in years (required, integer, >= 0)
-- `maxAge`: Maximum participant age in years (required, integer, > minAge)
 - `maxCapacity`: Maximum number of participants (required, integer, > 0)
 - `contactEmail`: Contact email for inquiries (optional, valid email format)
 - `contactPhone`: Contact phone for inquiries (optional, max 20 characters)
@@ -120,7 +131,6 @@ A camp event/edition organized by the association. Represents a specific camp ha
 **Validation rules:**
 
 - EndDate must be after StartDate
-- MaxAge must be greater than MinAge
 - BasePrice must be >= 0
 - MaxCapacity must be > 0
 - Status transitions: Draft -> Open -> Closed -> Completed (no backwards transitions)
@@ -494,9 +504,13 @@ erDiagram
         string firstName
         string lastName
         string phone
+        string documentNumber
         enum role
         UUID familyUnitId FK
         boolean isActive
+        boolean emailVerified
+        string emailVerificationToken
+        datetime emailVerificationTokenExpiry
         datetime createdAt
         datetime updatedAt
     }
