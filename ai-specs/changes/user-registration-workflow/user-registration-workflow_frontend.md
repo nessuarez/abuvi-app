@@ -5,6 +5,7 @@
 This plan details the frontend implementation for the complete user registration workflow with email verification. The implementation follows Vue 3 Composition API patterns with `<script setup lang="ts">`, PrimeVue component library, Tailwind CSS, and composable-based architecture.
 
 The workflow consists of three main user flows:
+
 1. **User Registration** - New users fill out a registration form with email/password
 2. **Email Verification** - Users verify their email via a token sent to their inbox
 3. **Resend Verification** - Users can request a new verification email if needed
@@ -14,6 +15,7 @@ All backend API endpoints are already implemented and documented in [api-endpoin
 ## Architecture Context
 
 ### Components to Create
+
 - `src/Abuvi.Web/src/pages/auth/RegisterPage.vue` - Registration form page
 - `src/Abuvi.Web/src/pages/auth/VerifyEmailPage.vue` - Email verification confirmation page
 - `src/Abuvi.Web/src/pages/auth/ResendVerificationPage.vue` - Resend verification email page
@@ -21,16 +23,20 @@ All backend API endpoints are already implemented and documented in [api-endpoin
 - `src/Abuvi.Web/src/components/auth/PasswordStrengthMeter.vue` - Password validation feedback component
 
 ### Composables to Create
+
 - `src/Abuvi.Web/src/composables/useAuth.ts` - Authentication API calls (register, verify, resend)
 
 ### Types to Create
+
 - `src/Abuvi.Web/src/types/auth.ts` - TypeScript interfaces for auth-related data
 
 ### Routing
+
 - Add routes for `/register`, `/verify-email`, `/resend-verification`
 - Public routes (no authentication required)
 
 ### State Management
+
 - **Local component state** for form data and UI state
 - No Pinia store needed yet (auth store will be created in login feature)
 
@@ -43,6 +49,7 @@ All backend API endpoints are already implemented and documented in [api-endpoin
 **Branch Naming**: `feature/user-registration-workflow-frontend`
 
 **Implementation Steps**:
+
 1. Ensure you're on the latest `main` branch
 2. Pull latest changes: `git pull origin main`
 3. Create new branch: `git checkout -b feature/user-registration-workflow-frontend`
@@ -111,6 +118,7 @@ export interface MessageResponse {
 **Dependencies**: None (uses built-in TypeScript types)
 
 **Implementation Notes**:
+
 - Types match backend DTOs exactly for type safety
 - Optional fields use `?` syntax
 - All fields use English naming per project standards
@@ -166,12 +174,14 @@ export function useAuth() {
    - Default → "An error occurred. Please try again."
 
 **Dependencies**:
+
 - `import { ref } from 'vue'`
 - `import { api } from '@/utils/api'`
 - `import type { ApiResponse } from '@/types/api'`
 - `import type { RegisterUserRequest, VerifyEmailRequest, ResendVerificationRequest, User, MessageResponse } from '@/types/auth'`
 
 **Implementation Notes**:
+
 - Composable manages loading/error states internally
 - Returns reactive refs for component consumption
 - All API endpoints follow `/api/auth/*` pattern per backend documentation
@@ -232,10 +242,12 @@ interface Props {
 8. Use PrimeVue `ProgressBar` component for visual feedback
 
 **Dependencies**:
+
 - `import { computed } from 'vue'`
 - `import ProgressBar from 'primevue/progressbar'`
 
 **Implementation Notes**:
+
 - Purely presentational component (no API calls)
 - Real-time feedback as user types
 - Criteria match backend validation rules
@@ -263,6 +275,7 @@ interface Emits {
 
 1. Create `RegistrationForm.vue` in `components/auth/`
 2. Define reactive form state using `reactive()`:
+
    ```typescript
    const formData = reactive<RegisterUserRequest>({
      email: '',
@@ -274,6 +287,7 @@ interface Emits {
      acceptedTerms: false
    })
    ```
+
 3. Implement client-side validation:
    - Email: required, valid format, max 255 chars
    - Password: required, min 8 chars, complexity rules (shown via PasswordStrengthMeter)
@@ -294,6 +308,7 @@ interface Emits {
 10. Use Tailwind CSS for layout and spacing
 
 **Dependencies**:
+
 - `import { reactive, ref, computed } from 'vue'`
 - `import InputText from 'primevue/inputtext'`
 - `import Password from 'primevue/password'`
@@ -303,6 +318,7 @@ interface Emits {
 - `import type { RegisterUserRequest } from '@/types/auth'`
 
 **Implementation Notes**:
+
 - Form validation happens on submit (not on blur)
 - Password field uses PrimeVue's built-in password component with toggle
 - Phone and document number are optional (not marked with asterisk)
@@ -346,6 +362,7 @@ interface Emits {
 10. Use Tailwind for responsive layout
 
 **Dependencies**:
+
 - `import { ref } from 'vue'`
 - `import { useRouter } from 'vue-router'`
 - `import Card from 'primevue/card'`
@@ -355,6 +372,7 @@ interface Emits {
 - `import type { RegisterUserRequest } from '@/types/auth'`
 
 **Implementation Notes**:
+
 - Page manages orchestration between form and API
 - Shows loading state during submission (passed to form)
 - Success message should be clear: "Registration successful! Please check your email to verify your account."
@@ -397,6 +415,7 @@ interface Emits {
 8. Centered card layout with Tailwind
 
 **Dependencies**:
+
 - `import { ref, onMounted } from 'vue'`
 - `import { useRouter, useRoute } from 'vue-router'`
 - `import Card from 'primevue/card'`
@@ -406,6 +425,7 @@ interface Emits {
 - `import { useAuth } from '@/composables/useAuth'`
 
 **Implementation Notes**:
+
 - Token is extracted from URL query parameter (e.g., `/verify-email?token=abc123`)
 - Verification happens automatically on page load
 - Clear visual feedback for each state
@@ -445,6 +465,7 @@ interface Emits {
 8. Centered card with Tailwind
 
 **Dependencies**:
+
 - `import { ref } from 'vue'`
 - `import Card from 'primevue/card'`
 - `import InputText from 'primevue/inputtext'`
@@ -453,6 +474,7 @@ interface Emits {
 - `import { useAuth } from '@/composables/useAuth'`
 
 **Implementation Notes**:
+
 - Simple single-field form
 - Clear feedback: users should know email was sent successfully
 - Handle "email already verified" error gracefully
@@ -476,6 +498,7 @@ interface Emits {
    - `/resend-verification` → `ResendVerificationPage`
 3. All routes are public (no `meta.requiresAuth`)
 4. Use lazy loading with dynamic imports for code splitting:
+
    ```typescript
    {
      path: '/register',
@@ -485,9 +508,11 @@ interface Emits {
    ```
 
 **Dependencies**:
+
 - None (routes use lazy imports)
 
 **Implementation Notes**:
+
 - Routes are public and do not require authentication
 - Use kebab-case for route paths (`/verify-email`, not `/verifyEmail`)
 - Route names use camelCase (`name: 'verifyEmail'`)
@@ -567,11 +592,13 @@ export default router
 7. Use descriptive test names: `should [expected behavior] when [condition]`
 
 **Dependencies**:
+
 - `import { describe, it, expect, vi, beforeEach } from 'vitest'`
 - `import { useAuth } from '../useAuth'`
 - `import { api } from '@/utils/api'`
 
 **Implementation Notes**:
+
 - Mock successful responses with `ApiResponse<T>` structure
 - Mock error responses with backend error codes
 - Test both happy paths and error cases
@@ -655,6 +682,7 @@ describe('useAuth', () => {
 ### Step 10: Write Vitest Component Tests
 
 **Files**:
+
 - `src/Abuvi.Web/src/components/auth/__tests__/PasswordStrengthMeter.test.ts`
 - `src/Abuvi.Web/src/components/auth/__tests__/RegistrationForm.test.ts`
 
@@ -663,6 +691,7 @@ describe('useAuth', () => {
 **Implementation Steps**:
 
 **PasswordStrengthMeter tests**:
+
 1. ✅ Should show "Weak" for password with only lowercase letters
 2. ✅ Should show "Good" for password meeting most criteria
 3. ✅ Should show "Strong" for password meeting all criteria
@@ -670,6 +699,7 @@ describe('useAuth', () => {
 5. ✅ Should update strength in real-time as password prop changes
 
 **RegistrationForm tests**:
+
 1. ✅ Should render all form fields
 2. ✅ Should validate required fields
 3. ✅ Should validate email format
@@ -682,11 +712,13 @@ describe('useAuth', () => {
 10. ✅ Should emit cancel event when cancel button clicked
 
 **Dependencies**:
+
 - `import { describe, it, expect } from 'vitest'`
 - `import { mount } from '@vue/test-utils'`
 - Component imports
 
 **Implementation Notes**:
+
 - Use `mount()` from Vue Test Utils
 - Simulate user input with `setValue()` and `trigger()`
 - Test emit events with `wrapper.emitted()`
@@ -738,6 +770,7 @@ describe('useAuth', () => {
    - Verify error message is displayed
 
 3. Use Cypress intercept for API mocking:
+
    ```typescript
    cy.intercept('POST', '/api/auth/register-user', {
      statusCode: 200,
@@ -749,9 +782,11 @@ describe('useAuth', () => {
 5. Test responsive design (mobile, tablet, desktop viewports)
 
 **Dependencies**:
+
 - Cypress (already installed)
 
 **Implementation Notes**:
+
 - Mock API responses to avoid dependency on backend
 - Test both success and error paths
 - Verify user feedback (messages, loading states)
@@ -879,6 +914,7 @@ describe('User Registration', () => {
 5. **Report Updates**: Document which files were updated and what changes were made
 
 **References**:
+
 - Follow process described in `ai-specs/specs/documentation-standards.mdc`
 - All documentation must be written in English
 
@@ -911,6 +947,7 @@ Execute steps in this exact sequence:
 After implementation, verify the following:
 
 ### Functionality
+
 - ✅ Registration form accepts all required fields
 - ✅ Password strength meter shows real-time feedback
 - ✅ Form validation works for all fields (email, password, names, phone, document, terms)
@@ -922,6 +959,7 @@ After implementation, verify the following:
 - ✅ All error states display user-friendly messages
 
 ### Error Handling
+
 - ✅ EMAIL_EXISTS error shows appropriate message
 - ✅ DOCUMENT_EXISTS error shows appropriate message
 - ✅ Invalid token error handled in verification page
@@ -930,6 +968,7 @@ After implementation, verify the following:
 - ✅ Validation errors display inline below fields
 
 ### UI/UX
+
 - ✅ Forms are responsive on mobile, tablet, desktop
 - ✅ Loading states show spinner/disabled buttons
 - ✅ Success states show confirmation messages
@@ -940,12 +979,14 @@ After implementation, verify the following:
 - ✅ Terms checkbox is clearly visible
 
 ### Testing Coverage
+
 - ✅ Vitest unit tests pass for composable (all methods)
 - ✅ Vitest component tests pass for all components
 - ✅ Cypress E2E tests pass for all flows (happy path + error cases)
 - ✅ Test coverage meets 90% threshold
 
 ### Accessibility
+
 - ✅ Form fields have associated labels
 - ✅ Error messages have proper ARIA attributes
 - ✅ Keyboard navigation works (tab through fields)
@@ -953,6 +994,7 @@ After implementation, verify the following:
 - ✅ Screen reader compatible
 
 ### Integration
+
 - ✅ API calls use correct endpoints from `useAuth` composable
 - ✅ Router navigation works correctly between pages
 - ✅ URL query parameters extracted correctly (verify-email)
@@ -1183,6 +1225,7 @@ The backend currently logs verification emails to console (Resend integration pe
 Before marking this feature as complete, verify:
 
 ### Code Quality
+
 - ✅ All files use TypeScript with strict mode
 - ✅ No `any` types used
 - ✅ All components use `<script setup lang="ts">`
@@ -1192,6 +1235,7 @@ Before marking this feature as complete, verify:
 - ✅ Prettier formatting applied
 
 ### Functionality
+
 - ✅ Registration form works with all fields
 - ✅ Email verification page works with token
 - ✅ Resend verification page works
@@ -1201,18 +1245,21 @@ Before marking this feature as complete, verify:
 - ✅ Error states display user-friendly messages
 
 ### Testing
+
 - ✅ Vitest tests pass: `npm run test`
 - ✅ Vitest coverage meets 90% threshold: `npm run test:coverage`
 - ✅ Cypress tests pass: `npm run cypress:run`
 - ✅ Manual testing completed with backend running
 
 ### Integration
+
 - ✅ Composable connects to correct API endpoints
 - ✅ Types match backend DTOs
 - ✅ Error codes handled correctly
 - ✅ API responses parsed correctly
 
 ### Documentation
+
 - ✅ Technical documentation updated
 - ✅ Code comments added where necessary
 - ✅ README updated (if needed)
@@ -1224,6 +1271,7 @@ Before marking this feature as complete, verify:
 This implementation plan provides complete details for building the user registration workflow frontend feature. The plan follows Vue 3 Composition API best practices, uses PrimeVue for UI components, Tailwind CSS for styling, and includes comprehensive testing with Vitest and Cypress.
 
 Key deliverables:
+
 - 3 pages (Register, Verify Email, Resend Verification)
 - 2 reusable components (RegistrationForm, PasswordStrengthMeter)
 - 1 composable (useAuth) for API communication
