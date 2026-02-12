@@ -260,3 +260,162 @@ server: {
 ### Python/CSnakes integration issues
 
 Ensure Python 3.12 is installed and the virtual environment is activated. Check that the CSnakes NuGet package version matches your Python version.
+
+## User Registration Flow
+
+The user registration workflow implements a secure, email-verified account creation process. This section documents the frontend implementation.
+
+### Overview
+
+The registration flow consists of three main user journeys:
+
+1. **User Registration** - New users create an account with email and password
+2. **Email Verification** - Users verify their email address via a token sent by email
+3. **Resend Verification** - Users can request a new verification email if needed
+
+### Architecture
+
+#### Component Hierarchy
+
+```
+RegisterPage.vue (pages/auth/)
+├── RegistrationForm.vue (components/auth/)
+│   └── PasswordStrengthMeter.vue (components/auth/)
+│
+VerifyEmailPage.vue (pages/auth/)
+│
+ResendVerificationPage.vue (pages/auth/)
+```
+
+#### Key Files
+
+- **Types**: `src/types/auth.ts` - TypeScript interfaces for auth data (User, RegisterUserRequest, etc.)
+- **Composable**: `src/composables/useAuth.ts` - API communication for registration, verification, and resend
+- **Components**:
+  - `src/components/auth/PasswordStrengthMeter.vue` - Real-time password strength validation
+  - `src/components/auth/RegistrationForm.vue` - Reusable registration form with validation
+- **Pages**:
+  - `src/pages/auth/RegisterPage.vue` - Main registration page
+  - `src/pages/auth/VerifyEmailPage.vue` - Email verification confirmation
+  - `src/pages/auth/ResendVerificationPage.vue` - Resend verification email
+- **Routes**: `/register`, `/verify-email`, `/resend-verification` (all public routes)
+
+### Validation Rules
+
+#### Required Fields
+- Email (max 255 chars, valid format)
+- Password (min 8 chars, must include uppercase, lowercase, digit, special char @$!%*?&#)
+- First Name (max 100 chars)
+- Last Name (max 100 chars)
+- Terms acceptance (must be true)
+
+#### Optional Fields
+- Document Number (max 50 chars, uppercase alphanumeric only)
+- Phone (E.164 format, e.g., +34612345678)
+
+### User Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant RegisterPage
+    participant useAuth
+    participant API
+    participant Email
+
+    User->>RegisterPage: Fill registration form
+    User->>RegisterPage: Submit form
+    RegisterPage->>useAuth: registerUser(data)
+    useAuth->>API: POST /api/auth/register-user
+    API->>API: Validate & create user (inactive)
+    API->>API: Generate verification token
+    API->>Email: Send verification email
+    API->>useAuth: Return user data
+    useAuth->>RegisterPage: Return success
+    RegisterPage->>User: Show "Check your email" message
+
+    User->>Email: Click verification link
+    Email->>User: Navigate to /verify-email?token=xxx
+    VerifyEmailPage->>useAuth: verifyEmail({ token })
+    useAuth->>API: POST /api/auth/verify-email
+    API->>API: Validate token & activate user
+    API->>useAuth: Return success
+    useAuth->>VerifyEmailPage: Return success
+    VerifyEmailPage->>User: Show "Email verified" + login button
+```
+
+### Testing
+
+The registration feature includes comprehensive tests:
+
+#### Unit Tests (Vitest)
+- **Composable tests** (`src/composables/__tests__/useAuth.test.ts`):
+  - ✅ Register user successfully
+  - ✅ Handle EMAIL_EXISTS error
+  - ✅ Handle DOCUMENT_EXISTS error
+  - ✅ Handle validation errors
+  - ✅ Verify email successfully
+  - ✅ Handle invalid/expired tokens
+  - ✅ Resend verification successfully
+  - ✅ Handle resend errors
+  - ✅ Loading state management
+
+- **Component tests** (`src/components/auth/__tests__/`):
+  - ✅ PasswordStrengthMeter shows real-time feedback
+  - ✅ RegistrationForm validates all fields
+  - ✅ Form emits submit/cancel events correctly
+
+#### E2E Tests (Cypress)
+- **Registration flow** (`cypress/e2e/registration.cy.ts`):
+  - ✅ Complete registration successfully
+  - ✅ Show validation errors for invalid input
+  - ✅ Validate email format
+  - ✅ Show password strength feedback
+  - ✅ Handle EMAIL_EXISTS and DOCUMENT_EXISTS errors
+  - ✅ Validate document number and phone format
+  - ✅ Disable submit button while loading
+
+- **Email verification flow**:
+  - ✅ Verify email with valid token
+  - ✅ Handle invalid/expired tokens
+  - ✅ Show error when no token provided
+
+- **Resend verification flow**:
+  - ✅ Resend verification email successfully
+  - ✅ Validate email format
+  - ✅ Handle email not found error
+  - ✅ Handle already verified error
+
+### API Integration
+
+The frontend communicates with the backend via the `useAuth` composable, which wraps three API endpoints:
+
+- `POST /api/auth/register-user` - Register new user
+- `POST /api/auth/verify-email` - Verify email with token
+- `POST /api/auth/resend-verification` - Request new verification email
+
+For complete API documentation, see [api-endpoints.md](./api-endpoints.md).
+
+### Error Handling
+
+The implementation includes user-friendly error messages for all error scenarios:
+
+| Backend Error Code | User-Friendly Message |
+|--------------------|----------------------|
+| `EMAIL_EXISTS` | "An account with this email already exists" |
+| `DOCUMENT_EXISTS` | "An account with this document number already exists" |
+| `VERIFICATION_FAILED` | "Verification token has expired. Please request a new one." |
+| `EMAIL_NOT_VERIFIED` | "Please verify your email before logging in" |
+| `NOT_FOUND` | "Invalid verification token" |
+| `RESEND_FAILED` | "Email is already verified" |
+| (default) | "An error occurred. Please try again." |
+
+### Development Notes
+
+- All components use `<script setup lang="ts">` (Composition API)
+- Styling uses Tailwind CSS exclusively (no `<style>` blocks)
+- PrimeVue components used: InputText, Password, Checkbox, Button, Card, Message, ProgressBar, ProgressSpinner
+- API calls go through composables, never directly from components
+- Form validation happens on submit (not on blur)
+- Loading states are managed by the composable and passed to components
+- All routes are public (no authentication required)

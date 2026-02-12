@@ -8,6 +8,21 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomePage
+    },
+    {
+      path: '/register',
+      name: 'register',
+      component: () => import('@/pages/auth/RegisterPage.vue')
+    },
+    {
+      path: '/verify-email',
+      name: 'verifyEmail',
+      component: () => import('@/pages/auth/VerifyEmailPage.vue')
+    },
+    {
+      path: '/resend-verification',
+      name: 'resendVerification',
+      component: () => import('@/pages/auth/ResendVerificationPage.vue')
     }
   ]
 })
