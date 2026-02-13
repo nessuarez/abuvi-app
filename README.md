@@ -108,7 +108,37 @@ abuvi-app/                  # Root directory
    dotnet user-secrets set "Jwt:Secret" "your-strong-secret-key-at-least-32-characters-long-change-this"
    ```
 
-4. **Start the Backend API**:
+4. **Configure Resend email service** (first time only):
+
+   The application uses [Resend](https://resend.com) for sending transactional emails (verification emails, password resets, camp confirmations, payment receipts, etc.).
+
+   ```bash
+   cd src/Abuvi.API
+   # Get your API key from https://resend.com/api-keys
+   dotnet user-secrets set "Resend:ApiKey" "re_your_api_key_here"
+
+   # Optional: Customize sender email (default: noreply@abuvi.org)
+   dotnet user-secrets set "Resend:FromEmail" "noreply@yourdomain.com"
+   dotnet user-secrets set "Resend:FromName" "Your Organization Name"
+   ```
+
+   **Email Types Sent:**
+   - **Verification Email**: On user registration (blocks account activation until verified)
+   - **Welcome Email**: After successful email verification
+   - **Password Reset**: On password reset request
+   - **Camp Registration Confirmation**: After successful camp booking
+   - **Payment Receipt**: After successful payment
+   - **Event Reminders**: Before upcoming events
+   - **Feedback Requests**: After camp completion
+   - **Camp Update Notifications**: When camp details change
+
+   **Troubleshooting:**
+   - **Emails not sending**: Verify API key is configured correctly
+   - **401 Unauthorized**: API key is invalid, regenerate in Resend dashboard
+   - **403 Forbidden**: Domain not verified (production only)
+   - **429 Rate Limit**: Free tier limit reached (100/day), upgrade plan or wait 24h
+
+5. **Start the Backend API**:
 
    ```bash
    dotnet run --project src/Abuvi.API

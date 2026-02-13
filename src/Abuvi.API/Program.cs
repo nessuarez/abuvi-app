@@ -80,7 +80,27 @@ builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-// Email
+// ========================================
+// Email Service Configuration
+// ========================================
+var resendApiKey = builder.Configuration["Resend:ApiKey"];
+if (string.IsNullOrEmpty(resendApiKey))
+{
+    var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger("Startup");
+    logger.LogWarning(
+        "Resend API key not configured. Email sending will fail. " +
+        "Use: dotnet user-secrets set \"Resend:ApiKey\" \"your-key\"");
+}
+
+// Register Resend wrapper
+builder.Services.AddScoped<Abuvi.API.Common.Services.IResendClient>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var apiKey = config["Resend:ApiKey"] ?? string.Empty;
+    return new Abuvi.API.Common.Services.ResendClientWrapper(apiKey);
+});
+
+// Register email service
 builder.Services.AddScoped<Abuvi.API.Common.Services.IEmailService, Abuvi.API.Common.Services.ResendEmailService>();
 
 var app = builder.Build();
