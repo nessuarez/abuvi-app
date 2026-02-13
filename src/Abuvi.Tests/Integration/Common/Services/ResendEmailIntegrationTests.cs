@@ -62,7 +62,7 @@ public class ResendEmailIntegrationTests
         var resendClient = new ResendClientWrapper(apiKey);
         var emailService = new ResendEmailService(tempConfig, _logger, resendClient);
 
-        var testEmail = "nestor.suarez.alfonso@gmail.com";
+        var testEmail = "chachosua@gmail.com";
         var testFirstName = "Nestor";
         var testToken = "test_verification_token_123456";
 
@@ -107,7 +107,7 @@ public class ResendEmailIntegrationTests
         var resendClient = new ResendClientWrapper(apiKey);
         var emailService = new ResendEmailService(tempConfig, _logger, resendClient);
 
-        var testEmail = "nestor.suarez.alfonso@gmail.com";
+        var testEmail = "chachosua@gmail.com";
         var testFirstName = "Nestor";
 
         // Act
@@ -147,7 +147,7 @@ public class ResendEmailIntegrationTests
         var resendClient = new ResendClientWrapper(apiKey);
         var emailService = new ResendEmailService(tempConfig, _logger, resendClient);
 
-        var testEmail = "nestor.suarez.alfonso@gmail.com";
+        var testEmail = "chachosua@gmail.com";
         var testFirstName = "Nestor";
         var testResetToken = "test_reset_token_789";
 
