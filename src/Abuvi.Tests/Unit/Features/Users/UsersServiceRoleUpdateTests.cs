@@ -1,7 +1,7 @@
 using Abuvi.API.Features.Auth;
 using Abuvi.API.Features.Users;
 using FluentAssertions;
-using Moq;
+using NSubstitute;
 
 namespace Abuvi.Tests.Unit.Features.Users;
 
@@ -11,17 +11,17 @@ namespace Abuvi.Tests.Unit.Features.Users;
 /// </summary>
 public class UsersServiceRoleUpdateTests
 {
-    private readonly Mock<IUsersRepository> _mockRepository;
-    private readonly Mock<IPasswordHasher> _mockPasswordHasher;
-    private readonly Mock<IUserRoleChangeLogsRepository> _mockAuditRepository;
+    private readonly IUsersRepository _repository;
+    private readonly IPasswordHasher _passwordHasher;
+    private readonly IUserRoleChangeLogsRepository _auditRepository;
     private readonly UsersService _service;
 
     public UsersServiceRoleUpdateTests()
     {
-        _mockRepository = new Mock<IUsersRepository>();
-        _mockPasswordHasher = new Mock<IPasswordHasher>();
-        _mockAuditRepository = new Mock<IUserRoleChangeLogsRepository>();
-        _service = new UsersService(_mockRepository.Object, _mockPasswordHasher.Object, _mockAuditRepository.Object);
+        _repository = Substitute.For<IUsersRepository>();
+        _passwordHasher = Substitute.For<IPasswordHasher>();
+        _auditRepository = Substitute.For<IUserRoleChangeLogsRepository>();
+        _service = new UsersService(_repository, _passwordHasher, _auditRepository);
     }
 
     #region Admin Authorization Tests
@@ -37,13 +37,13 @@ public class UsersServiceRoleUpdateTests
         var targetUser = CreateUser(targetUserId, "member@test.com", UserRole.Member);
         var updatedUser = CreateUser(targetUserId, "member@test.com", UserRole.Board);
 
-        _mockRepository.Setup(r => r.GetByIdAsync(targetUserId, default))
-            .ReturnsAsync(targetUser);
-        _mockRepository.Setup(r => r.GetByIdAsync(adminId, default))
-            .ReturnsAsync(adminUser);
-        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<User>(), default))
-            .ReturnsAsync(updatedUser);
-        _mockAuditRepository.Setup(r => r.LogRoleChangeAsync(It.IsAny<UserRoleChangeLog>(), default))
+        _repository.GetByIdAsync(targetUserId, default)
+            .Returns(targetUser);
+        _repository.GetByIdAsync(adminId, default)
+            .Returns(adminUser);
+        _repository.UpdateAsync(Arg.Any<User>(), default)
+            .Returns(updatedUser);
+        _auditRepository.LogRoleChangeAsync(Arg.Any<UserRoleChangeLog>(), default)
             .Returns(Task.CompletedTask);
 
         // Act
@@ -52,17 +52,16 @@ public class UsersServiceRoleUpdateTests
         // Assert
         result.Should().NotBeNull();
         result!.Role.Should().Be(UserRole.Board);
-        _mockRepository.Verify(r => r.UpdateAsync(It.Is<User>(u => u.Role == UserRole.Board), default), Times.Once);
-        _mockAuditRepository.Verify(r => r.LogRoleChangeAsync(
-            It.Is<UserRoleChangeLog>(log =>
+        await _repository.Received(1).UpdateAsync(Arg.Is<User>(u => u.Role == UserRole.Board), default);
+        await _auditRepository.Received(1).LogRoleChangeAsync(
+            Arg.Is<UserRoleChangeLog>(log =>
                 log.UserId == targetUserId &&
                 log.ChangedByUserId == adminId &&
                 log.PreviousRole == UserRole.Member &&
                 log.NewRole == UserRole.Board &&
                 log.Reason == "Promotion" &&
                 log.IpAddress == "192.168.1.1"),
-            default),
-            Times.Once);
+            default);
     }
 
     [Fact]
@@ -76,13 +75,13 @@ public class UsersServiceRoleUpdateTests
         var targetUser = CreateUser(targetUserId, "otheradmin@test.com", UserRole.Admin);
         var updatedUser = CreateUser(targetUserId, "otheradmin@test.com", UserRole.Member);
 
-        _mockRepository.Setup(r => r.GetByIdAsync(targetUserId, default))
-            .ReturnsAsync(targetUser);
-        _mockRepository.Setup(r => r.GetByIdAsync(adminId, default))
-            .ReturnsAsync(adminUser);
-        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<User>(), default))
-            .ReturnsAsync(updatedUser);
-        _mockAuditRepository.Setup(r => r.LogRoleChangeAsync(It.IsAny<UserRoleChangeLog>(), default))
+        _repository.GetByIdAsync(targetUserId, default)
+            .Returns(targetUser);
+        _repository.GetByIdAsync(adminId, default)
+            .Returns(adminUser);
+        _repository.UpdateAsync(Arg.Any<User>(), default)
+            .Returns(updatedUser);
+        _auditRepository.LogRoleChangeAsync(Arg.Any<UserRoleChangeLog>(), default)
             .Returns(Task.CompletedTask);
 
         // Act
@@ -91,7 +90,7 @@ public class UsersServiceRoleUpdateTests
         // Assert
         result.Should().NotBeNull();
         result!.Role.Should().Be(UserRole.Member);
-        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<User>(), default), Times.Once);
+        await _repository.Received(1).UpdateAsync(Arg.Any<User>(), default);
     }
 
     #endregion
@@ -109,13 +108,13 @@ public class UsersServiceRoleUpdateTests
         var targetUser = CreateUser(targetUserId, "member@test.com", UserRole.Member);
         var updatedUser = CreateUser(targetUserId, "member@test.com", UserRole.Member);
 
-        _mockRepository.Setup(r => r.GetByIdAsync(targetUserId, default))
-            .ReturnsAsync(targetUser);
-        _mockRepository.Setup(r => r.GetByIdAsync(boardId, default))
-            .ReturnsAsync(boardUser);
-        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<User>(), default))
-            .ReturnsAsync(updatedUser);
-        _mockAuditRepository.Setup(r => r.LogRoleChangeAsync(It.IsAny<UserRoleChangeLog>(), default))
+        _repository.GetByIdAsync(targetUserId, default)
+            .Returns(targetUser);
+        _repository.GetByIdAsync(boardId, default)
+            .Returns(boardUser);
+        _repository.UpdateAsync(Arg.Any<User>(), default)
+            .Returns(updatedUser);
+        _auditRepository.LogRoleChangeAsync(Arg.Any<UserRoleChangeLog>(), default)
             .Returns(Task.CompletedTask);
 
         // Act
@@ -123,7 +122,7 @@ public class UsersServiceRoleUpdateTests
 
         // Assert
         result.Should().NotBeNull();
-        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<User>(), default), Times.Once);
+        await _repository.Received(1).UpdateAsync(Arg.Any<User>(), default);
     }
 
     [Fact]
@@ -136,10 +135,10 @@ public class UsersServiceRoleUpdateTests
         var boardUser = CreateUser(boardId, "board@test.com", UserRole.Board);
         var targetUser = CreateUser(targetUserId, "admin@test.com", UserRole.Admin);
 
-        _mockRepository.Setup(r => r.GetByIdAsync(targetUserId, default))
-            .ReturnsAsync(targetUser);
-        _mockRepository.Setup(r => r.GetByIdAsync(boardId, default))
-            .ReturnsAsync(boardUser);
+        _repository.GetByIdAsync(targetUserId, default)
+            .Returns(targetUser);
+        _repository.GetByIdAsync(boardId, default)
+            .Returns(boardUser);
 
         // Act
         var act = async () => await _service.UpdateRoleAsync(targetUserId, UserRole.Member, boardId, "Unauthorized");
@@ -147,8 +146,8 @@ public class UsersServiceRoleUpdateTests
         // Assert
         await act.Should().ThrowAsync<UnauthorizedAccessException>()
             .WithMessage("Insufficient privileges to change this role");
-        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<User>(), default), Times.Never);
-        _mockAuditRepository.Verify(r => r.LogRoleChangeAsync(It.IsAny<UserRoleChangeLog>(), default), Times.Never);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<User>(), default);
+        await _auditRepository.DidNotReceive().LogRoleChangeAsync(Arg.Any<UserRoleChangeLog>(), default);
     }
 
     [Fact]
@@ -161,10 +160,10 @@ public class UsersServiceRoleUpdateTests
         var boardUser = CreateUser(boardId, "board@test.com", UserRole.Board);
         var targetUser = CreateUser(targetUserId, "otherboard@test.com", UserRole.Board);
 
-        _mockRepository.Setup(r => r.GetByIdAsync(targetUserId, default))
-            .ReturnsAsync(targetUser);
-        _mockRepository.Setup(r => r.GetByIdAsync(boardId, default))
-            .ReturnsAsync(boardUser);
+        _repository.GetByIdAsync(targetUserId, default)
+            .Returns(targetUser);
+        _repository.GetByIdAsync(boardId, default)
+            .Returns(boardUser);
 
         // Act
         var act = async () => await _service.UpdateRoleAsync(targetUserId, UserRole.Member, boardId, "Unauthorized");
@@ -184,10 +183,10 @@ public class UsersServiceRoleUpdateTests
         var boardUser = CreateUser(boardId, "board@test.com", UserRole.Board);
         var targetUser = CreateUser(targetUserId, "member@test.com", UserRole.Member);
 
-        _mockRepository.Setup(r => r.GetByIdAsync(targetUserId, default))
-            .ReturnsAsync(targetUser);
-        _mockRepository.Setup(r => r.GetByIdAsync(boardId, default))
-            .ReturnsAsync(boardUser);
+        _repository.GetByIdAsync(targetUserId, default)
+            .Returns(targetUser);
+        _repository.GetByIdAsync(boardId, default)
+            .Returns(boardUser);
 
         // Act
         var act = async () => await _service.UpdateRoleAsync(targetUserId, UserRole.Board, boardId, "Promotion");
@@ -211,10 +210,10 @@ public class UsersServiceRoleUpdateTests
         var memberUser = CreateUser(memberId, "member@test.com", UserRole.Member);
         var targetUser = CreateUser(targetUserId, "othermember@test.com", UserRole.Member);
 
-        _mockRepository.Setup(r => r.GetByIdAsync(targetUserId, default))
-            .ReturnsAsync(targetUser);
-        _mockRepository.Setup(r => r.GetByIdAsync(memberId, default))
-            .ReturnsAsync(memberUser);
+        _repository.GetByIdAsync(targetUserId, default)
+            .Returns(targetUser);
+        _repository.GetByIdAsync(memberId, default)
+            .Returns(memberUser);
 
         // Act
         var act = async () => await _service.UpdateRoleAsync(targetUserId, UserRole.Board, memberId, "Unauthorized");
@@ -240,8 +239,8 @@ public class UsersServiceRoleUpdateTests
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Users cannot change their own role");
-        _mockRepository.Verify(r => r.GetByIdAsync(It.IsAny<Guid>(), default), Times.Never);
-        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<User>(), default), Times.Never);
+        await _repository.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), default);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<User>(), default);
     }
 
     #endregion
@@ -255,16 +254,16 @@ public class UsersServiceRoleUpdateTests
         var adminId = Guid.NewGuid();
         var targetUserId = Guid.NewGuid();
 
-        _mockRepository.Setup(r => r.GetByIdAsync(targetUserId, default))
-            .ReturnsAsync((User?)null);
+        _repository.GetByIdAsync(targetUserId, default)
+            .Returns((User?)null);
 
         // Act
         var result = await _service.UpdateRoleAsync(targetUserId, UserRole.Board, adminId, "Test");
 
         // Assert
         result.Should().BeNull();
-        _mockRepository.Verify(r => r.GetByIdAsync(adminId, default), Times.Never);
-        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<User>(), default), Times.Never);
+        await _repository.DidNotReceive().GetByIdAsync(adminId, default);
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<User>(), default);
     }
 
     [Fact]
@@ -275,10 +274,10 @@ public class UsersServiceRoleUpdateTests
         var targetUserId = Guid.NewGuid();
         var targetUser = CreateUser(targetUserId, "target@test.com", UserRole.Member);
 
-        _mockRepository.Setup(r => r.GetByIdAsync(targetUserId, default))
-            .ReturnsAsync(targetUser);
-        _mockRepository.Setup(r => r.GetByIdAsync(adminId, default))
-            .ReturnsAsync((User?)null);
+        _repository.GetByIdAsync(targetUserId, default)
+            .Returns(targetUser);
+        _repository.GetByIdAsync(adminId, default)
+            .Returns((User?)null);
 
         // Act
         var act = async () => await _service.UpdateRoleAsync(targetUserId, UserRole.Board, adminId, "Test");
@@ -305,29 +304,28 @@ public class UsersServiceRoleUpdateTests
         var targetUser = CreateUser(targetUserId, "member@test.com", UserRole.Member);
         var updatedUser = CreateUser(targetUserId, "member@test.com", UserRole.Board);
 
-        _mockRepository.Setup(r => r.GetByIdAsync(targetUserId, default))
-            .ReturnsAsync(targetUser);
-        _mockRepository.Setup(r => r.GetByIdAsync(adminId, default))
-            .ReturnsAsync(adminUser);
-        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<User>(), default))
-            .ReturnsAsync(updatedUser);
-        _mockAuditRepository.Setup(r => r.LogRoleChangeAsync(It.IsAny<UserRoleChangeLog>(), default))
+        _repository.GetByIdAsync(targetUserId, default)
+            .Returns(targetUser);
+        _repository.GetByIdAsync(adminId, default)
+            .Returns(adminUser);
+        _repository.UpdateAsync(Arg.Any<User>(), default)
+            .Returns(updatedUser);
+        _auditRepository.LogRoleChangeAsync(Arg.Any<UserRoleChangeLog>(), default)
             .Returns(Task.CompletedTask);
 
         // Act
         await _service.UpdateRoleAsync(targetUserId, UserRole.Board, adminId, reason, ipAddress);
 
         // Assert
-        _mockAuditRepository.Verify(r => r.LogRoleChangeAsync(
-            It.Is<UserRoleChangeLog>(log =>
+        await _auditRepository.Received(1).LogRoleChangeAsync(
+            Arg.Is<UserRoleChangeLog>(log =>
                 log.UserId == targetUserId &&
                 log.ChangedByUserId == adminId &&
                 log.PreviousRole == UserRole.Member &&
                 log.NewRole == UserRole.Board &&
                 log.Reason == reason &&
                 log.IpAddress == ipAddress),
-            default),
-            Times.Once);
+            default);
     }
 
     [Fact]
@@ -341,23 +339,22 @@ public class UsersServiceRoleUpdateTests
         var targetUser = CreateUser(targetUserId, "member@test.com", UserRole.Member);
         var updatedUser = CreateUser(targetUserId, "member@test.com", UserRole.Board);
 
-        _mockRepository.Setup(r => r.GetByIdAsync(targetUserId, default))
-            .ReturnsAsync(targetUser);
-        _mockRepository.Setup(r => r.GetByIdAsync(adminId, default))
-            .ReturnsAsync(adminUser);
-        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<User>(), default))
-            .ReturnsAsync(updatedUser);
-        _mockAuditRepository.Setup(r => r.LogRoleChangeAsync(It.IsAny<UserRoleChangeLog>(), default))
+        _repository.GetByIdAsync(targetUserId, default)
+            .Returns(targetUser);
+        _repository.GetByIdAsync(adminId, default)
+            .Returns(adminUser);
+        _repository.UpdateAsync(Arg.Any<User>(), default)
+            .Returns(updatedUser);
+        _auditRepository.LogRoleChangeAsync(Arg.Any<UserRoleChangeLog>(), default)
             .Returns(Task.CompletedTask);
 
         // Act
         await _service.UpdateRoleAsync(targetUserId, UserRole.Board, adminId, ipAddress: null);
 
         // Assert
-        _mockAuditRepository.Verify(r => r.LogRoleChangeAsync(
-            It.Is<UserRoleChangeLog>(log => log.IpAddress == "Unknown"),
-            default),
-            Times.Once);
+        await _auditRepository.Received(1).LogRoleChangeAsync(
+            Arg.Is<UserRoleChangeLog>(log => log.IpAddress == "Unknown"),
+            default);
     }
 
     [Fact]
@@ -371,23 +368,22 @@ public class UsersServiceRoleUpdateTests
         var targetUser = CreateUser(targetUserId, "member@test.com", UserRole.Member);
         var updatedUser = CreateUser(targetUserId, "member@test.com", UserRole.Board);
 
-        _mockRepository.Setup(r => r.GetByIdAsync(targetUserId, default))
-            .ReturnsAsync(targetUser);
-        _mockRepository.Setup(r => r.GetByIdAsync(adminId, default))
-            .ReturnsAsync(adminUser);
-        _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<User>(), default))
-            .ReturnsAsync(updatedUser);
-        _mockAuditRepository.Setup(r => r.LogRoleChangeAsync(It.IsAny<UserRoleChangeLog>(), default))
+        _repository.GetByIdAsync(targetUserId, default)
+            .Returns(targetUser);
+        _repository.GetByIdAsync(adminId, default)
+            .Returns(adminUser);
+        _repository.UpdateAsync(Arg.Any<User>(), default)
+            .Returns(updatedUser);
+        _auditRepository.LogRoleChangeAsync(Arg.Any<UserRoleChangeLog>(), default)
             .Returns(Task.CompletedTask);
 
         // Act
         await _service.UpdateRoleAsync(targetUserId, UserRole.Board, adminId, reason: null);
 
         // Assert
-        _mockAuditRepository.Verify(r => r.LogRoleChangeAsync(
-            It.Is<UserRoleChangeLog>(log => log.Reason == null),
-            default),
-            Times.Once);
+        await _auditRepository.Received(1).LogRoleChangeAsync(
+            Arg.Is<UserRoleChangeLog>(log => log.Reason == null),
+            default);
     }
 
     #endregion

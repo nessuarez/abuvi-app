@@ -7,26 +7,28 @@ using Abuvi.API.Features.Users;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Moq;
+using NSubstitute;
 using Xunit;
 
 public class AuthServiceTests_Registration
 {
-    private readonly Mock<IUsersRepository> _repository;
-    private readonly Mock<IEmailService> _emailService;
-    private readonly Mock<IPasswordHasher> _passwordHasher;
-    private readonly Mock<JwtTokenService> _jwtTokenService;
+    private readonly IUsersRepository _repository;
+    private readonly IEmailService _emailService;
+    private readonly IPasswordHasher _passwordHasher;
+    private readonly JwtTokenService _jwtTokenService;
     private readonly IConfiguration _configuration;
-    private readonly Mock<ILogger<AuthService>> _logger;
+    private readonly ILogger<AuthService> _logger;
     private readonly AuthService _service;
 
     public AuthServiceTests_Registration()
     {
-        _repository = new Mock<IUsersRepository>();
-        _emailService = new Mock<IEmailService>();
-        _passwordHasher = new Mock<IPasswordHasher>();
-        _jwtTokenService = new Mock<JwtTokenService>(MockBehavior.Loose, new object[] { Mock.Of<IConfiguration>() });
-        _logger = new Mock<ILogger<AuthService>>();
+        _repository = Substitute.For<IUsersRepository>();
+        _emailService = Substitute.For<IEmailService>();
+        _passwordHasher = Substitute.For<IPasswordHasher>();
+
+        var jwtConfig = Substitute.For<IConfiguration>();
+        _jwtTokenService = Substitute.For<JwtTokenService>(jwtConfig);
+        _logger = Substitute.For<ILogger<AuthService>>();
 
         var configDict = new Dictionary<string, string?>
         {
@@ -37,12 +39,12 @@ public class AuthServiceTests_Registration
             .Build();
 
         _service = new AuthService(
-            _repository.Object,
-            _passwordHasher.Object,
-            _jwtTokenService.Object,
-            _emailService.Object,
+            _repository,
+            _passwordHasher,
+            _jwtTokenService,
+            _emailService,
             _configuration,
-            _logger.Object);
+            _logger);
     }
 
     [Fact]
@@ -59,11 +61,11 @@ public class AuthServiceTests_Registration
             true
         );
 
-        _repository.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
-        _repository.Setup(r => r.GetByDocumentNumberAsync(request.DocumentNumber, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
-        _passwordHasher.Setup(p => p.HashPassword(request.Password))
+        _repository.GetByEmailAsync(request.Email, Arg.Any<CancellationToken>())
+            .Returns((User?)null);
+        _repository.GetByDocumentNumberAsync(request.DocumentNumber!, Arg.Any<CancellationToken>())
+            .Returns((User?)null);
+        _passwordHasher.HashPassword(request.Password)
             .Returns("hashed_password");
 
         // Act
@@ -76,8 +78,8 @@ public class AuthServiceTests_Registration
         result.EmailVerified.Should().BeFalse();
         result.IsActive.Should().BeFalse();
 
-        _repository.Verify(r => r.CreateAsync(
-            It.Is<User>(u =>
+        await _repository.Received(1).CreateAsync(
+            Arg.Is<User>(u =>
                 u.Email == request.Email &&
                 u.FirstName == request.FirstName &&
                 u.DocumentNumber == request.DocumentNumber &&
@@ -86,15 +88,15 @@ public class AuthServiceTests_Registration
                 u.EmailVerificationToken != null &&
                 u.EmailVerificationTokenExpiry != null
             ),
-            It.IsAny<CancellationToken>()
-        ), Times.Once);
+            Arg.Any<CancellationToken>()
+        );
 
-        _emailService.Verify(e => e.SendVerificationEmailAsync(
+        await _emailService.Received(1).SendVerificationEmailAsync(
             request.Email,
             request.FirstName,
-            It.IsAny<string>(),
-            It.IsAny<CancellationToken>()
-        ), Times.Once);
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>()
+        );
     }
 
     [Fact]
@@ -123,8 +125,8 @@ public class AuthServiceTests_Registration
             UpdatedAt = DateTime.UtcNow
         };
 
-        _repository.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(existingUser);
+        _repository.GetByEmailAsync(request.Email, Arg.Any<CancellationToken>())
+            .Returns(existingUser);
 
         // Act
         Func<Task> act = async () => await _service.RegisterUserAsync(request, CancellationToken.None);
@@ -133,7 +135,7 @@ public class AuthServiceTests_Registration
         await act.Should().ThrowAsync<BusinessRuleException>()
             .WithMessage("*email already exists*");
 
-        _repository.Verify(r => r.CreateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
+        await _repository.DidNotReceive().CreateAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -157,28 +159,28 @@ public class AuthServiceTests_Registration
             UpdatedAt = DateTime.UtcNow
         };
 
-        _repository.Setup(r => r.GetByVerificationTokenAsync(token, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(user);
+        _repository.GetByVerificationTokenAsync(token, Arg.Any<CancellationToken>())
+            .Returns(user);
 
         // Act
         await _service.VerifyEmailAsync(token, CancellationToken.None);
 
         // Assert
-        _repository.Verify(r => r.UpdateAsync(
-            It.Is<User>(u =>
+        await _repository.Received(1).UpdateAsync(
+            Arg.Is<User>(u =>
                 u.EmailVerified == true &&
                 u.IsActive == true &&
                 u.EmailVerificationToken == null &&
                 u.EmailVerificationTokenExpiry == null
             ),
-            It.IsAny<CancellationToken>()
-        ), Times.Once);
+            Arg.Any<CancellationToken>()
+        );
 
-        _emailService.Verify(e => e.SendWelcomeEmailAsync(
+        await _emailService.Received(1).SendWelcomeEmailAsync(
             user.Email,
             user.FirstName,
-            It.IsAny<CancellationToken>()
-        ), Times.Once);
+            Arg.Any<CancellationToken>()
+        );
     }
 
     [Fact]
@@ -201,8 +203,8 @@ public class AuthServiceTests_Registration
             UpdatedAt = DateTime.UtcNow
         };
 
-        _repository.Setup(r => r.GetByVerificationTokenAsync(token, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(user);
+        _repository.GetByVerificationTokenAsync(token, Arg.Any<CancellationToken>())
+            .Returns(user);
 
         // Act
         Func<Task> act = async () => await _service.VerifyEmailAsync(token, CancellationToken.None);

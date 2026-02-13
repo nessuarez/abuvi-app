@@ -7,7 +7,8 @@ using Abuvi.API.Features.Users;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Moq;
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Xunit;
 
 /// <summary>
@@ -16,11 +17,11 @@ using Xunit;
 /// </summary>
 public class AuthEndpointsTests_Registration
 {
-    private readonly Mock<IAuthService> _authService;
+    private readonly IAuthService _authService;
 
     public AuthEndpointsTests_Registration()
     {
-        _authService = new Mock<IAuthService>();
+        _authService = Substitute.For<IAuthService>();
     }
 
     [Fact]
@@ -51,11 +52,11 @@ public class AuthEndpointsTests_Registration
         );
 
         _authService
-            .Setup(s => s.RegisterUserAsync(request, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expectedResponse);
+            .RegisterUserAsync(request, Arg.Any<CancellationToken>())
+            .Returns(expectedResponse);
 
         // Act
-        var result = await AuthEndpoints.RegisterUser(request, _authService.Object, CancellationToken.None);
+        var result = await AuthEndpoints.RegisterUser(request, _authService, CancellationToken.None);
 
         // Assert
         result.Should().BeOfType<Ok<ApiResponse<UserResponse>>>();
@@ -80,11 +81,11 @@ public class AuthEndpointsTests_Registration
         );
 
         _authService
-            .Setup(s => s.RegisterUserAsync(request, It.IsAny<CancellationToken>()))
+            .RegisterUserAsync(request, Arg.Any<CancellationToken>())
             .ThrowsAsync(new BusinessRuleException("An account with this email already exists"));
 
         // Act
-        var result = await AuthEndpoints.RegisterUser(request, _authService.Object, CancellationToken.None);
+        var result = await AuthEndpoints.RegisterUser(request, _authService, CancellationToken.None);
 
         // Assert
         result.Should().BeOfType<JsonHttpResult<ApiResponse<UserResponse>>>();
@@ -111,11 +112,11 @@ public class AuthEndpointsTests_Registration
         );
 
         _authService
-            .Setup(s => s.RegisterUserAsync(request, It.IsAny<CancellationToken>()))
+            .RegisterUserAsync(request, Arg.Any<CancellationToken>())
             .ThrowsAsync(new BusinessRuleException("An account with this document number already exists"));
 
         // Act
-        var result = await AuthEndpoints.RegisterUser(request, _authService.Object, CancellationToken.None);
+        var result = await AuthEndpoints.RegisterUser(request, _authService, CancellationToken.None);
 
         // Assert
         result.Should().BeOfType<JsonHttpResult<ApiResponse<UserResponse>>>();
@@ -134,11 +135,11 @@ public class AuthEndpointsTests_Registration
         var request = new VerifyEmailRequest("valid-token-123");
 
         _authService
-            .Setup(s => s.VerifyEmailAsync(request.Token, It.IsAny<CancellationToken>()))
+            .VerifyEmailAsync(request.Token, Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         // Act
-        var result = await AuthEndpoints.VerifyEmail(request, _authService.Object, CancellationToken.None);
+        var result = await AuthEndpoints.VerifyEmail(request, _authService, CancellationToken.None);
 
         // Assert
         result.Should().BeOfType<Ok<ApiResponse<object>>>();
@@ -154,11 +155,11 @@ public class AuthEndpointsTests_Registration
         var request = new VerifyEmailRequest("expired-token");
 
         _authService
-            .Setup(s => s.VerifyEmailAsync(request.Token, It.IsAny<CancellationToken>()))
+            .VerifyEmailAsync(request.Token, Arg.Any<CancellationToken>())
             .ThrowsAsync(new BusinessRuleException("Verification token has expired"));
 
         // Act
-        var result = await AuthEndpoints.VerifyEmail(request, _authService.Object, CancellationToken.None);
+        var result = await AuthEndpoints.VerifyEmail(request, _authService, CancellationToken.None);
 
         // Assert
         result.Should().BeOfType<JsonHttpResult<ApiResponse<object>>>();
@@ -177,11 +178,11 @@ public class AuthEndpointsTests_Registration
         var request = new VerifyEmailRequest("invalid-token");
 
         _authService
-            .Setup(s => s.VerifyEmailAsync(request.Token, It.IsAny<CancellationToken>()))
+            .VerifyEmailAsync(request.Token, Arg.Any<CancellationToken>())
             .ThrowsAsync(new NotFoundException("User", Guid.Empty));
 
         // Act
-        var result = await AuthEndpoints.VerifyEmail(request, _authService.Object, CancellationToken.None);
+        var result = await AuthEndpoints.VerifyEmail(request, _authService, CancellationToken.None);
 
         // Assert
         result.Should().BeOfType<JsonHttpResult<ApiResponse<object>>>();
@@ -200,11 +201,11 @@ public class AuthEndpointsTests_Registration
         var request = new ResendVerificationRequest("user@example.com");
 
         _authService
-            .Setup(s => s.ResendVerificationAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ResendVerificationAsync(request.Email, Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         // Act
-        var result = await AuthEndpoints.ResendVerification(request, _authService.Object, CancellationToken.None);
+        var result = await AuthEndpoints.ResendVerification(request, _authService, CancellationToken.None);
 
         // Assert
         result.Should().BeOfType<Ok<ApiResponse<object>>>();
@@ -220,11 +221,11 @@ public class AuthEndpointsTests_Registration
         var request = new ResendVerificationRequest("verified@example.com");
 
         _authService
-            .Setup(s => s.ResendVerificationAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ResendVerificationAsync(request.Email, Arg.Any<CancellationToken>())
             .ThrowsAsync(new BusinessRuleException("Email is already verified"));
 
         // Act
-        var result = await AuthEndpoints.ResendVerification(request, _authService.Object, CancellationToken.None);
+        var result = await AuthEndpoints.ResendVerification(request, _authService, CancellationToken.None);
 
         // Assert
         result.Should().BeOfType<JsonHttpResult<ApiResponse<object>>>();
@@ -243,11 +244,11 @@ public class AuthEndpointsTests_Registration
         var request = new ResendVerificationRequest("nonexistent@example.com");
 
         _authService
-            .Setup(s => s.ResendVerificationAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ResendVerificationAsync(request.Email, Arg.Any<CancellationToken>())
             .ThrowsAsync(new NotFoundException("User", Guid.Empty));
 
         // Act
-        var result = await AuthEndpoints.ResendVerification(request, _authService.Object, CancellationToken.None);
+        var result = await AuthEndpoints.ResendVerification(request, _authService, CancellationToken.None);
 
         // Assert
         result.Should().BeOfType<JsonHttpResult<ApiResponse<object>>>();
