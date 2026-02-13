@@ -3,9 +3,12 @@
 	"python.testing.unittestEnabled": false,
 	"python.testing.pytestEnabled": true,
 	"editor.codeActionsOnSave": {
-		"source.fixAll.markdownlint": "explicit"
+		"source.fixAll.markdownlint": "always"
 	},
 	"[markdown]": {
-		"files.trimTrailingWhitespace": true
+		"files.trimTrailingWhitespace": true,
+		"editor.insertSpaces": true,
+		"editor.formatOnSave": true,
+		"editor.formatOnPaste": true
 	}
 }
