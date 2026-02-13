@@ -292,6 +292,7 @@ interface CampEditionExtra {
 ```
 
 **Pricing Examples**:
+
 - **Kayak rental** (€25, PerPerson, OneTime): €25 per person for entire camp
 - **Vegan menu** (€5, PerPerson, PerDay): €5 per person per day (calculated based on camp duration)
 - **Transport** (€30, PerPerson, OneTime): €30 per person one-time fee
