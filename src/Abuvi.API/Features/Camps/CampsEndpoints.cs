@@ -1,0 +1,175 @@
+using Abuvi.API.Common.Extensions;
+using Abuvi.API.Common.Filters;
+using Abuvi.API.Common.Models;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Abuvi.API.Features.Camps;
+
+/// <summary>
+/// Endpoints for camp location management (CRUD operations)
+/// </summary>
+public static class CampsEndpoints
+{
+    /// <summary>
+    /// Maps all camp-related endpoints to the application
+    /// </summary>
+    public static IEndpointRouteBuilder MapCampsEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/camps")
+            .WithTags("Camps")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board")); // Board+ only
+
+        // GET /api/camps - Get all camps
+        group.MapGet("/", GetAllCamps)
+            .WithName("GetAllCamps")
+            .WithSummary("Get all camp locations")
+            .Produces<ApiResponse<List<CampResponse>>>()
+            .Produces(401)
+            .Produces(403);
+
+        // GET /api/camps/{id} - Get camp by ID
+        group.MapGet("/{id:guid}", GetCampById)
+            .WithName("GetCampById")
+            .WithSummary("Get camp location by ID")
+            .Produces<ApiResponse<CampResponse>>()
+            .Produces(401)
+            .Produces(403)
+            .Produces(404);
+
+        // POST /api/camps - Create new camp
+        group.MapPost("/", CreateCamp)
+            .WithName("CreateCamp")
+            .WithSummary("Create a new camp location")
+            .AddEndpointFilter<ValidationFilter<CreateCampRequest>>()
+            .Produces<ApiResponse<CampResponse>>(201)
+            .Produces(400)
+            .Produces(401)
+            .Produces(403);
+
+        // PUT /api/camps/{id} - Update existing camp
+        group.MapPut("/{id:guid}", UpdateCamp)
+            .WithName("UpdateCamp")
+            .WithSummary("Update an existing camp location")
+            .AddEndpointFilter<ValidationFilter<UpdateCampRequest>>()
+            .Produces<ApiResponse<CampResponse>>()
+            .Produces(400)
+            .Produces(401)
+            .Produces(403)
+            .Produces(404);
+
+        // DELETE /api/camps/{id} - Delete camp
+        group.MapDelete("/{id:guid}", DeleteCamp)
+            .WithName("DeleteCamp")
+            .WithSummary("Delete a camp location")
+            .Produces(204)
+            .Produces(400)
+            .Produces(401)
+            .Produces(403)
+            .Produces(404);
+
+        return app;
+    }
+
+    /// <summary>
+    /// Get all camps with optional filtering and pagination
+    /// </summary>
+    private static async Task<IResult> GetAllCamps(
+        [FromServices] CampsService service,
+        [FromQuery] bool? isActive = null,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 100,
+        CancellationToken cancellationToken = default)
+    {
+        var camps = await service.GetAllAsync(isActive, skip, take, cancellationToken);
+        return Results.Ok(ApiResponse<List<CampResponse>>.Ok(camps));
+    }
+
+    /// <summary>
+    /// Get a camp by ID
+    /// </summary>
+    private static async Task<IResult> GetCampById(
+        [FromServices] CampsService service,
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var camp = await service.GetByIdAsync(id, cancellationToken);
+
+        if (camp == null)
+        {
+            return Results.NotFound(ApiResponse<CampResponse>.NotFound("Camp not found"));
+        }
+
+        return Results.Ok(ApiResponse<CampResponse>.Ok(camp));
+    }
+
+    /// <summary>
+    /// Create a new camp
+    /// </summary>
+    private static async Task<IResult> CreateCamp(
+        [FromServices] CampsService service,
+        CreateCampRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var camp = await service.CreateAsync(request, cancellationToken);
+            return Results.Created($"/api/camps/{camp.Id}", ApiResponse<CampResponse>.Ok(camp));
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(ApiResponse<CampResponse>.Fail(ex.Message, "VALIDATION_ERROR"));
+        }
+    }
+
+    /// <summary>
+    /// Update an existing camp
+    /// </summary>
+    private static async Task<IResult> UpdateCamp(
+        [FromServices] CampsService service,
+        Guid id,
+        UpdateCampRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var camp = await service.UpdateAsync(id, request, cancellationToken);
+
+            if (camp == null)
+            {
+                return Results.NotFound(ApiResponse<CampResponse>.NotFound("Camp not found"));
+            }
+
+            return Results.Ok(ApiResponse<CampResponse>.Ok(camp));
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(ApiResponse<CampResponse>.Fail(ex.Message, "VALIDATION_ERROR"));
+        }
+    }
+
+    /// <summary>
+    /// Delete a camp
+    /// </summary>
+    private static async Task<IResult> DeleteCamp(
+        [FromServices] CampsService service,
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var deleted = await service.DeleteAsync(id, cancellationToken);
+
+            if (!deleted)
+            {
+                return Results.NotFound(ApiResponse<object>.NotFound("Camp not found"));
+            }
+
+            return Results.NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(ApiResponse<object>.Fail(ex.Message, "OPERATION_ERROR"));
+        }
+    }
+}

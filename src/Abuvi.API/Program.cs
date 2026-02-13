@@ -3,6 +3,7 @@ using Abuvi.API.Data;
 using Abuvi.API.Common.Middleware;
 using Abuvi.API.Features.Users;
 using Abuvi.API.Features.Auth;
+using Abuvi.API.Features.Camps;
 using FluentValidation;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -80,6 +81,10 @@ builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+// Camps
+builder.Services.AddScoped<ICampsRepository, CampsRepository>();
+builder.Services.AddScoped<CampsService>();
+
 // ========================================
 // Email Service Configuration
 // ========================================
@@ -128,6 +133,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = Dat
 // API endpoints
 app.MapAuthEndpoints();
 app.MapUsersEndpoints();
+app.MapCampsEndpoints();
 
 app.Run();
 
