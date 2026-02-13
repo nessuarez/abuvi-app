@@ -29,11 +29,13 @@ This feature depends on:
 ### 1. Automatic Pricing Calculation
 
 **Based on Family Composition**:
+
 - System calculates each member's age at camp start date
 - Applies appropriate pricing tier (adult/child/baby)
 - Sums individual amounts for base total
 
 **Example**:
+
 ```
 Family: 2 adults (35, 33), 1 child (10), 1 baby (1)
 Camp pricing: Adult €180, Child €120, Baby €60
@@ -43,11 +45,13 @@ Base total = €180 + €180 + €120 + €60 = €540
 ### 2. Extras Calculation
 
 **Supports Multiple Pricing Models**:
+
 - **OneTime + PerPerson**: Kayak rental €25/person = €50 for 2 people
 - **PerDay + PerPerson**: Vegan menu €5/person/day = €50 for 1 person × 10 days
 - **OneTime + PerFamily**: Workshop €50/family = €50 total
 
 **Example**:
+
 ```
 Extras selected:
 - Kayak rental (€25, PerPerson, OneTime) × 2 = €50
@@ -913,6 +917,7 @@ public class RegistrationPricingServiceTests
 ### Step 2: Registration Service Tests (TDD)
 
 **Write Tests First** for:
+
 - Creating registration with members
 - Validating camp capacity
 - Preventing duplicate registrations
@@ -926,6 +931,7 @@ public class RegistrationPricingServiceTests
 ### Step 3: Integration Tests
 
 **Test Scenarios**:
+
 - Complete registration flow (create → add extras → pay → confirm)
 - Capacity validation (reject registration when full)
 - Pricing recalculation on member changes
