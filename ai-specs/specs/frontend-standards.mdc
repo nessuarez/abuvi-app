@@ -107,33 +107,62 @@ frontend/
 ├── public/                     # Static assets (favicon, robots.txt)
 ├── src/
 │   ├── assets/                 # Images, fonts, static resources
+│   │   ├── images/             # Image assets (logo, backgrounds, photos)
+│   │   └── styles/             # Global CSS and design tokens
+│   │       ├── variables.css   # CSS variables (colors, spacing, typography)
+│   │       └── global.css      # Global styles
 │   ├── components/
-│   │   ├── common/             # Shared UI components (AppHeader, AppFooter, LoadingSpinner)
+│   │   ├── layout/             # Layout components (header, footer, navigation)
+│   │   │   ├── AppHeader.vue
+│   │   │   ├── AppFooter.vue
+│   │   │   └── UserMenu.vue
+│   │   ├── auth/               # Authentication components
+│   │   │   ├── AuthContainer.vue
+│   │   │   ├── LoginForm.vue
+│   │   │   └── RegisterForm.vue
+│   │   ├── home/               # Home page components
+│   │   │   ├── QuickAccessCards.vue
+│   │   │   ├── QuickAccessCard.vue
+│   │   │   └── AnniversarySection.vue
+│   │   ├── ui/                 # Shared UI components
+│   │   │   └── Container.vue
+│   │   ├── common/             # Legacy shared components
 │   │   ├── camps/              # Camp-specific components
 │   │   ├── registrations/      # Registration-specific components
+│   │   ├── users/              # User management components
 │   │   ├── memories/           # Historical archive components
 │   │   └── photos/             # Photo gallery components
 │   ├── composables/            # Reusable logic (useAuth, useCamps, useApi)
-│   ├── layouts/                # Page layouts (DefaultLayout, AdminLayout)
-│   ├── pages/                  # Route-level page components
+│   ├── layouts/                # Page layouts
+│   │   ├── AuthenticatedLayout.vue  # Layout for authenticated users
+│   │   └── PublicLayout.vue    # Layout for public pages (future)
+│   ├── views/                  # Main route-level page components (new architecture)
+│   │   ├── LandingPage.vue     # Public authentication page
+│   │   ├── HomePage.vue        # Authenticated home/dashboard
+│   │   ├── CampPage.vue
+│   │   ├── AnniversaryPage.vue
+│   │   ├── ProfilePage.vue
+│   │   └── AdminPage.vue
+│   ├── pages/                  # Legacy route components (to be migrated to views/)
 │   │   ├── HomePage.vue
-│   │   ├── CampsPage.vue
-│   │   ├── RegistrationPage.vue
-│   │   ├── MemoriesPage.vue
-│   │   ├── PhotoGalleryPage.vue
-│   │   └── admin/              # Admin-only pages
+│   │   ├── LoginPage.vue
+│   │   ├── RegisterPage.vue
+│   │   ├── UsersPage.vue
+│   │   └── UserDetailPage.vue
 │   ├── router/                 # Vue Router configuration
 │   │   └── index.ts
 │   ├── stores/                 # Pinia stores
-│   │   ├── auth.ts
+│   │   ├── auth.ts             # Authentication store with login/register actions
 │   │   ├── camps.ts
 │   │   └── registrations.ts
 │   ├── types/                  # TypeScript type definitions
 │   │   ├── api.ts              # API response/request types
-│   │   ├── camp.ts             # Camp-related types
-│   │   └── user.ts             # User-related types
+│   │   ├── auth.ts             # Authentication types (LoginRequest, RegisterRequest, AuthResponse)
+│   │   ├── user.ts             # User-related types
+│   │   └── camp.ts             # Camp-related types
 │   ├── utils/                  # Utility functions
-│   ├── App.vue                 # Root component
+│   │   └── api.ts              # Axios instance with interceptors
+│   ├── App.vue                 # Root component with conditional layouts
 │   └── main.ts                 # Application entry point
 ├── cypress/
 │   ├── e2e/                    # End-to-end test files
@@ -627,6 +656,111 @@ const { camps, loading, error, fetchCamps } = useCamps()
   </div>
 </template>
 ```
+
+## Authentication Patterns
+
+### Route Protection
+
+All routes except the landing page (`/`) require authentication. Route guards enforce this in `router/index.ts`:
+
+```typescript
+router.beforeEach((to, from, next) => {
+  const auth = useAuthStore()
+
+  // Update document title
+  document.title = (to.meta.title as string) || 'ABUVI'
+
+  // Check if route requires authentication
+  if (to.meta.requiresAuth && !auth.isAuthenticated) {
+    // Redirect to landing page with redirect URL
+    next({ path: '/', query: { redirect: to.fullPath } })
+    return
+  }
+
+  // Check if route requires admin role
+  if (to.meta.requiresAdmin && !auth.isAdmin) {
+    // Redirect to home if not admin
+    next({ path: '/home' })
+    return
+  }
+
+  // Redirect authenticated users from landing page to home
+  if (to.path === '/' && auth.isAuthenticated) {
+    const redirect = to.query.redirect as string | undefined
+    next(redirect || '/home')
+    return
+  }
+
+  next()
+})
+```
+
+### Layout Conditional Rendering
+
+The application uses different layouts based on authentication state:
+
+- **Landing Page**: Full-screen authentication page (no header/footer)
+- **Authenticated Pages**: Full layout with header, content, and footer
+
+```vue
+<!-- App.vue -->
+<script setup lang="ts">
+import { computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import AuthenticatedLayout from '@/layouts/AuthenticatedLayout.vue'
+
+const route = useRoute()
+const auth = useAuthStore()
+
+const isLandingPage = computed(() => route.path === '/')
+const useLayout = computed(() => !isLandingPage.value && auth.isAuthenticated)
+
+onMounted(() => {
+  auth.restoreSession()
+})
+</script>
+
+<template>
+  <AuthenticatedLayout v-if="useLayout">
+    <router-view />
+  </AuthenticatedLayout>
+  <router-view v-else />
+</template>
+```
+
+### Authentication Store
+
+The auth store manages user session, roles, and authentication state. It includes both state management and action methods:
+
+```typescript
+const auth = useAuthStore()
+
+// State
+auth.user          // Current user data
+auth.token         // JWT token
+auth.isAuthenticated  // Boolean
+auth.isAdmin       // Role check
+auth.isBoard       // Role check (Admin or Board)
+auth.isMember      // Any authenticated user
+auth.fullName      // Computed full name
+
+// Actions
+await auth.login({ email, password, rememberMe })
+await auth.register({ firstName, lastName, email, password, confirmPassword, acceptTerms })
+auth.logout()
+
+// Legacy methods (for backward compatibility)
+auth.setAuth({ user, token })
+auth.clearAuth()
+auth.restoreSession()
+```
+
+**Key Features:**
+- Login/register actions return `{ success: boolean, error?: string }`
+- "Remember Me" stores credentials in localStorage
+- Session restoration on app initialization
+- JWT token automatically attached to all API requests via Axios interceptors
 
 ## Service Layer Architecture
 

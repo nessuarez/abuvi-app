@@ -5,14 +5,17 @@
 export interface LoginRequest {
   email: string
   password: string
+  rememberMe?: boolean
 }
 
 export interface RegisterRequest {
-  email: string
-  password: string
   firstName: string
   lastName: string
-  phone: string | null
+  email: string
+  password: string
+  confirmPassword: string
+  acceptTerms: boolean
+  phone?: string | null
 }
 
 export interface LoginResponse {
@@ -20,10 +23,18 @@ export interface LoginResponse {
   user: UserInfo
 }
 
+export interface AuthResponse {
+  user: UserInfo
+  token: string
+}
+
+export type UserRole = 'Admin' | 'Board' | 'Member'
+
 export interface UserInfo {
   id: string
   email: string
   firstName: string
   lastName: string
-  role: string // 'Admin' | 'Board' | 'Member'
+  role: UserRole
+  isActive: boolean
 }

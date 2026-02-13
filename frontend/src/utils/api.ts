@@ -1,21 +1,23 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
+import router from '@/router'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5079/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  timeout: 10000
 })
 
-// Request interceptor - attach JWT token
+// Request interceptor - attach auth token
 api.interceptors.request.use(
   (config) => {
-    const authStore = useAuthStore()
-    if (authStore.token) {
-      config.headers.Authorization = `Bearer ${authStore.token}`
+    const auth = useAuthStore()
+    if (auth.token) {
+      config.headers.Authorization = `Bearer ${auth.token}`
     }
     return config
   },
@@ -24,20 +26,15 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor - handle 401 and errors
+// Response interceptor - handle 401 globally
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error)
-
-    // Handle 401 Unauthorized globally
     if (error.response?.status === 401) {
-      const authStore = useAuthStore()
-      authStore.clearAuth()
-      // Use window.location to avoid circular dependency with router
-      window.location.href = '/login'
+      const auth = useAuthStore()
+      auth.logout()
+      router.push({ path: '/', query: { redirect: router.currentRoute.value.fullPath } })
     }
-
     return Promise.reject(error)
   }
 )
