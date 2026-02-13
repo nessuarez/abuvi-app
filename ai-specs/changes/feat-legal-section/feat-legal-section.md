@@ -28,15 +28,19 @@ This document specifies the implementation of the Legal section for the ABUVI we
 ## Legal Pages Overview
 
 ### 1. Aviso Legal (Legal Notice)
+
 Mandatory page under Spanish law (LSSI - Ley de Servicios de la Sociedad de la Información) that identifies the organization and provides legal information about the website.
 
 ### 2. Política de Privacidad (Privacy Policy)
+
 Required by GDPR and Spanish LOPD that explains how personal data is collected, processed, stored, and protected.
 
 ### 3. Estatutos (Bylaws/Statutes)
+
 Organizational statutes that define ABUVI's structure, governance, objectives, and internal regulations.
 
 ### 4. Transparencia (Transparency)
+
 Voluntary transparency page showing organizational information, financial reports, governance structure, and activities in line with good governance practices for non-profit organizations.
 
 ---
@@ -46,38 +50,44 @@ Voluntary transparency page showing organizational information, financial report
 ### 1. Aviso Legal (Legal Notice)
 
 #### Route
+
 - URL: `/legal/aviso-legal` or `/aviso-legal`
 - Component: `AvisoLegalPage.vue`
 
 #### Required Sections
 
 ##### 1.1 Organization Identification
+
 - **Full legal name**: Asociación ABUVI (Amigos de la Buena Vida)
 - **Legal form**: Asociación (Non-profit Association)
 - **CIF/NIF**: [Tax identification number]
 - **Registered address**: [Full address]
 - **Registration**: [Registry number and location]
-- **Email**: info@abuvi.org
+- **Email**: <info@abuvi.org>
 - **Phone**: +34 600 000 000
 
 ##### 1.2 Website Information
+
 - **Domain name**: [Domain]
 - **Hosting provider**: [Provider information if required]
 - **Purpose**: Information and services for members and camp participants
 
 ##### 1.3 Intellectual Property
+
 - Copyright notice for website content
 - Rights over ABUVI logo, images, and materials
 - Conditions for content use and reproduction
 - Attribution requirements
 
 ##### 1.4 Liability Disclaimer
+
 - Accuracy of information disclaimer
 - External links disclaimer
 - Service availability disclaimer
 - Force majeure clause
 
 ##### 1.5 Applicable Law and Jurisdiction
+
 - Spanish law applicability
 - Competent jurisdiction for disputes
 
@@ -121,16 +131,19 @@ El presente sitio web tiene como objeto...
 ### 2. Política de Privacidad (Privacy Policy)
 
 #### Route
+
 - URL: `/legal/privacidad` or `/privacidad`
 - Component: `PrivacidadPage.vue`
 
 #### Required Sections (GDPR Compliance)
 
 ##### 2.1 Data Controller Information
+
 - Organization name and contact details
 - Data Protection Officer (DPO) contact if applicable
 
 ##### 2.2 What Data We Collect
+
 - Personal identification data (name, email, phone)
 - Camp registration data (age, medical information, emergency contacts)
 - Membership data
@@ -138,12 +151,14 @@ El presente sitio web tiene como objeto...
 - Website usage data (cookies, analytics)
 
 ##### 2.3 Legal Basis for Processing
+
 - Consent
 - Contract execution (camp registration, membership)
 - Legal obligation
 - Legitimate interest
 
 ##### 2.4 Purpose of Data Collection
+
 - Camp registration and management
 - Membership management
 - Communication and newsletters
@@ -151,16 +166,19 @@ El presente sitio web tiene como objeto...
 - Legal compliance
 
 ##### 2.5 Data Retention
+
 - How long data is kept
 - Criteria for retention periods
 - Deletion procedures
 
 ##### 2.6 Data Recipients
+
 - Who has access to data (staff, volunteers)
 - Third-party processors (payment providers, email services)
 - International data transfers (if any)
 
 ##### 2.7 User Rights (GDPR)
+
 - Right to access
 - Right to rectification
 - Right to erasure ("right to be forgotten")
@@ -171,19 +189,23 @@ El presente sitio web tiene como objeto...
 - How to exercise rights
 
 ##### 2.8 Data Security
+
 - Security measures implemented
 - Breach notification procedures
 
 ##### 2.9 Cookies Policy
+
 - Types of cookies used
 - Purpose of cookies
 - How to manage cookies
 - Link to detailed cookie policy if separate
 
 ##### 2.10 Updates to Privacy Policy
+
 - How users will be notified of changes
 
 ##### 2.11 Contact and Complaints
+
 - How to contact about privacy concerns
 - Right to file complaint with Spanish Data Protection Agency (AEPD)
 
@@ -246,23 +268,27 @@ También puede presentar una reclamación ante la Agencia Española de Protecci�
 ### 3. Estatutos (Bylaws/Statutes)
 
 #### Route
+
 - URL: `/legal/estatutos` or `/estatutos`
 - Component: `EstatutosPage.vue`
 
 #### Required Sections (Typical Spanish Association Statutes)
 
 ##### 3.1 General Provisions
+
 - Name and nature of the association
 - Registered office
 - Territorial scope
 - Duration
 
 ##### 3.2 Objectives and Activities
+
 - Association's purpose and goals
 - Activities to achieve objectives
 - Non-profit nature
 
 ##### 3.3 Membership
+
 - Types of members (founding, regular, honorary)
 - Admission requirements and procedures
 - Rights and duties of members
@@ -270,6 +296,7 @@ También puede presentar una reclamación ante la Agencia Española de Protecci�
 - Membership fees
 
 ##### 3.4 Organizational Structure
+
 - **General Assembly:**
   - Composition and powers
   - Types of assemblies (ordinary, extraordinary)
@@ -282,20 +309,24 @@ También puede presentar una reclamación ante la Agencia Española de Protecci�
   - Meeting procedures
 
 ##### 3.5 Financial Regime
+
 - Economic resources
 - Budget and accounts
 - Fiscal year
 
 ##### 3.6 Amendment of Statutes
+
 - Procedure for amendments
 - Required majorities
 
 ##### 3.7 Dissolution
+
 - Causes for dissolution
 - Liquidation procedure
 - Destination of remaining assets
 
 #### Implementation Notes
+
 - The statutes content should be provided by ABUVI leadership
 - Can be displayed as a long-form document with table of contents
 - Consider downloadable PDF version
@@ -336,29 +367,34 @@ También puede presentar una reclamación ante la Agencia Española de Protecci�
 ### 4. Transparencia (Transparency)
 
 #### Route
+
 - URL: `/legal/transparencia` or `/transparencia`
 - Component: `TransparenciaPage.vue`
 
 #### Sections
 
 ##### 4.1 Who We Are
+
 - Brief history of ABUVI
 - Mission and vision
 - Values and principles
 
 ##### 4.2 Governance Structure
+
 - Board of Directors members (names, positions)
 - Election process
 - Meeting frequency
 - Decision-making process
 
 ##### 4.3 Organizational Structure
+
 - Organization chart
 - Teams and committees
 - Number of members
 - Number of volunteers/staff
 
 ##### 4.4 Financial Transparency
+
 - **Annual Budget:**
   - Income sources (membership fees, camp fees, donations, grants)
   - Expense breakdown (operations, camp, activities)
@@ -368,6 +404,7 @@ También puede presentar una reclamación ante la Agencia Española de Protecci�
 - **Audit Information** (if applicable)
 
 ##### 4.5 Activities Report
+
 - Annual summary of activities
 - Number of camp participants
 - Events organized
@@ -375,17 +412,20 @@ También puede presentar una reclamación ante la Agencia Española de Protecci�
 - Social impact metrics
 
 ##### 4.6 Documents and Reports
+
 - Downloadable annual reports
 - Meeting minutes (general assemblies)
 - Activity reports
 - Financial statements
 
 ##### 4.7 Code of Conduct
+
 - Ethical principles
 - Conflict of interest policy
 - Complaint procedures
 
 ##### 4.8 Contact for Transparency
+
 - Email for transparency inquiries
 - Response time commitment
 
@@ -479,6 +519,7 @@ Create a reusable layout component for all legal pages:
 ```
 
 **Props:**
+
 - `title`: Page title
 - `lastUpdated`: Last update date
 - `showToc`: Whether to show table of contents (default: true)
@@ -555,18 +596,21 @@ const routes = [
 ### Styling Considerations
 
 #### Typography
+
 - Use readable serif font for long-form legal content (e.g., Georgia, Times)
 - Or stick with sans-serif but increase line-height to 1.7-1.8
 - Font size: 16px minimum for body text
 - Generous line spacing for readability
 
 #### Layout
+
 - Max content width: 800px for optimal reading
 - Generous margins and padding
 - Clear heading hierarchy with distinct sizes
 - Use lists and numbered sections for legal content
 
 #### Print Styles
+
 Create print-specific CSS for clean PDF generation:
 
 ```css
@@ -601,6 +645,7 @@ Create print-specific CSS for clean PDF generation:
 ## Implementation Steps
 
 ### Phase 1: Setup and Structure (Day 1)
+
 1. [ ] Create `views/legal/` directory
 2. [ ] Create `components/legal/` directory
 3. [ ] Create `LegalPageLayout.vue` component
@@ -608,56 +653,64 @@ Create print-specific CSS for clean PDF generation:
 5. [ ] Update footer links to point to legal routes (remove `#`)
 
 ### Phase 2: Content Collection (Day 1-2)
-6. [ ] Gather organization information for Aviso Legal
-7. [ ] Draft or obtain Privacy Policy content (consider legal consultation)
-8. [ ] Obtain official Estatutos document from organization
-9. [ ] Gather transparency data (board members, financial reports)
-10. [ ] Collect downloadable documents (PDFs)
+
+1. [ ] Gather organization information for Aviso Legal
+2. [ ] Draft or obtain Privacy Policy content (consider legal consultation)
+3. [ ] Obtain official Estatutos document from organization
+4. [ ] Gather transparency data (board members, financial reports)
+5. [ ] Collect downloadable documents (PDFs)
 
 ### Phase 3: Page Implementation (Day 2-3)
-11. [ ] Create AvisoLegalPage.vue with content
-12. [ ] Create PrivacidadPage.vue with GDPR-compliant content
-13. [ ] Create EstatutosPage.vue with statutes
-14. [ ] Create TransparenciaPage.vue with transparency info
+
+1. [ ] Create AvisoLegalPage.vue with content
+2. [ ] Create PrivacidadPage.vue with GDPR-compliant content
+3. [ ] Create EstatutosPage.vue with statutes
+4. [ ] Create TransparenciaPage.vue with transparency info
 
 ### Phase 4: Features and Polish (Day 3-4)
-15. [ ] Implement TableOfContents component for navigation
-16. [ ] Add print functionality to each page
-17. [ ] Add downloadable PDFs for key documents
-18. [ ] Implement "last updated" date display
-19. [ ] Add breadcrumb navigation if applicable
+
+1. [ ] Implement TableOfContents component for navigation
+2. [ ] Add print functionality to each page
+3. [ ] Add downloadable PDFs for key documents
+4. [ ] Implement "last updated" date display
+5. [ ] Add breadcrumb navigation if applicable
 
 ### Phase 5: Testing and Compliance (Day 4-5)
-20. [ ] Test all legal page routes and navigation
-21. [ ] Verify content accuracy and legal compliance
-22. [ ] Test print functionality across browsers
-23. [ ] Verify accessibility (screen readers, keyboard navigation)
-24. [ ] Test responsive design on mobile devices
-25. [ ] Check SEO metadata for all pages
-26. [ ] Validate content with legal advisor if possible
+
+1. [ ] Test all legal page routes and navigation
+2. [ ] Verify content accuracy and legal compliance
+3. [ ] Test print functionality across browsers
+4. [ ] Verify accessibility (screen readers, keyboard navigation)
+5. [ ] Test responsive design on mobile devices
+6. [ ] Check SEO metadata for all pages
+7. [ ] Validate content with legal advisor if possible
 
 ### Phase 6: Documentation (Day 5)
-27. [ ] Document how to update legal content
-28. [ ] Create process for updating "last updated" dates
-29. [ ] Document where to store new PDF documents
-30. [ ] Update project documentation
+
+1. [ ] Document how to update legal content
+2. [ ] Create process for updating "last updated" dates
+3. [ ] Document where to store new PDF documents
+4. [ ] Update project documentation
 
 ---
 
 ## Non-Functional Requirements
 
 ### Legal Compliance
+
 - **Spanish Law (LSSI)**: Aviso Legal must comply with LSSI requirements
 - **GDPR**: Privacy Policy must be GDPR-compliant
 - **LOPD**: Comply with Spanish data protection law
 - **Transparency**: Follow good governance practices for associations
 
 ### Content Management
+
 - Easy to update content without developer intervention
 - Version control for legal documents
 - Clear audit trail of changes to legal content
 
 ### Accessibility (WCAG 2.1 AA)
+
 - All legal content must be accessible to screen readers
 - Proper heading hierarchy for document structure
 - High contrast text for readability
@@ -665,17 +718,20 @@ Create print-specific CSS for clean PDF generation:
 - Downloadable PDFs should be accessible (tagged PDFs)
 
 ### SEO
+
 - Proper meta titles and descriptions
 - Semantic HTML structure
 - No indexing restrictions (legal pages should be indexed)
 
 ### Performance
+
 - Fast page load times
 - Optimize PDF file sizes
 - Lazy-load PDFs only when requested
 
 ### Internationalization (Future)
-- Structure content to support future Catalan/English translations
+
+- Structure content to support future English translations
 - Use i18n-ready component structure
 
 ---
@@ -683,18 +739,21 @@ Create print-specific CSS for clean PDF generation:
 ## Content Responsibility
 
 ### Content Ownership
+
 - **Aviso Legal**: Legal team or board
 - **Privacidad**: Data Protection Officer or legal advisor
 - **Estatutos**: Board of Directors (official document)
 - **Transparencia**: Treasurer and board
 
 ### Update Frequency
+
 - **Aviso Legal**: Review annually or when org info changes
 - **Privacidad**: Review annually or when data practices change
 - **Estatutos**: Update only when officially amended
 - **Transparencia**: Update quarterly or annually
 
 ### Approval Process
+
 1. Draft content prepared by responsible party
 2. Legal review (especially for Aviso Legal and Privacidad)
 3. Board approval
@@ -706,6 +765,7 @@ Create print-specific CSS for clean PDF generation:
 ## Acceptance Testing Checklist
 
 ### Content
+
 - [ ] All organization information is accurate
 - [ ] Privacy policy covers all data processing activities
 - [ ] Estatutos match official registered version
@@ -713,6 +773,7 @@ Create print-specific CSS for clean PDF generation:
 - [ ] All contact information is correct
 
 ### Functionality
+
 - [ ] All legal pages load correctly
 - [ ] Footer links navigate to correct legal pages
 - [ ] Table of contents anchors work correctly
@@ -721,6 +782,7 @@ Create print-specific CSS for clean PDF generation:
 - [ ] "Return to home" link functions properly
 
 ### Legal Compliance
+
 - [ ] Aviso Legal meets LSSI requirements
 - [ ] Privacy Policy is GDPR-compliant
 - [ ] All required GDPR user rights are documented
@@ -728,6 +790,7 @@ Create print-specific CSS for clean PDF generation:
 - [ ] Cookie policy is included or referenced
 
 ### Design & UX
+
 - [ ] Pages are readable on all devices
 - [ ] Typography is comfortable for long-form reading
 - [ ] Print layout is clean and professional
@@ -735,6 +798,7 @@ Create print-specific CSS for clean PDF generation:
 - [ ] Navigation is intuitive
 
 ### Accessibility
+
 - [ ] Proper heading hierarchy (H1 → H2 → H3)
 - [ ] All links are descriptive
 - [ ] Color contrast meets WCAG AA
@@ -742,6 +806,7 @@ Create print-specific CSS for clean PDF generation:
 - [ ] Screen reader tested
 
 ### SEO
+
 - [ ] Page titles are descriptive
 - [ ] Meta descriptions are present
 - [ ] Canonical URLs are set
@@ -752,11 +817,12 @@ Create print-specific CSS for clean PDF generation:
 ## Future Enhancements
 
 ### Phase 2 (Optional)
+
 - [ ] Cookie consent banner integration
 - [ ] User consent management system
 - [ ] Downloadable data export for users (GDPR right to portability)
 - [ ] Automated privacy request form
-- [ ] Multi-language support (Catalan, English)
+- [ ] Multi-language support (English)
 - [ ] Interactive organization chart for transparency
 - [ ] Financial data visualizations (charts, graphs)
 - [ ] Searchable document archive
@@ -766,14 +832,17 @@ Create print-specific CSS for clean PDF generation:
 ## Dependencies
 
 ### External Services
+
 - Legal advisor consultation (recommended for Privacy Policy)
 - PDF hosting solution (can use static files initially)
 
 ### NPM Packages (if needed)
+
 - `jspdf` or `html2pdf` for client-side PDF generation (optional)
 - Markdown parser if content is stored in Markdown
 
 ### Required Documents
+
 - Official Estatutos (from organization registry)
 - CIF and registration information
 - Board member information
@@ -782,15 +851,17 @@ Create print-specific CSS for clean PDF generation:
 ---
 
 ## Related Documentation
+
 - [Layout - Main Page Structure](../feat-layout-frontend/layout-ppal_enriched.md)
 - [Base Standards](../../specs/base-standards.md)
-- GDPR Resources: https://gdpr.eu/
-- Spanish AEPD: https://www.aepd.es/
-- LSSI Information: https://www.boe.es/buscar/act.php?id=BOE-A-2002-13758
+- GDPR Resources: <https://gdpr.eu/>
+- Spanish AEPD: <https://www.aepd.es/>
+- LSSI Information: <https://www.boe.es/buscar/act.php?id=BOE-A-2002-13758>
 
 ---
 
 ## Notes
+
 - **Legal Review**: It's highly recommended to have Privacy Policy and Aviso Legal reviewed by a legal professional
 - **Regular Updates**: Legal pages should be reviewed at least annually
 - **Member Communication**: When Privacy Policy changes significantly, notify members
@@ -800,6 +871,7 @@ Create print-specific CSS for clean PDF generation:
 ---
 
 ## Success Metrics
+
 - All legal pages accessible and functional
 - Zero broken links from footer
 - Legal compliance verified by advisor
