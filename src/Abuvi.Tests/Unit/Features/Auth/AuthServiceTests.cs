@@ -3,6 +3,9 @@ using NSubstitute;
 using Xunit;
 using Abuvi.API.Features.Auth;
 using Abuvi.API.Features.Users;
+using Abuvi.API.Common.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Abuvi.Tests.Unit.Features.Auth;
 
@@ -15,14 +18,28 @@ public class AuthServiceTests
     private readonly IUsersRepository _usersRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly JwtTokenService _jwtTokenService;
+    private readonly IEmailService _emailService;
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<AuthService> _logger;
     private readonly AuthService _sut;
 
     public AuthServiceTests()
     {
         _usersRepository = Substitute.For<IUsersRepository>();
         _passwordHasher = Substitute.For<IPasswordHasher>();
-        _jwtTokenService = Substitute.For<JwtTokenService>(Substitute.For<Microsoft.Extensions.Configuration.IConfiguration>());
-        _sut = new AuthService(_usersRepository, _passwordHasher, _jwtTokenService);
+        _jwtTokenService = Substitute.For<JwtTokenService>(Substitute.For<IConfiguration>());
+        _emailService = Substitute.For<IEmailService>();
+        _logger = Substitute.For<ILogger<AuthService>>();
+
+        var configDict = new Dictionary<string, string?>
+        {
+            ["FrontendUrl"] = "http://localhost:5173"
+        };
+        _configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(configDict)
+            .Build();
+
+        _sut = new AuthService(_usersRepository, _passwordHasher, _jwtTokenService, _emailService, _configuration, _logger);
     }
 
     #region LoginAsync Tests
