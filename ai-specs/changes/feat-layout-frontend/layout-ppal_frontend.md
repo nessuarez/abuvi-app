@@ -11,10 +11,12 @@ This plan outlines the implementation of the main page layout for the ABUVI memb
 ### Components Involved
 
 #### Layouts
+
 - `src/layouts/PublicLayout.vue` (unauthenticated users - landing page only)
 - `src/layouts/AuthenticatedLayout.vue` (authenticated users - full app layout)
 
 #### Views (Page-level components)
+
 - `src/views/LandingPage.vue` (public authentication page)
 - `src/views/HomePage.vue` (authenticated dashboard/home)
 - `src/views/CampPage.vue` (camp information - placeholder)
@@ -23,26 +25,31 @@ This plan outlines the implementation of the main page layout for the ABUVI memb
 - `src/views/AdminPage.vue` (admin panel - placeholder, role-protected)
 
 #### Layout Components
+
 - `src/components/layout/AppHeader.vue` (authenticated header with navigation)
 - `src/components/layout/AppFooter.vue` (authenticated footer)
 - `src/components/layout/UserMenu.vue` (user dropdown menu in header)
 
 #### Authentication Components
+
 - `src/components/auth/AuthContainer.vue` (centered container for auth forms)
 - `src/components/auth/LoginForm.vue` (login form)
 - `src/components/auth/RegisterForm.vue` (registration form)
 
 #### Home Page Components
+
 - `src/components/home/QuickAccessCards.vue` (container for quick access cards)
 - `src/components/home/QuickAccessCard.vue` (individual card component)
 - `src/components/home/AnniversarySection.vue` (50th anniversary section)
 
 #### Shared UI Components
+
 - `src/components/ui/Container.vue` (max-width container with responsive padding)
 
 ### State Management
 
 #### Pinia Store
+
 - `src/stores/auth.ts` - Authentication store managing:
   - User session data (`user`, `token`)
   - Authentication state (`isAuthenticated`)
@@ -52,9 +59,11 @@ This plan outlines the implementation of the main page layout for the ABUVI memb
 ### Routing Considerations
 
 #### Public Routes (Unauthenticated)
+
 - `/` - Landing page with authentication forms
 
 #### Protected Routes (Authenticated)
+
 - `/home` - Dashboard/home page (default after login)
 - `/camp` - Camp information page
 - `/anniversary` - 50th anniversary page
@@ -62,6 +71,7 @@ This plan outlines the implementation of the main page layout for the ABUVI memb
 - `/admin` - Admin panel (Admin role only)
 
 #### Route Guards
+
 - `requiresAuth` meta field for protected routes
 - `requiresAdmin` meta field for admin-only routes
 - Redirect unauthenticated users to `/`
@@ -70,16 +80,19 @@ This plan outlines the implementation of the main page layout for the ABUVI memb
 ### Files Referenced
 
 #### Configuration
+
 - `src/router/index.ts` - Route definitions and guards
 - `tailwind.config.ts` - Tailwind CSS configuration
 - `src/main.ts` - App initialization, PrimeVue setup
 
 #### Types
+
 - `src/types/user.ts` - User-related types
 - `src/types/api.ts` - API response types
 - `src/types/auth.ts` - Authentication request/response types
 
 #### Assets
+
 - `src/assets/images/logo.svg` - ABUVI logo
 - `src/assets/images/landing-background.jpg` - Landing page blurred background
 - `src/assets/images/grupo-abuvi.jpg` - Anniversary section image
@@ -87,6 +100,7 @@ This plan outlines the implementation of the main page layout for the ABUVI memb
 - `src/assets/images/icons/` - Icon assets (tent, user, celebration, social media)
 
 #### Styles
+
 - `src/assets/styles/variables.css` - CSS variables (colors, spacing, typography)
 - `src/assets/styles/global.css` - Global styles
 
@@ -101,6 +115,7 @@ This plan outlines the implementation of the main page layout for the ABUVI memb
 **Branch Naming**: `feature/feat-layout-frontend`
 
 **Implementation Steps**:
+
 1. Ensure you're on the latest `main` branch
 2. Pull latest changes: `git pull origin main`
 3. Create new branch: `git checkout -b feature/feat-layout-frontend`
@@ -115,6 +130,7 @@ This plan outlines the implementation of the main page layout for the ABUVI memb
 **Action**: Create the folder structure and define design tokens (colors, typography, spacing) in CSS variables.
 
 **Files to Create**:
+
 - `src/layouts/` (directory)
 - `src/components/layout/` (directory)
 - `src/components/auth/` (directory)
@@ -127,6 +143,7 @@ This plan outlines the implementation of the main page layout for the ABUVI memb
 **Implementation Steps**:
 
 1. Create directory structure:
+
 ```bash
 mkdir -p src/layouts
 mkdir -p src/components/layout
@@ -137,7 +154,8 @@ mkdir -p src/assets/styles
 mkdir -p src/assets/images/icons/social
 ```
 
-2. Create `src/assets/styles/variables.css`:
+1. Create `src/assets/styles/variables.css`:
+
 ```css
 :root {
   /* Colors - Primary (Nature/Outdoor theme) */
@@ -196,7 +214,8 @@ mkdir -p src/assets/images/icons/social
 }
 ```
 
-3. Create `src/assets/styles/global.css`:
+1. Create `src/assets/styles/global.css`:
+
 ```css
 @import './variables.css';
 
@@ -213,7 +232,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 ```
 
-4. Import global styles in `src/main.ts`:
+1. Import global styles in `src/main.ts`:
+
 ```typescript
 import './assets/styles/global.css'
 ```
@@ -221,6 +241,7 @@ import './assets/styles/global.css'
 **Dependencies**: None (CSS only)
 
 **Implementation Notes**:
+
 - Use CSS variables for consistency
 - Colors follow a nature/outdoor theme appropriate for ABUVI
 - Spacing scale follows Tailwind's convention
@@ -233,6 +254,7 @@ import './assets/styles/global.css'
 **Action**: Define TypeScript interfaces for User, Auth, and API responses.
 
 **Files to Create**:
+
 - `src/types/user.ts`
 - `src/types/auth.ts`
 - `src/types/api.ts`
@@ -240,6 +262,7 @@ import './assets/styles/global.css'
 **Implementation Steps**:
 
 1. Create `src/types/user.ts`:
+
 ```typescript
 export type UserRole = 'Admin' | 'Board' | 'Member'
 
@@ -253,7 +276,8 @@ export interface User {
 }
 ```
 
-2. Create `src/types/auth.ts`:
+1. Create `src/types/auth.ts`:
+
 ```typescript
 import type { User } from './user'
 
@@ -278,7 +302,8 @@ export interface AuthResponse {
 }
 ```
 
-3. Create `src/types/api.ts`:
+1. Create `src/types/api.ts`:
+
 ```typescript
 export interface ApiResponse<T> {
   success: boolean
@@ -296,6 +321,7 @@ export interface ApiError {
 **Dependencies**: None
 
 **Implementation Notes**:
+
 - User types match backend DTOs
 - Auth types support both login and registration flows
 - API response wrapper matches backend envelope pattern
@@ -311,6 +337,7 @@ export interface ApiError {
 **Implementation Steps**:
 
 1. Create `src/stores/auth.ts`:
+
 ```typescript
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
@@ -441,10 +468,12 @@ export const useAuthStore = defineStore('auth', () => {
 ```
 
 **Dependencies**:
+
 - `pinia` (already in project)
 - `@/utils/api` (will be created in next step)
 
 **Implementation Notes**:
+
 - Uses Pinia setup syntax (Composition API style)
 - Persists auth state to localStorage for "Remember Me" functionality
 - Provides computed getters for role-based checks
@@ -461,6 +490,7 @@ export const useAuthStore = defineStore('auth', () => {
 **Implementation Steps**:
 
 1. Create `src/utils/api.ts`:
+
 ```typescript
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
@@ -505,11 +535,13 @@ api.interceptors.response.use(
 ```
 
 **Dependencies**:
+
 - `axios` (already in project)
 - `@/stores/auth`
 - `@/router` (will be created in Step 5)
 
 **Implementation Notes**:
+
 - Automatically adds JWT token to all requests
 - Handles 401 (Unauthorized) globally by logging out and redirecting to landing page
 - Saves redirect URL for post-login navigation
@@ -526,6 +558,7 @@ api.interceptors.response.use(
 **Implementation Steps**:
 
 1. Update `src/router/index.ts`:
+
 ```typescript
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -629,10 +662,12 @@ export default router
 ```
 
 **Dependencies**:
+
 - `vue-router` (already in project)
 - `@/stores/auth`
 
 **Implementation Notes**:
+
 - Uses lazy loading for all routes (code splitting)
 - Route guards enforce authentication and role-based access
 - Document title updates based on route meta
@@ -646,11 +681,13 @@ export default router
 **Action**: Create reusable UI components used across the application.
 
 **Files to Create**:
+
 - `src/components/ui/Container.vue`
 
 **Implementation Steps**:
 
 1. Create `src/components/ui/Container.vue`:
+
 ```vue
 <script setup lang="ts">
 interface Props {
@@ -688,6 +725,7 @@ const maxWidthClasses = {
 **Dependencies**: None (Tailwind CSS only)
 
 **Implementation Notes**:
+
 - Provides consistent max-width container
 - Responsive padding
 - Reusable across all pages
@@ -699,6 +737,7 @@ const maxWidthClasses = {
 **Action**: Create login and registration form components.
 
 **Files to Create**:
+
 - `src/components/auth/AuthContainer.vue`
 - `src/components/auth/LoginForm.vue`
 - `src/components/auth/RegisterForm.vue`
@@ -706,6 +745,7 @@ const maxWidthClasses = {
 **Implementation Steps**:
 
 1. Create `src/components/auth/AuthContainer.vue`:
+
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue'
@@ -750,7 +790,8 @@ const activeTab = ref(0)
 </style>
 ```
 
-2. Create `src/components/auth/LoginForm.vue`:
+1. Create `src/components/auth/LoginForm.vue`:
+
 ```vue
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
@@ -872,7 +913,8 @@ const handleSubmit = async () => {
 </template>
 ```
 
-3. Create `src/components/auth/RegisterForm.vue`:
+1. Create `src/components/auth/RegisterForm.vue`:
+
 ```vue
 <script setup lang="ts">
 import { reactive, ref, computed } from 'vue'
@@ -1071,6 +1113,7 @@ const handleSubmit = async () => {
 ```
 
 **Dependencies**:
+
 - `primevue/inputtext`
 - `primevue/password`
 - `primevue/checkbox`
@@ -1080,6 +1123,7 @@ const handleSubmit = async () => {
 - `primevue/tabpanel`
 
 **Implementation Notes**:
+
 - Client-side validation with error messages
 - Password strength indicator in registration form
 - "Remember Me" functionality in login form
@@ -1097,6 +1141,7 @@ const handleSubmit = async () => {
 **Implementation Steps**:
 
 1. Create `src/views/LandingPage.vue`:
+
 ```vue
 <script setup lang="ts">
 import AuthContainer from '@/components/auth/AuthContainer.vue'
@@ -1126,10 +1171,12 @@ import AuthContainer from '@/components/auth/AuthContainer.vue'
 ```
 
 **Dependencies**:
+
 - `@/components/auth/AuthContainer.vue`
 - Background image asset: `src/assets/images/landing-background.jpg`
 
 **Implementation Notes**:
+
 - Full viewport height layout
 - Blurred background with dark overlay for text contrast
 - Centered authentication container
@@ -1143,12 +1190,14 @@ import AuthContainer from '@/components/auth/AuthContainer.vue'
 **Action**: Create header with navigation and user menu for authenticated users.
 
 **Files to Create**:
+
 - `src/components/layout/AppHeader.vue`
 - `src/components/layout/UserMenu.vue`
 
 **Implementation Steps**:
 
 1. Create `src/components/layout/UserMenu.vue`:
+
 ```vue
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
@@ -1218,7 +1267,8 @@ const getInitials = (name: string): string => {
 </template>
 ```
 
-2. Create `src/components/layout/AppHeader.vue`:
+1. Create `src/components/layout/AppHeader.vue`:
+
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue'
@@ -1367,12 +1417,14 @@ const toggleMobileMenu = () => {
 ```
 
 **Dependencies**:
+
 - `primevue/menu`
 - `primevue/button`
 - `primevue/avatar`
 - Logo asset: `src/assets/images/logo.svg`
 
 **Implementation Notes**:
+
 - Sticky header with shadow
 - Desktop horizontal menu, mobile hamburger menu
 - Active route highlighting
@@ -1391,6 +1443,7 @@ const toggleMobileMenu = () => {
 **Implementation Steps**:
 
 1. Create `src/components/layout/AppFooter.vue`:
+
 ```vue
 <script setup lang="ts">
 const currentYear = new Date().getFullYear()
@@ -1532,6 +1585,7 @@ const contactInfo = {
 **Dependencies**: None (Tailwind CSS and PrimeIcons)
 
 **Implementation Notes**:
+
 - Four-column layout on desktop, stacked on mobile
 - Social media links with icons
 - Contact information with email and phone
@@ -1546,6 +1600,7 @@ const contactInfo = {
 **Action**: Create quick access cards and anniversary section for the home page.
 
 **Files to Create**:
+
 - `src/components/home/QuickAccessCard.vue`
 - `src/components/home/QuickAccessCards.vue`
 - `src/components/home/AnniversarySection.vue`
@@ -1553,6 +1608,7 @@ const contactInfo = {
 **Implementation Steps**:
 
 1. Create `src/components/home/QuickAccessCard.vue`:
+
 ```vue
 <script setup lang="ts">
 interface Props {
@@ -1588,7 +1644,8 @@ defineProps<Props>()
 </template>
 ```
 
-2. Create `src/components/home/QuickAccessCards.vue`:
+1. Create `src/components/home/QuickAccessCards.vue`:
+
 ```vue
 <script setup lang="ts">
 import QuickAccessCard from './QuickAccessCard.vue'
@@ -1636,7 +1693,8 @@ const cards = [
 </template>
 ```
 
-3. Create `src/components/home/AnniversarySection.vue`:
+1. Create `src/components/home/AnniversarySection.vue`:
+
 ```vue
 <script setup lang="ts">
 import Button from 'primevue/button'
@@ -1701,12 +1759,14 @@ const goToAnniversary = () => {
 ```
 
 **Dependencies**:
+
 - `primevue/button`
 - Image assets:
   - `src/assets/images/grupo-abuvi.jpg`
   - `src/assets/images/50-aniversario-badge.png`
 
 **Implementation Notes**:
+
 - Cards use grid layout with responsive columns
 - Hover effects on cards
 - Anniversary section uses two-column layout (stacked on mobile)
@@ -1724,6 +1784,7 @@ const goToAnniversary = () => {
 **Implementation Steps**:
 
 1. Create `src/layouts/AuthenticatedLayout.vue`:
+
 ```vue
 <script setup lang="ts">
 import AppHeader from '@/components/layout/AppHeader.vue'
@@ -1744,10 +1805,12 @@ import AppFooter from '@/components/layout/AppFooter.vue'
 ```
 
 **Dependencies**:
+
 - `@/components/layout/AppHeader.vue`
 - `@/components/layout/AppFooter.vue`
 
 **Implementation Notes**:
+
 - Three-section layout: header, main content, footer
 - Main content area takes remaining height (flex-1)
 - Router view renders the active page component
@@ -1763,6 +1826,7 @@ import AppFooter from '@/components/layout/AppFooter.vue'
 **Implementation Steps**:
 
 1. Create `src/views/HomePage.vue`:
+
 ```vue
 <script setup lang="ts">
 import Container from '@/components/ui/Container.vue'
@@ -1783,11 +1847,13 @@ import AnniversarySection from '@/components/home/AnniversarySection.vue'
 ```
 
 **Dependencies**:
+
 - `@/components/ui/Container.vue`
 - `@/components/home/QuickAccessCards.vue`
 - `@/components/home/AnniversarySection.vue`
 
 **Implementation Notes**:
+
 - Uses Container for consistent max-width
 - Light gray background for visual separation
 - Composed of QuickAccessCards and AnniversarySection
@@ -1799,6 +1865,7 @@ import AnniversarySection from '@/components/home/AnniversarySection.vue'
 **Action**: Create placeholder pages for Camp, Anniversary, Profile, and Admin.
 
 **Files to Create**:
+
 - `src/views/CampPage.vue`
 - `src/views/AnniversaryPage.vue`
 - `src/views/ProfilePage.vue`
@@ -1807,6 +1874,7 @@ import AnniversarySection from '@/components/home/AnniversarySection.vue'
 **Implementation Steps**:
 
 1. Create `src/views/CampPage.vue`:
+
 ```vue
 <script setup lang="ts">
 import Container from '@/components/ui/Container.vue'
@@ -1824,7 +1892,8 @@ import Container from '@/components/ui/Container.vue'
 </template>
 ```
 
-2. Create `src/views/AnniversaryPage.vue`:
+1. Create `src/views/AnniversaryPage.vue`:
+
 ```vue
 <script setup lang="ts">
 import Container from '@/components/ui/Container.vue'
@@ -1842,7 +1911,8 @@ import Container from '@/components/ui/Container.vue'
 </template>
 ```
 
-3. Create `src/views/ProfilePage.vue`:
+1. Create `src/views/ProfilePage.vue`:
+
 ```vue
 <script setup lang="ts">
 import Container from '@/components/ui/Container.vue'
@@ -1868,7 +1938,8 @@ const auth = useAuthStore()
 </template>
 ```
 
-4. Create `src/views/AdminPage.vue`:
+1. Create `src/views/AdminPage.vue`:
+
 ```vue
 <script setup lang="ts">
 import Container from '@/components/ui/Container.vue'
@@ -1890,10 +1961,12 @@ import Container from '@/components/ui/Container.vue'
 ```
 
 **Dependencies**:
+
 - `@/components/ui/Container.vue`
 - `@/stores/auth` (ProfilePage only)
 
 **Implementation Notes**:
+
 - Simple placeholder content
 - ProfilePage displays basic user info from auth store
 - AdminPage has visual indicator for restricted access
@@ -1910,6 +1983,7 @@ import Container from '@/components/ui/Container.vue'
 **Implementation Steps**:
 
 1. Update `src/App.vue`:
+
 ```vue
 <script setup lang="ts">
 import { computed } from 'vue'
@@ -1933,10 +2007,12 @@ const useLayout = computed(() => !isLandingPage.value && auth.isAuthenticated)
 ```
 
 **Dependencies**:
+
 - `@/layouts/AuthenticatedLayout.vue`
 - `@/stores/auth`
 
 **Implementation Notes**:
+
 - Landing page renders without layout (full-screen auth page)
 - All authenticated pages use AuthenticatedLayout
 - Layout wraps router-view for consistent header/footer
@@ -1949,6 +2025,7 @@ const useLayout = computed(() => !isLandingPage.value && auth.isAuthenticated)
 **Action**: Add placeholder images for logo, background, and anniversary section.
 
 **Files to Create** (as placeholders):
+
 - `src/assets/images/logo.svg`
 - `src/assets/images/landing-background.jpg`
 - `src/assets/images/grupo-abuvi.jpg`
@@ -1957,6 +2034,7 @@ const useLayout = computed(() => !isLandingPage.value && auth.isAuthenticated)
 **Implementation Steps**:
 
 1. Create a simple SVG logo placeholder at `src/assets/images/logo.svg`:
+
 ```svg
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <circle cx="50" cy="50" r="45" fill="#22c55e"/>
@@ -1964,7 +2042,8 @@ const useLayout = computed(() => !isLandingPage.value && auth.isAuthenticated)
 </svg>
 ```
 
-2. Add note in implementation documentation:
+1. Add note in implementation documentation:
+
 ```
 NOTE: Placeholder images have been created. Replace with actual ABUVI assets:
 - logo.svg: Official ABUVI logo
@@ -1976,6 +2055,7 @@ NOTE: Placeholder images have been created. Replace with actual ABUVI assets:
 **Dependencies**: None
 
 **Implementation Notes**:
+
 - SVG logo is a simple placeholder
 - Background and photos should be replaced with actual ABUVI assets
 - Images should be optimized (WebP format recommended)
@@ -1988,6 +2068,7 @@ NOTE: Placeholder images have been created. Replace with actual ABUVI assets:
 **Action**: Write comprehensive unit tests for composables, stores, and components.
 
 **Files to Create**:
+
 - `src/stores/__tests__/auth.test.ts`
 - `src/components/auth/__tests__/LoginForm.test.ts`
 - `src/components/home/__tests__/QuickAccessCard.test.ts`
@@ -1995,6 +2076,7 @@ NOTE: Placeholder images have been created. Replace with actual ABUVI assets:
 **Implementation Steps**:
 
 1. Create `src/stores/__tests__/auth.test.ts`:
+
 ```typescript
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
@@ -2130,7 +2212,8 @@ describe('Auth Store', () => {
 })
 ```
 
-2. Create `src/components/auth/__tests__/LoginForm.test.ts`:
+1. Create `src/components/auth/__tests__/LoginForm.test.ts`:
+
 ```typescript
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -2195,7 +2278,8 @@ describe('LoginForm', () => {
 })
 ```
 
-3. Create `src/components/home/__tests__/QuickAccessCard.test.ts`:
+1. Create `src/components/home/__tests__/QuickAccessCard.test.ts`:
+
 ```typescript
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -2245,10 +2329,12 @@ describe('QuickAccessCard', () => {
 ```
 
 **Dependencies**:
+
 - `vitest` (already in project)
 - `@vue/test-utils` (already in project)
 
 **Implementation Notes**:
+
 - Tests cover happy path and error scenarios
 - Auth store tests cover login, logout, and role checks
 - Component tests verify rendering and validation
@@ -2262,12 +2348,14 @@ describe('QuickAccessCard', () => {
 **Action**: Write end-to-end tests for authentication flow and navigation.
 
 **Files to Create**:
+
 - `cypress/e2e/auth-flow.cy.ts`
 - `cypress/e2e/navigation.cy.ts`
 
 **Implementation Steps**:
 
 1. Create `cypress/e2e/auth-flow.cy.ts`:
+
 ```typescript
 describe('Authentication Flow', () => {
   beforeEach(() => {
@@ -2345,7 +2433,8 @@ describe('Authentication Flow', () => {
 })
 ```
 
-2. Create `cypress/e2e/navigation.cy.ts`:
+1. Create `cypress/e2e/navigation.cy.ts`:
+
 ```typescript
 describe('Authenticated Navigation', () => {
   beforeEach(() => {
@@ -2449,9 +2538,11 @@ describe('Admin Navigation', () => {
 ```
 
 **Dependencies**:
+
 - `cypress` (already in project)
 
 **Implementation Notes**:
+
 - Tests cover complete authentication flow
 - Tests verify route protection
 - Tests check role-based navigation (admin link visibility)
@@ -2516,6 +2607,7 @@ frontend/
 │   └── utils/
 │       └── api.ts              # Axios instance with interceptors
 ```
+
 ```
 
 Add new section "Authentication Patterns" to `frontend-standards.mdc`:
@@ -2581,6 +2673,7 @@ await auth.login({ email, password, rememberMe })
 await auth.register({ firstName, lastName, email, password, confirmPassword, acceptTerms })
 auth.logout()
 ```
+
 ```
 
 4. **Verify Documentation**:
