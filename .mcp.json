@@ -1,8 +1,19 @@
 {
-  "mcpServers": {
-    "resend": {
-      "type": "http",
-      "url": "https://resend.com/docs/mcp"
-    }
-  }
+	"mcpServers": {
+		"github": {
+			"command": "cmd",
+			"args": ["/c", "npx", "-y", "@modelcontextprotocol/server-github"],
+			"env": {
+				"GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+			}
+		},
+		"primevue": {
+			"command": "cmd",
+			"args": ["/c", "npx", "-y", "@modelcontextprotocol/server-primevue"]
+		},
+		"resend": {
+			"type": "http",
+			"url": "https://resend.com/docs/mcp"
+		}
+	}
 }
