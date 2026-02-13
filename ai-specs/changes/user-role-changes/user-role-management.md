@@ -300,7 +300,7 @@ Content-Type: application/json
   "success": true,
   "data": {
     "id": "123e4567-e89b-12d3-a456-426614174000",
-    "email": "nestor.suarez.alfonso@gmail.com",
+    "email": "chachosua@gmail.com",
     "firstName": "Nestor",
     "lastName": "Suarez",
     "phone": "+1234567890",
