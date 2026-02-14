@@ -821,6 +821,160 @@ logger.LogError(ex, "Failed to process payment {PaymentId}", payment.Id);
 logger.LogInformation($"Camp {camp.Id} created by user {userId}");
 ```
 
+## Language Standards for User-Facing Content
+
+All user-facing text (validation messages, email templates, API error messages) must be in **Spanish** to match the application's primary audience in Spain.
+
+### Email Templates
+
+- **Language**: Spanish (default)
+- **Tone**: Professional and friendly (informal "tú" form)
+- **Format**: HTML with inline CSS for email client compatibility
+- **Accessibility**: Include alt text for images, use high contrast colors
+
+**Example:**
+
+```csharp
+Subject = "Verifica tu correo electrónico - Campamentos Abuvi",
+HtmlBody = $@"
+    <html>
+    <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+        <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+            <h2 style='color: #2563eb;'>¡Bienvenido a Abuvi, {firstName}!</h2>
+            <p>Gracias por registrarte. Por favor verifica tu dirección de correo electrónico haciendo clic en el enlace de abajo:</p>
+            <p style='margin: 30px 0;'>
+                <a href=""{verificationUrl}""
+                   style='background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;'>
+                    Verificar Correo
+                </a>
+            </p>
+            <p style='color: #666; font-size: 14px;'>Este enlace expirará en 24 horas.</p>
+            <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;' />
+            <p style='color: #999; font-size: 12px;'>
+                Saludos cordiales,<br>
+                El equipo de Abuvi
+            </p>
+        </div>
+    </body>
+    </html>
+"
+```
+
+### Validation Messages
+
+- **Language**: Spanish
+- **FluentValidation**: All `.WithMessage()` calls must use Spanish text
+- **Pattern**: "{Field} es obligatorio/a", "{Field} debe {requirement}"
+- **Gender Agreement**: Match grammatical gender with field name
+
+**Gender Agreement Rules:**
+
+Spanish adjectives must agree with noun gender:
+
+- **Masculine nouns**: el campo, el correo, el nombre, el teléfono, el documento
+  - "El correo electrónico es **obligatorio**"
+  - "El nombre es **obligatorio**"
+
+- **Feminine nouns**: la contraseña, la fecha, la dirección
+  - "La contraseña es **obligatoria**"
+  - "La fecha es **obligatoria**"
+
+**Example:**
+
+```csharp
+public class RegisterUserValidator : AbstractValidator<RegisterUserRequest>
+{
+    public RegisterUserValidator()
+    {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("El correo electrónico es obligatorio")
+            .EmailAddress().WithMessage("Formato de correo electrónico inválido");
+
+        RuleFor(x => x.Password)
+            .NotEmpty().WithMessage("La contraseña es obligatoria")
+            .MinimumLength(8).WithMessage("La contraseña debe tener al menos 8 caracteres");
+
+        RuleFor(x => x.FirstName)
+            .NotEmpty().WithMessage("El nombre es obligatorio");
+
+        RuleFor(x => x.LastName)
+            .NotEmpty().WithMessage("Los apellidos son obligatorios");
+    }
+}
+```
+
+### API Error Messages
+
+- **Language**: Spanish for user-facing errors
+- **Log Messages**: English (for developers)
+- **Exception Messages**: Spanish (shown to users via API)
+- **Pattern**: Clear, actionable messages that explain what went wrong
+
+**Example:**
+
+```csharp
+// ✅ Good: Spanish user message, English log
+_logger.LogError("User registration failed for {Email}", email);
+throw new BusinessRuleException("Ya existe un usuario con este correo electrónico");
+
+// ✅ Good: Spanish validation message with correct gender
+throw new BusinessRuleException("La contraseña es obligatoria"); // feminine
+
+// ❌ Bad: English user message
+throw new BusinessRuleException("User already exists with this email");
+
+// ❌ Bad: Mixed languages in log (should stay English)
+_logger.LogError("Error en registro para {Email}", email);
+```
+
+### Common Spanish Translations
+
+| English | Spanish | Notes |
+|---------|---------|-------|
+| **User Fields** | | |
+| Email is required | El correo electrónico es obligatorio | Masculine |
+| Password is required | La contraseña es obligatoria | Feminine |
+| First name is required | El nombre es obligatorio | Masculine |
+| Last name is required | Los apellidos son obligatorios | Plural |
+| Phone is required | El teléfono es obligatorio | Masculine |
+| **Validation** | | |
+| Invalid email format | Formato de correo electrónico inválido | |
+| Password must be at least 8 characters | La contraseña debe tener al menos 8 caracteres | |
+| Password must contain uppercase letter | La contraseña debe contener al menos una letra mayúscula | |
+| Passwords must match | Las contraseñas deben coincidir | |
+| **Business Rules** | | |
+| User already exists | Ya existe un usuario con este correo electrónico | |
+| Email verification required | Se requiere verificación de correo electrónico | |
+| Invalid credentials | Correo electrónico o contraseña inválidos | |
+| Account not active | La cuenta de usuario no está activa | |
+| Verification token expired | El código de verificación ha expirado | |
+| Email already verified | El correo electrónico ya está verificado | |
+| Cannot change own role | No puedes cambiar tu propio rol | |
+| Insufficient privileges | Privilegios insuficientes | |
+| **System Messages** | | |
+| Not found | No se encontró {entity} con ID '{id}' | |
+| Operation failed | La operación falló | |
+| Success | Éxito | |
+
+### Best Practices
+
+1. **Consistency**: Always use the same translation for the same concept
+   - "correo electrónico" (not "email", "e-mail", or "correo")
+   - "contraseña" (not "clave" or "password")
+
+2. **Gender Agreement**: Verify adjectives match noun gender
+   - Use "obligatorio" with masculine nouns
+   - Use "obligatoria" with feminine nouns
+
+3. **Natural Phrasing**: Use natural Spanish, not literal translations
+   - ✅ "Ya existe un usuario con este correo electrónico"
+   - ❌ "Usuario ya existe con este email"
+
+4. **Separation of Concerns**:
+   - User-facing messages → Spanish
+   - Developer logs → English
+   - Code/comments → English
+
 ## Minimal API Design Standards
 
 ### Endpoint Definitions

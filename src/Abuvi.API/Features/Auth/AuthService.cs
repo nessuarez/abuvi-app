@@ -106,7 +106,7 @@ public class AuthService : IAuthService
         var existingUser = await _usersRepository.GetByEmailAsync(request.Email, ct);
         if (existingUser is not null)
         {
-            throw new BusinessRuleException("An account with this email already exists");
+            throw new BusinessRuleException("Ya existe una cuenta con este correo electrónico");
         }
 
         // Check for duplicate document number (only if provided)
@@ -115,7 +115,7 @@ public class AuthService : IAuthService
             var existingByDocument = await _usersRepository.GetByDocumentNumberAsync(request.DocumentNumber, ct);
             if (existingByDocument is not null)
             {
-                throw new BusinessRuleException("An account with this document number already exists");
+                throw new BusinessRuleException("Ya existe una cuenta con este número de documento");
             }
         }
 
@@ -164,7 +164,7 @@ public class AuthService : IAuthService
 
         if (user.EmailVerificationTokenExpiry < DateTime.UtcNow)
         {
-            throw new BusinessRuleException("Verification token has expired");
+            throw new BusinessRuleException("El código de verificación ha expirado");
         }
 
         user.EmailVerified = true;
@@ -191,7 +191,7 @@ public class AuthService : IAuthService
 
         if (user.EmailVerified)
         {
-            throw new BusinessRuleException("Email is already verified");
+            throw new BusinessRuleException("El correo electrónico ya está verificado");
         }
 
         // Generate new verification token

@@ -10,30 +10,30 @@ public class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
     public CreateUserRequestValidator()
     {
         RuleFor(x => x.Email)
-            .NotEmpty().WithMessage("Email is required")
-            .EmailAddress().WithMessage("Email must be a valid email address")
-            .MaximumLength(255).WithMessage("Email must not exceed 255 characters");
+            .NotEmpty().WithMessage("El correo electrónico es obligatorio")
+            .EmailAddress().WithMessage("El correo electrónico debe ser una dirección válida")
+            .MaximumLength(255).WithMessage("El correo electrónico no debe exceder 255 caracteres");
 
         RuleFor(x => x.Password)
-            .NotEmpty().WithMessage("Password is required")
-            .MinimumLength(8).WithMessage("Password must be at least 8 characters")
-            .MaximumLength(100).WithMessage("Password must not exceed 100 characters");
+            .NotEmpty().WithMessage("La contraseña es obligatoria")
+            .MinimumLength(8).WithMessage("La contraseña debe tener al menos 8 caracteres")
+            .MaximumLength(100).WithMessage("La contraseña no debe exceder 100 caracteres");
 
         RuleFor(x => x.FirstName)
-            .NotEmpty().WithMessage("First name is required")
-            .MaximumLength(100).WithMessage("First name must not exceed 100 characters");
+            .NotEmpty().WithMessage("El nombre es obligatorio")
+            .MaximumLength(100).WithMessage("El nombre no debe exceder 100 caracteres");
 
         RuleFor(x => x.LastName)
-            .NotEmpty().WithMessage("Last name is required")
-            .MaximumLength(100).WithMessage("Last name must not exceed 100 characters");
+            .NotEmpty().WithMessage("Los apellidos son obligatorios")
+            .MaximumLength(100).WithMessage("Los apellidos no deben exceder 100 caracteres");
 
         RuleFor(x => x.Phone)
-            .MaximumLength(20).WithMessage("Phone must not exceed 20 characters")
-            .Matches(@"^\+?[0-9\s\-\(\)]+$").WithMessage("Phone must be a valid phone number")
+            .MaximumLength(20).WithMessage("El teléfono no debe exceder 20 caracteres")
+            .Matches(@"^\+?[0-9\s\-\(\)]+$").WithMessage("El teléfono debe ser un número válido")
             .When(x => !string.IsNullOrWhiteSpace(x.Phone));
 
         RuleFor(x => x.Role)
-            .IsInEnum().WithMessage("Role must be a valid user role");
+            .IsInEnum().WithMessage("El rol debe ser un rol de usuario válido");
     }
 }
 
@@ -45,16 +45,16 @@ public class UpdateUserRequestValidator : AbstractValidator<UpdateUserRequest>
     public UpdateUserRequestValidator()
     {
         RuleFor(x => x.FirstName)
-            .NotEmpty().WithMessage("First name is required")
-            .MaximumLength(100).WithMessage("First name must not exceed 100 characters");
+            .NotEmpty().WithMessage("El nombre es obligatorio")
+            .MaximumLength(100).WithMessage("El nombre no debe exceder 100 caracteres");
 
         RuleFor(x => x.LastName)
-            .NotEmpty().WithMessage("Last name is required")
-            .MaximumLength(100).WithMessage("Last name must not exceed 100 characters");
+            .NotEmpty().WithMessage("Los apellidos son obligatorios")
+            .MaximumLength(100).WithMessage("Los apellidos no deben exceder 100 caracteres");
 
         RuleFor(x => x.Phone)
-            .MaximumLength(20).WithMessage("Phone must not exceed 20 characters")
-            .Matches(@"^\+?[0-9\s\-\(\)]+$").WithMessage("Phone must be a valid phone number")
+            .MaximumLength(20).WithMessage("El teléfono no debe exceder 20 caracteres")
+            .Matches(@"^\+?[0-9\s\-\(\)]+$").WithMessage("El teléfono debe ser un número válido")
             .When(x => !string.IsNullOrWhiteSpace(x.Phone));
     }
 }
@@ -68,11 +68,11 @@ public class UpdateUserRoleRequestValidator : AbstractValidator<UpdateUserRoleRe
     {
         RuleFor(x => x.NewRole)
             .IsInEnum()
-            .WithMessage("Invalid role specified. Must be Admin, Board, or Member.");
+            .WithMessage("Rol inválido especificado. Debe ser Admin, Board o Member.");
 
         RuleFor(x => x.Reason)
             .MaximumLength(500)
             .When(x => x.Reason is not null)
-            .WithMessage("Reason must not exceed 500 characters.");
+            .WithMessage("La razón no debe exceder 500 caracteres.");
     }
 }
