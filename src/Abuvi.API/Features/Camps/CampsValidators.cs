@@ -77,3 +77,36 @@ public class UpdateCampRequestValidator : AbstractValidator<UpdateCampRequest>
             .GreaterThanOrEqualTo(0).WithMessage("Price per baby must be greater than or equal to 0");
     }
 }
+
+/// <summary>
+/// Validator for UpdateAgeRangesRequest
+/// </summary>
+public class UpdateAgeRangesRequestValidator : AbstractValidator<UpdateAgeRangesRequest>
+{
+    public UpdateAgeRangesRequestValidator()
+    {
+        RuleFor(x => x.BabyMaxAge)
+            .GreaterThanOrEqualTo(0).WithMessage("Baby max age must be greater than or equal to 0");
+
+        RuleFor(x => x.ChildMinAge)
+            .GreaterThanOrEqualTo(0).WithMessage("Child min age must be greater than or equal to 0");
+
+        RuleFor(x => x.ChildMaxAge)
+            .GreaterThanOrEqualTo(0).WithMessage("Child max age must be greater than or equal to 0");
+
+        RuleFor(x => x.AdultMinAge)
+            .GreaterThanOrEqualTo(0).WithMessage("Adult min age must be greater than or equal to 0");
+
+        // Validate that baby max age is less than child min age
+        RuleFor(x => x)
+            .Must(x => x.BabyMaxAge < x.ChildMinAge)
+            .WithMessage("Baby max age must be less than child min age")
+            .WithName("BabyMaxAge");
+
+        // Validate that child max age is less than adult min age
+        RuleFor(x => x)
+            .Must(x => x.ChildMaxAge < x.AdultMinAge)
+            .WithMessage("Child max age must be less than adult min age")
+            .WithName("ChildMaxAge");
+    }
+}

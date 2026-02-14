@@ -177,3 +177,25 @@ public record CampResponse(
     DateTime CreatedAt,
     DateTime UpdatedAt
 );
+
+/// <summary>
+/// Request to update age ranges configuration
+/// </summary>
+public record UpdateAgeRangesRequest(
+    int BabyMaxAge,
+    int ChildMinAge,
+    int ChildMaxAge,
+    int AdultMinAge
+);
+
+/// <summary>
+/// Age ranges configuration response
+/// </summary>
+public record AgeRangesResponse(
+    int BabyMaxAge,
+    int ChildMinAge,
+    int ChildMaxAge,
+    int AdultMinAge,
+    Guid? UpdatedBy,
+    DateTime UpdatedAt
+);
