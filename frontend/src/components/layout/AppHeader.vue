@@ -11,14 +11,14 @@ const router = useRouter()
 const mobileMenuOpen = ref(false)
 
 const navigationLinks = [
-  { label: 'Home', path: '/home', icon: 'pi pi-home' },
-  { label: 'Camp', path: '/camp', icon: 'pi pi-map' },
-  { label: 'Anniversary', path: '/anniversary', icon: 'pi pi-star' },
-  { label: 'My Profile', path: '/profile', icon: 'pi pi-user' }
+  { label: 'Inicio', path: '/home', icon: 'pi pi-home' },
+  { label: 'Campamento', path: '/camp', icon: 'pi pi-map' },
+  { label: 'Aniversario', path: '/anniversary', icon: 'pi pi-star' },
+  { label: 'Mi Perfil', path: '/profile', icon: 'pi pi-user' }
 ]
 
 const adminBoardLinks = [
-  { label: 'Users', path: '/users', icon: 'pi pi-users' }
+  { label: 'Usuarios', path: '/users', icon: 'pi pi-users' }
 ]
 
 const isActive = (path: string): boolean => {
@@ -87,7 +87,7 @@ const toggleMobileMenu = () => {
                 : 'bg-red-600 text-white hover:bg-red-700'
             "
           >
-            Admin
+            Administración
           </router-link>
         </nav>
 
@@ -159,16 +159,16 @@ const toggleMobileMenu = () => {
             @click="mobileMenuOpen = false"
           >
             <i class="pi pi-shield" />
-            Admin
+            Administración
           </router-link>
 
           <!-- User info (mobile) -->
           <div class="mt-4 border-t border-gray-200 pt-4">
             <div class="px-4 text-sm text-gray-600">
-              Signed in as <strong>{{ auth.fullName }}</strong>
+              Sesión iniciada como <strong>{{ auth.fullName }}</strong>
             </div>
             <Button
-              label="Logout"
+              label="Cerrar Sesión"
               icon="pi pi-sign-out"
               text
               class="mt-2 w-full justify-start"

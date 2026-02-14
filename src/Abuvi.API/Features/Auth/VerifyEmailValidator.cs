@@ -11,6 +11,6 @@ public class VerifyEmailValidator : AbstractValidator<VerifyEmailRequest>
     {
         RuleFor(x => x.Token)
             .NotEmpty()
-            .WithMessage("Verification token is required");
+            .WithMessage("El código de verificación es obligatorio");
     }
 }

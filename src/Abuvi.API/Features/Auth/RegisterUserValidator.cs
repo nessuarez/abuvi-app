@@ -10,36 +10,36 @@ public class RegisterUserValidator : AbstractValidator<RegisterUserRequest>
     public RegisterUserValidator()
     {
         RuleFor(x => x.Email)
-            .NotEmpty().WithMessage("Email is required")
-            .EmailAddress().WithMessage("Invalid email format")
+            .NotEmpty().WithMessage("El correo electrónico es obligatorio")
+            .EmailAddress().WithMessage("Formato de correo electrónico inválido")
             .MaximumLength(255);
 
         RuleFor(x => x.Password)
-            .NotEmpty().WithMessage("Password is required")
-            .MinimumLength(8).WithMessage("Password must be at least 8 characters")
-            .Matches(@"[A-Z]").WithMessage("Password must contain at least one uppercase letter")
-            .Matches(@"[a-z]").WithMessage("Password must contain at least one lowercase letter")
-            .Matches(@"\d").WithMessage("Password must contain at least one digit")
-            .Matches(@"[@$!%*?&#]").WithMessage("Password must contain at least one special character");
+            .NotEmpty().WithMessage("La contraseña es obligatoria")
+            .MinimumLength(8).WithMessage("La contraseña debe tener al menos 8 caracteres")
+            .Matches(@"[A-Z]").WithMessage("La contraseña debe contener al menos una letra mayúscula")
+            .Matches(@"[a-z]").WithMessage("La contraseña debe contener al menos una letra minúscula")
+            .Matches(@"\d").WithMessage("La contraseña debe contener al menos un dígito")
+            .Matches(@"[@$!%*?&#]").WithMessage("La contraseña debe contener al menos un carácter especial");
 
         RuleFor(x => x.FirstName)
-            .NotEmpty().WithMessage("First name is required")
+            .NotEmpty().WithMessage("El nombre es obligatorio")
             .MaximumLength(100);
 
         RuleFor(x => x.LastName)
-            .NotEmpty().WithMessage("Last name is required")
+            .NotEmpty().WithMessage("Los apellidos son obligatorios")
             .MaximumLength(100);
 
         RuleFor(x => x.DocumentNumber)
             .MaximumLength(50)
             .Matches(@"^[A-Z0-9]+$").When(x => !string.IsNullOrEmpty(x.DocumentNumber))
-            .WithMessage("Document number must contain only uppercase letters and numbers");
+            .WithMessage("El número de documento solo debe contener letras mayúsculas y números");
 
         RuleFor(x => x.Phone)
             .Matches(@"^\+?[1-9]\d{1,14}$").When(x => !string.IsNullOrEmpty(x.Phone))
-            .WithMessage("Invalid phone number format (E.164)");
+            .WithMessage("Formato de número de teléfono inválido (E.164)");
 
         RuleFor(x => x.AcceptedTerms)
-            .Equal(true).WithMessage("You must accept the terms and conditions");
+            .Equal(true).WithMessage("Debes aceptar los términos y condiciones");
     }
 }

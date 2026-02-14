@@ -35,31 +35,31 @@ const validate = (): boolean => {
   errors.value = {}
 
   if (!formData.firstName.trim()) {
-    errors.value.firstName = 'First name is required'
+    errors.value.firstName = 'El nombre es obligatorio'
   }
 
   if (!formData.lastName.trim()) {
-    errors.value.lastName = 'Last name is required'
+    errors.value.lastName = 'Los apellidos son obligatorios'
   }
 
   if (!formData.email.trim()) {
-    errors.value.email = 'Email is required'
+    errors.value.email = 'El correo electrónico es obligatorio'
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-    errors.value.email = 'Invalid email format'
+    errors.value.email = 'Formato de correo electrónico inválido'
   }
 
   if (!formData.password) {
-    errors.value.password = 'Password is required'
+    errors.value.password = 'La contraseña es obligatoria'
   } else if (formData.password.length < 6) {
-    errors.value.password = 'Password must be at least 6 characters'
+    errors.value.password = 'La contraseña debe tener al menos 6 caracteres'
   }
 
   if (formData.password !== formData.confirmPassword) {
-    errors.value.confirmPassword = 'Passwords do not match'
+    errors.value.confirmPassword = 'Las contraseñas no coinciden'
   }
 
   if (!formData.acceptTerms) {
-    errors.value.acceptTerms = 'You must accept the terms and conditions'
+    errors.value.acceptTerms = 'Debes aceptar los términos y condiciones'
   }
 
   return Object.keys(errors.value).length === 0
@@ -77,7 +77,7 @@ const handleSubmit = async () => {
     if (result.success) {
       router.push('/home')
     } else {
-      errorMessage.value = result.error || 'Registration failed'
+      errorMessage.value = result.error || 'Error al registrarse'
     }
   } finally {
     submitting.value = false
@@ -118,7 +118,7 @@ const handleSubmit = async () => {
     </div>
 
     <div class="flex flex-col gap-2">
-      <label for="registerEmail" class="text-sm font-medium text-gray-700">Email *</label>
+      <label for="registerEmail" class="text-sm font-medium text-gray-700">Correo Electrónico *</label>
       <InputText
         id="registerEmail"
         v-model="formData.email"

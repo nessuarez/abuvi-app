@@ -22,7 +22,7 @@ const router = createRouter({
       component: () => import('@/views/HomePage.vue'),
       meta: {
         requiresAuth: true,
-        title: 'ABUVI | Home'
+        title: 'ABUVI | Inicio'
       }
     },
     {
@@ -31,7 +31,7 @@ const router = createRouter({
       component: () => import('@/views/CampPage.vue'),
       meta: {
         requiresAuth: true,
-        title: 'ABUVI | Camp'
+        title: 'ABUVI | Campamento'
       }
     },
     {
@@ -40,7 +40,7 @@ const router = createRouter({
       component: () => import('@/views/AnniversaryPage.vue'),
       meta: {
         requiresAuth: true,
-        title: 'ABUVI | 50th Anniversary'
+        title: 'ABUVI | 50 Aniversario'
       }
     },
     {
@@ -49,7 +49,7 @@ const router = createRouter({
       component: () => import('@/views/ProfilePage.vue'),
       meta: {
         requiresAuth: true,
-        title: 'ABUVI | Profile'
+        title: 'ABUVI | Mi Perfil'
       }
     },
     {
@@ -59,7 +59,7 @@ const router = createRouter({
       meta: {
         requiresAuth: true,
         requiresAdmin: true,
-        title: 'ABUVI | Admin'
+        title: 'ABUVI | Administración'
       }
     },
 
@@ -69,7 +69,7 @@ const router = createRouter({
       name: 'users',
       component: () => import('@/pages/UsersPage.vue'),
       meta: {
-        title: 'User Management',
+        title: 'ABUVI | Gestión de Usuarios',
         requiresAuth: true,
         requiresBoard: true
       }
@@ -79,7 +79,7 @@ const router = createRouter({
       name: 'user-detail',
       component: () => import('@/pages/UserDetailPage.vue'),
       meta: {
-        title: 'User Details',
+        title: 'ABUVI | Detalle de Usuario',
         requiresAuth: true
       }
     },
