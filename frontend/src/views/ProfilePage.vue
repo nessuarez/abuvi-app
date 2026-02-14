@@ -8,14 +8,14 @@ const auth = useAuthStore()
 <template>
   <Container>
     <div class="py-12">
-      <h1 class="mb-4 text-4xl font-bold text-gray-900">My Profile</h1>
+      <h1 class="mb-4 text-4xl font-bold text-gray-900">Mi Perfil</h1>
       <div class="rounded-lg border border-gray-200 bg-white p-6">
-        <p class="mb-2"><strong>Name:</strong> {{ auth.fullName }}</p>
+        <p class="mb-2"><strong>Nombre:</strong> {{ auth.fullName }}</p>
         <p class="mb-2"><strong>Email:</strong> {{ auth.user?.email }}</p>
         <p><strong>Role:</strong> {{ auth.user?.role }}</p>
       </div>
       <p class="mt-4 text-gray-600">
-        Full profile management will be implemented in future iterations.
+        La gestión completa del perfil se implementará en futuras iteraciones.
       </p>
     </div>
   </Container>
