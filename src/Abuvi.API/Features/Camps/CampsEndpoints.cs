@@ -2,6 +2,7 @@ using Abuvi.API.Common.Extensions;
 using Abuvi.API.Common.Filters;
 using Abuvi.API.Common.Models;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Abuvi.API.Features.Camps;
 
@@ -67,6 +68,32 @@ public static class CampsEndpoints
             .Produces(401)
             .Produces(403)
             .Produces(404);
+
+        // Age Ranges Configuration endpoints (separate group for different authorization)
+        var settingsGroup = app.MapGroup("/api/settings")
+            .WithTags("Settings")
+            .WithOpenApi();
+
+        // GET /api/settings/age-ranges - Get age ranges configuration (Board+ only)
+        settingsGroup.MapGet("/age-ranges", GetAgeRanges)
+            .WithName("GetAgeRanges")
+            .WithSummary("Get age ranges configuration")
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"))
+            .Produces<ApiResponse<AgeRangesResponse>>()
+            .Produces(401)
+            .Produces(403)
+            .Produces(404);
+
+        // PUT /api/settings/age-ranges - Update age ranges configuration (Board+ only)
+        settingsGroup.MapPut("/age-ranges", UpdateAgeRanges)
+            .WithName("UpdateAgeRanges")
+            .WithSummary("Update age ranges configuration")
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"))
+            .AddEndpointFilter<ValidationFilter<UpdateAgeRangesRequest>>()
+            .Produces<ApiResponse<AgeRangesResponse>>()
+            .Produces(400)
+            .Produces(401)
+            .Produces(403);
 
         return app;
     }
@@ -170,6 +197,50 @@ public static class CampsEndpoints
         catch (InvalidOperationException ex)
         {
             return Results.BadRequest(ApiResponse<object>.Fail(ex.Message, "OPERATION_ERROR"));
+        }
+    }
+
+    /// <summary>
+    /// Get age ranges configuration
+    /// </summary>
+    private static async Task<IResult> GetAgeRanges(
+        [FromServices] AssociationSettingsService service,
+        CancellationToken cancellationToken = default)
+    {
+        var ageRanges = await service.GetAgeRangesAsync(cancellationToken);
+
+        if (ageRanges == null)
+        {
+            return Results.NotFound(ApiResponse<AgeRangesResponse>.NotFound("Age ranges configuration not found"));
+        }
+
+        return Results.Ok(ApiResponse<AgeRangesResponse>.Ok(ageRanges));
+    }
+
+    /// <summary>
+    /// Update age ranges configuration
+    /// </summary>
+    private static async Task<IResult> UpdateAgeRanges(
+        [FromServices] AssociationSettingsService service,
+        ClaimsPrincipal user,
+        UpdateAgeRangesRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Get user ID from claims
+            var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            var ageRanges = await service.UpdateAgeRangesAsync(request, userId, cancellationToken);
+            return Results.Ok(ApiResponse<AgeRangesResponse>.Ok(ageRanges));
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(ApiResponse<AgeRangesResponse>.Fail(ex.Message, "VALIDATION_ERROR"));
         }
     }
 }
