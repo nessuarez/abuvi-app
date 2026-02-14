@@ -36,7 +36,7 @@ public class UsersService(
         // Check if email already exists
         if (await repository.EmailExistsAsync(request.Email, cancellationToken))
         {
-            throw new InvalidOperationException("A user with this email already exists");
+            throw new InvalidOperationException("Ya existe un usuario con este correo electrónico");
         }
 
         var user = new User
@@ -98,7 +98,7 @@ public class UsersService(
     {
         // 1. Prevent self-role changes
         if (targetUserId == requestingUserId)
-            throw new InvalidOperationException("Users cannot change their own role");
+            throw new InvalidOperationException("Los usuarios no pueden cambiar su propio rol");
 
         // 2. Get target user
         var user = await repository.GetByIdAsync(targetUserId, cancellationToken);
@@ -108,11 +108,11 @@ public class UsersService(
         // 3. Get requesting user for authorization check
         var requestingUser = await repository.GetByIdAsync(requestingUserId, cancellationToken);
         if (requestingUser is null)
-            throw new InvalidOperationException("Requesting user not found");
+            throw new InvalidOperationException("No se encontró el usuario solicitante");
 
         // 4. Validate authorization
         if (!CanChangeRole(requestingUser.Role, user.Role, newRole))
-            throw new UnauthorizedAccessException("Insufficient privileges to change this role");
+            throw new UnauthorizedAccessException("Privilegios insuficientes para cambiar este rol");
 
         // 5. Store previous role for audit
         var previousRole = user.Role;

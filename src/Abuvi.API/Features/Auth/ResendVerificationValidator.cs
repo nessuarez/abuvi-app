@@ -11,8 +11,8 @@ public class ResendVerificationValidator : AbstractValidator<ResendVerificationR
     {
         RuleFor(x => x.Email)
             .NotEmpty()
-            .WithMessage("Email is required")
+            .WithMessage("El correo electrónico es obligatorio")
             .EmailAddress()
-            .WithMessage("Email must be a valid email address");
+            .WithMessage("El correo electrónico debe ser una dirección válida");
     }
 }

@@ -25,13 +25,13 @@ const validate = (): boolean => {
   errors.value = {}
 
   if (!formData.email.trim()) {
-    errors.value.email = 'Email is required'
+    errors.value.email = 'El correo electrónico es obligatorio'
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-    errors.value.email = 'Invalid email format'
+    errors.value.email = 'Formato de correo electrónico inválido'
   }
 
   if (!formData.password) {
-    errors.value.password = 'Password is required'
+    errors.value.password = 'La contraseña es obligatoria'
   }
 
   return Object.keys(errors.value).length === 0
@@ -50,7 +50,7 @@ const handleSubmit = async () => {
       const redirect = router.currentRoute.value.query.redirect as string | undefined
       router.push(redirect || '/home')
     } else {
-      errorMessage.value = result.error || 'Login failed'
+      errorMessage.value = result.error || 'Error al iniciar sesión'
     }
   } finally {
     submitting.value = false
@@ -65,7 +65,7 @@ const handleSubmit = async () => {
     </Message>
 
     <div class="flex flex-col gap-2">
-      <label for="email" class="text-sm font-medium text-gray-700">Email *</label>
+      <label for="email" class="text-sm font-medium text-gray-700">Correo Electrónico *</label>
       <InputText
         id="email"
         v-model="formData.email"

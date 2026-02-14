@@ -12,7 +12,7 @@ const menu = ref()
 
 const menuItems = [
   {
-    label: 'Profile',
+    label: 'Mi Perfil',
     icon: 'pi pi-user',
     command: () => router.push('/profile')
   },
@@ -20,7 +20,7 @@ const menuItems = [
     separator: true
   },
   {
-    label: 'Logout',
+    label: 'Cerrar Sesión',
     icon: 'pi pi-sign-out',
     command: () => {
       auth.logout()

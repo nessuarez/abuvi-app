@@ -47,12 +47,12 @@ export const useAuthStore = defineStore('auth', () => {
 
       return {
         success: false,
-        error: response.data.error?.message || 'Login failed'
+        error: response.data.error?.message || 'Error al iniciar sesión'
       }
     } catch (err: any) {
       return {
         success: false,
-        error: err.response?.data?.error?.message || 'Network error. Please try again.'
+        error: err.response?.data?.error?.message || 'Error de red. Por favor intenta de nuevo.'
       }
     }
   }
@@ -75,12 +75,12 @@ export const useAuthStore = defineStore('auth', () => {
 
       return {
         success: false,
-        error: response.data.error?.message || 'Registration failed'
+        error: response.data.error?.message || 'Error al registrarse'
       }
     } catch (err: any) {
       return {
         success: false,
-        error: err.response?.data?.error?.message || 'Network error. Please try again.'
+        error: err.response?.data?.error?.message || 'Error de red. Por favor intenta de nuevo.'
       }
     }
   }

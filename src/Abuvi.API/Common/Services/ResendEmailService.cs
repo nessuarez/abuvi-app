@@ -49,25 +49,25 @@ public class ResendEmailService : IEmailService
         {
             From = $"{_fromName} <{_fromEmail}>",
             To = toEmail,
-            Subject = "Verify your email - Abuvi Camps",
+            Subject = "Verifica tu correo electrónico - Campamentos Abuvi",
             HtmlBody = $@"
                 <html>
                 <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
                     <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
-                        <h2 style='color: #2563eb;'>Welcome to Abuvi, {firstName}!</h2>
-                        <p>Thank you for registering. Please verify your email address by clicking the link below:</p>
+                        <h2 style='color: #2563eb;'>¡Bienvenido a Abuvi, {firstName}!</h2>
+                        <p>Gracias por registrarte. Por favor verifica tu dirección de correo electrónico haciendo clic en el enlace de abajo:</p>
                         <p style='margin: 30px 0;'>
                             <a href=""{verificationUrl}""
                                style='background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;'>
-                                Verify Email
+                                Verificar Correo
                             </a>
                         </p>
-                        <p style='color: #666; font-size: 14px;'>This link will expire in 24 hours.</p>
-                        <p style='color: #666; font-size: 14px;'>If you didn't create this account, please ignore this email.</p>
+                        <p style='color: #666; font-size: 14px;'>Este enlace expirará en 24 horas.</p>
+                        <p style='color: #666; font-size: 14px;'>Si no creaste esta cuenta, por favor ignora este correo.</p>
                         <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;' />
                         <p style='color: #999; font-size: 12px;'>
-                            Best regards,<br>
-                            The Abuvi Team
+                            Saludos cordiales,<br>
+                            El equipo de Abuvi
                         </p>
                     </div>
                 </body>
@@ -101,30 +101,30 @@ public class ResendEmailService : IEmailService
         {
             From = $"{_fromName} <{_fromEmail}>",
             To = toEmail,
-            Subject = "Welcome to Abuvi Camps!",
+            Subject = "¡Bienvenido a Abuvi!",
             HtmlBody = $@"
                 <html>
                 <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
                     <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
-                        <h2 style='color: #2563eb;'>¡Hola {firstName}! 🎉</h2>
-                        <p>Your email has been verified and your Abuvi account is now active!</p>
-                        <p>You can now:</p>
+                        <h2 style='color: #2563eb;'>¡Tu cuenta está activada, {firstName}! 🎉</h2>
+                        <p>Tu correo electrónico ha sido verificado exitosamente. Ahora puedes acceder a todas las funciones de Abuvi.</p>
+                        <h3 style='color: #1e40af; margin-top: 30px;'>Próximos pasos:</h3>
                         <ul style='line-height: 2;'>
-                            <li>Browse available camps</li>
-                            <li>Register family members</li>
-                            <li>Manage your bookings</li>
-                            <li>Make secure payments</li>
+                            <li>Completa tu perfil</li>
+                            <li>Explora los próximos campamentos</li>
+                            <li>Registra a los miembros de tu familia</li>
+                            <li>Consulta el historial de aniversarios</li>
                         </ul>
                         <p style='margin: 30px 0;'>
                             <a href=""{dashboardUrl}""
                                style='background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;'>
-                                Go to Dashboard
+                                Ir al Inicio
                             </a>
                         </p>
                         <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;' />
                         <p style='color: #999; font-size: 12px;'>
-                            Best regards,<br>
-                            The Abuvi Team
+                            Saludos cordiales,<br>
+                            El equipo de Abuvi
                         </p>
                     </div>
                 </body>
@@ -159,28 +159,28 @@ public class ResendEmailService : IEmailService
         {
             From = $"{_fromName} <{_fromEmail}>",
             To = toEmail,
-            Subject = "Reset your password - Abuvi Camps",
+            Subject = "Restablece tu contraseña - Abuvi",
             HtmlBody = $@"
                 <html>
                 <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
                     <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
-                        <h2 style='color: #2563eb;'>Password Reset Request</h2>
-                        <p>Hello {firstName},</p>
-                        <p>We received a request to reset your password. Click the button below to create a new password:</p>
+                        <h2 style='color: #2563eb;'>Restablecimiento de Contraseña</h2>
+                        <p>Hola {firstName},</p>
+                        <p>Recibimos una solicitud para restablecer tu contraseña. Haz clic en el botón de abajo para crear una nueva contraseña:</p>
                         <p style='margin: 30px 0;'>
                             <a href=""{resetUrl}""
                                style='background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;'>
-                                Reset Password
+                                Restablecer Contraseña
                             </a>
                         </p>
-                        <p style='color: #666; font-size: 14px;'>This link will expire in 1 hour.</p>
+                        <p style='color: #666; font-size: 14px;'>Este enlace expirará en 1 hora.</p>
                         <p style='color: #dc2626; font-size: 14px;'>
-                            <strong>Security Notice:</strong> If you didn't request a password reset, please ignore this email and your password will remain unchanged.
+                            <strong>Aviso de seguridad:</strong> Si no solicitaste restablecer tu contraseña, por favor ignora este correo y tu contraseña permanecerá sin cambios.
                         </p>
                         <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;' />
                         <p style='color: #999; font-size: 12px;'>
-                            Best regards,<br>
-                            The Abuvi Team
+                            Saludos cordiales,<br>
+                            El equipo de Abuvi
                         </p>
                     </div>
                 </body>

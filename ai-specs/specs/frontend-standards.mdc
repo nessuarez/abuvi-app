@@ -1536,6 +1536,256 @@ export function useDebounce<T>(value: () => T, delay: number = 300) {
 }
 ```
 
+## Language Standards
+
+All user-facing text (UI labels, validation messages, error messages, toasts) must be in **Spanish** to match the application's primary audience in Spain.
+
+### User-Facing Text
+
+- **Default Language**: Spanish (Castellano)
+- **Tone**: Informal and friendly (use "tú" form, not "usted")
+- All UI text, labels, buttons, navigation, error messages, and validation messages must be in Spanish
+- Use gender-neutral language where possible
+
+### Code and Documentation
+
+- **Code**: English only (variables, functions, components, composables, types, interfaces)
+- **Comments**: English only
+- **Commit Messages**: English only
+- **Console Messages**: English only (for developer debugging)
+
+### Common Translations
+
+#### Navigation & Actions
+
+| English | Spanish |
+|---------|---------|
+| Home | Inicio |
+| Camp | Campamento |
+| Anniversary | Aniversario |
+| My Profile | Mi Perfil |
+| Users | Usuarios |
+| Admin | Administración |
+| Logout | Cerrar Sesión |
+| Login | Iniciar Sesión |
+| Register | Registrarse |
+| Submit | Enviar |
+| Save | Guardar |
+| Cancel | Cancelar |
+| Delete | Eliminar |
+| Edit | Editar |
+| Create | Crear |
+| Search | Buscar |
+| Filter | Filtrar |
+
+#### Form Fields
+
+| English | Spanish |
+|---------|---------|
+| Email | Correo Electrónico |
+| Password | Contraseña |
+| Confirm Password | Confirmar Contraseña |
+| First Name | Nombre |
+| Last Name | Apellidos |
+| Phone | Teléfono |
+| Document Number | Número de Documento |
+| Role | Rol |
+| Status | Estado |
+| Remember Me | Recordarme |
+
+#### User Roles
+
+| English | Spanish |
+|---------|---------|
+| Admin | Administrador |
+| Board | Junta Directiva |
+| Member | Socio |
+| Guardian | Tutor |
+
+#### Validation Messages
+
+| English | Spanish | Gender |
+|---------|---------|--------|
+| Email is required | El correo electrónico es obligatorio | Masculine |
+| Invalid email format | Formato de correo electrónico inválido | - |
+| Password is required | La contraseña es obligatoria | Feminine |
+| Password must be at least {n} characters | La contraseña debe tener al menos {n} caracteres | - |
+| Passwords must match | Las contraseñas deben coincidir | - |
+| First name is required | El nombre es obligatorio | Masculine |
+| Last name is required | Los apellidos son obligatorios | Plural |
+
+#### Status & Feedback Messages
+
+| English | Spanish |
+|---------|---------|
+| Loading... | Cargando... |
+| Success | Éxito |
+| Error | Error |
+| Warning | Advertencia |
+| No results found | No se encontraron resultados |
+| Please wait... | Por favor espera... |
+| Active | Activo |
+| Inactive | Inactivo |
+
+### Gender Agreement Rules
+
+Spanish adjectives must agree with noun gender:
+
+**Masculine nouns**: el campo, el correo, el nombre, el teléfono
+- "El correo electrónico es **obligatorio**"
+- "El nombre es **obligatorio**"
+
+**Feminine nouns**: la contraseña, la fecha, la dirección
+- "La contraseña es **obligatoria**"
+- "La fecha es **obligatoria**"
+
+### Validation Message Patterns
+
+**Client-side validation** in Vue components:
+
+```typescript
+// ✅ Good: Spanish with correct gender
+const validate = (): boolean => {
+  errors.value = {}
+
+  if (!formData.email.trim()) {
+    errors.value.email = 'El correo electrónico es obligatorio' // masculine
+  }
+
+  if (!formData.password) {
+    errors.value.password = 'La contraseña es obligatoria' // feminine
+  }
+
+  return Object.keys(errors.value).length === 0
+}
+
+// ❌ Bad: English
+const validate = (): boolean => {
+  if (!formData.email.trim()) {
+    errors.value.email = 'Email is required'
+  }
+}
+```
+
+### Toast Notifications
+
+Use consistent Spanish messages with PrimeVue Toast:
+
+```typescript
+import { useToast } from 'primevue/usetoast'
+
+const toast = useToast()
+
+// Success
+toast.add({
+  severity: 'success',
+  summary: 'Éxito',
+  detail: 'Operación completada correctamente',
+  life: 3000
+})
+
+// Error
+toast.add({
+  severity: 'error',
+  summary: 'Error',
+  detail: errorMessage || 'Ocurrió un error',
+  life: 5000
+})
+
+// Info
+toast.add({
+  severity: 'info',
+  summary: 'Información',
+  detail: 'Datos actualizados',
+  life: 3000
+})
+
+// Warning
+toast.add({
+  severity: 'warn',
+  summary: 'Advertencia',
+  detail: 'Por favor revisa los datos',
+  life: 4000
+})
+```
+
+### Role Translation Helper
+
+Always use a helper function for role translation:
+
+```typescript
+const translateRole = (role: string): string => {
+  const roleMap: Record<string, string> = {
+    'Admin': 'Administrador',
+    'Board': 'Junta Directiva',
+    'Member': 'Socio',
+    'Guardian': 'Tutor'
+  }
+  return roleMap[role] || role
+}
+
+// Usage in template
+<template>
+  <span>{{ translateRole(user.role) }}</span>
+</template>
+```
+
+### API Error Handling
+
+Display Spanish error messages from the backend:
+
+```typescript
+// Store error handling
+async function login(credentials: LoginRequest): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await api.post<ApiResponse<AuthResponse>>('/auth/login', credentials)
+
+    if (response.data.success && response.data.data) {
+      return { success: true }
+    }
+
+    // Backend returns Spanish error message
+    return {
+      success: false,
+      error: response.data.error?.message || 'Error al iniciar sesión'
+    }
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.response?.data?.error?.message || 'Error de red. Por favor intenta de nuevo.'
+    }
+  }
+}
+```
+
+### Best Practices
+
+1. **Consistency**: Always use the same translation for the same concept
+   - "correo electrónico" (not "email", "e-mail", or "correo")
+   - "contraseña" (not "clave" or "password")
+
+2. **Gender Agreement**: Verify adjectives match noun gender
+   - Use "obligatorio" with masculine nouns
+   - Use "obligatoria" with feminine nouns
+
+3. **Natural Phrasing**: Use natural Spanish, not literal translations
+   - ✅ "Error al iniciar sesión"
+   - ❌ "Login falló"
+
+4. **Separation of Concerns**:
+   - User-facing text → Spanish
+   - Code/variables/functions → English
+   - Console logs → English (developer-facing)
+
+5. **Route Meta Titles**: Use Spanish for browser tab titles
+   ```typescript
+   {
+     path: '/home',
+     component: HomePage,
+     meta: { title: 'ABUVI | Inicio', requiresAuth: true }
+   }
+   ```
+
 ## Development Workflow
 
 ### Git Workflow
