@@ -133,7 +133,7 @@ public class AuthServiceTests_Registration
 
         // Assert
         await act.Should().ThrowAsync<BusinessRuleException>()
-            .WithMessage("*email already exists*");
+            .WithMessage("Ya existe una cuenta con este correo electrónico");
 
         await _repository.DidNotReceive().CreateAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
@@ -211,6 +211,6 @@ public class AuthServiceTests_Registration
 
         // Assert
         await act.Should().ThrowAsync<BusinessRuleException>()
-            .WithMessage("*token has expired*");
+            .WithMessage("El código de verificación ha expirado");
     }
 }
