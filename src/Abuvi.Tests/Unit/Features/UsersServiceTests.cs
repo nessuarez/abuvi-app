@@ -180,7 +180,7 @@ public class UsersServiceTests
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("A user with this email already exists");
+            .WithMessage("Ya existe un usuario con este correo electrónico");
 
         _passwordHasher.DidNotReceive().HashPassword(Arg.Any<string>());
 

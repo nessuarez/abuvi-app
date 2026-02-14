@@ -238,7 +238,7 @@ public class UsersServiceRoleUpdateTests
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Users cannot change their own role");
+            .WithMessage("Los usuarios no pueden cambiar su propio rol");
         await _repository.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), default);
         await _repository.DidNotReceive().UpdateAsync(Arg.Any<User>(), default);
     }
@@ -284,7 +284,7 @@ public class UsersServiceRoleUpdateTests
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Requesting user not found");
+            .WithMessage("No se encontró el usuario solicitante");
     }
 
     #endregion

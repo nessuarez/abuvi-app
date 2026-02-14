@@ -172,7 +172,7 @@ public class RegisterUserValidatorTests
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e =>
             e.PropertyName == "AcceptedTerms" &&
-            e.ErrorMessage.Contains("must accept"));
+            e.ErrorMessage.Contains("aceptar los términos y condiciones"));
     }
 
     [Theory]
