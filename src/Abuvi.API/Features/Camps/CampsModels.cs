@@ -199,3 +199,67 @@ public record AgeRangesResponse(
     Guid? UpdatedBy,
     DateTime UpdatedAt
 );
+
+/// <summary>
+/// Request to propose a new camp edition
+/// </summary>
+public record ProposeCampEditionRequest(
+    Guid CampId,
+    int Year,
+    DateTime StartDate,
+    DateTime EndDate,
+    decimal? PricePerAdult,
+    decimal? PricePerChild,
+    decimal? PricePerBaby,
+    bool UseCustomAgeRanges,
+    int? CustomBabyMaxAge,
+    int? CustomChildMinAge,
+    int? CustomChildMaxAge,
+    int? CustomAdultMinAge,
+    int? MaxCapacity,
+    string? Notes
+);
+
+/// <summary>
+/// Request to update a camp edition
+/// </summary>
+public record UpdateCampEditionRequest(
+    DateTime StartDate,
+    DateTime EndDate,
+    decimal PricePerAdult,
+    decimal PricePerChild,
+    decimal PricePerBaby,
+    bool UseCustomAgeRanges,
+    int? CustomBabyMaxAge,
+    int? CustomChildMinAge,
+    int? CustomChildMaxAge,
+    int? CustomAdultMinAge,
+    int? MaxCapacity,
+    string? Notes
+);
+
+/// <summary>
+/// Camp edition response DTO
+/// </summary>
+public record CampEditionResponse(
+    Guid Id,
+    Guid CampId,
+    string CampName,
+    int Year,
+    DateTime StartDate,
+    DateTime EndDate,
+    decimal PricePerAdult,
+    decimal PricePerChild,
+    decimal PricePerBaby,
+    bool UseCustomAgeRanges,
+    int? CustomBabyMaxAge,
+    int? CustomChildMinAge,
+    int? CustomChildMaxAge,
+    int? CustomAdultMinAge,
+    CampEditionStatus Status,
+    int? MaxCapacity,
+    string? Notes,
+    bool IsArchived,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
+);
