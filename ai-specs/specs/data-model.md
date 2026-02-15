@@ -86,16 +86,24 @@ A person (child or adult) within a family unit. In the future, a FamilyMember ma
 - `firstName`: Person first name (required, max 100 characters)
 - `lastName`: Person last name (required, max 100 characters)
 - `dateOfBirth`: Date of birth, used for camp age validation (required)
-- `relationship`: Relationship type within the family unit (required, enum: `Parent` | `Child` | `Other`)
-- `medicalNotes`: Medical information (optional, sensitive data, must be stored encrypted)
-- `allergies`: Allergy information (optional, sensitive data, must be stored encrypted)
+- `relationship`: Relationship type within the family unit (required, enum: `Parent` | `Child` | `Sibling` | `Spouse` | `Other`)
+- `documentNumber`: National ID/passport number (optional, max 50 characters, uppercase alphanumeric, e.g., "12345678A", "ABC123")
+- `email`: Email address (optional, max 255 characters, valid email format)
+- `phone`: Contact phone number (optional, max 20 characters, E.164 format, e.g., "+34612345678")
+- `medicalNotes`: Medical information (optional, max 2000 characters, sensitive data, must be stored encrypted at rest)
+- `allergies`: Allergy information (optional, max 1000 characters, sensitive data, must be stored encrypted at rest)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
 **Validation rules:**
 
 - DateOfBirth must be a valid past date
-- MedicalNotes and Allergies must be encrypted at rest due to sensitive health data
+- Relationship enum now includes: Parent, Child, Sibling, Spouse, Other
+- DocumentNumber format: uppercase letters and numbers only (e.g., "12345678A", "ABC123")
+- Email must be a valid email format when provided
+- Phone must be in E.164 format when provided (e.g., "+34612345678")
+- MedicalNotes (max 2000 chars) and Allergies (max 1000 chars) must be encrypted at rest (AES-256) due to sensitive health data
+- Sensitive fields (medical notes, allergies) are NEVER exposed in API responses - only boolean flags indicating presence
 - A FamilyMember can only belong to one FamilyUnit
 
 **Relationships:**
