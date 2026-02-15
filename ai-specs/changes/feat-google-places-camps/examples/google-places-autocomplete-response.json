@@ -1,0 +1,39 @@
+{
+	"suggestions": [
+		{
+			"placePrediction": {
+				"place": "places/ChIJ38SpLTDCuhIRgdtW_484UBk",
+				"placeId": "ChIJ38SpLTDCuhIRgdtW_484UBk",
+				"text": {
+					"text": "El Clar del Bosc (casa de colònies), Crta Pujarnol, Pujarnol, España",
+					"matches": [
+						{
+							"endOffset": 34
+						}
+					]
+				},
+				"structuredFormat": {
+					"mainText": {
+						"text": "El Clar del Bosc (casa de colònies)",
+						"matches": [
+							{
+								"endOffset": 34
+							}
+						]
+					},
+					"secondaryText": {
+						"text": "Crta Pujarnol, Pujarnol, España"
+					}
+				},
+				"types": [
+					"summer_camp_organizer",
+					"point_of_interest",
+					"hostel",
+					"health",
+					"lodging",
+					"establishment"
+				]
+			}
+		}
+	]
+}
