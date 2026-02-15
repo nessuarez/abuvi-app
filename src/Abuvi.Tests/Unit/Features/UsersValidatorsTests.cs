@@ -83,7 +83,7 @@ public class UsersValidatorsTests
 
         // Assert
         result.ShouldHaveValidationErrorFor(x => x.Email)
-            .WithErrorMessage("Email must be a valid email address");
+            .WithErrorMessage("El correo electrónico debe ser una dirección válida");
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public class UsersValidatorsTests
 
         // Assert
         result.ShouldHaveValidationErrorFor(x => x.Password)
-            .WithErrorMessage("Password must be at least 8 characters");
+            .WithErrorMessage("La contraseña debe tener al menos 8 caracteres");
     }
 
     [Theory]
@@ -238,7 +238,7 @@ public class UsersValidatorsTests
 
         // Assert
         result.ShouldHaveValidationErrorFor(x => x.Phone)
-            .WithErrorMessage("Phone must be a valid phone number");
+            .WithErrorMessage("El teléfono debe ser un número válido");
     }
 
     #endregion

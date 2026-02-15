@@ -330,6 +330,124 @@ namespace Abuvi.API.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Abuvi.API.Features.FamilyUnits.FamilyMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Allergies")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("allergies");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateOnly>("DateOfBirth")
+                        .HasColumnType("date")
+                        .HasColumnName("date_of_birth");
+
+                    b.Property<string>("DocumentNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("document_number");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("email");
+
+                    b.Property<Guid>("FamilyUnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_unit_id");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("first_name");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_name");
+
+                    b.Property<string>("MedicalNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("medical_notes");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("Relationship")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("relationship");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FamilyUnitId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("family_members", (string)null);
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.FamilyUnits.FamilyUnit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("RepresentativeUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("representative_user_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RepresentativeUserId")
+                        .IsUnique();
+
+                    b.ToTable("family_units", (string)null);
+                });
+
             modelBuilder.Entity("Abuvi.API.Features.Users.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -492,6 +610,29 @@ namespace Abuvi.API.Migrations
                         .IsRequired();
 
                     b.Navigation("CampEdition");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.FamilyUnits.FamilyMember", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.FamilyUnits.FamilyUnit", null)
+                        .WithMany()
+                        .HasForeignKey("FamilyUnitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Abuvi.API.Features.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.FamilyUnits.FamilyUnit", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Users.User", null)
+                        .WithOne()
+                        .HasForeignKey("Abuvi.API.Features.FamilyUnits.FamilyUnit", "RepresentativeUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Abuvi.API.Features.Users.UserRoleChangeLog", b =>

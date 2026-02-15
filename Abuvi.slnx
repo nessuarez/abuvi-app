@@ -3,7 +3,4 @@
     <Project Path="src/Abuvi.API/Abuvi.API.csproj" />
     <Project Path="src/Abuvi.Tests/Abuvi.Tests.csproj" />
   </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/Abuvi.Tests/Abuvi.Tests.csproj" />
-  </Folder>
 </Solution>

@@ -5,6 +5,7 @@
 This plan implements a comprehensive family unit management system following **Test-Driven Development (TDD)** and **Vertical Slice Architecture**. The feature allows authenticated users to create and manage family units with family members, preparing the foundation for future camp registration functionality.
 
 **Architecture Principles:**
+
 - **Vertical Slice Architecture**: All feature code grouped by functionality in `Features/FamilyUnits/`
 - **TDD Approach**: Write failing tests first, then implement minimum code to pass
 - **Repository Pattern**: Abstract data access through interfaces
@@ -12,6 +13,7 @@ This plan implements a comprehensive family unit management system following **T
 - **Minimal APIs**: Lightweight endpoint definitions with `MapGroup()`
 
 **Key Business Rules:**
+
 - One family unit per user
 - Representative is automatically created as first family member
 - Medical notes and allergies encrypted at rest (RGPD compliance)
@@ -22,11 +24,13 @@ This plan implements a comprehensive family unit management system following **T
 ## Architecture Context
 
 ### Feature Slice Location
+
 ```
 src/Abuvi.API/Features/FamilyUnits/
 ```
 
 ### Files to Create
+
 ```
 Features/FamilyUnits/
 ├── FamilyUnitsEndpoints.cs          # Minimal API endpoint definitions (10 endpoints)
@@ -40,6 +44,7 @@ Features/FamilyUnits/
 ```
 
 ### Files to Modify
+
 ```
 src/Abuvi.API/
 ├── Program.cs                                    # Register endpoints and services
@@ -51,6 +56,7 @@ src/Abuvi.API/
 ```
 
 ### Test Files to Create
+
 ```
 tests/Abuvi.Tests/Unit/Features/FamilyUnits/
 ├── FamilyUnitsServiceTests.cs                    # Service unit tests (36+ tests)
@@ -61,6 +67,7 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
 ```
 
 ### Cross-Cutting Concerns
+
 - **Encryption Service**: AES-256 encryption for medical notes and allergies
 - **Authorization**: ClaimsPrincipal-based role and representative checks
 - **Error Handling**: Global exception middleware (already exists)
@@ -77,6 +84,7 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
 **Branch Naming**: `feature/feat-family-units-definition-backend`
 
 **Implementation Steps**:
+
 1. Ensure you're on the latest `main` branch
 2. Pull latest changes: `git pull origin main`
 3. Create new branch: `git checkout -b feature/feat-family-units-definition-backend`
@@ -96,6 +104,7 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
 
 1. **Read existing FamilyMemberConfiguration.cs**
 2. **Add new property configurations**:
+
    ```csharp
    // New fields
    builder.Property(m => m.DocumentNumber)
@@ -114,6 +123,7 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
    - `Relationship` enum (string conversion, max 20)
 
 4. **Update Relationship enum** in entity:
+
    ```csharp
    public enum FamilyRelationship
    {
@@ -134,6 +144,7 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
 1. **Create new file**: `FamilyUnitsModels.cs`
 2. **Add namespace**: `namespace Abuvi.API.Features.FamilyUnits;`
 3. **Define enum**:
+
    ```csharp
    public enum FamilyRelationship
    {
@@ -152,6 +163,7 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
 **Implementation Steps**:
 
 1. **Run migration command**:
+
    ```bash
    dotnet ef migrations add AddFamilyMemberAdditionalFields --project src/Abuvi.API
    ```
@@ -164,9 +176,11 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
 3. **DO NOT apply migration yet** (will apply in Step 8 after all code is ready)
 
 **Dependencies**:
+
 - EF Core Tools: `dotnet tool install --global dotnet-ef` (already installed)
 
 **Implementation Notes**:
+
 - Migration will add nullable columns (no data migration needed)
 - Existing FamilyMember records will have NULL values for new fields
 - Relationship enum values stored as strings in database
@@ -182,6 +196,7 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
 **Implementation Steps**:
 
 1. **Add FamilyUnit DTOs**:
+
    ```csharp
    // Request DTOs
    public record CreateFamilyUnitRequest(string Name);
@@ -199,6 +214,7 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
    ```
 
 2. **Add FamilyMember DTOs**:
+
    ```csharp
    // Request DTOs
    public record CreateFamilyMemberRequest(
@@ -245,6 +261,7 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
    ```
 
 3. **Add extension methods for mapping**:
+
    ```csharp
    public static class FamilyUnitExtensions
    {
@@ -281,9 +298,11 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
    ```
 
 **Dependencies**:
+
 - None (uses built-in C# record types)
 
 **Implementation Notes**:
+
 - Use `record` types for DTOs (immutable, value-based equality)
 - Optional parameters with `= null` for nullable fields
 - `DateOnly` for dates (not `DateTime`)
@@ -302,6 +321,7 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
 **Implementation Steps**:
 
 1. **Create validator class**:
+
    ```csharp
    namespace Abuvi.API.Features.FamilyUnits;
 
@@ -321,6 +341,7 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
    ```
 
 **Implementation Notes**:
+
 - **Spanish messages** for user-facing validation (as per backend-standards.mdc)
 - Masculine gender: "El nombre es obligatorio" (el nombre = masculine)
 
@@ -341,6 +362,7 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
 **Implementation Steps**:
 
 1. **Create validator class**:
+
    ```csharp
    namespace Abuvi.API.Features.FamilyUnits;
 
@@ -417,6 +439,7 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
    ```
 
 **Implementation Notes**:
+
 - **Spanish messages** with correct gender agreement:
   - "El nombre es obligatorio" (masculine)
   - "La fecha es obligatoria" (feminine)
@@ -433,6 +456,7 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
 **Action**: Same validation as CreateFamilyMemberValidator
 
 **Dependencies**:
+
 - FluentValidation NuGet package (already installed)
 
 ---
@@ -450,6 +474,7 @@ tests/Abuvi.Tests/Unit/Features/FamilyUnits/
 **Implementation Steps**:
 
 1. **Create test class with setup**:
+
    ```csharp
    namespace Abuvi.Tests.Unit.Features.FamilyUnits;
 
@@ -550,7 +575,7 @@ public async Task CreateFamilyUnitAsync_WhenUserNotFound_ThrowsNotFoundException
 }
 ```
 
-3. **Write tests for GetFamilyUnitByIdAsync**:
+1. **Write tests for GetFamilyUnitByIdAsync**:
 
 ```csharp
 [Fact]
@@ -599,9 +624,9 @@ public async Task GetFamilyUnitByIdAsync_WhenFamilyUnitNotFound_ThrowsNotFoundEx
 }
 ```
 
-4. **Write tests for UpdateFamilyUnitAsync, DeleteFamilyUnitAsync** (similar pattern)
+1. **Write tests for UpdateFamilyUnitAsync, DeleteFamilyUnitAsync** (similar pattern)
 
-5. **Write tests for authorization helpers**:
+2. **Write tests for authorization helpers**:
 
 ```csharp
 [Fact]
@@ -645,6 +670,7 @@ public async Task IsRepresentativeAsync_WhenUserIsNotRepresentative_ReturnsFalse
 **Test Count (Family Unit CRUD)**: ~10-12 tests
 
 **Dependencies**:
+
 - xUnit
 - FluentAssertions
 - NSubstitute
@@ -661,6 +687,7 @@ public async Task IsRepresentativeAsync_WhenUserIsNotRepresentative_ReturnsFalse
 **Implementation Steps**:
 
 1. **Define repository interface**:
+
    ```csharp
    namespace Abuvi.API.Features.FamilyUnits;
 
@@ -690,6 +717,7 @@ public async Task IsRepresentativeAsync_WhenUserIsNotRepresentative_ReturnsFalse
    ```
 
 2. **Implement repository**:
+
    ```csharp
    public class FamilyUnitsRepository(AbuviDbContext db) : IFamilyUnitsRepository
    {
@@ -772,6 +800,7 @@ public async Task IsRepresentativeAsync_WhenUserIsNotRepresentative_ReturnsFalse
    ```
 
 **Implementation Notes**:
+
 - Use `AsNoTracking()` for read-only operations (performance)
 - Use `ExecuteDeleteAsync()` for efficient deletes (EF Core 7+)
 - Use `ExecuteUpdateAsync()` for efficient updates without loading entity
@@ -779,6 +808,7 @@ public async Task IsRepresentativeAsync_WhenUserIsNotRepresentative_ReturnsFalse
 - Automatic `UpdatedAt` timestamp on updates
 
 **Dependencies**:
+
 - EF Core 9.0 (already installed)
 - Npgsql.EntityFrameworkCore.PostgreSQL (already installed)
 
@@ -793,6 +823,7 @@ public async Task IsRepresentativeAsync_WhenUserIsNotRepresentative_ReturnsFalse
 **Implementation Steps**:
 
 1. **Create service class**:
+
    ```csharp
    namespace Abuvi.API.Features.FamilyUnits;
 
@@ -920,6 +951,7 @@ public async Task IsRepresentativeAsync_WhenUserIsNotRepresentative_ReturnsFalse
    - `DeleteFamilyMemberAsync`: Check not deleting representative's own record
 
 3. **Implement encryption handling**:
+
    ```csharp
    public async Task<FamilyMemberResponse> CreateFamilyMemberAsync(
        Guid familyUnitId, CreateFamilyMemberRequest request, CancellationToken ct)
@@ -967,6 +999,7 @@ public async Task IsRepresentativeAsync_WhenUserIsNotRepresentative_ReturnsFalse
    ```
 
 **Implementation Notes**:
+
 - **Encryption**: Use `IEncryptionService` for medical notes and allergies
 - **Uppercase transformation**: DocumentNumber always uppercase
 - **Authorization**: Check representative before delete
@@ -974,6 +1007,7 @@ public async Task IsRepresentativeAsync_WhenUserIsNotRepresentative_ReturnsFalse
 - **Spanish error messages**: All user-facing exceptions in Spanish
 
 **Dependencies**:
+
 - `IEncryptionService` (create in Common/Services/)
 
 ---
@@ -987,6 +1021,7 @@ public async Task IsRepresentativeAsync_WhenUserIsNotRepresentative_ReturnsFalse
 **Implementation Steps**:
 
 1. **Create interface**:
+
    ```csharp
    namespace Abuvi.API.Common.Services;
 
@@ -998,6 +1033,7 @@ public async Task IsRepresentativeAsync_WhenUserIsNotRepresentative_ReturnsFalse
    ```
 
 2. **Implement service**:
+
    ```csharp
    using System.Security.Cryptography;
    using System.Text;
@@ -1058,17 +1094,20 @@ public async Task IsRepresentativeAsync_WhenUserIsNotRepresentative_ReturnsFalse
    ```
 
 3. **Add configuration** (user secrets for development):
+
    ```bash
    dotnet user-secrets set "Encryption:Key" "your-secret-encryption-key-min-32-chars" --project src/Abuvi.API
    ```
 
 **Implementation Notes**:
+
 - **AES-256**: Industry standard encryption
 - **Key Management**: Store key in Azure Key Vault for production
 - **IV**: Use zeros for simplicity (should be random + stored with ciphertext in production)
 - **Base64 encoding**: For database storage
 
 **Dependencies**:
+
 - System.Security.Cryptography (built-in)
 
 ---
@@ -1082,6 +1121,7 @@ public async Task IsRepresentativeAsync_WhenUserIsNotRepresentative_ReturnsFalse
 **Implementation Steps**:
 
 1. **Add encryption service mock to test setup**:
+
    ```csharp
    private readonly IEncryptionService _encryptionService;
 
@@ -1184,9 +1224,9 @@ public async Task CreateFamilyMemberAsync_WhenDocumentNumberProvided_ConvertsToU
 }
 ```
 
-3. **Write tests for GetFamilyMembersByFamilyUnitIdAsync, UpdateFamilyMemberAsync, DeleteFamilyMemberAsync**
+1. **Write tests for GetFamilyMembersByFamilyUnitIdAsync, UpdateFamilyMemberAsync, DeleteFamilyMemberAsync**
 
-4. **Write test for preventing representative deletion**:
+2. **Write test for preventing representative deletion**:
 
 ```csharp
 [Fact]
@@ -1237,6 +1277,7 @@ public async Task DeleteFamilyMemberAsync_WhenDeletingRepresentativeOwnRecord_Th
 **Implementation Steps**:
 
 1. **Create endpoint class**:
+
    ```csharp
    namespace Abuvi.API.Features.FamilyUnits;
 
@@ -1403,6 +1444,7 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
 ```
 
 **Implementation Notes**:
+
 - **ClaimsPrincipal**: Extract userId from JWT claims
 - **Authorization**: Check representative OR admin/board role
 - **Spanish error messages**: All user-facing messages in Spanish
@@ -1420,6 +1462,7 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
 **Implementation Steps**:
 
 1. **Register repository and service**:
+
    ```csharp
    // In the services section (after builder.Services.AddDbContext...)
 
@@ -1435,6 +1478,7 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
    ```
 
 2. **Map endpoints**:
+
    ```csharp
    // After app.UseAuthorization();
 
@@ -1442,6 +1486,7 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
    ```
 
 **Implementation Notes**:
+
 - **Scoped**: Repository and Service (per-request lifetime)
 - **Singleton**: EncryptionService (single instance)
 - **Auto-registration**: FluentValidation finds all validators in assembly
@@ -1455,11 +1500,13 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
 **Implementation Steps**:
 
 1. **Verify migration exists**:
+
    ```bash
    dotnet ef migrations list --project src/Abuvi.API
    ```
 
 2. **Apply migration**:
+
    ```bash
    dotnet ef database update --project src/Abuvi.API
    ```
@@ -1469,6 +1516,7 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
    - Check `FamilyMembers` table has new columns: `DocumentNumber`, `Email`, `Phone`
 
 **Implementation Notes**:
+
 - Migration was created in Step 1
 - Applies schema changes to database
 - Idempotent (safe to run multiple times)
@@ -1484,6 +1532,7 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
 **Implementation Steps**:
 
 1. **Create validator test class**:
+
    ```csharp
    namespace Abuvi.Tests.Unit.Features.FamilyUnits;
 
@@ -1599,6 +1648,7 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
 **Implementation Steps**:
 
 1. **Run the application**:
+
    ```bash
    dotnet run --project src/Abuvi.API
    ```
@@ -1606,6 +1656,7 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
 2. **Open Swagger**: Navigate to `http://localhost:5079/swagger`
 
 3. **Test Create Family Unit**:
+
    ```bash
    curl -X POST http://localhost:5079/api/family-units \
      -H "Authorization: Bearer YOUR_JWT_TOKEN" \
@@ -1619,12 +1670,14 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
    - Representative member created automatically
 
 5. **Test Get Family Unit**:
+
    ```bash
    curl -X GET http://localhost:5079/api/family-units/me \
      -H "Authorization: Bearer YOUR_JWT_TOKEN"
    ```
 
 6. **Test Create Family Member**:
+
    ```bash
    curl -X POST http://localhost:5079/api/family-units/{familyUnitId}/members \
      -H "Authorization: Bearer YOUR_JWT_TOKEN" \
@@ -1650,6 +1703,7 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
    - Try creating member with lowercase document number → 400 Bad Request
 
 **Manual Testing Checklist**:
+
 - ✅ Create family unit
 - ✅ Get family unit (me endpoint)
 - ✅ Get family unit by ID (representative)
@@ -1704,10 +1758,12 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
    - Summarize changes made
 
 **Documentation Files to Update**:
+
 - `ai-specs/specs/data-model.md` (add new FamilyMember fields)
 - `ai-specs/specs/api-endpoints.md` (add 10 new endpoints)
 
 **References**:
+
 - Follow `ai-specs/specs/documentation-standards.mdc`
 - All documentation in English (code and docs)
 
@@ -1740,6 +1796,7 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
 **FamilyUnitsService Tests** (~36 tests):
 
 **Family Unit CRUD**:
+
 - ✅ CreateFamilyUnitAsync - success
 - ✅ CreateFamilyUnitAsync - user already has family unit
 - ✅ CreateFamilyUnitAsync - user not found
@@ -1756,6 +1813,7 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
 - ✅ IsRepresentativeAsync - returns false when user is not representative
 
 **Family Member CRUD**:
+
 - ✅ CreateFamilyMemberAsync - success
 - ✅ CreateFamilyMemberAsync - family unit not found
 - ✅ CreateFamilyMemberAsync - encrypts medical notes
@@ -1774,6 +1832,7 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
 - ✅ DeleteFamilyMemberAsync - prevents deleting representative's own record
 
 **Security & Privacy**:
+
 - ✅ Medical notes never in response (boolean flag only)
 - ✅ Allergies never in response (boolean flag only)
 - ✅ Encryption service called for sensitive data
@@ -1781,6 +1840,7 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
 **Validator Tests** (~25-30 tests):
 
 **CreateFamilyMemberValidator**:
+
 - ✅ FirstName - required
 - ✅ FirstName - max length 100
 - ✅ LastName - required
@@ -1799,6 +1859,7 @@ private static async Task<Results<Ok<ApiResponse<FamilyUnitResponse>>, Forbidden
 - ✅ All fields valid - no errors
 
 **CreateFamilyUnitValidator**:
+
 - ✅ Name - required
 - ✅ Name - max length 200
 
@@ -1863,6 +1924,7 @@ All errors use `ApiResponse<object>` envelope:
 ## Dependencies
 
 ### NuGet Packages (Already Installed)
+
 - `Microsoft.EntityFrameworkCore` (9.0)
 - `Npgsql.EntityFrameworkCore.PostgreSQL` (9.0)
 - `FluentValidation` (11.x)
@@ -1872,6 +1934,7 @@ All errors use `ApiResponse<object>` envelope:
 - `NSubstitute` (5.x)
 
 ### EF Core Migration Commands
+
 ```bash
 # Create migration
 dotnet ef migrations add AddFamilyMemberAdditionalFields --project src/Abuvi.API
@@ -1914,18 +1977,21 @@ dotnet ef migrations script --idempotent --project src/Abuvi.API
 ### Language Requirements
 
 **Spanish (User-Facing)**:
+
 - Validation messages
 - Error messages
 - Business rule exceptions
 - API error responses
 
 **English (Developer-Facing)**:
+
 - Code comments
 - Variable names
 - Log messages
 - Documentation
 
 **Gender Agreement Examples**:
+
 - "El nombre es obligatorio" (masculine)
 - "La contraseña es obligatoria" (feminine)
 - "Los apellidos son obligatorios" (plural)
@@ -1960,6 +2026,7 @@ dotnet ef migrations script --idempotent --project src/Abuvi.API
 ### Final Checklist
 
 **Code Quality**:
+
 - ✅ All C# analyzers passing (no warnings)
 - ✅ Nullable reference types enabled
 - ✅ Primary constructors used for DI
@@ -1968,6 +2035,7 @@ dotnet ef migrations script --idempotent --project src/Abuvi.API
 - ✅ Extension methods for mapping
 
 **Functionality**:
+
 - ✅ All 10 endpoints return correct status codes
 - ✅ Authorization checks work correctly
 - ✅ Validation errors in Spanish
@@ -1977,12 +2045,14 @@ dotnet ef migrations script --idempotent --project src/Abuvi.API
 - ✅ User.familyUnitId updated correctly
 
 **Testing**:
+
 - ✅ 90%+ code coverage (FamilyUnitsService)
 - ✅ All unit tests passing (36+ tests)
 - ✅ All validator tests passing (25-30 tests)
 - ✅ Manual testing completed
 
 **Integration**:
+
 - ✅ EF Core migration applied successfully
 - ✅ Database schema updated (DocumentNumber, Email, Phone added)
 - ✅ Relationship enum includes Sibling and Spouse
@@ -1990,6 +2060,7 @@ dotnet ef migrations script --idempotent --project src/Abuvi.API
 - ✅ Endpoints mapped in Program.cs
 
 **Security & Privacy**:
+
 - ✅ Medical notes encrypted
 - ✅ Allergies encrypted
 - ✅ Sensitive data never in API responses
@@ -1997,6 +2068,7 @@ dotnet ef migrations script --idempotent --project src/Abuvi.API
 - ✅ Audit logging implemented
 
 **Documentation**:
+
 - ✅ `ai-specs/specs/data-model.md` updated
 - ✅ `ai-specs/specs/api-endpoints.md` updated
 - ✅ Swagger/OpenAPI auto-generated correctly
