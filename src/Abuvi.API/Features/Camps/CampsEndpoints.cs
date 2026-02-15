@@ -95,6 +95,50 @@ public static class CampsEndpoints
             .Produces(401)
             .Produces(403);
 
+        // Camp Editions endpoints (proposal workflow)
+        var editionsGroup = app.MapGroup("/api/camps/editions")
+            .WithTags("Camp Editions")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board")); // Board+ only
+
+        // POST /api/camps/editions/propose - Propose new camp edition
+        editionsGroup.MapPost("/propose", ProposeCampEdition)
+            .WithName("ProposeCampEdition")
+            .WithSummary("Propose a new camp edition")
+            .AddEndpointFilter<ValidationFilter<ProposeCampEditionRequest>>()
+            .Produces<ApiResponse<CampEditionResponse>>(201)
+            .Produces(400)
+            .Produces(401)
+            .Produces(403);
+
+        // GET /api/camps/editions/proposed - Get proposed editions
+        editionsGroup.MapGet("/proposed", GetProposedEditions)
+            .WithName("GetProposedEditions")
+            .WithSummary("Get all proposed camp editions for a year")
+            .Produces<ApiResponse<List<CampEditionResponse>>>()
+            .Produces(401)
+            .Produces(403);
+
+        // POST /api/camps/editions/{id}/promote - Promote to draft
+        editionsGroup.MapPost("/{id:guid}/promote", PromoteEditionToDraft)
+            .WithName("PromoteEditionToDraft")
+            .WithSummary("Promote proposed edition to draft status")
+            .Produces<ApiResponse<CampEditionResponse>>()
+            .Produces(400)
+            .Produces(401)
+            .Produces(403)
+            .Produces(404);
+
+        // DELETE /api/camps/editions/{id}/reject - Reject proposal
+        editionsGroup.MapDelete("/{id:guid}/reject", RejectProposal)
+            .WithName("RejectProposal")
+            .WithSummary("Reject a proposed edition (soft delete)")
+            .Produces(204)
+            .Produces(400)
+            .Produces(401)
+            .Produces(403)
+            .Produces(404);
+
         return app;
     }
 
@@ -241,6 +285,85 @@ public static class CampsEndpoints
         catch (ArgumentException ex)
         {
             return Results.BadRequest(ApiResponse<AgeRangesResponse>.Fail(ex.Message, "VALIDATION_ERROR"));
+        }
+    }
+
+    /// <summary>
+    /// Propose a new camp edition
+    /// </summary>
+    private static async Task<IResult> ProposeCampEdition(
+        [FromServices] CampEditionsService service,
+        ProposeCampEditionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var edition = await service.ProposeAsync(request, cancellationToken);
+            return Results.Created($"/api/camps/editions/{edition.Id}", ApiResponse<CampEditionResponse>.Ok(edition));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(ApiResponse<CampEditionResponse>.Fail(ex.Message, "OPERATION_ERROR"));
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(ApiResponse<CampEditionResponse>.Fail(ex.Message, "VALIDATION_ERROR"));
+        }
+    }
+
+    /// <summary>
+    /// Get all proposed camp editions for a year
+    /// </summary>
+    private static async Task<IResult> GetProposedEditions(
+        [FromServices] CampEditionsService service,
+        [FromQuery] int year,
+        CancellationToken cancellationToken = default)
+    {
+        var editions = await service.GetProposedAsync(year, cancellationToken);
+        return Results.Ok(ApiResponse<List<CampEditionResponse>>.Ok(editions));
+    }
+
+    /// <summary>
+    /// Promote proposed edition to draft status
+    /// </summary>
+    private static async Task<IResult> PromoteEditionToDraft(
+        [FromServices] CampEditionsService service,
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var edition = await service.PromoteToDraftAsync(id, cancellationToken);
+            return Results.Ok(ApiResponse<CampEditionResponse>.Ok(edition));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(ApiResponse<CampEditionResponse>.Fail(ex.Message, "OPERATION_ERROR"));
+        }
+    }
+
+    /// <summary>
+    /// Reject a proposed edition (soft delete)
+    /// </summary>
+    private static async Task<IResult> RejectProposal(
+        [FromServices] CampEditionsService service,
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var deleted = await service.RejectProposalAsync(id, cancellationToken);
+
+            if (!deleted)
+            {
+                return Results.NotFound(ApiResponse<object>.NotFound("Camp edition not found"));
+            }
+
+            return Results.NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(ApiResponse<object>.Fail(ex.Message, "OPERATION_ERROR"));
         }
     }
 }

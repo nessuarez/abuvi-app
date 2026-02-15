@@ -86,6 +86,8 @@ builder.Services.AddScoped<ICampsRepository, CampsRepository>();
 builder.Services.AddScoped<CampsService>();
 builder.Services.AddScoped<IAssociationSettingsRepository, AssociationSettingsRepository>();
 builder.Services.AddScoped<AssociationSettingsService>();
+builder.Services.AddScoped<ICampEditionsRepository, CampEditionsRepository>();
+builder.Services.AddScoped<CampEditionsService>();
 
 // ========================================
 // Email Service Configuration
