@@ -3,6 +3,7 @@ using Abuvi.API.Data;
 using Abuvi.API.Common.Middleware;
 using Abuvi.API.Features.Users;
 using Abuvi.API.Features.Auth;
+using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Common.Services;
 using FluentValidation;
@@ -82,6 +83,14 @@ builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+// Camps
+builder.Services.AddScoped<ICampsRepository, CampsRepository>();
+builder.Services.AddScoped<CampsService>();
+builder.Services.AddScoped<IAssociationSettingsRepository, AssociationSettingsRepository>();
+builder.Services.AddScoped<AssociationSettingsService>();
+builder.Services.AddScoped<ICampEditionsRepository, CampEditionsRepository>();
+builder.Services.AddScoped<CampEditionsService>();
+
 // Family Units
 builder.Services.AddScoped<IFamilyUnitsRepository, FamilyUnitsRepository>();
 builder.Services.AddScoped<FamilyUnitsService>();
@@ -137,6 +146,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = Dat
 // API endpoints
 app.MapAuthEndpoints();
 app.MapUsersEndpoints();
+app.MapCampsEndpoints();
 app.MapFamilyUnitsEndpoints();
 
 app.Run();
