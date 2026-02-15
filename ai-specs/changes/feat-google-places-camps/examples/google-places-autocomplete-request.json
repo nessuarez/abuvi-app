@@ -1,0 +1,5 @@
+curl -X POST -d '{
+  "input": "El Clar del Bosc (casa de colònies)"
+}' \
+-H 'Content-Type: application/json' -H "X-Goog-Api-Key: API_KEY" \
+https://places.googleapis.com/v1/places:autocomplete
