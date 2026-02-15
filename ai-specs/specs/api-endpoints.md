@@ -500,3 +500,226 @@ curl -X POST http://localhost:5079/api/auth/login \
 - DocumentNumber uses partial unique index (only enforces uniqueness for non-null values)
 - All timestamps are UTC
 - Database uses PostgreSQL with EF Core
+
+---
+
+## Family Units Endpoints
+
+Family units represent groups of people (families) who attend camp together. Each user can create one family unit and act as its representative. Family members are the individuals within a family unit.
+
+### Authorization
+
+- **Representative**: The user who created the family unit can manage it and its members
+- **Admin/Board**: Can view any family unit and its members
+- All endpoints require authentication
+
+### POST /api/family-units
+
+Creates a new family unit for the authenticated user. Automatically creates the representative as the first family member.
+
+**Authorization**: Authenticated users  
+**Request Body:**
+
+```json
+{
+  "name": "Garcia Family"
+}
+```
+
+**Success Response (201 Created):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "name": "Garcia Family",
+    "representativeUserId": "1fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "createdAt": "2026-02-15T09:00:00Z",
+    "updatedAt": "2026-02-15T09:00:00Z"
+  }
+}
+```
+
+**Error Responses:**
+- **409 Conflict**: User already has a family unit (`FAMILY_UNIT_EXISTS`)
+
+---
+
+### GET /api/family-units/me
+
+Gets the family unit for the current authenticated user.
+
+**Authorization**: Authenticated users  
+**Success Response (200 OK):** Same as POST response  
+**Error Responses:**
+- **404 Not Found**: User doesn't have a family unit
+
+---
+
+### GET /api/family-units/{id}
+
+Gets a specific family unit by ID.
+
+**Authorization**: Representative OR Admin/Board  
+**Success Response (200 OK):** Same as POST response  
+**Error Responses:**
+- **403 Forbidden**: User is not the representative and not Admin/Board
+- **404 Not Found**: Family unit doesn't exist
+
+---
+
+### PUT /api/family-units/{id}
+
+Updates a family unit.
+
+**Authorization**: Representative only  
+**Request Body:**
+
+```json
+{
+  "name": "Garcia-Lopez Family"
+}
+```
+
+**Success Response (200 OK):** Same as POST response  
+**Error Responses:**
+- **403 Forbidden**: User is not the representative
+- **404 Not Found**: Family unit doesn't exist
+
+---
+
+### DELETE /api/family-units/{id}
+
+Deletes a family unit and all its members (cascade delete).
+
+**Authorization**: Representative only  
+**Success Response:** 204 No Content  
+**Error Responses:**
+- **403 Forbidden**: User is not the representative
+- **404 Not Found**: Family unit doesn't exist
+
+---
+
+## Family Members Endpoints
+
+### POST /api/family-units/{familyUnitId}/members
+
+Adds a new family member to a family unit.
+
+**Authorization**: Representative only  
+**Request Body:**
+
+```json
+{
+  "firstName": "Maria",
+  "lastName": "Garcia",
+  "dateOfBirth": "2015-06-15",
+  "relationship": "Child",
+  "documentNumber": "12345678A",
+  "email": "maria@example.com",
+  "phone": "+34612345678",
+  "medicalNotes": "Asthma - requires inhaler",
+  "allergies": "Peanuts, dairy"
+}
+```
+
+**Field Notes:**
+- `relationship`: Enum - `Parent`, `Child`, `Sibling`, `Spouse`, `Other`
+- `documentNumber`: Optional, uppercase alphanumeric only
+- `email`: Optional, valid email format
+- `phone`: Optional, E.164 format (e.g., +34612345678)
+- `medicalNotes`: Optional, max 2000 characters, encrypted at rest
+- `allergies`: Optional, max 1000 characters, encrypted at rest
+
+**Success Response (201 Created):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "4fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "familyUnitId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "userId": null,
+    "firstName": "Maria",
+    "lastName": "Garcia",
+    "dateOfBirth": "2015-06-15",
+    "relationship": "Child",
+    "documentNumber": "12345678A",
+    "email": "maria@example.com",
+    "phone": "+34612345678",
+    "hasMedicalNotes": true,
+    "hasAllergies": true,
+    "createdAt": "2026-02-15T09:00:00Z",
+    "updatedAt": "2026-02-15T09:00:00Z"
+  }
+}
+```
+
+**Security Note:** Medical notes and allergies are NEVER exposed in responses. Only boolean flags (`hasMedicalNotes`, `hasAllergies`) indicate their presence.
+
+**Error Responses:**
+- **403 Forbidden**: User is not the representative
+- **404 Not Found**: Family unit doesn't exist
+
+---
+
+### GET /api/family-units/{familyUnitId}/members
+
+Gets all family members for a family unit.
+
+**Authorization**: Representative OR Admin/Board  
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    { /* family member object */ },
+    { /* family member object */ }
+  ]
+}
+```
+
+**Error Responses:**
+- **403 Forbidden**: User is not the representative and not Admin/Board
+- **404 Not Found**: Family unit doesn't exist
+
+---
+
+### GET /api/family-units/{familyUnitId}/members/{memberId}
+
+Gets a single family member by ID.
+
+**Authorization**: Representative OR Admin/Board  
+**Success Response (200 OK):** Same as POST response  
+**Error Responses:**
+- **403 Forbidden**: User is not the representative and not Admin/Board
+- **404 Not Found**: Family unit or member doesn't exist
+
+---
+
+### PUT /api/family-units/{familyUnitId}/members/{memberId}
+
+Updates a family member.
+
+**Authorization**: Representative only  
+**Request Body:** Same as POST request  
+**Success Response (200 OK):** Same as POST response  
+**Error Responses:**
+- **403 Forbidden**: User is not the representative
+- **404 Not Found**: Family unit or member doesn't exist
+
+---
+
+### DELETE /api/family-units/{familyUnitId}/members/{memberId}
+
+Deletes a family member. Representatives cannot delete their own family member record.
+
+**Authorization**: Representative only  
+**Success Response:** 204 No Content  
+**Error Responses:**
+- **403 Forbidden**: User is not the representative
+- **404 Not Found**: Family unit or member doesn't exist
+- **409 Conflict**: Attempting to delete representative's own record (`CANNOT_DELETE_REPRESENTATIVE`)
+
