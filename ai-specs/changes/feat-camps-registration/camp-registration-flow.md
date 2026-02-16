@@ -64,9 +64,8 @@ Total extras = €100
 ```
 Base Total:    €540 (family members)
 Extras:        €100 (selected add-ons)
-Discount:      -€20 (member discount)
 ───────────────────
-Grand Total:   €620
+Grand Total:   €640
 ```
 
 ---
@@ -85,8 +84,7 @@ interface Registration {
   // Pricing breakdown
   baseTotalAmount: decimal;               // Sum of all member prices
   extrasAmount: decimal;                  // Sum of all selected extras
-  discountApplied: decimal;               // Applied discount
-  totalAmount: decimal;                   // Calculated: base + extras - discount
+  totalAmount: decimal;                   // Calculated: base + extras
 
   status: 'Pending' | 'Confirmed' | 'Cancelled';
   notes?: string;                         // Optional notes from family
@@ -115,7 +113,6 @@ CREATE TABLE registrations (
     -- Pricing breakdown
     base_total_amount DECIMAL(10,2) NOT NULL CHECK (base_total_amount >= 0),
     extras_amount DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (extras_amount >= 0),
-    discount_applied DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (discount_applied >= 0),
     total_amount DECIMAL(10,2) NOT NULL CHECK (total_amount >= 0),
 
     status VARCHAR(20) NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'Confirmed', 'Cancelled')),
@@ -126,7 +123,7 @@ CREATE TABLE registrations (
 
     -- Constraints
     UNIQUE(family_unit_id, camp_edition_id),  -- One registration per family per edition
-    CHECK (total_amount = base_total_amount + extras_amount - discount_applied)
+    CHECK (total_amount = base_total_amount + extras_amount)
 );
 
 CREATE INDEX idx_registrations_family ON registrations(family_unit_id);
@@ -295,7 +292,6 @@ See [camp-crud-enriched.md](./camp-crud-enriched.md) for the `RegistrationExtra`
     ],
     "baseTotalAmount": 300.00,
     "extrasAmount": 0.00,
-    "discountApplied": 0.00,
     "totalAmount": 300.00,
     "createdAt": "2026-02-13T10:00:00Z"
   }
@@ -528,9 +524,7 @@ public class CreateRegistrationValidator : AbstractValidator<CreateRegistrationR
         }
       ],
       "extrasAmount": 100.00,
-      "discountApplied": 20.00,
-      "discountReason": "Member discount (5%)",
-      "totalAmount": 440.00
+      "totalAmount": 460.00
     },
     "payments": [
       {
@@ -542,7 +536,7 @@ public class CreateRegistrationValidator : AbstractValidator<CreateRegistrationR
       }
     ],
     "amountPaid": 100.00,
-    "amountRemaining": 340.00,
+    "amountRemaining": 360.00,
     "createdAt": "2026-02-13T10:00:00Z",
     "updatedAt": "2026-02-13T12:30:00Z"
   }
@@ -695,7 +689,7 @@ public async Task CompletePaymentAsync(Guid paymentId, CancellationToken ct)
 
 ### RegistrationPricingService
 
-**Responsibility**: Calculate all amounts for a registration based on family composition, extras, and discounts.
+**Responsibility**: Calculate all amounts for a registration based on family composition and extras.
 
 ```csharp
 public class RegistrationPricingService(
@@ -751,17 +745,13 @@ public class RegistrationPricingService(
 
         var extrasAmount = extraPricing.Sum(e => e.TotalAmount);
 
-        // Apply discount (if any)
-        var discountApplied = CalculateDiscount(baseTotalAmount, extrasAmount);
-
         return new PricingBreakdown
         {
             Members = memberPricing,
             BaseTotalAmount = baseTotalAmount,
             Extras = extraPricing,
             ExtrasAmount = extrasAmount,
-            DiscountApplied = discountApplied,
-            TotalAmount = baseTotalAmount + extrasAmount - discountApplied
+            TotalAmount = baseTotalAmount + extrasAmount
         };
     }
 
@@ -821,13 +811,6 @@ public class RegistrationPricingService(
             age--;
         }
         return age;
-    }
-
-    private decimal CalculateDiscount(decimal baseTotalAmount, decimal extrasAmount)
-    {
-        // Example: 5% member discount on base amount only
-        var discountPercentage = 0.05m;
-        return Math.Round(baseTotalAmount * discountPercentage, 2);
     }
 }
 ```
@@ -893,20 +876,6 @@ public class RegistrationPricingServiceTests
         // Assert
         result.Extras[0].TotalAmount.Should().Be(50m);
     }
-
-    [Fact]
-    public async Task CalculateAsync_AppliesMemberDiscount()
-    {
-        // Arrange
-        var baseTotalAmount = 540m;
-
-        // Act
-        var result = await sut.CalculateAsync(editionId, memberIds, [], ct);
-
-        // Assert (5% discount on base)
-        result.DiscountApplied.Should().Be(27m); // 540 × 0.05
-        result.TotalAmount.Should().Be(513m); // 540 - 27
-    }
 }
 ```
 
@@ -970,7 +939,7 @@ POST /api/registrations/{id}/extras
 // Step 3: View breakdown
 GET /api/registrations/{id}
 
-// Response: Total = €620 (€540 base + €100 extras - €20 discount)
+// Response: Total = €640 (€540 base + €100 extras)
 
 // Step 4: Make deposit payment
 POST /api/payments
@@ -984,7 +953,7 @@ POST /api/payments
 POST /api/payments
 {
   "registrationId": "uuid",
-  "amount": 420.00,
+  "amount": 440.00,
   "method": "Card"
 }
 

@@ -38,7 +38,6 @@ Durante la implementación de la feature de Family Units, se identificó la nece
    - Los invitados no deben tener derechos de socio ni usuario
 
 3. **Impacto en inscripciones a campamentos**
-   - Las inscripciones futuras necesitarán diferenciar socios vs no-socios (precios diferentes)
    - Necesidad de validar que los socios estén al corriente de pago
 
 ---
@@ -107,7 +106,6 @@ public enum FeeStatus
 
 1. **Socios activos**:
    - Un `FamilyMember` es socio si tiene un `Membership` con `IsActive = true`
-   - Solo los socios activos pueden inscribirse a campamentos con descuento de socio
 
 2. **Cuotas anuales**:
    - Se genera automáticamente una cuota anual el 1 de enero de cada año para todos los socios activos
@@ -194,7 +192,6 @@ public class Guest
 1. **NO son socios**:
    - Los `Guest` NO pueden ser socios de la asociación
    - NO tienen `Membership`
-   - NO tienen descuento de socio en campamentos
 
 2. **NO son usuarios**:
    - Los `Guest` NO tienen cuenta de usuario en la aplicación
@@ -208,7 +205,6 @@ public class Guest
 
 4. **Inscripciones**:
    - Los invitados pueden inscribirse a campamentos (mediante el representante)
-   - Pagan precio completo (sin descuento de socio)
    - Sus datos médicos se manejan con la misma seguridad que los de `FamilyMember`
 
 5. **Privacidad**:
@@ -241,7 +237,6 @@ public class Guest
 | Puede ser socio | ✅ Sí (mediante Membership) | ❌ No |
 | Tiene cuenta de usuario | ⚠️ Opcional (UserId nullable) | ❌ No |
 | Puede inscribirse a campamentos | ✅ Sí | ✅ Sí (mediante representante) |
-| Descuento de socio | ✅ Si es socio activo | ❌ No |
 | Datos sensibles encriptados | ✅ Sí | ✅ Sí |
 | Gestión | Representante + Admin/Board | Representante + Admin/Board |
 
@@ -287,9 +282,8 @@ public class CampRegistration
     public Guid? FamilyMemberId { get; set; }
     public Guid? GuestId { get; set; }
 
-    // Precio calculado según si es socio activo o no
+    // Precio calculado
     public decimal Price { get; set; }
-    public bool AppliedMemberDiscount { get; set; }
 
     // Navegación
     public Camp Camp { get; set; } = null!;
@@ -346,10 +340,9 @@ public class CampRegistration
 
 **Entregables**:
 
-1. Lógica de cálculo de precios (socios vs no-socios)
-2. Validación de estado de pago para inscripciones
-3. Permitir inscripción de Guests mediante representante
-4. Reportes de inscripciones por tipo (socio/no-socio/invitado)
+1. Validación de estado de pago para inscripciones
+2. Permitir inscripción de Guests mediante representante
+3. Reportes de inscripciones por tipo (miembro/invitado)
 
 ---
 
