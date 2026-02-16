@@ -12,7 +12,7 @@ WORKDIR /src/Abuvi.API
 RUN dotnet publish -c Release -o /app/publish --no-restore
 
 # Runtime stage (smaller image, no SDK)
-FROM mcr.microsoft.com/dotnet/aspnet:9.0
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble AS final
 WORKDIR /app
 
 # Install Python 3.12 and curl (health checks) and necessary dependencies
@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y \
     python3.12-dev \
     python3-pip \
     python3.12-venv \
+    --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Config Csnakes to use Python 3.12
