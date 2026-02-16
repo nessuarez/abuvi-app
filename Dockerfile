@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Config Csnakes to use Python 3.12
-COPY src/Abuvi.API/Abuvi.Analysis ./PythonScripts
+COPY src/Abuvi.Analysis ./PythonScripts
 
 # Opcional: Instalar dependencias de Python si tienes un requirements.txt
 # RUN pip3 install --no-cache-dir -r ./PythonScripts/requirements.txt --break-system-packages
