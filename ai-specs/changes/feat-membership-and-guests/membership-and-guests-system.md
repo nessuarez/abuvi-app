@@ -48,6 +48,7 @@ Durante la implementación de la feature de Family Units, se identificó la nece
 ### Feature 1: Sistema de Socios (Membership)
 
 #### Objetivo
+
 Permitir marcar qué `FamilyMembers` son socios de la asociación y gestionar su estado de pago de cuotas anuales.
 
 #### Modelo de Datos
@@ -124,16 +125,19 @@ public enum FeeStatus
 #### API Endpoints (Propuestos)
 
 **Memberships**:
+
 - `POST /api/family-units/{familyUnitId}/members/{memberId}/membership` - Activar membresía
 - `GET /api/family-units/{familyUnitId}/members/{memberId}/membership` - Obtener membresía
 - `DELETE /api/family-units/{familyUnitId}/members/{memberId}/membership` - Desactivar membresía
 
 **Cuotas (Fees)**:
+
 - `GET /api/memberships/{membershipId}/fees` - Listar cuotas
 - `POST /api/memberships/{membershipId}/fees/{feeId}/pay` - Marcar cuota como pagada
 - `GET /api/memberships/{membershipId}/fees/current` - Obtener cuota del año actual
 
 **Administración (Admin/Board)**:
+
 - `POST /api/admin/memberships/generate-annual-fees` - Generar cuotas anuales para todos los socios
 - `GET /api/admin/memberships/overdue` - Listar socios con cuotas vencidas
 - `GET /api/admin/memberships/active` - Listar todos los socios activos
@@ -148,6 +152,7 @@ public enum FeeStatus
 ### Feature 2: Sistema de Invitados (Guests)
 
 #### Objetivo
+
 Permitir a las familias registrar invitados (amigos, conocidos) que asistirán a campamentos sin ser miembros de la familia ni socios de la asociación.
 
 #### Modelo de Datos
@@ -214,6 +219,7 @@ public class Guest
 #### API Endpoints (Propuestos)
 
 **Guests**:
+
 - `POST /api/family-units/{familyUnitId}/guests` - Crear invitado
 - `GET /api/family-units/{familyUnitId}/guests` - Listar invitados de la familia
 - `GET /api/family-units/{familyUnitId}/guests/{guestId}` - Obtener invitado
@@ -303,6 +309,7 @@ public class CampRegistration
 **Dependencias:** Family Units (completado)
 
 **Entregables**:
+
 1. Entidades `Membership` y `MembershipFee`
 2. Migraciones EF Core
 3. Repositorio y servicio para membresías
@@ -320,6 +327,7 @@ public class CampRegistration
 **Dependencias:** Family Units (completado)
 
 **Entregables**:
+
 1. Entidad `Guest`
 2. Migraciones EF Core
 3. Repositorio y servicio para invitados
@@ -337,6 +345,7 @@ public class CampRegistration
 **Dependencias:** Membership, Guests, Camp Registration
 
 **Entregables**:
+
 1. Lógica de cálculo de precios (socios vs no-socios)
 2. Validación de estado de pago para inscripciones
 3. Permitir inscripción de Guests mediante representante
@@ -349,11 +358,13 @@ public class CampRegistration
 ### Base de Datos
 
 **Nuevas tablas**:
+
 - `memberships`
 - `membership_fees`
 - `guests`
 
 **Índices recomendados**:
+
 - `memberships.family_member_id` (único, para relación 1-1)
 - `membership_fees.membership_id`
 - `membership_fees.year` (para queries de cuotas anuales)
@@ -367,11 +378,13 @@ public class CampRegistration
 ### Jobs Programados
 
 **Generación de cuotas anuales**:
+
 - Job que corre el 1 de enero a las 00:00
 - Crea `MembershipFee` para todos los socios activos
 - Notifica a los socios por email
 
 **Detección de cuotas vencidas**:
+
 - Job que corre diariamente
 - Marca cuotas como `Overdue` si pasan la fecha límite sin pagar
 - Notifica a los socios
@@ -379,6 +392,7 @@ public class CampRegistration
 ### RGPD/GDPR
 
 **Guests**:
+
 - Los invitados tienen los mismos derechos RGPD que los FamilyMembers
 - Derecho al olvido: Soft delete con `IsActive = false`
 - Datos sensibles encriptados
@@ -391,17 +405,20 @@ public class CampRegistration
 ### Membership
 
 **CreateMembershipRequest**:
+
 - `FamilyMemberId`: Requerido, debe existir
 - `StartDate`: Requerido, no puede ser futuro
 - Validar que el FamilyMember no tenga ya una membresía activa
 
 **PayFeeRequest**:
+
 - `PaymentReference`: Opcional, max 100 caracteres
 - `PaidDate`: Requerido, no puede ser futuro
 
 ### Guest
 
 **CreateGuestRequest**:
+
 - `FirstName`: Requerido, max 100 caracteres
 - `LastName`: Requerido, max 100 caracteres
 - `DateOfBirth`: Requerido, debe ser fecha pasada

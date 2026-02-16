@@ -1025,6 +1025,26 @@ POST /api/payments
 
 ---
 
+For frontend design and user experience, refer to Stich project screens for the camp registration flow:
+
+## Stitch Instructions
+
+Get the images and code for the following Stitch project's screens:
+
+## Project
+
+Title: ABUVI app
+ID: 12733491114602106159
+
+## Screens
+
+1. Formulario de Inscripción al Campamento
+    ID: 0fe0c4cdb59e4216a7f63fc85c586bf2
+
+Use a utility like `curl -L` to download the hosted URLs
+
+---
+
 ## Document Control
 
 - **Feature**: `feat-camp-registration-flow`
