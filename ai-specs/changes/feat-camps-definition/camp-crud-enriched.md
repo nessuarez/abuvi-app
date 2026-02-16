@@ -373,8 +373,7 @@ interface Registration {
   // Pricing breakdown
   baseTotalAmount: decimal;               // Sum of all member prices (without extras)
   extrasAmount: decimal;                  // Sum of all extras
-  discountApplied: decimal;
-  totalAmount: decimal;                   // baseTotalAmount + extrasAmount - discountApplied
+  totalAmount: decimal;                   // baseTotalAmount + extrasAmount
 
   status: 'Pending' | 'Confirmed' | 'Cancelled';
   notes?: string;
@@ -1423,17 +1422,15 @@ ADD CONSTRAINT chk_base_price_baby_positive CHECK (base_price_baby >= 0);
    - Mountain guide workshop: €50
    - **Extras total: €100**
 
-4. No discount applied
+4. **Final total: €640**
 
-5. **Final total: €640**
+5. Family makes deposit payment of €200
 
-6. Family makes deposit payment of €200
+6. Registration status: Pending (€440 remaining)
 
-7. Registration status: Pending (€440 remaining)
+7. Family completes remaining payment
 
-8. Family completes remaining payment
-
-9. Registration status: Confirmed
+8. Registration status: Confirmed
 
 ---
 

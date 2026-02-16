@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import Dialog from 'primevue/dialog'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -141,7 +141,7 @@ const handleCancel = () => {
         <label for="newRole" class="text-sm font-medium text-gray-700"
           >New Role *</label
         >
-        <Dropdown
+        <Select
           id="newRole"
           v-model="newRole"
           :options="availableRoles"

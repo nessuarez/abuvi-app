@@ -62,6 +62,37 @@ const router = createRouter({
         title: 'ABUVI | Administración'
       }
     },
+    {
+      path: '/family-unit',
+      name: 'family-unit',
+      component: () => import('@/views/FamilyUnitPage.vue'),
+      meta: {
+        requiresAuth: true,
+        title: 'ABUVI | Mi Unidad Familiar'
+      }
+    },
+
+    // Camp Management routes (Board only)
+    {
+      path: '/camps/locations',
+      name: 'camp-locations',
+      component: () => import('@/views/camps/CampLocationsPage.vue'),
+      meta: {
+        title: 'ABUVI | Ubicaciones de Campamento',
+        requiresAuth: true,
+        requiresBoard: true
+      }
+    },
+    {
+      path: '/camps/locations/:id',
+      name: 'camp-location-detail',
+      component: () => import('@/views/camps/CampLocationDetailPage.vue'),
+      meta: {
+        title: 'ABUVI | Detalles de Ubicación',
+        requiresAuth: true,
+        requiresBoard: true
+      }
+    },
 
     // Legacy routes for user management (backward compatibility)
     {

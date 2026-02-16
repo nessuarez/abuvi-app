@@ -12,6 +12,7 @@ This spec outlines the implementation of persistent logging in the Abuvi applica
 - Implement log rotation and retention policies to manage storage effectively.
 - Improve error tracking and debugging capabilities by providing detailed logs for critical events and errors.
 - Provide a centralized logging solution that can be accessed by the development and operations teams for troubleshooting and performance monitoring.
+- Simplify the process of identifying and resolving issues by having comprehensive logs that capture relevant information about application behavior and user interactions.
 
 ## Scope
 
@@ -26,6 +27,6 @@ This spec outlines the implementation of persistent logging in the Abuvi applica
 ## Log Access
 
 - Logs will be accessible through a centralized logging dashboard for monitoring and analysis.
-- Access to logs will be restricted to authorized personnel (Board role) to ensure data security and privacy.
+- Access to logs will be restricted to authorized personnel (Board/Admin role) to ensure data security and privacy.
 - Logs will be retained for a specified period (e.g., 90 days) before being archived or deleted, in accordance with data retention policies.
 - Logs need to be easily searchable and filterable based on various criteria (e.g., log level, event type, user ID) to facilitate troubleshooting and performance monitoring.
