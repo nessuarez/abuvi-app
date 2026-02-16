@@ -62,6 +62,15 @@ const router = createRouter({
         title: 'ABUVI | Administración'
       }
     },
+    {
+      path: '/family-unit',
+      name: 'family-unit',
+      component: () => import('@/views/FamilyUnitPage.vue'),
+      meta: {
+        requiresAuth: true,
+        title: 'ABUVI | Mi Unidad Familiar'
+      }
+    },
 
     // Legacy routes for user management (backward compatibility)
     {
