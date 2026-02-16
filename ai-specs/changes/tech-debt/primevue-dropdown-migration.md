@@ -5,19 +5,26 @@
 PrimeVue v4+ ha deprecado el componente `Dropdown` en favor del nuevo componente `Select`. Aunque ambos componentes funcionan de manera similar, el uso de `Dropdown` genera warnings de deprecación en la consola del navegador.
 
 **Warning actual:**
+
 ```
 Deprecated since v4. Use Select component instead.
 ```
 
 ## Estado Actual
 
-### ✅ Componentes Actualizados (Camps Feature)
+### ✅ Componentes Actualizados
+
+#### Camps Feature
 - `frontend/src/views/camps/CampLocationsPage.vue` - Actualizado
 - `frontend/src/components/camps/CampLocationForm.vue` - Actualizado
 
-### ⚠️ Componentes Pendientes (Users Feature)
-- `frontend/src/components/users/UserRoleDialog.vue` - **Pendiente**
-- `frontend/src/components/users/UserForm.vue` - **Pendiente**
+#### Users Feature
+- `frontend/src/components/users/UserRoleDialog.vue` - ✅ **Actualizado**
+- `frontend/src/components/users/UserForm.vue` - ✅ **Actualizado**
+
+### 🎉 Estado: Migración Completada
+
+Todos los componentes han sido migrados de `Dropdown` a `Select`. No quedan warnings de deprecación en el proyecto.
 
 ## Especificación de Cambios
 
@@ -26,11 +33,13 @@ Deprecated since v4. Use Select component instead.
 #### 1. Actualizar Import Statement
 
 **Antes:**
+
 ```typescript
 import Dropdown from 'primevue/dropdown'
 ```
 
 **Después:**
+
 ```typescript
 import Select from 'primevue/select'
 ```
@@ -38,6 +47,7 @@ import Select from 'primevue/select'
 #### 2. Actualizar Uso en Template
 
 **Antes:**
+
 ```vue
 <Dropdown
   v-model="selectedValue"
@@ -50,6 +60,7 @@ import Select from 'primevue/select'
 ```
 
 **Después:**
+
 ```vue
 <Select
   v-model="selectedValue"
@@ -82,6 +93,7 @@ El componente `Select` mantiene la misma API que `Dropdown`, por lo que los prop
 **Ubicación:** `frontend/src/components/users/UserRoleDialog.vue`
 
 **Cambios necesarios:**
+
 1. Cambiar import de `Dropdown` a `Select`
 2. Reemplazar todas las instancias de `<Dropdown>` por `<Select>` en el template
 3. Reemplazar todas las instancias de `</Dropdown>` por `</Select>` en el template
@@ -93,6 +105,7 @@ El componente `Select` mantiene la misma API que `Dropdown`, por lo que los prop
 **Ubicación:** `frontend/src/components/users/UserForm.vue`
 
 **Cambios necesarios:**
+
 1. Cambiar import de `Dropdown` a `Select`
 2. Reemplazar todas las instancias de `<Dropdown>` por `<Select>` en el template
 3. Reemplazar todas las instancias de `</Dropdown>` por `</Select>` en el template
