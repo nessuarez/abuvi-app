@@ -18,6 +18,7 @@ WORKDIR /app
 # Install Python 3.12 and curl (health checks) and necessary dependencies
 RUN apt-get update && apt-get install -y \
     curl \
+    wget \
     python3.12 \
     python3.12-dev \
     python3-pip \
