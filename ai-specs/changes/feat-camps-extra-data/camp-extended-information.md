@@ -3,6 +3,7 @@
 ## Objetivo
 
 Enriquecer el modelo Camp con información adicional estática proveniente de Google Places API u otras fuentes, incluyendo:
+
 - Dirección postal completa
 - Enlaces a Google Maps
 - Datos de contacto (teléfono, web)
@@ -12,6 +13,7 @@ Enriquecer el modelo Camp con información adicional estática proveniente de Go
 ## Contexto
 
 Actualmente, el modelo `Camp` solo contiene información básica:
+
 - Nombre
 - Descripción
 - Coordenadas (latitud/longitud)
@@ -27,7 +29,7 @@ Basado en el ejemplo real de `ai-specs/changes/feat-google-places-camps/examples
 ### Datos Disponibles y Relevantes
 
 | Campo Google Places | Utilidad | Prioridad |
-|-------------------|----------|-----------|
+| ------------------- | -------- | --------- |
 | `formattedAddress` | Dirección legible completa | Alta |
 | `addressComponents` | Componentes estructurados (calle, ciudad, CP) | Alta |
 | `nationalPhoneNumber` / `internationalPhoneNumber` | Contacto telefónico | Alta |
@@ -866,12 +868,14 @@ Esta feature se integra perfectamente con la spec de Google Places Autocomplete:
 ### Almacenamiento de Fotos
 
 **Opción A: Solo Referencias (Recomendado para MVP)**
+
 - Almacenar solo `photoReference` de Google Places
 - Construir URLs dinámicamente usando Google Places Photo API
 - Pros: Sin almacenamiento, siempre actualizado
 - Contras: Dependencia de Google API, coste por solicitud
 
 **Opción B: Descarga y Almacenamiento**
+
 - Descargar fotos de Google Places
 - Almacenar en Azure Blob Storage / AWS S3
 - Pros: Control total, sin dependencias externas
@@ -882,6 +886,7 @@ Esta feature se integra perfectamente con la spec de Google Places Autocomplete:
 ### Validación
 
 Todos los campos extendidos deben ser **opcionales**:
+
 - Permitir crear campamentos sin Google Places
 - Permitir crear campamentos manualmente
 - Solo requerir campos básicos (nombre, descripción, coordenadas, precios)
@@ -912,6 +917,7 @@ Todos los campos extendidos deben ser **opcionales**:
 ## Fases de Implementación
 
 ### Fase 1: Backend - Modelo y Migración
+
 1. Actualizar entidad Camp
 2. Crear entidad CampPhoto
 3. Crear y ejecutar migración
@@ -919,23 +925,27 @@ Todos los campos extendidos deben ser **opcionales**:
 5. Tests unitarios
 
 ### Fase 2: Backend - Servicio de Mapeo
+
 1. Crear GooglePlacesMapperService
 2. Integrar con PlacesController existente
 3. Actualizar CampsController para manejar campos extendidos
 4. Tests de integración
 
 ### Fase 3: Frontend - Types y Composables
+
 1. Actualizar types de Camp y CampPhoto
 2. Actualizar useCamps composable
 3. Actualizar useGooglePlaces para incluir mapeo
 
 ### Fase 4: Frontend - Componentes de Visualización
+
 1. Crear CampContactInfo component
 2. Crear CampPhotoGallery component
 3. Actualizar CampLocationDetailPage
 4. Actualizar CampLocationCard (mostrar rating si existe)
 
 ### Fase 5: Testing y Refinamiento
+
 1. Tests E2E
 2. Validación de datos
 3. Optimización de performance
@@ -955,6 +965,7 @@ Todos los campos extendidos deben ser **opcionales**:
 ### Contexto
 
 La información de los campamentos en Google Places puede cambiar con el tiempo:
+
 - ⭐ Ratings y número de valoraciones
 - 📞 Números de teléfono
 - 🌐 Sitios web
@@ -1932,12 +1943,14 @@ Estos campos se mantienen como los editó el usuario:
 ### Ubicación en la UI
 
 **Sincronización en Bloque:**
+
 - Botón prominente en `CampLocationsPage.vue` (vista principal de campamentos)
 - Solo visible para usuarios Board/Admin
 - Ubicación sugerida: Toolbar superior, junto a "Nuevo Campamento"
 - Icono: `pi pi-sync` con label "Sincronizar con Google Places"
 
 **Sincronización Individual:**
+
 - Botón en `CampLocationDetailPage.vue` (vista de detalle)
 - Muestra última fecha de sincronización
 - Solo visible si el campamento tiene `googlePlaceId`
@@ -1945,6 +1958,7 @@ Estos campos se mantienen como los editó el usuario:
 ### Criterios de Aceptación - Sincronización
 
 **Backend:**
+
 - [ ] Endpoint `POST /camps/{id}/sync` implementado (sincronización individual)
 - [ ] Endpoint `POST /camps/batch-sync` implementado (sincronización en bloque)
 - [ ] Endpoint `GET /camps/sync-preview` implementado (vista previa)
@@ -1956,6 +1970,7 @@ Estos campos se mantienen como los editó el usuario:
 - [ ] Email de notificación con reporte enviado a administradores
 
 **Frontend:**
+
 - [ ] Componente CampBatchSyncDialog implementado y funcional
 - [ ] Componente CampSyncButton para sincronización individual
 - [ ] Composable useCampSync con todos los métodos (preview, sync, batch)
@@ -1969,6 +1984,7 @@ Estos campos se mantienen como los editó el usuario:
 - [ ] Toast notifications de éxito/error
 
 **Testing:**
+
 - [ ] Tests unitarios de lógica de comparación de datos
 - [ ] Tests de integración de endpoints de sincronización
 - [ ] Tests E2E de flujo completo de sincronización en bloque
@@ -1987,7 +2003,7 @@ Estos campos se mantienen como los editó el usuario:
 
 ## Referencias
 
-- Google Places API - Photo: https://developers.google.com/maps/documentation/places/web-service/photos
-- Google Places API - Rate Limits: https://developers.google.com/maps/documentation/places/web-service/usage-and-billing
+- Google Places API - Photo: <https://developers.google.com/maps/documentation/places/web-service/photos>
+- Google Places API - Rate Limits: <https://developers.google.com/maps/documentation/places/web-service/usage-and-billing>
 - Ejemplo de respuesta: `ai-specs/changes/feat-google-places-camps/examples/google-places-response.json`
 - Spec relacionada: `ai-specs/changes/feat-camps-definition/google-places-autocomplete.md`
