@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, computed, watch } from 'vue'
 import InputText from 'primevue/inputtext'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import InputSwitch from 'primevue/inputswitch'
 import Button from 'primevue/button'
 import type { User, CreateUserRequest, UpdateUserRequest, UserRole } from '@/types/user'
@@ -203,7 +203,7 @@ const isFormValid = computed(() => {
     <!-- Role (create mode only) -->
     <div v-if="mode === 'create'">
       <label for="role" class="mb-2 block text-sm font-medium">Role *</label>
-      <Dropdown
+      <Select
         id="role"
         v-model="formData.role"
         :options="roleOptions"
