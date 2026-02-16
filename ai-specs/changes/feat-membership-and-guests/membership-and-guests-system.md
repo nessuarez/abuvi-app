@@ -38,7 +38,6 @@ Durante la implementación de la feature de Family Units, se identificó la nece
    - Los invitados no deben tener derechos de socio ni usuario
 
 3. **Impacto en inscripciones a campamentos**
-   - Las inscripciones futuras necesitarán diferenciar socios vs no-socios (precios diferentes)
    - Necesidad de validar que los socios estén al corriente de pago
 
 ---
@@ -48,6 +47,7 @@ Durante la implementación de la feature de Family Units, se identificó la nece
 ### Feature 1: Sistema de Socios (Membership)
 
 #### Objetivo
+
 Permitir marcar qué `FamilyMembers` son socios de la asociación y gestionar su estado de pago de cuotas anuales.
 
 #### Modelo de Datos
@@ -106,7 +106,6 @@ public enum FeeStatus
 
 1. **Socios activos**:
    - Un `FamilyMember` es socio si tiene un `Membership` con `IsActive = true`
-   - Solo los socios activos pueden inscribirse a campamentos con descuento de socio
 
 2. **Cuotas anuales**:
    - Se genera automáticamente una cuota anual el 1 de enero de cada año para todos los socios activos
@@ -124,16 +123,19 @@ public enum FeeStatus
 #### API Endpoints (Propuestos)
 
 **Memberships**:
+
 - `POST /api/family-units/{familyUnitId}/members/{memberId}/membership` - Activar membresía
 - `GET /api/family-units/{familyUnitId}/members/{memberId}/membership` - Obtener membresía
 - `DELETE /api/family-units/{familyUnitId}/members/{memberId}/membership` - Desactivar membresía
 
 **Cuotas (Fees)**:
+
 - `GET /api/memberships/{membershipId}/fees` - Listar cuotas
 - `POST /api/memberships/{membershipId}/fees/{feeId}/pay` - Marcar cuota como pagada
 - `GET /api/memberships/{membershipId}/fees/current` - Obtener cuota del año actual
 
 **Administración (Admin/Board)**:
+
 - `POST /api/admin/memberships/generate-annual-fees` - Generar cuotas anuales para todos los socios
 - `GET /api/admin/memberships/overdue` - Listar socios con cuotas vencidas
 - `GET /api/admin/memberships/active` - Listar todos los socios activos
@@ -148,6 +150,7 @@ public enum FeeStatus
 ### Feature 2: Sistema de Invitados (Guests)
 
 #### Objetivo
+
 Permitir a las familias registrar invitados (amigos, conocidos) que asistirán a campamentos sin ser miembros de la familia ni socios de la asociación.
 
 #### Modelo de Datos
@@ -189,7 +192,6 @@ public class Guest
 1. **NO son socios**:
    - Los `Guest` NO pueden ser socios de la asociación
    - NO tienen `Membership`
-   - NO tienen descuento de socio en campamentos
 
 2. **NO son usuarios**:
    - Los `Guest` NO tienen cuenta de usuario en la aplicación
@@ -203,7 +205,6 @@ public class Guest
 
 4. **Inscripciones**:
    - Los invitados pueden inscribirse a campamentos (mediante el representante)
-   - Pagan precio completo (sin descuento de socio)
    - Sus datos médicos se manejan con la misma seguridad que los de `FamilyMember`
 
 5. **Privacidad**:
@@ -214,6 +215,7 @@ public class Guest
 #### API Endpoints (Propuestos)
 
 **Guests**:
+
 - `POST /api/family-units/{familyUnitId}/guests` - Crear invitado
 - `GET /api/family-units/{familyUnitId}/guests` - Listar invitados de la familia
 - `GET /api/family-units/{familyUnitId}/guests/{guestId}` - Obtener invitado
@@ -235,7 +237,6 @@ public class Guest
 | Puede ser socio | ✅ Sí (mediante Membership) | ❌ No |
 | Tiene cuenta de usuario | ⚠️ Opcional (UserId nullable) | ❌ No |
 | Puede inscribirse a campamentos | ✅ Sí | ✅ Sí (mediante representante) |
-| Descuento de socio | ✅ Si es socio activo | ❌ No |
 | Datos sensibles encriptados | ✅ Sí | ✅ Sí |
 | Gestión | Representante + Admin/Board | Representante + Admin/Board |
 
@@ -281,9 +282,8 @@ public class CampRegistration
     public Guid? FamilyMemberId { get; set; }
     public Guid? GuestId { get; set; }
 
-    // Precio calculado según si es socio activo o no
+    // Precio calculado
     public decimal Price { get; set; }
-    public bool AppliedMemberDiscount { get; set; }
 
     // Navegación
     public Camp Camp { get; set; } = null!;
@@ -303,6 +303,7 @@ public class CampRegistration
 **Dependencias:** Family Units (completado)
 
 **Entregables**:
+
 1. Entidades `Membership` y `MembershipFee`
 2. Migraciones EF Core
 3. Repositorio y servicio para membresías
@@ -320,6 +321,7 @@ public class CampRegistration
 **Dependencias:** Family Units (completado)
 
 **Entregables**:
+
 1. Entidad `Guest`
 2. Migraciones EF Core
 3. Repositorio y servicio para invitados
@@ -337,10 +339,10 @@ public class CampRegistration
 **Dependencias:** Membership, Guests, Camp Registration
 
 **Entregables**:
-1. Lógica de cálculo de precios (socios vs no-socios)
-2. Validación de estado de pago para inscripciones
-3. Permitir inscripción de Guests mediante representante
-4. Reportes de inscripciones por tipo (socio/no-socio/invitado)
+
+1. Validación de estado de pago para inscripciones
+2. Permitir inscripción de Guests mediante representante
+3. Reportes de inscripciones por tipo (miembro/invitado)
 
 ---
 
@@ -349,11 +351,13 @@ public class CampRegistration
 ### Base de Datos
 
 **Nuevas tablas**:
+
 - `memberships`
 - `membership_fees`
 - `guests`
 
 **Índices recomendados**:
+
 - `memberships.family_member_id` (único, para relación 1-1)
 - `membership_fees.membership_id`
 - `membership_fees.year` (para queries de cuotas anuales)
@@ -367,11 +371,13 @@ public class CampRegistration
 ### Jobs Programados
 
 **Generación de cuotas anuales**:
+
 - Job que corre el 1 de enero a las 00:00
 - Crea `MembershipFee` para todos los socios activos
 - Notifica a los socios por email
 
 **Detección de cuotas vencidas**:
+
 - Job que corre diariamente
 - Marca cuotas como `Overdue` si pasan la fecha límite sin pagar
 - Notifica a los socios
@@ -379,6 +385,7 @@ public class CampRegistration
 ### RGPD/GDPR
 
 **Guests**:
+
 - Los invitados tienen los mismos derechos RGPD que los FamilyMembers
 - Derecho al olvido: Soft delete con `IsActive = false`
 - Datos sensibles encriptados
@@ -391,17 +398,20 @@ public class CampRegistration
 ### Membership
 
 **CreateMembershipRequest**:
+
 - `FamilyMemberId`: Requerido, debe existir
 - `StartDate`: Requerido, no puede ser futuro
 - Validar que el FamilyMember no tenga ya una membresía activa
 
 **PayFeeRequest**:
+
 - `PaymentReference`: Opcional, max 100 caracteres
 - `PaidDate`: Requerido, no puede ser futuro
 
 ### Guest
 
 **CreateGuestRequest**:
+
 - `FirstName`: Requerido, max 100 caracteres
 - `LastName`: Requerido, max 100 caracteres
 - `DateOfBirth`: Requerido, debe ser fecha pasada

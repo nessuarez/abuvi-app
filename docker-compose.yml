@@ -16,5 +16,14 @@ services:
       timeout: 5s
       retries: 5
 
+  seq:
+    image: datalust/seq:latest
+    container_name: abuvi-seq
+    environment:
+      ACCEPT_EULA: "Y"
+    ports:
+      - "5341:80"
+    restart: unless-stopped
+
 volumes:
   postgres-data:

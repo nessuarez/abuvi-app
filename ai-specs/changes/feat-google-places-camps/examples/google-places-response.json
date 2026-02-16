@@ -1,0 +1,595 @@
+{
+	"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk",
+	"id": "ChIJ38SpLTDCuhIRgdtW_484UBk",
+	"types": [
+		"hostel",
+		"summer_camp_organizer",
+		"lodging",
+		"health",
+		"point_of_interest",
+		"establishment"
+	],
+	"nationalPhoneNumber": "972 59 05 07",
+	"internationalPhoneNumber": "+34 972 59 05 07",
+	"formattedAddress": "Crta Pujarnol, km 5, 17834 Pujarnol, Girona, España",
+	"addressComponents": [
+		{
+			"longText": "km 5",
+			"shortText": "km 5",
+			"types": ["street_number"],
+			"languageCode": "es-ES"
+		},
+		{
+			"longText": "Crta Pujarnol",
+			"shortText": "Crta Pujarnol",
+			"types": ["route"],
+			"languageCode": "es"
+		},
+		{
+			"longText": "Pujarnol",
+			"shortText": "Pujarnol",
+			"types": ["locality", "political"],
+			"languageCode": "ca"
+		},
+		{
+			"longText": "Girona",
+			"shortText": "GI",
+			"types": ["administrative_area_level_2", "political"],
+			"languageCode": "ca"
+		},
+		{
+			"longText": "Catalunya",
+			"shortText": "CT",
+			"types": ["administrative_area_level_1", "political"],
+			"languageCode": "ca"
+		},
+		{
+			"longText": "España",
+			"shortText": "ES",
+			"types": ["country", "political"],
+			"languageCode": "es"
+		},
+		{
+			"longText": "17834",
+			"shortText": "17834",
+			"types": ["postal_code"],
+			"languageCode": "es-ES"
+		}
+	],
+	"plusCode": {
+		"globalCode": "8FJ44P26+GH",
+		"compoundCode": "4P26+GH Pujarnol, España"
+	},
+	"location": {
+		"latitude": 42.1013507,
+		"longitude": 2.71149
+	},
+	"viewport": {
+		"low": {
+			"latitude": 42.1000503197085,
+			"longitude": 2.7102641197084982
+		},
+		"high": {
+			"latitude": 42.1027482802915,
+			"longitude": 2.712962080291502
+		}
+	},
+	"rating": 3.7,
+	"googleMapsUri": "https://maps.google.com/?cid=1824020040200412033&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYASAA",
+	"websiteUri": "http://www.albacolonies.com/",
+	"regularOpeningHours": {
+		"openNow": false,
+		"periods": [
+			{
+				"open": {
+					"day": 1,
+					"hour": 8,
+					"minute": 0
+				},
+				"close": {
+					"day": 1,
+					"hour": 17,
+					"minute": 0
+				}
+			},
+			{
+				"open": {
+					"day": 2,
+					"hour": 8,
+					"minute": 0
+				},
+				"close": {
+					"day": 2,
+					"hour": 17,
+					"minute": 0
+				}
+			},
+			{
+				"open": {
+					"day": 3,
+					"hour": 8,
+					"minute": 0
+				},
+				"close": {
+					"day": 3,
+					"hour": 17,
+					"minute": 0
+				}
+			},
+			{
+				"open": {
+					"day": 4,
+					"hour": 8,
+					"minute": 0
+				},
+				"close": {
+					"day": 4,
+					"hour": 17,
+					"minute": 0
+				}
+			},
+			{
+				"open": {
+					"day": 5,
+					"hour": 9,
+					"minute": 0
+				},
+				"close": {
+					"day": 5,
+					"hour": 14,
+					"minute": 30
+				}
+			}
+		],
+		"weekdayDescriptions": [
+			"lunes: 8:00–17:00",
+			"martes: 8:00–17:00",
+			"miércoles: 8:00–17:00",
+			"jueves: 8:00–17:00",
+			"viernes: 9:00–14:30",
+			"sábado: Cerrado",
+			"domingo: Cerrado"
+		],
+		"nextOpenTime": "2026-02-16T07:00:00Z"
+	},
+	"utcOffsetMinutes": 60,
+	"adrFormatAddress": "\u003cspan class=\"street-address\"\u003eCrta Pujarnol, km 5\u003c/span\u003e, \u003cspan class=\"postal-code\"\u003e17834\u003c/span\u003e \u003cspan class=\"locality\"\u003ePujarnol\u003c/span\u003e, \u003cspan class=\"region\"\u003eGirona\u003c/span\u003e, \u003cspan class=\"country-name\"\u003eEspaña\u003c/span\u003e",
+	"businessStatus": "OPERATIONAL",
+	"userRatingCount": 113,
+	"iconMaskBaseUri": "https://maps.gstatic.com/mapfiles/place_api/icons/v2/hotel_pinlet",
+	"iconBackgroundColor": "#909CE1",
+	"displayName": {
+		"text": "El Clar del Bosc (casa de colònies)",
+		"languageCode": "es"
+	},
+	"primaryTypeDisplayName": {
+		"text": "Alojamiento",
+		"languageCode": "es-ES"
+	},
+	"currentOpeningHours": {
+		"openNow": false,
+		"periods": [
+			{
+				"open": {
+					"day": 1,
+					"hour": 8,
+					"minute": 0,
+					"date": {
+						"year": 2026,
+						"month": 2,
+						"day": 16
+					}
+				},
+				"close": {
+					"day": 1,
+					"hour": 17,
+					"minute": 0,
+					"date": {
+						"year": 2026,
+						"month": 2,
+						"day": 16
+					}
+				}
+			},
+			{
+				"open": {
+					"day": 2,
+					"hour": 8,
+					"minute": 0,
+					"date": {
+						"year": 2026,
+						"month": 2,
+						"day": 17
+					}
+				},
+				"close": {
+					"day": 2,
+					"hour": 17,
+					"minute": 0,
+					"date": {
+						"year": 2026,
+						"month": 2,
+						"day": 17
+					}
+				}
+			},
+			{
+				"open": {
+					"day": 3,
+					"hour": 8,
+					"minute": 0,
+					"date": {
+						"year": 2026,
+						"month": 2,
+						"day": 18
+					}
+				},
+				"close": {
+					"day": 3,
+					"hour": 17,
+					"minute": 0,
+					"date": {
+						"year": 2026,
+						"month": 2,
+						"day": 18
+					}
+				}
+			},
+			{
+				"open": {
+					"day": 4,
+					"hour": 8,
+					"minute": 0,
+					"date": {
+						"year": 2026,
+						"month": 2,
+						"day": 19
+					}
+				},
+				"close": {
+					"day": 4,
+					"hour": 17,
+					"minute": 0,
+					"date": {
+						"year": 2026,
+						"month": 2,
+						"day": 19
+					}
+				}
+			},
+			{
+				"open": {
+					"day": 5,
+					"hour": 9,
+					"minute": 0,
+					"date": {
+						"year": 2026,
+						"month": 2,
+						"day": 20
+					}
+				},
+				"close": {
+					"day": 5,
+					"hour": 14,
+					"minute": 30,
+					"date": {
+						"year": 2026,
+						"month": 2,
+						"day": 20
+					}
+				}
+			}
+		],
+		"weekdayDescriptions": [
+			"lunes: 8:00–17:00",
+			"martes: 8:00–17:00",
+			"miércoles: 8:00–17:00",
+			"jueves: 8:00–17:00",
+			"viernes: 9:00–14:30",
+			"sábado: Cerrado",
+			"domingo: Cerrado"
+		],
+		"nextOpenTime": "2026-02-16T07:00:00Z"
+	},
+	"primaryType": "lodging",
+	"shortFormattedAddress": "Crta Pujarnol, km 5, Pujarnol",
+	"reviews": [
+		{
+			"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk/reviews/ChdDSUhNMG9nS0VJQ0FnTURvak82OWhnRRAB",
+			"relativePublishTimeDescription": "Hace 9 meses",
+			"rating": 3,
+			"text": {
+				"text": "El lugar es precioso, pero el mantenimiento y la limpieza, dejan un poco que desear. Fui a una boda y donde estaban las mesas, había tablones sueltos... Ideal para que alguien se caiga y se pueda clavar un tornillo. En mi habitación, había calcetines sucios en la ventana, que no quiero ni imaginar cuánto tiempo llevaban allí y en alguno de los edificios una peste a alcantarilla que echaba para atrás.\nTiene muchísimas opciones de mejorar, pero depende de ellos",
+				"languageCode": "es"
+			},
+			"originalText": {
+				"text": "El lugar es precioso, pero el mantenimiento y la limpieza, dejan un poco que desear. Fui a una boda y donde estaban las mesas, había tablones sueltos... Ideal para que alguien se caiga y se pueda clavar un tornillo. En mi habitación, había calcetines sucios en la ventana, que no quiero ni imaginar cuánto tiempo llevaban allí y en alguno de los edificios una peste a alcantarilla que echaba para atrás.\nTiene muchísimas opciones de mejorar, pero depende de ellos",
+				"languageCode": "es"
+			},
+			"authorAttribution": {
+				"displayName": "David Boix",
+				"uri": "https://www.google.com/maps/contrib/107373885950102217085/reviews",
+				"photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjUgnhg3pU4HCgt5-PkLqpjqHEkUtUnrWI9JWo2TQJuP6kZfCoYg=s128-c0x00000000-cc-rp-mo-ba4"
+			},
+			"publishTime": "2025-04-22T11:52:16.476393Z",
+			"flagContentUri": "https://www.google.com/local/content/rap/report?postId=ChdDSUhNMG9nS0VJQ0FnTURvak82OWhnRRAB&d=17924085&t=1",
+			"googleMapsUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sChdDSUhNMG9nS0VJQ0FnTURvak82OWhnRRAB!2m1!1s0x12bac2302da9c4df:0x1950388fff56db81"
+		},
+		{
+			"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk/reviews/Ci9DQUlRQUNvZENodHljRjlvT2xSRGJVcHBUMUphY1hWcVZVWk5abmRIY2tSTmVrRRAB",
+			"relativePublishTimeDescription": "Hace 2 meses",
+			"rating": 5,
+			"text": {
+				"text": "Espectacular fin de semana que pasamos en familia, muy bien organizado y lo mejor fue el trato exquisito y la comida espectacular",
+				"languageCode": "es"
+			},
+			"originalText": {
+				"text": "Espectacular fin de semana que pasamos en familia, muy bien organizado y lo mejor fue el trato exquisito y la comida espectacular",
+				"languageCode": "es"
+			},
+			"authorAttribution": {
+				"displayName": "Jose Doblas",
+				"uri": "https://www.google.com/maps/contrib/107465250326492243890/reviews",
+				"photoUri": "https://lh3.googleusercontent.com/a/ACg8ocKLn5z8x_5aRROVS71iH0uO8iU0UtgsmDDBA3XHDYFXtmyiuA=s128-c0x00000000-cc-rp-mo"
+			},
+			"publishTime": "2025-11-21T13:05:03.522728621Z",
+			"flagContentUri": "https://www.google.com/local/content/rap/report?postId=Ci9DQUlRQUNvZENodHljRjlvT2xSRGJVcHBUMUphY1hWcVZVWk5abmRIY2tSTmVrRRAB&d=17924085&t=1",
+			"googleMapsUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sCi9DQUlRQUNvZENodHljRjlvT2xSRGJVcHBUMUphY1hWcVZVWk5abmRIY2tSTmVrRRAB!2m1!1s0x12bac2302da9c4df:0x1950388fff56db81"
+		},
+		{
+			"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk/reviews/ChZDSUhNMG9nS0VJQ0FnSURuc0liQkJ3EAE",
+			"relativePublishTimeDescription": "Hace un año",
+			"rating": 5,
+			"text": {
+				"text": "Hola! Estuve hospedada en el Clar del Bosc para una boda y ha sido una experiencia muy positiva. Tanto las instalaciones como el servicio han estado correctos. Es un sitio ideal para celebrar un evento. Tiene muchos espacios que dan para montar todo lo que desees. Y para todas las edades! Muchas gracias por todo :)",
+				"languageCode": "es"
+			},
+			"originalText": {
+				"text": "Hola! Estuve hospedada en el Clar del Bosc para una boda y ha sido una experiencia muy positiva. Tanto las instalaciones como el servicio han estado correctos. Es un sitio ideal para celebrar un evento. Tiene muchos espacios que dan para montar todo lo que desees. Y para todas las edades! Muchas gracias por todo :)",
+				"languageCode": "es"
+			},
+			"authorAttribution": {
+				"displayName": "La Marta",
+				"uri": "https://www.google.com/maps/contrib/100397674600664428812/reviews",
+				"photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjV0UHo_To_xz4K983oMc5gFUF8XgB2JR86bmejB3I55ot1fxRVznw=s128-c0x00000000-cc-rp-mo"
+			},
+			"publishTime": "2024-10-02T09:19:48.695416Z",
+			"flagContentUri": "https://www.google.com/local/content/rap/report?postId=ChZDSUhNMG9nS0VJQ0FnSURuc0liQkJ3EAE&d=17924085&t=1",
+			"googleMapsUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sChZDSUhNMG9nS0VJQ0FnSURuc0liQkJ3EAE!2m1!1s0x12bac2302da9c4df:0x1950388fff56db81"
+		},
+		{
+			"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk/reviews/ChdDSUhNMG9nS0VJQ0FnSUN6bkwyVThRRRAB",
+			"relativePublishTimeDescription": "Hace un año",
+			"rating": 1,
+			"text": {
+				"text": "Mi hija fue de colonias con su colegio. El entorno es precioso. Pero la casa esta sucia y deteriorada, la piscina llena de hojas y ranas, el piso roto, los lavabos un asco, las camas incomodas. La comida muy pero muy mejorable.\nEl monitor terrible, PABLO, tan grosero que hizo llorar a algunos niños, imponiendo castigos e insultando. Fue tan mala experiencia que los niños de 6to que podían quedarse unos días más prefirieron volver a casa. Veo que en las reseñas que hay quejas de él de hace hasta un año, incredible que siga ahi maltratando a los niños.\nNada recomendable, al menos no para colonias. Igual para eventos como bodas esta muy bien.",
+				"languageCode": "es"
+			},
+			"originalText": {
+				"text": "Mi hija fue de colonias con su colegio. El entorno es precioso. Pero la casa esta sucia y deteriorada, la piscina llena de hojas y ranas, el piso roto, los lavabos un asco, las camas incomodas. La comida muy pero muy mejorable.\nEl monitor terrible, PABLO, tan grosero que hizo llorar a algunos niños, imponiendo castigos e insultando. Fue tan mala experiencia que los niños de 6to que podían quedarse unos días más prefirieron volver a casa. Veo que en las reseñas que hay quejas de él de hace hasta un año, incredible que siga ahi maltratando a los niños.\nNada recomendable, al menos no para colonias. Igual para eventos como bodas esta muy bien.",
+				"languageCode": "es"
+			},
+			"authorAttribution": {
+				"displayName": "Coral Romero",
+				"uri": "https://www.google.com/maps/contrib/112561557516615910233/reviews",
+				"photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjVnx7oLAm_yAGaUUqiUak1Vjtka_h08Ta3soD9wGZJIFMMS0H3i=s128-c0x00000000-cc-rp-mo"
+			},
+			"publishTime": "2024-05-31T16:41:29.657485Z",
+			"flagContentUri": "https://www.google.com/local/content/rap/report?postId=ChdDSUhNMG9nS0VJQ0FnSUN6bkwyVThRRRAB&d=17924085&t=1",
+			"googleMapsUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sChdDSUhNMG9nS0VJQ0FnSUN6bkwyVThRRRAB!2m1!1s0x12bac2302da9c4df:0x1950388fff56db81"
+		},
+		{
+			"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk/reviews/ChdDSUhNMG9nS0VJQ0FnSUN6dXVYYXBBRRAB",
+			"relativePublishTimeDescription": "Hace un año",
+			"rating": 1,
+			"text": {
+				"text": "LUGAR NO RECOMENDABLE PARA NIÑOS\nMi hija acaba de llegar de pasar unos días de colonias con su colegio en este lugar y la experiencia no fue muy agradable. Lo primero que nos cuenta es que un monitor llamado PABLO los trataba de malas maneras y los ridiculizaba constantemente. Nunca entenderé como este tipo de personas pueden estar trabajando con niños, niños que llevan un año esperando con toda la ilusión del mundo sus colonias y tengan que llevarse esta mala experiencia.\nTambién nos comenta que todo estaba bastante dejado y deteriorado. No hay un buen mantenimiento de las instalaciones y la comida bastante mala.\nDefinitivamente este es un lugar nada recomendable para niños.",
+				"languageCode": "es"
+			},
+			"originalText": {
+				"text": "LUGAR NO RECOMENDABLE PARA NIÑOS\nMi hija acaba de llegar de pasar unos días de colonias con su colegio en este lugar y la experiencia no fue muy agradable. Lo primero que nos cuenta es que un monitor llamado PABLO los trataba de malas maneras y los ridiculizaba constantemente. Nunca entenderé como este tipo de personas pueden estar trabajando con niños, niños que llevan un año esperando con toda la ilusión del mundo sus colonias y tengan que llevarse esta mala experiencia.\nTambién nos comenta que todo estaba bastante dejado y deteriorado. No hay un buen mantenimiento de las instalaciones y la comida bastante mala.\nDefinitivamente este es un lugar nada recomendable para niños.",
+				"languageCode": "es"
+			},
+			"authorAttribution": {
+				"displayName": "Gina Rodriguez Granados",
+				"uri": "https://www.google.com/maps/contrib/116932130100897085997/reviews",
+				"photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjVXnSX-5768pxVQqBiEAeKyWpfQrC-IlT01iRfUMxFN3bW7kI6O=s128-c0x00000000-cc-rp-mo-ba3"
+			},
+			"publishTime": "2024-06-01T13:38:42.668885Z",
+			"flagContentUri": "https://www.google.com/local/content/rap/report?postId=ChdDSUhNMG9nS0VJQ0FnSUN6dXVYYXBBRRAB&d=17924085&t=1",
+			"googleMapsUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sChdDSUhNMG9nS0VJQ0FnSUN6dXVYYXBBRRAB!2m1!1s0x12bac2302da9c4df:0x1950388fff56db81"
+		}
+	],
+	"photos": [
+		{
+			"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk/photos/ATCDNfVGZro2A1yc6epZ5yJgRT1pZPjTDRYRS3QDGL5IEAjQhPinM4Qia6xMmY5x8c3-hDyAET8Xemi8YciV9U4xvRZpNhJtFaXQfwrPow6UocuXMryvuEjAG9vDcyCdS7TJo6743Ypx--MBiKBNPJsA8qiHeE3vF_9tGclkaVFVO9JXpFUsn9z_cMr-LSE8BuTkTqPHllN9cGO9t67eq5SdQtgTLbglcMphSW3W-Fdp_z1wbX1pU-PxGWU0hbdkCnI7g1Mx1gr66fy5GlaP1A7Sz-pOTQrz0r4teE0s-mxed51zyQ",
+			"widthPx": 650,
+			"heightPx": 434,
+			"authorAttributions": [
+				{
+					"displayName": "El Clar del Bosc (casa de colònies)",
+					"uri": "https://maps.google.com/maps/contrib/103384808983928128823",
+					"photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjX9nK5aBN69JoLJyKbTOkGg6nupJvR8UtGJQ08B6uHMl4U3xSrF=s100-p-k-no-mo"
+				}
+			],
+			"flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sAF1QipOi9BC3Ru2dkqwI-jg3-nhKS9QjXe9QeCUbUjp_&hl=es-ES",
+			"googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sAF1QipOi9BC3Ru2dkqwI-jg3-nhKS9QjXe9QeCUbUjp_!2e10!4m2!3m1!1s0x12bac2302da9c4df:0x1950388fff56db81"
+		},
+		{
+			"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk/photos/ATCDNfW1HtKVqrqGk_OJppHhLHi1yZ9_y33jMM6ctStX52o0cwHFw39-0-p2KdkWuEpXreCPN5va_yVXU4q_DB1oJiOOwAdkvol4hK_KkFhpbdNJetD__CgFaw6Tjgse6FaOiSTwavBrY5xB-4mbpaGRgqKuzx49BP1c5sNliAfxb3P7zNNLgKi0P513zLNMr9urHYj4G16sbLaLNi5SgrjIgstp-0xiuAvnjgKHD-F4CzdUj1fIGAgt4Thn3WO9ZxWuCLQy4YNfPzyC_StdgiEAP2VIK3-kszq6w_m3xYG-t4qejQ",
+			"widthPx": 4800,
+			"heightPx": 3191,
+			"authorAttributions": [
+				{
+					"displayName": "El Clar del Bosc (casa de colònies)",
+					"uri": "https://maps.google.com/maps/contrib/103384808983928128823",
+					"photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjX9nK5aBN69JoLJyKbTOkGg6nupJvR8UtGJQ08B6uHMl4U3xSrF=s100-p-k-no-mo"
+				}
+			],
+			"flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sAF1QipPimR7CZt-0i_RJp6CYYUzi9IdlT149dV8l-svq&hl=es-ES",
+			"googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sAF1QipPimR7CZt-0i_RJp6CYYUzi9IdlT149dV8l-svq!2e10!4m2!3m1!1s0x12bac2302da9c4df:0x1950388fff56db81"
+		},
+		{
+			"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk/photos/ATCDNfUIrjZvdyxqdPOKjL1zb0DqAsIrqytXyl3HL8wZa8pcrdj-YUg08sHO3VyxSLjDLO5ZmqW7X36RAcm9csMxAuqmFdPvwqn7-vrQFxyCiXLcmn4h1KPfFieA6drx5nx3IQgx-pz_NpYQSp_D2Kcuf7EuTNLLXXWqyCSSO9J_XByYZsy4m4H_Ig8BISKvYxgGny_D8pL8-j2mmAacBJ-6cSMdINZK7QSuFUrwpdyAsy15lBzuNvuU4azhjetu1Gmb9UYHg_NkX8WwliZVwWU5XEyJEMjclh1jOAZ-3NqYGMXs1rhXAMYvsXZOj1K6ceym6RvF-ifFrS54QcMnZ4eYJ-QydbNVD9NiFWLp4XOc3oNJXneHf-v0JrwF-SP6qDK1wEylPbbaUCsXfzGZb7l-bMLcYGssd9jo7L-tSFuHHoZsKw",
+			"widthPx": 4800,
+			"heightPx": 2700,
+			"authorAttributions": [
+				{
+					"displayName": "Marv Rodríguez",
+					"uri": "https://maps.google.com/maps/contrib/107908812887673984370",
+					"photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjWv_QiEnCcx0e6dMGyWksrfsvVWPR2s3E6E7rgokU2WqGGwPIeEfw=s100-p-k-no-mo"
+				}
+			],
+			"flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIHM0ogKEICAgICMxJ7qKQ&hl=es-ES",
+			"googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgICMxJ7qKQ!2e10!4m2!3m1!1s0x12bac2302da9c4df:0x1950388fff56db81"
+		},
+		{
+			"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk/photos/ATCDNfVJ37R-H3ODH7L2OoCM5TVK5emP2lFATN0vRV9iyGTqWi8qHmJ7NM_prYv7sUPwV-PIfJr1cvjF8Z3MEV7tx16azJtY9Hqx76Ko_8kNJIfUBQuffzFv03pSHb6pG6FluaLaDAa1BsHDaUN-HOaLcY1LrVrb3uDDiE0jPJQqWLvZykHMihSWo9jEnOmnCw6yY66Wr7cwgmlN4MePO1fvAP4Y3HOoyihlodjGAvwYzX1ghNgQAqDV6m4Ag2xxkhRbb44Jya2IMYD1vziwnVWzUTa8iFlzW52y7upmhLK5gssBfw",
+			"widthPx": 4800,
+			"heightPx": 3191,
+			"authorAttributions": [
+				{
+					"displayName": "El Clar del Bosc (casa de colònies)",
+					"uri": "https://maps.google.com/maps/contrib/103384808983928128823",
+					"photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjX9nK5aBN69JoLJyKbTOkGg6nupJvR8UtGJQ08B6uHMl4U3xSrF=s100-p-k-no-mo"
+				}
+			],
+			"flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sAF1QipNq19NfZBHZhdTfVEZS-imm3wb-kYZ2uQywsrNP&hl=es-ES",
+			"googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sAF1QipNq19NfZBHZhdTfVEZS-imm3wb-kYZ2uQywsrNP!2e10!4m2!3m1!1s0x12bac2302da9c4df:0x1950388fff56db81"
+		},
+		{
+			"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk/photos/ATCDNfXkwxkOKSUjyvZEFXZsbmGUdB-vHSXz69q05RBYp5i0EkUciWE7L-BX2bnDOazPsX0V9pNg7vz2oq-u7WUQ2UZgZZQN2fWPcyNvmY3fjHoFu_wCln9kDI2h6_PCv167fAqBOEKwhratOS3PS6CoXuSKmQC-bOO7ylzzWJX_GTxRQHHTGr7ZCybeBBNcZ1gF6Vyyp-mepqGXrmJU9mAtvhZ5uBXkz-GpDDhHC62irKo6TM6IO0HtrjSjUkkWClV62TCIcjEkghpxEqkAty9lTSJUQr4e7tgRvKRLQYhg-bbS8A",
+			"widthPx": 4800,
+			"heightPx": 3200,
+			"authorAttributions": [
+				{
+					"displayName": "El Clar del Bosc (casa de colònies)",
+					"uri": "https://maps.google.com/maps/contrib/103384808983928128823",
+					"photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjX9nK5aBN69JoLJyKbTOkGg6nupJvR8UtGJQ08B6uHMl4U3xSrF=s100-p-k-no-mo"
+				}
+			],
+			"flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sAF1QipOxcrVmKYf1LX1lQ-ODIkrzn-sF5iIApJZlNMXy&hl=es-ES",
+			"googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sAF1QipOxcrVmKYf1LX1lQ-ODIkrzn-sF5iIApJZlNMXy!2e10!4m2!3m1!1s0x12bac2302da9c4df:0x1950388fff56db81"
+		},
+		{
+			"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk/photos/ATCDNfW42W0-HvZcJCI4X3ekAI-3fftGO-jqvoLxA1THRUtaSmuzirD3yJGPb3Bab0pRx7QT579ea-RR-vlUy8RNNBydDFgfYquBnKoTPe8UShfJqFcjTww35kzvUD_S1GRwShqLY9DWCi7Byk9MJDpemIjhrEwi9He8Fyp9jfwIwvPvQdyBvv3bVO_MNKnNrCMBF_5BJKOY_rEetuVUwZqNAHTarAWtbOtjge0Xz9ZUdiBB6aNTqn6cuhZdd6bKk8TcXAzoU1ckJfK54CSmQXRC3RVZC0FOlp0HhxIMwliy7rRgaQ",
+			"widthPx": 600,
+			"heightPx": 400,
+			"authorAttributions": [
+				{
+					"displayName": "El Clar del Bosc (casa de colònies)",
+					"uri": "https://maps.google.com/maps/contrib/103384808983928128823",
+					"photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjX9nK5aBN69JoLJyKbTOkGg6nupJvR8UtGJQ08B6uHMl4U3xSrF=s100-p-k-no-mo"
+				}
+			],
+			"flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sAF1QipNyHctKrT-y2KiPiJEPNFNKnm0f8aXpXtte4Xm9&hl=es-ES",
+			"googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sAF1QipNyHctKrT-y2KiPiJEPNFNKnm0f8aXpXtte4Xm9!2e10!4m2!3m1!1s0x12bac2302da9c4df:0x1950388fff56db81"
+		},
+		{
+			"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk/photos/ATCDNfWnxWXBb8ZzQxtI4KrOpn1J-5FYXvhEH5yjuiBzWB4fjMwyHdfi4vX5EQw52Syo2oy63KYTSK-0DrFPWc4wFHAhbr8u8q_l3qyh5sgbo5yqCchDMQ7T8b8AExoWmXA88KtdvEVoEPBLLXwazdpoiLPOf4y7JvKwH7UbGbiaBywsY4Tv6oDA47-ZheV-YzHhyiURXqyCbtw-_co8TUJ7Np8Z9pDXvV0QBkqMj1wnBGx6divHcRkRMHP89grlZRK68Rzzo89NJVAEVZZziRUWjTLOOfVy_2EmzjDq1RTEe-OaQw",
+			"widthPx": 1210,
+			"heightPx": 807,
+			"authorAttributions": [
+				{
+					"displayName": "El Clar del Bosc (casa de colònies)",
+					"uri": "https://maps.google.com/maps/contrib/103384808983928128823",
+					"photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjX9nK5aBN69JoLJyKbTOkGg6nupJvR8UtGJQ08B6uHMl4U3xSrF=s100-p-k-no-mo"
+				}
+			],
+			"flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sAF1QipO3OfjrO2hUsU5rZGLHyJD_5fMoee_Ep48EpSlD&hl=es-ES",
+			"googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sAF1QipO3OfjrO2hUsU5rZGLHyJD_5fMoee_Ep48EpSlD!2e10!4m2!3m1!1s0x12bac2302da9c4df:0x1950388fff56db81"
+		},
+		{
+			"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk/photos/ATCDNfXeB3Dq96UCP3qwFYHLm4KoG-_rnLUeVO21HAC3dGmc79vNV1eDxRrEQS-wB7_gbMI14YigFUcO_6FsIwxLMJn8neRfoA-CzsBrmPz0R4wlbRs1fEyDYUcEIZQJh9WVWmQxJFw5_hgdosWEG7HrFDCJs046L_HvpaCHX7rlEPOkIOw9yEWEMUpDJe8dYiOafBPKsZ5F6wt_AUxCJKGf8MMKuoNYktp24ZQmdui6WJOfZSMoolw3hpAePgYHYK5PXPzFP1iM4kc5i3hzsak_gWDCK3fEm_Iy5RP_IdhLx_FMYA",
+			"widthPx": 4800,
+			"heightPx": 3191,
+			"authorAttributions": [
+				{
+					"displayName": "El Clar del Bosc (casa de colònies)",
+					"uri": "https://maps.google.com/maps/contrib/103384808983928128823",
+					"photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjX9nK5aBN69JoLJyKbTOkGg6nupJvR8UtGJQ08B6uHMl4U3xSrF=s100-p-k-no-mo"
+				}
+			],
+			"flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sAF1QipNp5IVbFC6DDkDQ2sN6s6rNeVE8wzzO-Glqjhip&hl=es-ES",
+			"googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sAF1QipNp5IVbFC6DDkDQ2sN6s6rNeVE8wzzO-Glqjhip!2e10!4m2!3m1!1s0x12bac2302da9c4df:0x1950388fff56db81"
+		},
+		{
+			"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk/photos/ATCDNfWOAd8AlleE3HKgc4xpbir_wL-JZw-HHOhseg2weX1QwZ5Uqxz3l5BWuAJzIeZ7v3C0hrh_7__dZlg56xrsn0__iZeCNuNbGB9zp4HweHUT9TUGdMtjwRR_mD_-KIPpdQ2DCHO1YXWV_vOAo1so3aiuhviczu9dLER1t2gBZLCIGm9n6eY4lExkUeDeAfUpnrOdJ8zKMlMR7_3DQRtU24tAPDR9KlteFCpNSqpKjUXn5qYq91RvnECn_OLoHUkbcqqMN8yw2Bcs5aXzOHrUDdjND91Nlm7qr21XiBkijh0Cdw",
+			"widthPx": 4800,
+			"heightPx": 2700,
+			"authorAttributions": [
+				{
+					"displayName": "El Clar del Bosc (casa de colònies)",
+					"uri": "https://maps.google.com/maps/contrib/103384808983928128823",
+					"photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjX9nK5aBN69JoLJyKbTOkGg6nupJvR8UtGJQ08B6uHMl4U3xSrF=s100-p-k-no-mo"
+				}
+			],
+			"flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sAF1QipNpbZbBIF1N0G_Dfqk4QHTfmcONw7x9VMCIMXzD&hl=es-ES",
+			"googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sAF1QipNpbZbBIF1N0G_Dfqk4QHTfmcONw7x9VMCIMXzD!2e10!4m2!3m1!1s0x12bac2302da9c4df:0x1950388fff56db81"
+		},
+		{
+			"name": "places/ChIJ38SpLTDCuhIRgdtW_484UBk/photos/ATCDNfUC5GZxWln4cCdnt-EX47ZOFDyLHfxUP_RF_rwgTSN1Ma1836w3W-ANef86Xu9NYxFDLXLqwUTF5x1aZ0b8m9_y2LIlteVaP5mcwuBkb9SraIa4nDyAfeAEQotIl1-r_cCyGsUp9oK_LRcO8Nox6hKzFCN0UD-ppFvTBs2GkvZtvWuslhbBV8zZMhunlH280pezIBoliJiGhVZ5DmBrxTomPOzfvo0EVAcINGNlSl-6ydIgM8wWaixHJc78EMFXUsa7H3YnrlIGcfIsBcLoewV5wPmSy3vLkR1kmcC0OPoD7g",
+			"widthPx": 4800,
+			"heightPx": 3191,
+			"authorAttributions": [
+				{
+					"displayName": "El Clar del Bosc (casa de colònies)",
+					"uri": "https://maps.google.com/maps/contrib/103384808983928128823",
+					"photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjX9nK5aBN69JoLJyKbTOkGg6nupJvR8UtGJQ08B6uHMl4U3xSrF=s100-p-k-no-mo"
+				}
+			],
+			"flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sAF1QipN3d1aaUtF6noV9-KpJ4RPwZxKXP0quxP5KO4em&hl=es-ES",
+			"googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sAF1QipN3d1aaUtF6noV9-KpJ4RPwZxKXP0quxP5KO4em!2e10!4m2!3m1!1s0x12bac2302da9c4df:0x1950388fff56db81"
+		}
+	],
+	"paymentOptions": {
+		"acceptsCashOnly": false
+	},
+	"accessibilityOptions": {
+		"wheelchairAccessibleParking": true
+	},
+	"pureServiceAreaBusiness": false,
+	"addressDescriptor": {
+		"landmarks": [
+			{
+				"name": "places/ChIJddZbOlPHuhIRcrjsJHtSzps",
+				"placeId": "ChIJddZbOlPHuhIRcrjsJHtSzps",
+				"displayName": {
+					"text": "Alba Servicios Educativos",
+					"languageCode": "es"
+				},
+				"types": [
+					"establishment",
+					"point_of_interest",
+					"real_estate_agency",
+					"travel_agency"
+				],
+				"spatialRelationship": "BESIDE",
+				"straightLineDistanceMeters": 21.351116,
+				"travelDistanceMeters": 34.60479
+			}
+		]
+	},
+	"googleMapsLinks": {
+		"directionsUri": "https://www.google.com/maps/dir//''/data=!4m7!4m6!1m1!4e2!1m2!1m1!1s0x12bac2302da9c4df:0x1950388fff56db81!3e0?g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYASAA",
+		"placeUri": "https://maps.google.com/?cid=1824020040200412033&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYASAA",
+		"writeAReviewUri": "https://www.google.com/maps/place//data=!4m3!3m2!1s0x12bac2302da9c4df:0x1950388fff56db81!12e1?g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYASAA",
+		"reviewsUri": "https://www.google.com/maps/place//data=!4m4!3m3!1s0x12bac2302da9c4df:0x1950388fff56db81!9m1!1b1?g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYASAA",
+		"photosUri": "https://www.google.com/maps/place//data=!4m3!3m2!1s0x12bac2302da9c4df:0x1950388fff56db81!10e5?g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYASAA"
+	},
+	"timeZone": {
+		"id": "Europe/Madrid"
+	},
+	"postalAddress": {
+		"regionCode": "ES",
+		"languageCode": "es-ES",
+		"postalCode": "17834",
+		"administrativeArea": "Girona",
+		"locality": "Pujarnol",
+		"addressLines": ["Crta Pujarnol, km 5"]
+	},
+	"googleMapsTypeLabel": {
+		"text": "Alojamiento con servicio",
+		"languageCode": "es-ES"
+	}
+}

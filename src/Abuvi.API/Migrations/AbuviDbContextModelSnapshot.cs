@@ -22,6 +22,314 @@ namespace Abuvi.API.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Abuvi.API.Features.Camps.AssociationSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("SettingKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("setting_key");
+
+                    b.Property<string>("SettingValue")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("setting_value");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SettingKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_AssociationSettings_SettingKey");
+
+                    b.ToTable("association_settings", (string)null);
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Camps.Camp", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<decimal?>("Latitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)")
+                        .HasColumnName("latitude");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("location");
+
+                    b.Property<decimal?>("Longitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)")
+                        .HasColumnName("longitude");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<decimal>("PricePerAdult")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("price_per_adult");
+
+                    b.Property<decimal>("PricePerBaby")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("price_per_baby");
+
+                    b.Property<decimal>("PricePerChild")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("price_per_child");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("camps", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Camps_Latitude", "latitude IS NULL OR (latitude >= -90 AND latitude <= 90)");
+
+                            t.HasCheckConstraint("CK_Camps_Longitude", "longitude IS NULL OR (longitude >= -180 AND longitude <= 180)");
+
+                            t.HasCheckConstraint("CK_Camps_PricePerAdult", "price_per_adult >= 0");
+
+                            t.HasCheckConstraint("CK_Camps_PricePerBaby", "price_per_baby >= 0");
+
+                            t.HasCheckConstraint("CK_Camps_PricePerChild", "price_per_child >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Camps.CampEdition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CampId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("camp_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<int?>("CustomAdultMinAge")
+                        .HasColumnType("integer")
+                        .HasColumnName("custom_adult_min_age");
+
+                    b.Property<int?>("CustomBabyMaxAge")
+                        .HasColumnType("integer")
+                        .HasColumnName("custom_baby_max_age");
+
+                    b.Property<int?>("CustomChildMaxAge")
+                        .HasColumnType("integer")
+                        .HasColumnName("custom_child_max_age");
+
+                    b.Property<int?>("CustomChildMinAge")
+                        .HasColumnType("integer")
+                        .HasColumnName("custom_child_min_age");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_date");
+
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_archived");
+
+                    b.Property<int?>("MaxCapacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_capacity");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<decimal>("PricePerAdult")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("price_per_adult");
+
+                    b.Property<decimal>("PricePerBaby")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("price_per_baby");
+
+                    b.Property<decimal>("PricePerChild")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("price_per_child");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<bool>("UseCustomAgeRanges")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("use_custom_age_ranges");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampId", "Year")
+                        .HasDatabaseName("IX_CampEditions_CampId_Year");
+
+                    b.ToTable("camp_editions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CampEditions_CustomAgeRanges", "NOT use_custom_age_ranges OR (custom_baby_max_age IS NOT NULL AND custom_child_min_age IS NOT NULL AND custom_child_max_age IS NOT NULL AND custom_adult_min_age IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_CampEditions_PricePerAdult", "price_per_adult >= 0");
+
+                            t.HasCheckConstraint("CK_CampEditions_PricePerBaby", "price_per_baby >= 0");
+
+                            t.HasCheckConstraint("CK_CampEditions_PricePerChild", "price_per_child >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Camps.CampEditionExtra", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CampEditionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("camp_edition_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsRequired")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_required");
+
+                    b.Property<int?>("MaxQuantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_quantity");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("price");
+
+                    b.Property<string>("PricingPeriod")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("pricing_period");
+
+                    b.Property<string>("PricingType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("pricing_type");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampEditionId");
+
+                    b.ToTable("camp_edition_extras", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CampEditionExtras_MaxQuantity", "max_quantity IS NULL OR max_quantity > 0");
+
+                            t.HasCheckConstraint("CK_CampEditionExtras_Price", "price >= 0");
+                        });
+                });
+
             modelBuilder.Entity("Abuvi.API.Features.FamilyUnits.FamilyMember", b =>
                 {
                     b.Property<Guid>("Id")
@@ -282,6 +590,28 @@ namespace Abuvi.API.Migrations
                     b.ToTable("UserRoleChangeLogs");
                 });
 
+            modelBuilder.Entity("Abuvi.API.Features.Camps.CampEdition", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Camps.Camp", "Camp")
+                        .WithMany("Editions")
+                        .HasForeignKey("CampId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Camp");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Camps.CampEditionExtra", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Camps.CampEdition", "CampEdition")
+                        .WithMany("Extras")
+                        .HasForeignKey("CampEditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CampEdition");
+                });
+
             modelBuilder.Entity("Abuvi.API.Features.FamilyUnits.FamilyMember", b =>
                 {
                     b.HasOne("Abuvi.API.Features.FamilyUnits.FamilyUnit", null)
@@ -318,6 +648,16 @@ namespace Abuvi.API.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Camps.Camp", b =>
+                {
+                    b.Navigation("Editions");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Camps.CampEdition", b =>
+                {
+                    b.Navigation("Extras");
                 });
 #pragma warning restore 612, 618
         }
