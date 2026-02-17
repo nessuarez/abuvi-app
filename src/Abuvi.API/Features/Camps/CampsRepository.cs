@@ -97,4 +97,85 @@ public class CampsRepository : ICampsRepository
 
         return photoList;
     }
+
+    public async Task<CampPhoto?> GetPhotoByIdAsync(Guid photoId, CancellationToken cancellationToken = default)
+        => await _context.CampPhotos
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == photoId, cancellationToken);
+
+    public async Task<CampPhoto> AddPhotoAsync(CampPhoto photo, CancellationToken cancellationToken = default)
+    {
+        photo.CreatedAt = DateTime.UtcNow;
+        photo.UpdatedAt = DateTime.UtcNow;
+
+        _context.CampPhotos.Add(photo);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return photo;
+    }
+
+    public async Task<CampPhoto> UpdatePhotoAsync(CampPhoto photo, CancellationToken cancellationToken = default)
+    {
+        photo.UpdatedAt = DateTime.UtcNow;
+
+        _context.CampPhotos.Update(photo);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return photo;
+    }
+
+    public async Task<bool> DeletePhotoAsync(Guid photoId, CancellationToken cancellationToken = default)
+    {
+        var photo = await _context.CampPhotos.FindAsync(new object[] { photoId }, cancellationToken);
+        if (photo == null) return false;
+
+        _context.CampPhotos.Remove(photo);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return true;
+    }
+
+    public async Task<List<CampPhoto>> GetPhotosForCampAsync(Guid campId, CancellationToken cancellationToken = default)
+        => await _context.CampPhotos
+            .AsNoTracking()
+            .Where(p => p.CampId == campId)
+            .OrderBy(p => p.DisplayOrder)
+            .ToListAsync(cancellationToken);
+
+    public async Task UpdatePhotoOrdersAsync(
+        IEnumerable<(Guid PhotoId, int DisplayOrder)> updates,
+        CancellationToken cancellationToken = default)
+    {
+        var updateList = updates.ToList();
+        var ids = updateList.Select(u => u.PhotoId).ToList();
+
+        var photos = await _context.CampPhotos
+            .Where(p => ids.Contains(p.Id))
+            .ToListAsync(cancellationToken);
+
+        foreach (var photo in photos)
+        {
+            var update = updateList.First(u => u.PhotoId == photo.Id);
+            photo.DisplayOrder = update.DisplayOrder;
+            photo.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task ClearPrimaryPhotoAsync(Guid campId, CancellationToken cancellationToken = default)
+    {
+        var primaries = await _context.CampPhotos
+            .Where(p => p.CampId == campId && p.IsPrimary)
+            .ToListAsync(cancellationToken);
+
+        foreach (var photo in primaries)
+        {
+            photo.IsPrimary = false;
+            photo.UpdatedAt = DateTime.UtcNow;
+        }
+
+        if (primaries.Count > 0)
+            await _context.SaveChangesAsync(cancellationToken);
+    }
 }

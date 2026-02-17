@@ -259,3 +259,64 @@ public class ChangeEditionStatusRequestValidator : AbstractValidator<ChangeEditi
             .IsInEnum().WithMessage("El estado proporcionado no es válido");
     }
 }
+
+/// <summary>
+/// Validator for AddCampPhotoRequest
+/// </summary>
+public class AddCampPhotoRequestValidator : AbstractValidator<AddCampPhotoRequest>
+{
+    public AddCampPhotoRequestValidator()
+    {
+        RuleFor(x => x.Url)
+            .NotEmpty().WithMessage("Photo URL is required")
+            .MaximumLength(1000).WithMessage("Photo URL must not exceed 1000 characters");
+
+        RuleFor(x => x.Description)
+            .MaximumLength(500).WithMessage("Description must not exceed 500 characters")
+            .When(x => !string.IsNullOrWhiteSpace(x.Description));
+
+        RuleFor(x => x.DisplayOrder)
+            .GreaterThanOrEqualTo(0).WithMessage("Display order must be greater than or equal to 0");
+    }
+}
+
+/// <summary>
+/// Validator for UpdateCampPhotoRequest
+/// </summary>
+public class UpdateCampPhotoRequestValidator : AbstractValidator<UpdateCampPhotoRequest>
+{
+    public UpdateCampPhotoRequestValidator()
+    {
+        RuleFor(x => x.Url)
+            .NotEmpty().WithMessage("Photo URL is required")
+            .MaximumLength(1000).WithMessage("Photo URL must not exceed 1000 characters");
+
+        RuleFor(x => x.Description)
+            .MaximumLength(500).WithMessage("Description must not exceed 500 characters")
+            .When(x => !string.IsNullOrWhiteSpace(x.Description));
+
+        RuleFor(x => x.DisplayOrder)
+            .GreaterThanOrEqualTo(0).WithMessage("Display order must be greater than or equal to 0");
+    }
+}
+
+/// <summary>
+/// Validator for ReorderCampPhotosRequest
+/// </summary>
+public class ReorderCampPhotosRequestValidator : AbstractValidator<ReorderCampPhotosRequest>
+{
+    public ReorderCampPhotosRequestValidator()
+    {
+        RuleFor(x => x.Photos)
+            .NotEmpty().WithMessage("Photos list must not be empty");
+
+        RuleForEach(x => x.Photos).ChildRules(photo =>
+        {
+            photo.RuleFor(p => p.Id)
+                .NotEmpty().WithMessage("Photo ID is required");
+
+            photo.RuleFor(p => p.DisplayOrder)
+                .GreaterThanOrEqualTo(0).WithMessage("Display order must be greater than or equal to 0");
+        });
+    }
+}

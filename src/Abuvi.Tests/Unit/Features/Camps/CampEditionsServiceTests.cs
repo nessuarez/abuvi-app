@@ -963,4 +963,191 @@ public class CampEditionsServiceTests
     }
 
     #endregion
+
+    #region AccommodationCapacity Template Auto-update Tests
+
+    [Fact]
+    public async Task ProposeAsync_WithAccommodationCapacity_UpdatesCampTemplate()
+    {
+        // Arrange
+        var camp = new Camp
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Camp",
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            IsActive = true
+        };
+        camp.SetAccommodationCapacity(new AccommodationCapacity { PrivateRoomsWithBathroom = 5 });
+
+        _campsRepository.GetByIdAsync(camp.Id, Arg.Any<CancellationToken>()).Returns(camp);
+        _repository.ExistsAsync(camp.Id, 2026, Arg.Any<CancellationToken>()).Returns(false);
+
+        var newAccommodation = new AccommodationCapacity { PrivateRoomsWithBathroom = 10 };
+        var request = new ProposeCampEditionRequest(
+            CampId: camp.Id,
+            Year: 2026,
+            StartDate: new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate: new DateTime(2026, 7, 10, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult: null,
+            PricePerChild: null,
+            PricePerBaby: null,
+            UseCustomAgeRanges: false,
+            CustomBabyMaxAge: null,
+            CustomChildMinAge: null,
+            CustomChildMaxAge: null,
+            CustomAdultMinAge: null,
+            MaxCapacity: null,
+            Notes: null,
+            AccommodationCapacity: newAccommodation
+        );
+
+        _repository.CreateAsync(Arg.Any<CampEdition>(), Arg.Any<CancellationToken>())
+            .Returns(args => args.Arg<CampEdition>());
+
+        // Act
+        await _sut.ProposeAsync(request);
+
+        // Assert: camp template updated with new accommodation
+        await _campsRepository.Received(1).UpdateAsync(
+            Arg.Is<Camp>(c => c.GetAccommodationCapacity()!.PrivateRoomsWithBathroom == 10),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProposeAsync_WithNullAccommodationCapacity_DoesNotUpdateCampTemplate()
+    {
+        // Arrange
+        var camp = new Camp
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Camp",
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            IsActive = true
+        };
+
+        _campsRepository.GetByIdAsync(camp.Id, Arg.Any<CancellationToken>()).Returns(camp);
+        _repository.ExistsAsync(camp.Id, 2026, Arg.Any<CancellationToken>()).Returns(false);
+        _repository.CreateAsync(Arg.Any<CampEdition>(), Arg.Any<CancellationToken>())
+            .Returns(args => args.Arg<CampEdition>());
+
+        var request = new ProposeCampEditionRequest(
+            CampId: camp.Id,
+            Year: 2026,
+            StartDate: new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate: new DateTime(2026, 7, 10, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult: null,
+            PricePerChild: null,
+            PricePerBaby: null,
+            UseCustomAgeRanges: false,
+            CustomBabyMaxAge: null,
+            CustomChildMinAge: null,
+            CustomChildMaxAge: null,
+            CustomAdultMinAge: null,
+            MaxCapacity: null,
+            Notes: null,
+            AccommodationCapacity: null
+        );
+
+        // Act
+        await _sut.ProposeAsync(request);
+
+        // Assert: camp NOT updated when accommodation is null
+        await _campsRepository.DidNotReceive().UpdateAsync(
+            Arg.Any<Camp>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PromoteToDraftAsync_WithEditionAccommodation_UpdatesCampTemplate()
+    {
+        // Arrange
+        var campId = Guid.NewGuid();
+        var camp = new Camp
+        {
+            Id = campId,
+            Name = "Test Camp",
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            IsActive = true
+        };
+
+        var edition = new CampEdition
+        {
+            Id = Guid.NewGuid(),
+            CampId = campId,
+            Year = 2026,
+            StartDate = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 7, 10, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            Status = CampEditionStatus.Proposed,
+            Camp = camp
+        };
+        edition.SetAccommodationCapacity(new AccommodationCapacity { PrivateRoomsWithBathroom = 7 });
+
+        _repository.GetByIdAsync(edition.Id, Arg.Any<CancellationToken>()).Returns(edition);
+        _repository.UpdateAsync(Arg.Any<CampEdition>(), Arg.Any<CancellationToken>())
+            .Returns(args => args.Arg<CampEdition>());
+        _campsRepository.UpdateAsync(Arg.Any<Camp>(), Arg.Any<CancellationToken>())
+            .Returns(camp);
+
+        // Act
+        await _sut.PromoteToDraftAsync(edition.Id);
+
+        // Assert: camp template synced from edition accommodation
+        await _campsRepository.Received(1).UpdateAsync(
+            Arg.Is<Camp>(c => c.GetAccommodationCapacity()!.PrivateRoomsWithBathroom == 7),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PromoteToDraftAsync_WithoutEditionAccommodation_DoesNotUpdateCampTemplate()
+    {
+        // Arrange
+        var campId = Guid.NewGuid();
+        var camp = new Camp
+        {
+            Id = campId,
+            Name = "Test Camp",
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            IsActive = true
+        };
+
+        var edition = new CampEdition
+        {
+            Id = Guid.NewGuid(),
+            CampId = campId,
+            Year = 2026,
+            StartDate = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 7, 10, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            Status = CampEditionStatus.Proposed,
+            Camp = camp,
+            AccommodationCapacityJson = null
+        };
+
+        _repository.GetByIdAsync(edition.Id, Arg.Any<CancellationToken>()).Returns(edition);
+        _repository.UpdateAsync(Arg.Any<CampEdition>(), Arg.Any<CancellationToken>())
+            .Returns(args => args.Arg<CampEdition>());
+
+        // Act
+        await _sut.PromoteToDraftAsync(edition.Id);
+
+        // Assert: camp NOT updated when edition has no accommodation
+        await _campsRepository.DidNotReceive().UpdateAsync(
+            Arg.Any<Camp>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    #endregion
 }
