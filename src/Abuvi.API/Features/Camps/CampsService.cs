@@ -44,6 +44,7 @@ public class CampsService
             Location = request.Location,
             Latitude = request.Latitude,
             Longitude = request.Longitude,
+            GooglePlaceId = request.GooglePlaceId,
             PricePerAdult = request.PricePerAdult,
             PricePerChild = request.PricePerChild,
             PricePerBaby = request.PricePerBaby,
@@ -115,6 +116,7 @@ public class CampsService
         camp.Location = request.Location;
         camp.Latitude = request.Latitude;
         camp.Longitude = request.Longitude;
+        camp.GooglePlaceId = request.GooglePlaceId;
         camp.PricePerAdult = request.PricePerAdult;
         camp.PricePerChild = request.PricePerChild;
         camp.PricePerBaby = request.PricePerBaby;
@@ -156,6 +158,7 @@ public class CampsService
             Location: camp.Location,
             Latitude: camp.Latitude,
             Longitude: camp.Longitude,
+            GooglePlaceId: camp.GooglePlaceId,
             PricePerAdult: camp.PricePerAdult,
             PricePerChild: camp.PricePerChild,
             PricePerBaby: camp.PricePerBaby,

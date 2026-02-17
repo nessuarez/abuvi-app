@@ -44,6 +44,14 @@ public class CampConfiguration : IEntityTypeConfiguration<Camp>
             .HasPrecision(9, 6)
             .HasColumnName("longitude");
 
+        // Google Place ID: optional, max 255, indexed
+        builder.Property(c => c.GooglePlaceId)
+            .HasMaxLength(255)
+            .HasColumnName("google_place_id");
+
+        builder.HasIndex(c => c.GooglePlaceId)
+            .HasDatabaseName("ix_camps_google_place_id");
+
         // Age-based pricing (must be >= 0)
         builder.Property(c => c.PricePerAdult)
             .HasPrecision(10, 2)

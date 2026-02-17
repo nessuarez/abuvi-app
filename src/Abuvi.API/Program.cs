@@ -4,6 +4,7 @@ using Abuvi.API.Common.Middleware;
 using Abuvi.API.Features.Users;
 using Abuvi.API.Features.Auth;
 using Abuvi.API.Features.Camps;
+using Abuvi.API.Features.GooglePlaces;
 using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Common.Services;
 using FluentValidation;
@@ -147,6 +148,10 @@ builder.Services.AddScoped<AssociationSettingsService>();
 builder.Services.AddScoped<ICampEditionsRepository, CampEditionsRepository>();
 builder.Services.AddScoped<CampEditionsService>();
 
+// Google Places API integration
+builder.Services.AddHttpClient<IGooglePlacesService, GooglePlacesService>();
+builder.Services.AddScoped<IGooglePlacesService, GooglePlacesService>();
+
 // Family Units
 builder.Services.AddScoped<IFamilyUnitsRepository, FamilyUnitsRepository>();
 builder.Services.AddScoped<FamilyUnitsService>();
@@ -224,6 +229,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = Dat
 app.MapAuthEndpoints();
 app.MapUsersEndpoints();
 app.MapCampsEndpoints();
+app.MapGooglePlacesEndpoints();
 app.MapFamilyUnitsEndpoints();
 
 app.Run();

@@ -11,6 +11,7 @@ public class Camp
     public string? Location { get; set; }
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
+    public string? GooglePlaceId { get; set; }
 
     // Age-based pricing template (used as defaults for editions)
     public decimal PricePerAdult { get; set; }
@@ -140,6 +141,7 @@ public record CreateCampRequest(
     string? Location,
     decimal? Latitude,
     decimal? Longitude,
+    string? GooglePlaceId,
     decimal PricePerAdult,
     decimal PricePerChild,
     decimal PricePerBaby
@@ -154,6 +156,7 @@ public record UpdateCampRequest(
     string? Location,
     decimal? Latitude,
     decimal? Longitude,
+    string? GooglePlaceId,
     decimal PricePerAdult,
     decimal PricePerChild,
     decimal PricePerBaby,
@@ -170,6 +173,7 @@ public record CampResponse(
     string? Location,
     decimal? Latitude,
     decimal? Longitude,
+    string? GooglePlaceId,
     decimal PricePerAdult,
     decimal PricePerChild,
     decimal PricePerBaby,
