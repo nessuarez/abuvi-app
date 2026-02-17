@@ -725,6 +725,183 @@ Deletes a family member. Representatives cannot delete their own family member r
 
 ---
 
+## Camp Management Endpoints
+
+Manage camp location templates. All endpoints require Admin or Board role.
+
+**Base Path:** `/api/camps`
+
+---
+
+### GET /api/camps
+
+Returns all camp locations (lightweight, no photos).
+
+**Authorization**: Admin or Board
+
+**Query Parameters:**
+
+- `isActive` (optional, boolean): Filter by active status
+- `skip` (optional, integer, default: 0): Pagination offset
+- `take` (optional, integer, default: 100): Pagination limit
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "name": "Camping El Pinar",
+      "description": "A beautiful pine forest camp",
+      "location": "Sierra de Guadarrama",
+      "latitude": 40.8167,
+      "longitude": -3.9833,
+      "googlePlaceId": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+      "formattedAddress": "Calle del Pinar, 1, 28740 Rascafría, Madrid",
+      "phoneNumber": "+34 918 691 311",
+      "websiteUrl": "https://camping-elpinar.es",
+      "googleMapsUrl": "https://maps.google.com/?cid=123",
+      "googleRating": 4.3,
+      "googleRatingCount": 156,
+      "businessStatus": "OPERATIONAL",
+      "pricePerAdult": 180.00,
+      "pricePerChild": 120.00,
+      "pricePerBaby": 60.00,
+      "isActive": true,
+      "createdAt": "2026-02-17T10:00:00Z",
+      "updatedAt": "2026-02-17T10:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/camps/{id}
+
+Returns full camp details including all Google Places fields and photos.
+
+**Authorization**: Admin or Board
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "name": "Camping El Pinar",
+    "description": "A beautiful pine forest camp",
+    "location": "Sierra de Guadarrama",
+    "latitude": 40.8167,
+    "longitude": -3.9833,
+    "googlePlaceId": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+    "formattedAddress": "Calle del Pinar, 1, 28740 Rascafría, Madrid",
+    "streetAddress": "Calle del Pinar, 1",
+    "locality": "Rascafría",
+    "administrativeArea": "Madrid",
+    "postalCode": "28740",
+    "country": "Spain",
+    "phoneNumber": "+34 918 691 311",
+    "nationalPhoneNumber": "918 691 311",
+    "websiteUrl": "https://camping-elpinar.es",
+    "googleMapsUrl": "https://maps.google.com/?cid=123",
+    "googleRating": 4.3,
+    "googleRatingCount": 156,
+    "businessStatus": "OPERATIONAL",
+    "placeTypes": "[\"campground\",\"lodging\"]",
+    "lastGoogleSyncAt": "2026-02-17T10:00:00Z",
+    "pricePerAdult": 180.00,
+    "pricePerChild": 120.00,
+    "pricePerBaby": 60.00,
+    "isActive": true,
+    "photos": [
+      {
+        "id": "1fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "photoReference": "ATplDJa...",
+        "photoUrl": null,
+        "width": 4032,
+        "height": 3024,
+        "attributionName": "Google User",
+        "attributionUrl": "https://profiles.google.com/1234567890",
+        "isPrimary": true,
+        "displayOrder": 1
+      }
+    ],
+    "createdAt": "2026-02-17T10:00:00Z",
+    "updatedAt": "2026-02-17T10:00:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+- **404 Not Found**: Camp does not exist
+
+---
+
+### POST /api/camps
+
+Creates a new camp. If `googlePlaceId` is provided, the backend automatically enriches the record with Google Places data (address, phone, website, rating, photos).
+
+**Authorization**: Admin or Board
+**Request Body:**
+
+```json
+{
+  "name": "Camping El Pinar",
+  "description": "A beautiful pine forest camp",
+  "location": "Sierra de Guadarrama",
+  "latitude": 40.8167,
+  "longitude": -3.9833,
+  "googlePlaceId": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+  "pricePerAdult": 180.00,
+  "pricePerChild": 120.00,
+  "pricePerBaby": 60.00
+}
+```
+
+**Success Response (201 Created):** Same as `GET /api/camps/{id}` response (CampDetailResponse with photos)
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed (negative prices, invalid coordinates)
+
+---
+
+### PUT /api/camps/{id}
+
+Updates an existing camp.
+
+**Authorization**: Admin or Board
+
+**Request Body:** Same as POST plus `isActive` boolean
+
+**Success Response (200 OK):** Same as `GET /api/camps/{id}` response
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **404 Not Found**: Camp does not exist
+
+---
+
+### DELETE /api/camps/{id}
+
+Deletes a camp. Fails if the camp has any editions.
+
+**Authorization**: Admin or Board
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **400 Bad Request**: Camp has existing editions (`OPERATION_ERROR`)
+- **404 Not Found**: Camp does not exist
+
+---
+
 ## Google Places API (Backend Proxy)
 
 These endpoints proxy Google Places API calls through the backend to protect the API key from client exposure.

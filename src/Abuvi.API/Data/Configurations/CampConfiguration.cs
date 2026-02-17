@@ -52,6 +52,66 @@ public class CampConfiguration : IEntityTypeConfiguration<Camp>
         builder.HasIndex(c => c.GooglePlaceId)
             .HasDatabaseName("ix_camps_google_place_id");
 
+        // Extended Contact Information (all nullable)
+        builder.Property(c => c.FormattedAddress)
+            .HasMaxLength(500)
+            .HasColumnName("formatted_address");
+
+        builder.Property(c => c.StreetAddress)
+            .HasMaxLength(200)
+            .HasColumnName("street_address");
+
+        builder.Property(c => c.Locality)
+            .HasMaxLength(100)
+            .HasColumnName("locality");
+
+        builder.Property(c => c.AdministrativeArea)
+            .HasMaxLength(100)
+            .HasColumnName("administrative_area");
+
+        builder.Property(c => c.PostalCode)
+            .HasMaxLength(20)
+            .HasColumnName("postal_code");
+
+        builder.Property(c => c.Country)
+            .HasMaxLength(100)
+            .HasColumnName("country");
+
+        builder.Property(c => c.PhoneNumber)
+            .HasMaxLength(30)
+            .HasColumnName("phone_number");
+
+        builder.Property(c => c.NationalPhoneNumber)
+            .HasMaxLength(30)
+            .HasColumnName("national_phone_number");
+
+        builder.Property(c => c.WebsiteUrl)
+            .HasMaxLength(500)
+            .HasColumnName("website_url");
+
+        builder.Property(c => c.GoogleMapsUrl)
+            .HasMaxLength(500)
+            .HasColumnName("google_maps_url");
+
+        // Google Metadata (all nullable)
+        builder.Property(c => c.GoogleRating)
+            .HasPrecision(3, 1)
+            .HasColumnName("google_rating");
+
+        builder.Property(c => c.GoogleRatingCount)
+            .HasColumnName("google_rating_count");
+
+        builder.Property(c => c.LastGoogleSyncAt)
+            .HasColumnName("last_google_sync_at");
+
+        builder.Property(c => c.BusinessStatus)
+            .HasMaxLength(50)
+            .HasColumnName("business_status");
+
+        builder.Property(c => c.PlaceTypes)
+            .HasMaxLength(500)
+            .HasColumnName("place_types");
+
         // Age-based pricing (must be >= 0)
         builder.Property(c => c.PricePerAdult)
             .HasPrecision(10, 2)

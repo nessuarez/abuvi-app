@@ -14,6 +14,7 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     public DbSet<CampEdition> CampEditions => Set<CampEdition>();
     public DbSet<CampEditionExtra> CampEditionExtras => Set<CampEditionExtra>();
     public DbSet<AssociationSettings> AssociationSettings => Set<AssociationSettings>();
+    public DbSet<CampPhoto> CampPhotos => Set<CampPhoto>();
     public DbSet<FamilyUnit> FamilyUnits => Set<FamilyUnit>();
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
 

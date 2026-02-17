@@ -77,4 +77,24 @@ public class CampsRepository : ICampsRepository
 
         return true;
     }
+
+    public async Task<Camp?> GetByIdWithPhotosAsync(Guid id, CancellationToken cancellationToken = default)
+        => await _context.Camps
+            .AsNoTracking()
+            .Include(c => c.Editions)
+            .Include(c => c.Photos.OrderBy(p => p.DisplayOrder))
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyList<CampPhoto>> AddPhotosAsync(
+        IEnumerable<CampPhoto> photos,
+        CancellationToken cancellationToken = default)
+    {
+        var photoList = photos.ToList();
+        if (photoList.Count == 0) return photoList;
+
+        _context.CampPhotos.AddRange(photoList);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return photoList;
+    }
 }

@@ -13,6 +13,25 @@ public class Camp
     public decimal? Longitude { get; set; }
     public string? GooglePlaceId { get; set; }
 
+    // Extended Contact Information (from Google Places, all nullable)
+    public string? FormattedAddress { get; set; }
+    public string? StreetAddress { get; set; }
+    public string? Locality { get; set; }
+    public string? AdministrativeArea { get; set; }
+    public string? PostalCode { get; set; }
+    public string? Country { get; set; }
+    public string? PhoneNumber { get; set; }
+    public string? NationalPhoneNumber { get; set; }
+    public string? WebsiteUrl { get; set; }
+    public string? GoogleMapsUrl { get; set; }
+
+    // Google Metadata (all nullable)
+    public decimal? GoogleRating { get; set; }
+    public int? GoogleRatingCount { get; set; }
+    public DateTime? LastGoogleSyncAt { get; set; }
+    public string? BusinessStatus { get; set; }
+    public string? PlaceTypes { get; set; }
+
     // Age-based pricing template (used as defaults for editions)
     public decimal PricePerAdult { get; set; }
     public decimal PricePerChild { get; set; }
@@ -24,6 +43,7 @@ public class Camp
 
     // Navigation properties
     public ICollection<CampEdition> Editions { get; set; } = new List<CampEdition>();
+    public ICollection<CampPhoto> Photos { get; set; } = new List<CampPhoto>();
 }
 
 /// <summary>
@@ -164,7 +184,7 @@ public record UpdateCampRequest(
 );
 
 /// <summary>
-/// Camp response DTO
+/// Camp response DTO (lightweight, used for list endpoints — no photos)
 /// </summary>
 public record CampResponse(
     Guid Id,
@@ -174,12 +194,70 @@ public record CampResponse(
     decimal? Latitude,
     decimal? Longitude,
     string? GooglePlaceId,
+    string? FormattedAddress,
+    string? PhoneNumber,
+    string? WebsiteUrl,
+    string? GoogleMapsUrl,
+    decimal? GoogleRating,
+    int? GoogleRatingCount,
+    string? BusinessStatus,
     decimal PricePerAdult,
     decimal PricePerChild,
     decimal PricePerBaby,
     bool IsActive,
     DateTime CreatedAt,
     DateTime UpdatedAt
+);
+
+/// <summary>
+/// Full camp detail DTO including all extended Google Places fields and photos.
+/// Used by GET /api/camps/{id} and POST /api/camps.
+/// </summary>
+public record CampDetailResponse(
+    Guid Id,
+    string Name,
+    string? Description,
+    string? Location,
+    decimal? Latitude,
+    decimal? Longitude,
+    string? GooglePlaceId,
+    string? FormattedAddress,
+    string? StreetAddress,
+    string? Locality,
+    string? AdministrativeArea,
+    string? PostalCode,
+    string? Country,
+    string? PhoneNumber,
+    string? NationalPhoneNumber,
+    string? WebsiteUrl,
+    string? GoogleMapsUrl,
+    decimal? GoogleRating,
+    int? GoogleRatingCount,
+    string? BusinessStatus,
+    string? PlaceTypes,
+    DateTime? LastGoogleSyncAt,
+    decimal PricePerAdult,
+    decimal PricePerChild,
+    decimal PricePerBaby,
+    bool IsActive,
+    IReadOnlyList<CampPhotoResponse> Photos,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
+);
+
+/// <summary>
+/// DTO for camp photo data returned by API
+/// </summary>
+public record CampPhotoResponse(
+    Guid Id,
+    string? PhotoReference,
+    string? PhotoUrl,
+    int Width,
+    int Height,
+    string AttributionName,
+    string? AttributionUrl,
+    bool IsPrimary,
+    int DisplayOrder
 );
 
 /// <summary>
@@ -267,3 +345,31 @@ public record CampEditionResponse(
     DateTime CreatedAt,
     DateTime UpdatedAt
 );
+
+/// <summary>
+/// Photo associated with a camp, sourced from Google Places API (Phase 1: references only)
+/// </summary>
+public class CampPhoto
+{
+    public Guid Id { get; set; }
+    public Guid CampId { get; set; }
+
+    public string? PhotoReference { get; set; }  // Google Places photo reference token
+    public string? PhotoUrl { get; set; }         // Future: direct URL if downloaded and stored
+
+    public int Width { get; set; }
+    public int Height { get; set; }
+
+    public string AttributionName { get; set; } = string.Empty;  // Photo author (required by Google T&C)
+    public string? AttributionUrl { get; set; }                   // Author profile URL
+
+    public bool IsOriginal { get; set; } = true;   // true = from Google Places, false = manually added
+    public bool IsPrimary { get; set; } = false;   // Primary display photo
+    public int DisplayOrder { get; set; } = 0;     // Sort order in gallery (1-based)
+
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Navigation
+    public Camp Camp { get; set; } = null!;
+}
