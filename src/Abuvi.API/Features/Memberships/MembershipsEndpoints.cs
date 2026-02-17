@@ -69,4 +69,56 @@ public static class MembershipsEndpoints
         await service.DeactivateAsync(memberId, ct);
         return Results.NoContent();
     }
+
+    public static void MapMembershipFeeEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/memberships/{membershipId:guid}/fees")
+            .WithTags("Membership Fees")
+            .RequireAuthorization();
+
+        group.MapGet("/", GetFees)
+            .WithName("GetMembershipFees")
+            .Produces<ApiResponse<IReadOnlyList<MembershipFeeResponse>>>();
+
+        group.MapGet("/current", GetCurrentYearFee)
+            .WithName("GetCurrentYearFee")
+            .Produces<ApiResponse<MembershipFeeResponse>>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPost("/{feeId:guid}/pay", PayFee)
+            .WithName("PayFee")
+            .AddEndpointFilter<ValidationFilter<PayFeeRequest>>()
+            .Produces<ApiResponse<MembershipFeeResponse>>()
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status409Conflict);
+    }
+
+    private static async Task<IResult> GetFees(
+        [FromRoute] Guid membershipId,
+        MembershipsService service,
+        CancellationToken ct)
+    {
+        var fees = await service.GetFeesAsync(membershipId, ct);
+        return Results.Ok(ApiResponse<IReadOnlyList<MembershipFeeResponse>>.Ok(fees));
+    }
+
+    private static async Task<IResult> GetCurrentYearFee(
+        [FromRoute] Guid membershipId,
+        MembershipsService service,
+        CancellationToken ct)
+    {
+        var fee = await service.GetCurrentYearFeeAsync(membershipId, ct);
+        return Results.Ok(ApiResponse<MembershipFeeResponse>.Ok(fee));
+    }
+
+    private static async Task<IResult> PayFee(
+        [FromRoute] Guid membershipId,
+        [FromRoute] Guid feeId,
+        [FromBody] PayFeeRequest request,
+        MembershipsService service,
+        CancellationToken ct)
+    {
+        var fee = await service.PayFeeAsync(feeId, request, ct);
+        return Results.Ok(ApiResponse<MembershipFeeResponse>.Ok(fee));
+    }
 }

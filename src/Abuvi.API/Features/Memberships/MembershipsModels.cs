@@ -56,6 +56,12 @@ public enum FeeStatus
 // Request DTOs
 public record CreateMembershipRequest(DateTime StartDate);
 
+// Fee management DTOs
+public record PayFeeRequest(
+    DateTime PaidDate,
+    string? PaymentReference = null
+);
+
 // Response DTOs
 public record MembershipResponse(
     Guid Id,

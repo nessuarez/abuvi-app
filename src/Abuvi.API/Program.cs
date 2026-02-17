@@ -231,6 +231,7 @@ app.MapUsersEndpoints();
 app.MapCampsEndpoints();
 app.MapFamilyUnitsEndpoints();
 app.MapMembershipsEndpoints();
+app.MapMembershipFeeEndpoints();
 
 app.Run();
 

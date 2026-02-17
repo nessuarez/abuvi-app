@@ -61,6 +61,47 @@ public class MembershipsService(
 
         await repository.UpdateAsync(membership, ct);
     }
+
+    public async Task<IReadOnlyList<MembershipFeeResponse>> GetFeesAsync(
+        Guid membershipId,
+        CancellationToken ct)
+    {
+        var fees = await repository.GetFeesByMembershipAsync(membershipId, ct);
+        return fees.Select(f => f.ToResponse()).ToList();
+    }
+
+    public async Task<MembershipFeeResponse> GetCurrentYearFeeAsync(
+        Guid membershipId,
+        CancellationToken ct)
+    {
+        var fee = await repository.GetCurrentYearFeeAsync(membershipId, ct);
+        if (fee is null)
+            throw new NotFoundException("MembershipFee", membershipId);
+
+        return fee.ToResponse();
+    }
+
+    public async Task<MembershipFeeResponse> PayFeeAsync(
+        Guid feeId,
+        PayFeeRequest request,
+        CancellationToken ct)
+    {
+        var fee = await repository.GetFeeByIdAsync(feeId, ct);
+        if (fee is null)
+            throw new NotFoundException(nameof(MembershipFee), feeId);
+
+        if (fee.Status == FeeStatus.Paid)
+            throw new BusinessRuleException("La cuota ya está pagada");
+
+        fee.Status = FeeStatus.Paid;
+        fee.PaidDate = request.PaidDate;
+        fee.PaymentReference = request.PaymentReference;
+        fee.UpdatedAt = DateTime.UtcNow;
+
+        await repository.UpdateFeeAsync(fee, ct);
+
+        return fee.ToResponse();
+    }
 }
 
 // Extension methods for mapping
