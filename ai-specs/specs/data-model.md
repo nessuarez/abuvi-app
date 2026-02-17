@@ -150,6 +150,8 @@ A camp event/edition organized by the association. Represents a specific camp ha
 - One Camp can have many Faqs (camp-specific FAQs)
 - One Camp can have many PhotoAlbums
 - One Camp can have many CampIdeas
+- One Camp can have many Documents
+- One Camp can have many 'Comisiones' (committees or groups responsible for organizing different aspects of the camp, e.g. logistics, activities, food)
 
 ---
 
