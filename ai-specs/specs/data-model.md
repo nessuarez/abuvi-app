@@ -111,6 +111,67 @@ A person (child or adult) within a family unit. In the future, a FamilyMember ma
 - Each FamilyMember belongs to exactly one FamilyUnit (via `familyUnitId`)
 - Each FamilyMember may optionally link to one User account (via `userId`)
 - One FamilyMember can appear in many RegistrationMembers (across different camps)
+- One FamilyMember can have zero or one Membership
+
+---
+
+### Membership
+
+Represents an active membership for a family member. Members pay annual fees and gain certain privileges (e.g., discounted camp prices).
+
+**Fields:**
+
+- `id`: Unique identifier for the Membership entity (Primary Key, UUID)
+- `familyMemberId`: The family member who holds this membership (required, FK -> FamilyMember, unique)
+- `startDate`: When the membership became active (required, TIMESTAMP)
+- `endDate`: When the membership ended (optional, TIMESTAMP, null if currently active)
+- `isActive`: Whether the membership is currently active (required, BOOLEAN)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- Each family member can have at most one membership record (unique constraint on `familyMemberId`)
+- StartDate must not be in the future
+- EndDate is only set when membership is deactivated
+- A family member with an active membership cannot be deleted from the system (database constraint: Restrict delete)
+
+**Relationships:**
+
+- Each Membership belongs to exactly one FamilyMember (via `familyMemberId`, one-to-one)
+- One Membership can have many MembershipFees (one per year)
+
+---
+
+### MembershipFee
+
+Represents an annual membership fee payment for a given year.
+
+**Fields:**
+
+- `id`: Unique identifier for the MembershipFee entity (Primary Key, UUID)
+- `membershipId`: The membership this fee belongs to (required, FK -> Membership)
+- `year`: Calendar year for this fee (required, INTEGER, e.g., 2026)
+- `amount`: Fee amount in euros (required, NUMERIC(10,2), >= 0)
+- `status`: Payment status (required, enum: `Pending` | `Paid` | `Overdue`)
+- `paidDate`: When the fee was paid (optional, TIMESTAMP, only set when status is Paid)
+- `paymentReference`: External payment reference or transaction ID (optional, max 100 characters)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- Each membership can have at most one fee per year (unique constraint on (`membershipId`, `year`))
+- Amount must be >= 0 with exactly 2 decimal places
+- Status enum values: Pending (waiting for payment), Paid (payment received), Overdue (payment deadline passed)
+- PaidDate must be set when status changes to Paid
+- Status can transition: Pending -> Paid or Pending -> Overdue
+- Cannot transition from Paid back to Pending or Overdue
+
+**Relationships:**
+
+- Each MembershipFee belongs to exactly one Membership (via `membershipId`)
+- When a Membership is deleted, all its fees are cascade deleted
 
 ---
 
