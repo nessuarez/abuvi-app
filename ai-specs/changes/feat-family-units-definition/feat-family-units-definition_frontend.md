@@ -5,6 +5,7 @@
 This implementation adds comprehensive family unit management functionality to the ABUVI frontend. Users can create one family unit, act as its representative, and manage family member profiles within it. This feature prepares the foundation for future camp registration where families register together.
 
 **Architecture Principles:**
+
 - **Vue 3 Composition API** with `<script setup lang="ts">` (mandatory)
 - **Composables pattern** for API communication (`useFamilyUnits`)
 - **PrimeVue components** for rich UI (DataTable, Dialog, Calendar, Button, InputText)
@@ -13,6 +14,7 @@ This implementation adds comprehensive family unit management functionality to t
 - **Responsive design** with mobile-first approach
 
 **Key Business Rules:**
+
 - One family unit per user
 - User who creates family unit becomes its representative
 - Representative auto-created as first family member
@@ -26,9 +28,11 @@ This implementation adds comprehensive family unit management functionality to t
 ### Components/Composables Involved
 
 **New Composables:**
+
 - `frontend/src/composables/useFamilyUnits.ts` - API communication for family units and members
 
 **New Components:**
+
 - `frontend/src/components/family-units/FamilyUnitCard.vue` - Display family unit summary
 - `frontend/src/components/family-units/FamilyUnitForm.vue` - Create/Edit family unit
 - `frontend/src/components/family-units/FamilyMemberList.vue` - List of family members with DataTable
@@ -36,17 +40,21 @@ This implementation adds comprehensive family unit management functionality to t
 - `frontend/src/components/family-units/FamilyMemberCard.vue` - Display single family member
 
 **New Views:**
+
 - `frontend/src/views/FamilyUnitPage.vue` - Main family unit management page
 
 **New Types:**
+
 - `frontend/src/types/family-unit.ts` - TypeScript interfaces for family units and members
 
 ### Routing Considerations
 
 **New Routes:**
+
 - `/family-unit` - Main family unit management page (Member role required, authenticated)
 
 **Route Guards:**
+
 - Authentication required (JWT token)
 - Email verification required
 - Member, Board, or Admin role required
@@ -54,16 +62,19 @@ This implementation adds comprehensive family unit management functionality to t
 ### State Management Approach
 
 **Local State (Component-level):**
+
 - Form data (family unit name, member details) - `ref()` in components
 - UI state (dialog visibility, loading, errors) - `ref()` in components
 - Current editing member - `ref()` in parent component
 
 **Composable State:**
+
 - Family unit data - `ref()` in `useFamilyUnits`
 - Family members list - `ref()` in `useFamilyUnits`
 - Loading/error states - `ref()` in `useFamilyUnits`
 
 **No Pinia Store Needed:**
+
 - Family unit data is user-specific and not shared globally
 - Composable pattern sufficient for this feature
 
@@ -78,12 +89,14 @@ This implementation adds comprehensive family unit management functionality to t
 **Branch Naming:** `feature/feat-family-units-definition-frontend`
 
 **Implementation Steps:**
+
 1. Check if backend branch `feature/feat-family-units-definition-backend` exists
 2. Ensure you're on latest `main` branch: `git checkout main && git pull origin main`
 3. Create frontend branch: `git checkout -b feature/feat-family-units-definition-frontend`
 4. Verify branch creation: `git branch`
 
 **Notes:**
+
 - This must be the FIRST step before any code changes
 - Separate frontend branch from backend to isolate concerns
 - Follow git workflow from `frontend-standards.mdc`
@@ -114,7 +127,7 @@ export enum FamilyRelationship {
 
 **IMPORTANT:** Do NOT include `Friend` in this enum. Friends/guests will be handled separately in a future feature.
 
-3. **Define FamilyUnit interfaces**:
+1. **Define FamilyUnit interfaces**:
 
 ```typescript
 // Response from backend
@@ -137,7 +150,7 @@ export interface UpdateFamilyUnitRequest {
 }
 ```
 
-4. **Define FamilyMember interfaces**:
+1. **Define FamilyMember interfaces**:
 
 ```typescript
 // Response from backend
@@ -185,7 +198,7 @@ export interface UpdateFamilyMemberRequest {
 }
 ```
 
-5. **Define helper types**:
+1. **Define helper types**:
 
 ```typescript
 // For displaying relationship in Spanish
@@ -199,9 +212,11 @@ export const FamilyRelationshipLabels: Record<FamilyRelationship, string> = {
 ```
 
 **Dependencies:**
+
 - None (TypeScript built-in)
 
 **Implementation Notes:**
+
 - All dates as ISO 8601 strings (YYYY-MM-DD) for `dateOfBirth`
 - Medical notes and allergies **never** in response types (only boolean flags)
 - Relationship enum stored as strings in backend, use enum for type safety in frontend
@@ -503,11 +518,13 @@ export function useFamilyUnits() {
 ```
 
 **Dependencies:**
+
 - `@/utils/api` - Axios instance with interceptors
 - `@/types/api` - ApiResponse envelope type
 - `@/types/family-unit` - Family unit types (created in Step 1)
 
 **Implementation Notes:**
+
 - All API calls use the configured Axios instance from `utils/api.ts`
 - Error messages in Spanish (matching backend error messages)
 - Composable manages loading/error/data states
@@ -635,10 +652,12 @@ const handleCancel = () => {
 ```
 
 **Dependencies:**
+
 - PrimeVue: `InputText`, `Button`, `useToast`
 - Types from `@/types/family-unit`
 
 **Implementation Notes:**
+
 - Validation on blur and submit
 - Spanish labels and error messages
 - Loading state disables inputs
@@ -1042,10 +1061,12 @@ const handleCancel = () => {
 ```
 
 **Dependencies:**
+
 - PrimeVue: `InputText`, `Calendar`, `Dropdown`, `Textarea`, `Button`, `useToast`
 - Types from `@/types/family-unit`
 
 **Implementation Notes:**
+
 - Comprehensive client-side validation (matches backend FluentValidation rules)
 - Spanish labels and error messages
 - Document number auto-uppercase on input
@@ -1238,10 +1259,12 @@ const handleDelete = (member: FamilyMemberResponse) => {
 ```
 
 **Dependencies:**
+
 - PrimeVue: `DataTable`, `Column`, `Button`, `Tag`, `tooltip` directive
 - Types from `@/types/family-unit`
 
 **Implementation Notes:**
+
 - DataTable with sorting and pagination (> 10 members)
 - Age calculation from date of birth
 - Spanish date formatting
@@ -1612,12 +1635,14 @@ const handleDeleteMember = (member: FamilyMemberResponse) => {
 ```
 
 **Dependencies:**
+
 - PrimeVue: `Card`, `Button`, `Dialog`, `ConfirmDialog`, `useConfirm`, `useToast`
 - Composable: `useFamilyUnits`
 - Components: `FamilyUnitForm`, `FamilyMemberForm`, `FamilyMemberList`
 - Types from `@/types/family-unit`
 
 **Implementation Notes:**
+
 - Main orchestrator for family unit management
 - Three states: no family unit, has family unit, loading
 - Dialogs for create/edit family unit and members
@@ -1655,14 +1680,16 @@ const handleDeleteMember = (member: FamilyMemberResponse) => {
 }
 ```
 
-3. **Verify route guard** exists to check authentication and roles
+1. **Verify route guard** exists to check authentication and roles
 
 **Dependencies:**
+
 - Vue Router
 - Existing auth store for user role checking
 - Existing route guards (should already be implemented)
 
 **Implementation Notes:**
+
 - Lazy load component with `() => import()`
 - Require authentication and email verification
 - Allow Member, Board, and Admin roles
@@ -1894,10 +1921,12 @@ describe('useFamilyUnits', () => {
 ```
 
 **Dependencies:**
+
 - Vitest
 - Mock for `@/utils/api`
 
 **Implementation Notes:**
+
 - Test all composable methods (create, read, update, delete for both family units and members)
 - Mock API responses and errors
 - Verify state updates (familyUnit, familyMembers refs)
@@ -2059,10 +2088,12 @@ describe('Family Units Management', () => {
 ```
 
 **Dependencies:**
+
 - Cypress
 - Custom command: `cy.login()` (should already exist)
 
 **Implementation Notes:**
+
 - Test critical user flows (create, read, update, delete)
 - Test validation (required fields, disabled buttons)
 - **CRITICAL**: Verify that medical notes/allergies are NEVER displayed as text
@@ -2110,6 +2141,7 @@ describe('Family Units Management', () => {
 3. **No major changes needed** - feature follows existing patterns
 
 **References:**
+
 - Follow `ai-specs/specs/documentation-standards.mdc`
 - All documentation in English
 
@@ -2136,6 +2168,7 @@ describe('Family Units Management', () => {
 ### Vitest Unit Tests
 
 **Composable Tests (`useFamilyUnits`):**
+
 - ✅ createFamilyUnit - success
 - ✅ createFamilyUnit - error handling
 - ✅ getCurrentUserFamilyUnit - success
@@ -2149,6 +2182,7 @@ describe('Family Units Management', () => {
 - ✅ deleteFamilyMember - success and local state update
 
 **Component Tests (if time permits):**
+
 - ✅ FamilyUnitForm - validation
 - ✅ FamilyMemberForm - validation
 - ✅ FamilyMemberList - rendering
@@ -2156,6 +2190,7 @@ describe('Family Units Management', () => {
 ### Cypress E2E Tests
 
 **Critical User Flows:**
+
 - ✅ Create family unit
 - ✅ View family unit
 - ✅ Edit family unit
@@ -2201,7 +2236,7 @@ describe('Family Units Management', () => {
 - Disable submit buttons when validation fails
 - Loading states prevent duplicate submissions
 
-### Example Pattern:
+### Example Pattern
 
 ```typescript
 try {
@@ -2270,6 +2305,7 @@ try {
 ### npm Packages Required
 
 **Already Installed:**
+
 - `vue@^3.x` - Vue 3 framework
 - `vue-router@^4.x` - Routing
 - `pinia@^2.x` - State management
@@ -2329,6 +2365,7 @@ try {
 ### Language Requirements
 
 **Spanish (User-Facing):**
+
 - All labels, buttons, headings
 - Validation error messages
 - Toast notifications
@@ -2336,6 +2373,7 @@ try {
 - Empty states
 
 **English (Developer-Facing):**
+
 - Code comments
 - Variable names
 - Function names
@@ -2343,6 +2381,7 @@ try {
 - Documentation
 
 **Spanish Examples:**
+
 - "Unidad Familiar" (Family Unit)
 - "Miembros Familiares" (Family Members)
 - "Añadir Miembro" (Add Member)
@@ -2382,6 +2421,7 @@ try {
 ### Final Verification Checklist
 
 **Code Quality:**
+
 - ✅ All components use `<script setup lang="ts">`
 - ✅ No `any` types (TypeScript strict)
 - ✅ No `<style>` blocks (Tailwind only)
@@ -2389,6 +2429,7 @@ try {
 - ✅ Proper TypeScript interfaces for all data
 
 **Functionality:**
+
 - ✅ Create family unit works
 - ✅ Edit family unit works
 - ✅ Delete family unit works
@@ -2402,24 +2443,28 @@ try {
 - ✅ Confirmation dialogs work
 
 **Testing:**
+
 - ✅ Vitest unit tests passing (composable)
 - ✅ Cypress E2E tests passing (user flows)
 - ✅ Test coverage 90%+ (composable)
 - ✅ Manual testing completed
 
 **Integration:**
+
 - ✅ Route configuration correct
 - ✅ Route guards enforce authentication
 - ✅ API calls use correct endpoints
 - ✅ Request/response types match backend DTOs
 
 **Security & Privacy:**
+
 - ✅ Medical notes NEVER displayed as text
 - ✅ Allergies NEVER displayed as text
 - ✅ Only boolean flags shown (`hasMedicalNotes`, `hasAllergies`)
 - ✅ Sensitive data not pre-filled on edit
 
 **UI/UX:**
+
 - ✅ PrimeVue components used correctly
 - ✅ Tailwind CSS for all styling
 - ✅ Responsive design (mobile/tablet/desktop)
@@ -2429,6 +2474,7 @@ try {
 - ✅ Error messages displayed properly
 
 **Documentation:**
+
 - ✅ API endpoints documented (verify in api-endpoints.md)
 - ✅ Frontend patterns followed (per frontend-standards.mdc)
 - ✅ Types documented in code comments
