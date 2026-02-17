@@ -53,6 +53,7 @@ public class CampsService
             PricePerBaby = request.PricePerBaby,
             IsActive = true
         };
+        camp.SetAccommodationCapacity(request.AccommodationCapacity);
 
         var created = await _repository.CreateAsync(camp, cancellationToken);
 
@@ -119,6 +120,7 @@ public class CampsService
         camp.PricePerChild = request.PricePerChild;
         camp.PricePerBaby = request.PricePerBaby;
         camp.IsActive = request.IsActive;
+        camp.SetAccommodationCapacity(request.AccommodationCapacity);
 
         var updated = await _repository.UpdateAsync(camp, cancellationToken);
 
@@ -202,37 +204,43 @@ public class CampsService
         UpdatedAt: camp.UpdatedAt
     );
 
-    private static CampDetailResponse MapToCampDetailResponse(Camp camp, IEnumerable<CampPhoto> photos) => new(
-        Id: camp.Id,
-        Name: camp.Name,
-        Description: camp.Description,
-        Location: camp.Location,
-        Latitude: camp.Latitude,
-        Longitude: camp.Longitude,
-        GooglePlaceId: camp.GooglePlaceId,
-        FormattedAddress: camp.FormattedAddress,
-        StreetAddress: camp.StreetAddress,
-        Locality: camp.Locality,
-        AdministrativeArea: camp.AdministrativeArea,
-        PostalCode: camp.PostalCode,
-        Country: camp.Country,
-        PhoneNumber: camp.PhoneNumber,
-        NationalPhoneNumber: camp.NationalPhoneNumber,
-        WebsiteUrl: camp.WebsiteUrl,
-        GoogleMapsUrl: camp.GoogleMapsUrl,
-        GoogleRating: camp.GoogleRating,
-        GoogleRatingCount: camp.GoogleRatingCount,
-        BusinessStatus: camp.BusinessStatus,
-        PlaceTypes: camp.PlaceTypes,
-        LastGoogleSyncAt: camp.LastGoogleSyncAt,
-        PricePerAdult: camp.PricePerAdult,
-        PricePerChild: camp.PricePerChild,
-        PricePerBaby: camp.PricePerBaby,
-        IsActive: camp.IsActive,
-        Photos: photos.Select(MapToPhotoResponse).ToList(),
-        CreatedAt: camp.CreatedAt,
-        UpdatedAt: camp.UpdatedAt
-    );
+    private static CampDetailResponse MapToCampDetailResponse(Camp camp, IEnumerable<CampPhoto> photos)
+    {
+        var accommodation = camp.GetAccommodationCapacity();
+        return new CampDetailResponse(
+            Id: camp.Id,
+            Name: camp.Name,
+            Description: camp.Description,
+            Location: camp.Location,
+            Latitude: camp.Latitude,
+            Longitude: camp.Longitude,
+            GooglePlaceId: camp.GooglePlaceId,
+            FormattedAddress: camp.FormattedAddress,
+            StreetAddress: camp.StreetAddress,
+            Locality: camp.Locality,
+            AdministrativeArea: camp.AdministrativeArea,
+            PostalCode: camp.PostalCode,
+            Country: camp.Country,
+            PhoneNumber: camp.PhoneNumber,
+            NationalPhoneNumber: camp.NationalPhoneNumber,
+            WebsiteUrl: camp.WebsiteUrl,
+            GoogleMapsUrl: camp.GoogleMapsUrl,
+            GoogleRating: camp.GoogleRating,
+            GoogleRatingCount: camp.GoogleRatingCount,
+            BusinessStatus: camp.BusinessStatus,
+            PlaceTypes: camp.PlaceTypes,
+            LastGoogleSyncAt: camp.LastGoogleSyncAt,
+            PricePerAdult: camp.PricePerAdult,
+            PricePerChild: camp.PricePerChild,
+            PricePerBaby: camp.PricePerBaby,
+            IsActive: camp.IsActive,
+            AccommodationCapacity: accommodation,
+            CalculatedTotalBedCapacity: accommodation?.CalculateTotalBedCapacity(),
+            Photos: photos.Select(MapToPhotoResponse).ToList(),
+            CreatedAt: camp.CreatedAt,
+            UpdatedAt: camp.UpdatedAt
+        );
+    }
 
     private static CampPhotoResponse MapToPhotoResponse(CampPhoto photo) => new(
         Id: photo.Id,
@@ -242,6 +250,7 @@ public class CampsService
         Height: photo.Height,
         AttributionName: photo.AttributionName,
         AttributionUrl: photo.AttributionUrl,
+        Description: photo.Description,
         IsPrimary: photo.IsPrimary,
         DisplayOrder: photo.DisplayOrder
     );

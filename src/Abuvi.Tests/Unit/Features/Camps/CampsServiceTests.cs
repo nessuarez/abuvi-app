@@ -503,4 +503,138 @@ public class CampsServiceTests
     }
 
     #endregion
+
+    #region AccommodationCapacity Tests
+
+    [Fact]
+    public async Task CreateAsync_WithAccommodationCapacity_SavesCapacityInJson()
+    {
+        // Arrange
+        var accommodation = new AccommodationCapacity
+        {
+            PrivateRoomsWithBathroom = 10,
+            SharedRooms = new List<SharedRoomInfo>
+            {
+                new() { Quantity = 5, BedsPerRoom = 4, HasBathroom = true }
+            }
+        };
+
+        var request = new CreateCampRequest(
+            Name: "Camp with Capacity",
+            Description: null,
+            Location: null,
+            Latitude: null,
+            Longitude: null,
+            GooglePlaceId: null,
+            PricePerAdult: 180m,
+            PricePerChild: 120m,
+            PricePerBaby: 60m,
+            AccommodationCapacity: accommodation
+        );
+
+        var createdCamp = new Camp
+        {
+            Id = Guid.NewGuid(),
+            Name = request.Name,
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m
+        };
+        createdCamp.SetAccommodationCapacity(accommodation);
+
+        _repository.CreateAsync(Arg.Any<Camp>(), Arg.Any<CancellationToken>())
+            .Returns(createdCamp);
+
+        // Act
+        var result = await _sut.CreateAsync(request);
+
+        // Assert
+        result.AccommodationCapacity.Should().NotBeNull();
+        result.AccommodationCapacity!.PrivateRoomsWithBathroom.Should().Be(10);
+        result.CalculatedTotalBedCapacity.Should().Be(40); // (10*2) + (5*4)
+
+        await _repository.Received(1).CreateAsync(
+            Arg.Is<Camp>(c => c.AccommodationCapacityJson != null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithNullAccommodation_SavesNullJson()
+    {
+        // Arrange
+        var request = new CreateCampRequest(
+            Name: "Camp",
+            Description: null,
+            Location: null,
+            Latitude: null,
+            Longitude: null,
+            GooglePlaceId: null,
+            PricePerAdult: 180m,
+            PricePerChild: 120m,
+            PricePerBaby: 60m
+        );
+
+        var createdCamp = new Camp
+        {
+            Id = Guid.NewGuid(),
+            Name = "Camp",
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m
+        };
+
+        _repository.CreateAsync(Arg.Any<Camp>(), Arg.Any<CancellationToken>()).Returns(createdCamp);
+
+        // Act
+        var result = await _sut.CreateAsync(request);
+
+        // Assert
+        result.AccommodationCapacity.Should().BeNull();
+        result.CalculatedTotalBedCapacity.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithAccommodationCapacity_UpdatesCapacity()
+    {
+        // Arrange
+        var campId = Guid.NewGuid();
+        var existingCamp = new Camp
+        {
+            Id = campId,
+            Name = "Original",
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m
+        };
+
+        var newAccommodation = new AccommodationCapacity { PrivateRoomsWithBathroom = 8 };
+        var request = new UpdateCampRequest(
+            Name: "Updated",
+            Description: null,
+            Location: null,
+            Latitude: null,
+            Longitude: null,
+            GooglePlaceId: null,
+            PricePerAdult: 180m,
+            PricePerChild: 120m,
+            PricePerBaby: 60m,
+            IsActive: true,
+            AccommodationCapacity: newAccommodation
+        );
+
+        _repository.GetByIdWithPhotosAsync(campId, Arg.Any<CancellationToken>()).Returns(existingCamp);
+        _repository.UpdateAsync(Arg.Any<Camp>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.Arg<Camp>());
+
+        // Act
+        var result = await _sut.UpdateAsync(campId, request);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.AccommodationCapacity.Should().NotBeNull();
+        result.AccommodationCapacity!.PrivateRoomsWithBathroom.Should().Be(8);
+        result.CalculatedTotalBedCapacity.Should().Be(16); // 8 * 2
+    }
+
+    #endregion
 }

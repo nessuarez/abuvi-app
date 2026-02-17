@@ -76,7 +76,16 @@ public class CampEditionsService
             IsArchived = false
         };
 
+        edition.SetAccommodationCapacity(request.AccommodationCapacity);
+
         var created = await _repository.CreateAsync(edition, cancellationToken);
+
+        // Auto-sync accommodation to camp template if provided
+        if (request.AccommodationCapacity is not null)
+        {
+            camp.SetAccommodationCapacity(request.AccommodationCapacity);
+            await _campsRepository.UpdateAsync(camp, cancellationToken);
+        }
 
         return MapToCampEditionResponse(created, camp.Name);
     }
@@ -115,6 +124,13 @@ public class CampEditionsService
         }
 
         edition.Status = CampEditionStatus.Draft;
+
+        // Sync accommodation to camp template when promoting
+        if (!string.IsNullOrWhiteSpace(edition.AccommodationCapacityJson))
+        {
+            edition.Camp.SetAccommodationCapacity(edition.GetAccommodationCapacity());
+            await _campsRepository.UpdateAsync(edition.Camp, cancellationToken);
+        }
 
         var updated = await _repository.UpdateAsync(edition, cancellationToken);
 
@@ -319,6 +335,7 @@ public class CampEditionsService
 
     private static CampEditionResponse MapToCampEditionResponse(CampEdition edition, string campName)
     {
+        var accommodation = edition.GetAccommodationCapacity();
         return new CampEditionResponse(
             Id: edition.Id,
             CampId: edition.CampId,
@@ -337,6 +354,8 @@ public class CampEditionsService
             Status: edition.Status,
             MaxCapacity: edition.MaxCapacity,
             Notes: edition.Notes,
+            AccommodationCapacity: accommodation,
+            CalculatedTotalBedCapacity: accommodation?.CalculateTotalBedCapacity(),
             IsArchived: edition.IsArchived,
             CreatedAt: edition.CreatedAt,
             UpdatedAt: edition.UpdatedAt

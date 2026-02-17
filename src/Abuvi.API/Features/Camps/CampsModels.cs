@@ -1,4 +1,44 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace Abuvi.API.Features.Camps;
+
+/// <summary>
+/// Accommodation capacity breakdown for a camp or edition
+/// </summary>
+public class AccommodationCapacity
+{
+    public int? PrivateRoomsWithBathroom { get; set; }
+    public int? PrivateRoomsSharedBathroom { get; set; }
+    public List<SharedRoomInfo>? SharedRooms { get; set; }
+    public int? Bungalows { get; set; }
+    public int? CampOwnedTents { get; set; }
+    public int? MemberTentAreaSquareMeters { get; set; }
+    public int? MemberTentCapacityEstimate { get; set; }
+    public int? MotorhomeSpots { get; set; }
+    public string? Notes { get; set; }
+
+    public int CalculateTotalBedCapacity()
+    {
+        var total = 0;
+        total += (PrivateRoomsWithBathroom ?? 0) * 2;
+        total += (PrivateRoomsSharedBathroom ?? 0) * 2;
+        total += SharedRooms?.Sum(r => r.Quantity * r.BedsPerRoom) ?? 0;
+        return total;
+    }
+}
+
+/// <summary>
+/// Details about a shared room configuration
+/// </summary>
+public class SharedRoomInfo
+{
+    public int Quantity { get; set; }
+    public int BedsPerRoom { get; set; }
+    public bool HasBathroom { get; set; }
+    public bool HasShower { get; set; }
+    public string? Notes { get; set; }
+}
 
 /// <summary>
 /// Camp location entity (templates that can have multiple editions)
@@ -41,6 +81,28 @@ public class Camp
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
+    public string? AccommodationCapacityJson { get; set; }
+
+    public AccommodationCapacity? GetAccommodationCapacity()
+    {
+        if (string.IsNullOrWhiteSpace(AccommodationCapacityJson))
+            return null;
+        return JsonSerializer.Deserialize<AccommodationCapacity>(
+            AccommodationCapacityJson,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    }
+
+    public void SetAccommodationCapacity(AccommodationCapacity? capacity)
+    {
+        AccommodationCapacityJson = capacity is null
+            ? null
+            : JsonSerializer.Serialize(capacity, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            });
+    }
+
     // Navigation properties
     public ICollection<CampEdition> Editions { get; set; } = new List<CampEdition>();
     public ICollection<CampPhoto> Photos { get; set; } = new List<CampPhoto>();
@@ -75,6 +137,28 @@ public class CampEdition
     public int? MaxCapacity { get; set; }
     public string? Notes { get; set; }
     public bool IsArchived { get; set; } = false;
+
+    public string? AccommodationCapacityJson { get; set; }
+
+    public AccommodationCapacity? GetAccommodationCapacity()
+    {
+        if (string.IsNullOrWhiteSpace(AccommodationCapacityJson))
+            return null;
+        return JsonSerializer.Deserialize<AccommodationCapacity>(
+            AccommodationCapacityJson,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    }
+
+    public void SetAccommodationCapacity(AccommodationCapacity? capacity)
+    {
+        AccommodationCapacityJson = capacity is null
+            ? null
+            : JsonSerializer.Serialize(capacity, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            });
+    }
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -164,7 +248,8 @@ public record CreateCampRequest(
     string? GooglePlaceId,
     decimal PricePerAdult,
     decimal PricePerChild,
-    decimal PricePerBaby
+    decimal PricePerBaby,
+    AccommodationCapacity? AccommodationCapacity = null
 );
 
 /// <summary>
@@ -180,7 +265,8 @@ public record UpdateCampRequest(
     decimal PricePerAdult,
     decimal PricePerChild,
     decimal PricePerBaby,
-    bool IsActive
+    bool IsActive,
+    AccommodationCapacity? AccommodationCapacity = null
 );
 
 /// <summary>
@@ -240,6 +326,8 @@ public record CampDetailResponse(
     decimal PricePerChild,
     decimal PricePerBaby,
     bool IsActive,
+    AccommodationCapacity? AccommodationCapacity,
+    int? CalculatedTotalBedCapacity,
     IReadOnlyList<CampPhotoResponse> Photos,
     DateTime CreatedAt,
     DateTime UpdatedAt
@@ -256,6 +344,7 @@ public record CampPhotoResponse(
     int Height,
     string AttributionName,
     string? AttributionUrl,
+    string? Description,
     bool IsPrimary,
     int DisplayOrder
 );
@@ -299,7 +388,8 @@ public record ProposeCampEditionRequest(
     int? CustomChildMaxAge,
     int? CustomAdultMinAge,
     int? MaxCapacity,
-    string? Notes
+    string? Notes,
+    AccommodationCapacity? AccommodationCapacity = null
 );
 
 /// <summary>
@@ -377,6 +467,8 @@ public record CampEditionResponse(
     CampEditionStatus Status,
     int? MaxCapacity,
     string? Notes,
+    AccommodationCapacity? AccommodationCapacity,
+    int? CalculatedTotalBedCapacity,
     bool IsArchived,
     DateTime CreatedAt,
     DateTime UpdatedAt
@@ -398,6 +490,7 @@ public class CampPhoto
 
     public string AttributionName { get; set; } = string.Empty;  // Photo author (required by Google T&C)
     public string? AttributionUrl { get; set; }                   // Author profile URL
+    public string? Description { get; set; }                      // Optional caption for manual photos
 
     public bool IsOriginal { get; set; } = true;   // true = from Google Places, false = manually added
     public bool IsPrimary { get; set; } = false;   // Primary display photo
@@ -409,3 +502,38 @@ public class CampPhoto
     // Navigation
     public Camp Camp { get; set; } = null!;
 }
+
+/// <summary>
+/// Request to add a manually-uploaded photo to a camp
+/// </summary>
+public record AddCampPhotoRequest(
+    string Url,
+    string? Description,
+    int DisplayOrder,
+    bool IsPrimary
+);
+
+/// <summary>
+/// Request to update an existing camp photo
+/// </summary>
+public record UpdateCampPhotoRequest(
+    string Url,
+    string? Description,
+    int DisplayOrder,
+    bool IsPrimary
+);
+
+/// <summary>
+/// Request to reorder camp photos
+/// </summary>
+public record ReorderCampPhotosRequest(
+    List<PhotoOrderItem> Photos
+);
+
+/// <summary>
+/// Photo order item used in bulk reorder requests
+/// </summary>
+public record PhotoOrderItem(
+    Guid Id,
+    int DisplayOrder
+);

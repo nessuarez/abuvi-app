@@ -45,6 +45,10 @@ public class CampPhotoConfiguration : IEntityTypeConfiguration<CampPhoto>
             .HasMaxLength(500)
             .HasColumnName("attribution_url");
 
+        builder.Property(p => p.Description)
+            .HasMaxLength(500)
+            .HasColumnName("description");
+
         builder.Property(p => p.IsOriginal)
             .IsRequired()
             .HasDefaultValue(true)

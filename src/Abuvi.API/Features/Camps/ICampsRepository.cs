@@ -43,4 +43,39 @@ public interface ICampsRepository
     /// Deletes a camp by its unique identifier
     /// </summary>
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a camp photo by its unique identifier
+    /// </summary>
+    Task<CampPhoto?> GetPhotoByIdAsync(Guid photoId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Adds a single manually-uploaded camp photo
+    /// </summary>
+    Task<CampPhoto> AddPhotoAsync(CampPhoto photo, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates an existing camp photo
+    /// </summary>
+    Task<CampPhoto> UpdatePhotoAsync(CampPhoto photo, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes a camp photo by its unique identifier
+    /// </summary>
+    Task<bool> DeletePhotoAsync(Guid photoId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all photos for a camp ordered by DisplayOrder
+    /// </summary>
+    Task<List<CampPhoto>> GetPhotosForCampAsync(Guid campId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates display orders for a batch of photos
+    /// </summary>
+    Task UpdatePhotoOrdersAsync(IEnumerable<(Guid PhotoId, int DisplayOrder)> updates, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ensures only one photo is marked as primary for a camp (clears all others)
+    /// </summary>
+    Task ClearPrimaryPhotoAsync(Guid campId, CancellationToken cancellationToken = default);
 }

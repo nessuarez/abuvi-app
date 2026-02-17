@@ -191,6 +191,71 @@ public static class CampsEndpoints
             .Produces(401)
             .Produces(403);
 
+        // Camp Photos endpoints (Admin/Board only)
+        var photosGroup = app.MapGroup("/api/camps/{campId:guid}/photos")
+            .WithTags("Camp Photos")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"));
+
+        // GET /api/camps/{campId}/photos - List photos for a camp
+        photosGroup.MapGet("/", GetCampPhotos)
+            .WithName("GetCampPhotos")
+            .WithSummary("Get all photos for a camp ordered by display order")
+            .Produces<ApiResponse<List<CampPhotoResponse>>>()
+            .Produces(401)
+            .Produces(403);
+
+        // POST /api/camps/{campId}/photos - Add a photo to a camp
+        photosGroup.MapPost("/", AddCampPhoto)
+            .WithName("AddCampPhoto")
+            .WithSummary("Add a manually-uploaded photo to a camp")
+            .AddEndpointFilter<ValidationFilter<AddCampPhotoRequest>>()
+            .Produces<ApiResponse<CampPhotoResponse>>(201)
+            .Produces(400)
+            .Produces(401)
+            .Produces(403)
+            .Produces(404);
+
+        // PUT /api/camps/{campId}/photos/{photoId} - Update a photo
+        photosGroup.MapPut("/{photoId:guid}", UpdateCampPhoto)
+            .WithName("UpdateCampPhoto")
+            .WithSummary("Update a camp photo")
+            .AddEndpointFilter<ValidationFilter<UpdateCampPhotoRequest>>()
+            .Produces<ApiResponse<CampPhotoResponse>>()
+            .Produces(400)
+            .Produces(401)
+            .Produces(403)
+            .Produces(404);
+
+        // DELETE /api/camps/{campId}/photos/{photoId} - Delete a photo
+        photosGroup.MapDelete("/{photoId:guid}", DeleteCampPhoto)
+            .WithName("DeleteCampPhoto")
+            .WithSummary("Delete a camp photo")
+            .Produces(204)
+            .Produces(401)
+            .Produces(403)
+            .Produces(404);
+
+        // PUT /api/camps/{campId}/photos/reorder - Reorder photos
+        photosGroup.MapPut("/reorder", ReorderCampPhotos)
+            .WithName("ReorderCampPhotos")
+            .WithSummary("Bulk reorder camp photos")
+            .AddEndpointFilter<ValidationFilter<ReorderCampPhotosRequest>>()
+            .Produces(204)
+            .Produces(400)
+            .Produces(401)
+            .Produces(403)
+            .Produces(404);
+
+        // PUT /api/camps/{campId}/photos/{photoId}/primary - Set primary photo
+        photosGroup.MapPut("/{photoId:guid}/primary", SetPrimaryPhoto)
+            .WithName("SetPrimaryPhoto")
+            .WithSummary("Set a photo as the primary display photo for a camp")
+            .Produces<ApiResponse<CampPhotoResponse>>()
+            .Produces(401)
+            .Produces(403)
+            .Produces(404);
+
         return app;
     }
 
@@ -506,5 +571,102 @@ public static class CampsEndpoints
     {
         var editions = await service.GetAllAsync(year, status, campId, cancellationToken);
         return Results.Ok(ApiResponse<List<CampEditionResponse>>.Ok(editions));
+    }
+
+    /// <summary>
+    /// Get all photos for a camp
+    /// </summary>
+    private static async Task<IResult> GetCampPhotos(
+        [FromServices] CampPhotosService service,
+        Guid campId,
+        CancellationToken cancellationToken = default)
+    {
+        var photos = await service.GetPhotosAsync(campId, cancellationToken);
+        return Results.Ok(ApiResponse<List<CampPhotoResponse>>.Ok(photos));
+    }
+
+    /// <summary>
+    /// Add a manually-uploaded photo to a camp
+    /// </summary>
+    private static async Task<IResult> AddCampPhoto(
+        [FromServices] CampPhotosService service,
+        Guid campId,
+        AddCampPhotoRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var photo = await service.AddPhotoAsync(campId, request, cancellationToken);
+            return Results.Created($"/api/camps/{campId}/photos/{photo.Id}", ApiResponse<CampPhotoResponse>.Ok(photo));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.NotFound(ApiResponse<CampPhotoResponse>.NotFound(ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// Update a camp photo
+    /// </summary>
+    private static async Task<IResult> UpdateCampPhoto(
+        [FromServices] CampPhotosService service,
+        Guid campId,
+        Guid photoId,
+        UpdateCampPhotoRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var photo = await service.UpdatePhotoAsync(campId, photoId, request, cancellationToken);
+        if (photo == null)
+            return Results.NotFound(ApiResponse<CampPhotoResponse>.NotFound("Photo not found"));
+
+        return Results.Ok(ApiResponse<CampPhotoResponse>.Ok(photo));
+    }
+
+    /// <summary>
+    /// Delete a camp photo
+    /// </summary>
+    private static async Task<IResult> DeleteCampPhoto(
+        [FromServices] CampPhotosService service,
+        Guid campId,
+        Guid photoId,
+        CancellationToken cancellationToken = default)
+    {
+        var deleted = await service.DeletePhotoAsync(campId, photoId, cancellationToken);
+        if (!deleted)
+            return Results.NotFound(ApiResponse<object>.NotFound("Photo not found"));
+
+        return Results.NoContent();
+    }
+
+    /// <summary>
+    /// Bulk reorder camp photos
+    /// </summary>
+    private static async Task<IResult> ReorderCampPhotos(
+        [FromServices] CampPhotosService service,
+        Guid campId,
+        ReorderCampPhotosRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var success = await service.ReorderPhotosAsync(campId, request, cancellationToken);
+        if (!success)
+            return Results.NotFound(ApiResponse<object>.NotFound("Camp not found"));
+
+        return Results.NoContent();
+    }
+
+    /// <summary>
+    /// Set the primary photo for a camp
+    /// </summary>
+    private static async Task<IResult> SetPrimaryPhoto(
+        [FromServices] CampPhotosService service,
+        Guid campId,
+        Guid photoId,
+        CancellationToken cancellationToken = default)
+    {
+        var photo = await service.SetPrimaryPhotoAsync(campId, photoId, cancellationToken);
+        if (photo == null)
+            return Results.NotFound(ApiResponse<CampPhotoResponse>.NotFound("Photo not found"));
+
+        return Results.Ok(ApiResponse<CampPhotoResponse>.Ok(photo));
     }
 }

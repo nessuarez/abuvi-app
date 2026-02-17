@@ -147,6 +147,7 @@ builder.Services.AddScoped<IAssociationSettingsRepository, AssociationSettingsRe
 builder.Services.AddScoped<AssociationSettingsService>();
 builder.Services.AddScoped<ICampEditionsRepository, CampEditionsRepository>();
 builder.Services.AddScoped<CampEditionsService>();
+builder.Services.AddScoped<CampPhotosService>();
 
 // Google Places API integration
 builder.Services.AddHttpClient<IGooglePlacesService, GooglePlacesService>();
