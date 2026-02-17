@@ -1122,3 +1122,246 @@ Fetch detailed information for a specific place by its Google Place ID, includin
 
 - Called after user selects a suggestion from the autocomplete endpoint
 - Used to auto-fill `name`, `location`, `latitude`, `longitude`, and `googlePlaceId` fields in camp creation/edit forms
+
+---
+
+## Camp Edition Lifecycle Endpoints
+
+Manage the status lifecycle of camp editions. Status transitions follow a strict linear workflow: `Proposed → Draft → Open → Closed → Completed`. Rejection (archiving) is handled via `DELETE /api/camps/editions/{id}/reject`.
+
+**Base Path:** `/api/camps/editions`
+
+---
+
+### GET /api/camps/editions
+
+Returns all non-archived camp editions with optional filtering.
+
+**Authorization**: Admin or Board
+
+**Query Parameters:**
+
+- `year` (optional, integer): Filter by year
+- `status` (optional, enum): Filter by status (`Proposed`, `Draft`, `Open`, `Closed`, `Completed`)
+- `campId` (optional, GUID): Filter by camp
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "campId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "campName": "Camping El Pinar",
+      "year": 2026,
+      "startDate": "2026-07-01T00:00:00Z",
+      "endDate": "2026-07-10T00:00:00Z",
+      "pricePerAdult": 180.00,
+      "pricePerChild": 120.00,
+      "pricePerBaby": 60.00,
+      "useCustomAgeRanges": false,
+      "customBabyMaxAge": null,
+      "customChildMinAge": null,
+      "customChildMaxAge": null,
+      "customAdultMinAge": null,
+      "status": "Draft",
+      "maxCapacity": 100,
+      "notes": null,
+      "isArchived": false,
+      "createdAt": "2026-02-17T10:00:00Z",
+      "updatedAt": "2026-02-17T10:00:00Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User is not Admin or Board
+
+---
+
+### GET /api/camps/editions/active
+
+Returns the currently active (Open status) edition for the given year. Always returns 200; `data` is `null` if no open edition exists.
+
+**Authorization**: Admin, Board, or Member
+
+**Query Parameters:**
+
+- `year` (optional, integer, default: current year): Target year
+
+**Success Response (200 OK) — Edition exists:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "campId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "campName": "Camping El Pinar",
+    "campLocation": "Sierra de Guadarrama",
+    "campFormattedAddress": "Calle del Pinar, 1, 28740 Rascafría, Madrid",
+    "year": 2026,
+    "startDate": "2026-07-01T00:00:00Z",
+    "endDate": "2026-07-10T00:00:00Z",
+    "pricePerAdult": 180.00,
+    "pricePerChild": 120.00,
+    "pricePerBaby": 60.00,
+    "useCustomAgeRanges": false,
+    "customBabyMaxAge": null,
+    "customChildMinAge": null,
+    "customChildMaxAge": null,
+    "customAdultMinAge": null,
+    "status": "Open",
+    "maxCapacity": 100,
+    "registrationCount": 0,
+    "notes": null,
+    "createdAt": "2026-02-17T10:00:00Z",
+    "updatedAt": "2026-02-17T10:00:00Z"
+  }
+}
+```
+
+**Success Response (200 OK) — No active edition:**
+
+```json
+{
+  "success": true,
+  "data": null
+}
+```
+
+> **Note:** `registrationCount` is always `0` until the Registrations feature is integrated.
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User role is not Member or above
+
+---
+
+### GET /api/camps/editions/{id}
+
+Returns a single camp edition by ID.
+
+**Authorization**: Admin, Board, or Member
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "campId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "campName": "Camping El Pinar",
+    "year": 2026,
+    "startDate": "2026-07-01T00:00:00Z",
+    "endDate": "2026-07-10T00:00:00Z",
+    "pricePerAdult": 180.00,
+    "pricePerChild": 120.00,
+    "pricePerBaby": 60.00,
+    "useCustomAgeRanges": false,
+    "customBabyMaxAge": null,
+    "customChildMinAge": null,
+    "customChildMaxAge": null,
+    "customAdultMinAge": null,
+    "status": "Draft",
+    "maxCapacity": 100,
+    "notes": null,
+    "isArchived": false,
+    "createdAt": "2026-02-17T10:00:00Z",
+    "updatedAt": "2026-02-17T10:00:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: Insufficient role
+- **404 Not Found**: Edition not found (`NOT_FOUND`)
+
+---
+
+### PUT /api/camps/editions/{id}
+
+Updates a camp edition. Allowed fields depend on current status:
+
+| Status | Allowed fields |
+|--------|---------------|
+| `Proposed` / `Draft` | All fields |
+| `Open` | `notes`, `maxCapacity` only |
+| `Closed` / `Completed` | No updates allowed (400) |
+
+**Authorization**: Admin or Board
+
+**Request Body:**
+
+```json
+{
+  "startDate": "2026-07-01T00:00:00Z",
+  "endDate": "2026-07-10T00:00:00Z",
+  "pricePerAdult": 180.00,
+  "pricePerChild": 120.00,
+  "pricePerBaby": 60.00,
+  "useCustomAgeRanges": false,
+  "customBabyMaxAge": null,
+  "customChildMinAge": null,
+  "customChildMaxAge": null,
+  "customAdultMinAge": null,
+  "maxCapacity": 100,
+  "notes": "Updated notes"
+}
+```
+
+**Success Response (200 OK):** Returns the updated `CampEditionResponse` (same shape as GET by ID).
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation error or business rule violation (e.g. changing dates/prices on an Open edition) (`VALIDATION_ERROR` / `OPERATION_ERROR`)
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: Insufficient role
+- **404 Not Found**: Edition not found (`NOT_FOUND`)
+
+---
+
+### PATCH /api/camps/editions/{id}/status
+
+Changes the status of a camp edition following the allowed transition chain.
+
+**Authorization**: Admin or Board
+
+**Valid Transitions:**
+
+| From | To |
+|------|----|
+| `Proposed` | `Draft` |
+| `Draft` | `Open` |
+| `Open` | `Closed` |
+| `Closed` | `Completed` |
+
+Additional date constraints:
+- `Draft → Open`: Edition's `startDate` must not be in the past
+- `Closed → Completed`: Edition's `endDate` must be in the past
+
+**Request Body:**
+
+```json
+{
+  "status": "Draft"
+}
+```
+
+**Success Response (200 OK):** Returns the updated `CampEditionResponse`.
+
+**Error Responses:**
+
+- **400 Bad Request**: Invalid transition or date constraint violation (`VALIDATION_ERROR` / `OPERATION_ERROR`)
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: Insufficient role
+- **404 Not Found**: Edition not found (`NOT_FOUND`)
