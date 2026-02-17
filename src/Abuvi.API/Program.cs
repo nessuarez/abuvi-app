@@ -5,6 +5,7 @@ using Abuvi.API.Features.Users;
 using Abuvi.API.Features.Auth;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
+using Abuvi.API.Features.Memberships;
 using Abuvi.API.Common.Services;
 using FluentValidation;
 using System.Text.Json.Serialization;
@@ -150,6 +151,9 @@ builder.Services.AddScoped<CampEditionsService>();
 // Family Units
 builder.Services.AddScoped<IFamilyUnitsRepository, FamilyUnitsRepository>();
 builder.Services.AddScoped<FamilyUnitsService>();
+
+// Memberships
+builder.Services.AddScoped<IMembershipsRepository, MembershipsRepository>();
 
 // Encryption Service
 builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
