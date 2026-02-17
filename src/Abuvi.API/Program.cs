@@ -154,6 +154,7 @@ builder.Services.AddScoped<FamilyUnitsService>();
 
 // Memberships
 builder.Services.AddScoped<IMembershipsRepository, MembershipsRepository>();
+builder.Services.AddScoped<MembershipsService>();
 
 // Encryption Service
 builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
@@ -229,6 +230,7 @@ app.MapAuthEndpoints();
 app.MapUsersEndpoints();
 app.MapCampsEndpoints();
 app.MapFamilyUnitsEndpoints();
+app.MapMembershipsEndpoints();
 
 app.Run();
 
