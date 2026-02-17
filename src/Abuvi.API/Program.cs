@@ -209,14 +209,24 @@ app.UseSerilogRequestLogging(options =>
     options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
     options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
     {
-        diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+        if (!string.IsNullOrEmpty(httpContext.Request.Host.Value))
+        {
+            diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+        }
         diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
-        diagnosticContext.Set("UserAgent", httpContext.Request.Headers["User-Agent"].ToString());
+        if (!string.IsNullOrEmpty(httpContext.Request.Headers.UserAgent.ToString()))
+        {
+            diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.ToString());
+        }
 
         // Add user ID if authenticated
         if (httpContext.User.Identity?.IsAuthenticated == true)
         {
-            diagnosticContext.Set("UserId", httpContext.User.FindFirst("sub")?.Value);
+            var userId = httpContext.User.FindFirst("sub")?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                diagnosticContext.Set("UserId", userId);
+            }
         }
     };
 });
