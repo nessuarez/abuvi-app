@@ -755,4 +755,251 @@ public class FamilyUnitsServiceTests
     }
 
     #endregion
+
+    #region User Linking Tests
+
+    [Fact]
+    public async Task CreateFamilyUnitAsync_ShouldSetRepresentativeEmail()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = new User
+        {
+            Id = userId,
+            FirstName = "Juan",
+            LastName = "Garcia",
+            Email = "test@example.com",
+            FamilyUnitId = null,
+            PasswordHash = "hash",
+            Role = UserRole.Member,
+            IsActive = true,
+            EmailVerified = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var request = new CreateFamilyUnitRequest("Garcia Family");
+
+        _repository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(user);
+
+        // Act
+        await _sut.CreateFamilyUnitAsync(userId, request, CancellationToken.None);
+
+        // Assert
+        await _repository.Received(1).CreateFamilyMemberAsync(
+            Arg.Is<FamilyMember>(fm => fm.Email == "test@example.com"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateFamilyMemberAsync_WithExistingUserEmail_ShouldLinkUser()
+    {
+        // Arrange
+        var familyUnitId = Guid.NewGuid();
+        var existingUserId = Guid.NewGuid();
+        var familyUnit = new FamilyUnit
+        {
+            Id = familyUnitId,
+            Name = "Test Family",
+            RepresentativeUserId = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var existingUser = new User
+        {
+            Id = existingUserId,
+            Email = "maria@example.com",
+            FirstName = "Maria",
+            LastName = "Lopez",
+            PasswordHash = "hash",
+            Role = UserRole.Member,
+            IsActive = true,
+            EmailVerified = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var request = new CreateFamilyMemberRequest(
+            "Maria", "Lopez", new DateOnly(1990, 3, 20), FamilyRelationship.Spouse,
+            Email: "maria@example.com");
+
+        _repository.GetFamilyUnitByIdAsync(familyUnitId, Arg.Any<CancellationToken>())
+            .Returns(familyUnit);
+        _repository.GetUserByEmailAsync("maria@example.com", Arg.Any<CancellationToken>())
+            .Returns(existingUser);
+
+        // Act
+        var result = await _sut.CreateFamilyMemberAsync(familyUnitId, request, CancellationToken.None);
+
+        // Assert
+        result.UserId.Should().Be(existingUserId);
+
+        await _repository.Received(1).CreateFamilyMemberAsync(
+            Arg.Is<FamilyMember>(fm => fm.UserId == existingUserId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateFamilyMemberAsync_WithNonExistingEmail_ShouldNotLink()
+    {
+        // Arrange
+        var familyUnitId = Guid.NewGuid();
+        var familyUnit = new FamilyUnit
+        {
+            Id = familyUnitId,
+            Name = "Test Family",
+            RepresentativeUserId = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var request = new CreateFamilyMemberRequest(
+            "Unknown", "Person", new DateOnly(1990, 3, 20), FamilyRelationship.Other,
+            Email: "unknown@example.com");
+
+        _repository.GetFamilyUnitByIdAsync(familyUnitId, Arg.Any<CancellationToken>())
+            .Returns(familyUnit);
+        _repository.GetUserByEmailAsync("unknown@example.com", Arg.Any<CancellationToken>())
+            .ReturnsNull();
+
+        // Act
+        var result = await _sut.CreateFamilyMemberAsync(familyUnitId, request, CancellationToken.None);
+
+        // Assert
+        result.UserId.Should().BeNull();
+
+        await _repository.Received(1).CreateFamilyMemberAsync(
+            Arg.Is<FamilyMember>(fm => fm.UserId == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateFamilyMemberAsync_ChangingToExistingUserEmail_ShouldLinkUser()
+    {
+        // Arrange
+        var memberId = Guid.NewGuid();
+        var existingUserId = Guid.NewGuid();
+        var member = new FamilyMember
+        {
+            Id = memberId,
+            FamilyUnitId = Guid.NewGuid(),
+            UserId = null, // Not linked yet
+            FirstName = "John",
+            LastName = "Doe",
+            DateOfBirth = new DateOnly(1985, 7, 10),
+            Relationship = FamilyRelationship.Spouse,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var existingUser = new User
+        {
+            Id = existingUserId,
+            Email = "john@example.com",
+            FirstName = "John",
+            LastName = "Doe",
+            PasswordHash = "hash",
+            Role = UserRole.Member,
+            IsActive = true,
+            EmailVerified = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var request = new UpdateFamilyMemberRequest(
+            "John", "Doe", new DateOnly(1985, 7, 10), FamilyRelationship.Spouse,
+            Email: "john@example.com");
+
+        _repository.GetFamilyMemberByIdAsync(memberId, Arg.Any<CancellationToken>())
+            .Returns(member);
+        _repository.GetUserByEmailAsync("john@example.com", Arg.Any<CancellationToken>())
+            .Returns(existingUser);
+
+        // Act
+        var result = await _sut.UpdateFamilyMemberAsync(memberId, request, CancellationToken.None);
+
+        // Assert
+        result.UserId.Should().Be(existingUserId);
+
+        await _repository.Received(1).UpdateFamilyMemberAsync(
+            Arg.Is<FamilyMember>(fm => fm.UserId == existingUserId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateFamilyMemberAsync_ChangingEmailToNonExisting_ShouldUnlink()
+    {
+        // Arrange
+        var memberId = Guid.NewGuid();
+        var linkedUserId = Guid.NewGuid();
+        var member = new FamilyMember
+        {
+            Id = memberId,
+            FamilyUnitId = Guid.NewGuid(),
+            UserId = linkedUserId, // Currently linked
+            FirstName = "John",
+            LastName = "Doe",
+            DateOfBirth = new DateOnly(1985, 7, 10),
+            Email = "john@example.com",
+            Relationship = FamilyRelationship.Spouse,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var request = new UpdateFamilyMemberRequest(
+            "John", "Doe", new DateOnly(1985, 7, 10), FamilyRelationship.Spouse,
+            Email: "new@example.com"); // Email changed, no matching user
+
+        _repository.GetFamilyMemberByIdAsync(memberId, Arg.Any<CancellationToken>())
+            .Returns(member);
+        _repository.GetUserByEmailAsync("new@example.com", Arg.Any<CancellationToken>())
+            .ReturnsNull();
+
+        // Act
+        var result = await _sut.UpdateFamilyMemberAsync(memberId, request, CancellationToken.None);
+
+        // Assert
+        result.UserId.Should().BeNull();
+
+        await _repository.Received(1).UpdateFamilyMemberAsync(
+            Arg.Is<FamilyMember>(fm => fm.UserId == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateFamilyMemberAsync_RemovingEmail_ShouldUnlink()
+    {
+        // Arrange
+        var memberId = Guid.NewGuid();
+        var linkedUserId = Guid.NewGuid();
+        var member = new FamilyMember
+        {
+            Id = memberId,
+            FamilyUnitId = Guid.NewGuid(),
+            UserId = linkedUserId, // Currently linked
+            FirstName = "John",
+            LastName = "Doe",
+            DateOfBirth = new DateOnly(1985, 7, 10),
+            Email = "john@example.com",
+            Relationship = FamilyRelationship.Spouse,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var request = new UpdateFamilyMemberRequest(
+            "John", "Doe", new DateOnly(1985, 7, 10), FamilyRelationship.Spouse,
+            Email: null); // Email removed
+
+        _repository.GetFamilyMemberByIdAsync(memberId, Arg.Any<CancellationToken>())
+            .Returns(member);
+
+        // Act
+        var result = await _sut.UpdateFamilyMemberAsync(memberId, request, CancellationToken.None);
+
+        // Assert
+        result.UserId.Should().BeNull();
+
+        await _repository.Received(1).UpdateFamilyMemberAsync(
+            Arg.Is<FamilyMember>(fm => fm.UserId == null),
+            Arg.Any<CancellationToken>());
+
+        // Verify GetUserByEmailAsync was NOT called (no need to look up null email)
+        await _repository.DidNotReceive().GetUserByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    #endregion
 }
