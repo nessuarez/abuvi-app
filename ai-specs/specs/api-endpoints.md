@@ -717,9 +717,104 @@ Updates a family member.
 Deletes a family member. Representatives cannot delete their own family member record.
 
 **Authorization**: Representative only  
-**Success Response:** 204 No Content  
+**Success Response:** 204 No Content
 **Error Responses:**
 - **403 Forbidden**: User is not the representative
 - **404 Not Found**: Family unit or member doesn't exist
 - **409 Conflict**: Attempting to delete representative's own record (`CANNOT_DELETE_REPRESENTATIVE`)
+
+---
+
+## Google Places API (Backend Proxy)
+
+These endpoints proxy Google Places API calls through the backend to protect the API key from client exposure.
+
+**Base Path:** `/api/places`
+**Authentication Required:** Yes (JWT)
+
+---
+
+### POST /api/places/autocomplete
+
+Search for location suggestions based on text input. Results are restricted to Spain (`components=country:es`) and returned in Spanish.
+
+**Authorization**: Any authenticated user
+
+**Request Body:**
+
+```json
+{
+  "input": "Camping Madrid"
+}
+```
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "placeId": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+      "description": "Camping El Pinar, Madrid, España",
+      "mainText": "Camping El Pinar",
+      "secondaryText": "Madrid, España"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **503 Service Unavailable**: Google Places API is unavailable (`PLACES_SERVICE_UNAVAILABLE`)
+
+**Notes:**
+
+- Minimum meaningful input length: 3 characters (enforced client-side)
+- Frontend applies 300ms debounce before calling this endpoint
+
+---
+
+### POST /api/places/details
+
+Fetch detailed information for a specific place by its Google Place ID, including coordinates.
+
+**Authorization**: Any authenticated user
+
+**Request Body:**
+
+```json
+{
+  "placeId": "ChIJN1t_tDeuEmsRUsoyG83frY4"
+}
+```
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "placeId": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+    "name": "Camping El Pinar",
+    "formattedAddress": "Calle Example, 123, Madrid, España",
+    "latitude": 40.416775,
+    "longitude": -3.703790,
+    "types": ["campground", "lodging"]
+  }
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **404 Not Found**: Place ID not found
+- **503 Service Unavailable**: Google Places API is unavailable (`PLACES_SERVICE_UNAVAILABLE`)
+
+**Usage Context:**
+
+- Called after user selects a suggestion from the autocomplete endpoint
+- Used to auto-fill `name`, `location`, `latitude`, `longitude`, and `googlePlaceId` fields in camp creation/edit forms
+
 

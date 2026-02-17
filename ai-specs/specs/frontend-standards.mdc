@@ -823,6 +823,84 @@ export function useRegistrations() {
 }
 ```
 
+### External Service Integration Pattern (with Debouncing)
+
+When integrating with external APIs through backend proxies (e.g., Google Places, geocoding services), use the following pattern:
+
+1. **Composable** encapsulates API communication with loading/error state
+2. **Debouncing** from `@vueuse/core` reduces unnecessary API calls
+3. **Minimum input length** prevents wasted requests
+4. **User-friendly error messages** in Spanish when services are unavailable
+
+```typescript
+// composables/useGooglePlaces.ts
+import { ref } from 'vue'
+import { api } from '@/utils/api'
+import type { ApiResponse } from '@/types/api'
+
+export interface PlaceAutocomplete {
+  placeId: string
+  description: string
+  mainText: string
+  secondaryText: string
+}
+
+export function useGooglePlaces() {
+  const loading = ref(false)
+  const error = ref<string | null>(null)
+
+  const searchPlaces = async (input: string): Promise<PlaceAutocomplete[]> => {
+    if (!input || input.length < 3) return []
+
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await api.post<ApiResponse<PlaceAutocomplete[]>>(
+        '/places/autocomplete',
+        { input }
+      )
+      if (response.data.success && response.data.data) return response.data.data
+      error.value = response.data.error?.message || 'Error al buscar lugares'
+      return []
+    } catch (err: any) {
+      error.value = err.response?.data?.error?.message || 'Error al buscar lugares'
+      return []
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, error, searchPlaces }
+}
+```
+
+**Debounced usage in a component:**
+
+```vue
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
+import { useGooglePlaces, type PlaceAutocomplete } from '@/composables/useGooglePlaces'
+
+const { loading, error, searchPlaces } = useGooglePlaces()
+const suggestions = ref<PlaceAutocomplete[]>([])
+const query = ref('')
+
+const debouncedSearch = useDebounceFn(async (value: string) => {
+  suggestions.value = await searchPlaces(value)
+}, 300)
+
+watch(query, (newQuery) => debouncedSearch(newQuery))
+</script>
+```
+
+**Key principles:**
+- Use `useDebounceFn` from `@vueuse/core` (installed as project dependency)
+- Minimum 3 characters before triggering search
+- 300ms debounce delay balances UX and API cost
+- Error messages in Spanish for user-facing text
+
 ### Axios Configuration
 
 Configure a centralized Axios instance with interceptors:
