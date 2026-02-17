@@ -175,9 +175,14 @@ const handleSubmit = async () => {
         />
         <label for="acceptTerms" class="text-sm text-gray-700">
           Acepto los
-          <a href="#" class="text-primary-600 hover:text-primary-700">
+          <router-link
+            :to="{ name: 'legal-privacy' }"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-primary-600 hover:text-primary-700"
+          >
             términos y condiciones
-          </a>
+          </router-link>
         </label>
       </div>
       <small v-if="errors.acceptTerms" class="text-red-500">{{ errors.acceptTerms }}</small>
