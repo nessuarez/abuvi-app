@@ -124,6 +124,32 @@ const router = createRouter({
 			}
 		},
 
+		// Public legal routes — no auth required
+		{
+			path: "/legal/notice",
+			name: "legal-notice",
+			component: () => import("@/views/legal/NoticeLegalPage.vue"),
+			meta: { title: "ABUVI | Aviso Legal", requiresAuth: false }
+		},
+		{
+			path: "/legal/privacy",
+			name: "legal-privacy",
+			component: () => import("@/views/legal/PrivacyPage.vue"),
+			meta: { title: "ABUVI | Política de Privacidad", requiresAuth: false }
+		},
+		{
+			path: "/legal/bylaws",
+			name: "legal-bylaws",
+			component: () => import("@/views/legal/BylawsPage.vue"),
+			meta: { title: "ABUVI | Estatutos", requiresAuth: false }
+		},
+		{
+			path: "/legal/transparency",
+			name: "legal-transparency",
+			component: () => import("@/views/legal/TransparencyPage.vue"),
+			meta: { title: "ABUVI | Transparencia", requiresAuth: false }
+		},
+
 		// Legacy login/register routes - redirect to landing
 		{
 			path: "/login",
