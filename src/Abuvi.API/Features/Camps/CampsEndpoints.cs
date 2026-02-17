@@ -33,7 +33,7 @@ public static class CampsEndpoints
         group.MapGet("/{id:guid}", GetCampById)
             .WithName("GetCampById")
             .WithSummary("Get camp location by ID")
-            .Produces<ApiResponse<CampResponse>>()
+            .Produces<ApiResponse<CampDetailResponse>>()
             .Produces(401)
             .Produces(403)
             .Produces(404);
@@ -43,7 +43,7 @@ public static class CampsEndpoints
             .WithName("CreateCamp")
             .WithSummary("Create a new camp location")
             .AddEndpointFilter<ValidationFilter<CreateCampRequest>>()
-            .Produces<ApiResponse<CampResponse>>(201)
+            .Produces<ApiResponse<CampDetailResponse>>(201)
             .Produces(400)
             .Produces(401)
             .Produces(403);
@@ -53,7 +53,7 @@ public static class CampsEndpoints
             .WithName("UpdateCamp")
             .WithSummary("Update an existing camp location")
             .AddEndpointFilter<ValidationFilter<UpdateCampRequest>>()
-            .Produces<ApiResponse<CampResponse>>()
+            .Produces<ApiResponse<CampDetailResponse>>()
             .Produces(400)
             .Produces(401)
             .Produces(403)
@@ -168,10 +168,10 @@ public static class CampsEndpoints
 
         if (camp == null)
         {
-            return Results.NotFound(ApiResponse<CampResponse>.NotFound("Camp not found"));
+            return Results.NotFound(ApiResponse<CampDetailResponse>.NotFound("Campamento no encontrado"));
         }
 
-        return Results.Ok(ApiResponse<CampResponse>.Ok(camp));
+        return Results.Ok(ApiResponse<CampDetailResponse>.Ok(camp));
     }
 
     /// <summary>
@@ -185,11 +185,11 @@ public static class CampsEndpoints
         try
         {
             var camp = await service.CreateAsync(request, cancellationToken);
-            return Results.Created($"/api/camps/{camp.Id}", ApiResponse<CampResponse>.Ok(camp));
+            return Results.Created($"/api/camps/{camp.Id}", ApiResponse<CampDetailResponse>.Ok(camp));
         }
         catch (ArgumentException ex)
         {
-            return Results.BadRequest(ApiResponse<CampResponse>.Fail(ex.Message, "VALIDATION_ERROR"));
+            return Results.BadRequest(ApiResponse<CampDetailResponse>.Fail(ex.Message, "VALIDATION_ERROR"));
         }
     }
 
@@ -208,14 +208,14 @@ public static class CampsEndpoints
 
             if (camp == null)
             {
-                return Results.NotFound(ApiResponse<CampResponse>.NotFound("Camp not found"));
+                return Results.NotFound(ApiResponse<CampDetailResponse>.NotFound("Campamento no encontrado"));
             }
 
-            return Results.Ok(ApiResponse<CampResponse>.Ok(camp));
+            return Results.Ok(ApiResponse<CampDetailResponse>.Ok(camp));
         }
         catch (ArgumentException ex)
         {
-            return Results.BadRequest(ApiResponse<CampResponse>.Fail(ex.Message, "VALIDATION_ERROR"));
+            return Results.BadRequest(ApiResponse<CampDetailResponse>.Fail(ex.Message, "VALIDATION_ERROR"));
         }
     }
 

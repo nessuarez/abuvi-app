@@ -3,6 +3,7 @@ using System;
 using Abuvi.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Abuvi.API.Migrations
 {
     [DbContext(typeof(AbuviDbContext))]
-    partial class AbuviDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260217124811_AddExtendedCampInformation")]
+    partial class AddExtendedCampInformation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -610,82 +613,6 @@ namespace Abuvi.API.Migrations
                     b.ToTable("family_units", (string)null);
                 });
 
-            modelBuilder.Entity("Abuvi.API.Features.Memberships.Membership", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("EndDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("FamilyMemberId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FamilyMemberId")
-                        .IsUnique();
-
-                    b.ToTable("memberships", (string)null);
-                });
-
-            modelBuilder.Entity("Abuvi.API.Features.Memberships.MembershipFee", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("MembershipId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("PaidDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PaymentReference")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MembershipId", "Year")
-                        .IsUnique();
-
-                    b.ToTable("membership_fees", (string)null);
-                });
-
             modelBuilder.Entity("Abuvi.API.Features.Users.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -884,28 +811,6 @@ namespace Abuvi.API.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Abuvi.API.Features.Memberships.Membership", b =>
-                {
-                    b.HasOne("Abuvi.API.Features.FamilyUnits.FamilyMember", "FamilyMember")
-                        .WithOne()
-                        .HasForeignKey("Abuvi.API.Features.Memberships.Membership", "FamilyMemberId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("FamilyMember");
-                });
-
-            modelBuilder.Entity("Abuvi.API.Features.Memberships.MembershipFee", b =>
-                {
-                    b.HasOne("Abuvi.API.Features.Memberships.Membership", "Membership")
-                        .WithMany("Fees")
-                        .HasForeignKey("MembershipId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Membership");
-                });
-
             modelBuilder.Entity("Abuvi.API.Features.Users.UserRoleChangeLog", b =>
                 {
                     b.HasOne("Abuvi.API.Features.Users.User", null)
@@ -931,11 +836,6 @@ namespace Abuvi.API.Migrations
             modelBuilder.Entity("Abuvi.API.Features.Camps.CampEdition", b =>
                 {
                     b.Navigation("Extras");
-                });
-
-            modelBuilder.Entity("Abuvi.API.Features.Memberships.Membership", b =>
-                {
-                    b.Navigation("Fees");
                 });
 #pragma warning restore 612, 618
         }

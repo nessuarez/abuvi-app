@@ -55,8 +55,9 @@
 			"mcp__plugin_playwright_playwright__browser_console_messages",
 			"mcp__plugin_playwright_playwright__browser_network_requests",
 			"Bash(git cherry-pick:*)",
-			"Bash(find:*)",
-			"Bash(ai-specs/specs/api-endpoints.md:*)"
+			"Bash(grep:*)",
+			"Bash(npm run type-check:*)",
+			"Bash(npm run:*)"
 		]
 	},
 	"enabledMcpjsonServers": ["github", "resend", "primevue"],

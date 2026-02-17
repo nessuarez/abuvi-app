@@ -151,6 +151,7 @@ builder.Services.AddScoped<CampEditionsService>();
 // Google Places API integration
 builder.Services.AddHttpClient<IGooglePlacesService, GooglePlacesService>();
 builder.Services.AddScoped<IGooglePlacesService, GooglePlacesService>();
+builder.Services.AddScoped<IGooglePlacesMapperService, GooglePlacesMapperService>();
 
 // Family Units
 builder.Services.AddScoped<IFamilyUnitsRepository, FamilyUnitsRepository>();

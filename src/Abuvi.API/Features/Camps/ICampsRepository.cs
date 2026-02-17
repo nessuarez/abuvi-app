@@ -30,6 +30,16 @@ public interface ICampsRepository
     Task<Camp> UpdateAsync(Camp camp, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets a camp by ID including its photos (ordered by DisplayOrder)
+    /// </summary>
+    Task<Camp?> GetByIdWithPhotosAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Persists a collection of camp photos
+    /// </summary>
+    Task<IReadOnlyList<CampPhoto>> AddPhotosAsync(IEnumerable<CampPhoto> photos, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Deletes a camp by its unique identifier
     /// </summary>
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);

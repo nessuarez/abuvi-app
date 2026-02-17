@@ -36,8 +36,8 @@ public class GooglePlacesService(HttpClient httpClient, IConfiguration configura
             return result.Predictions.Select(p => new PlaceAutocomplete(
                 p.PlaceId,
                 p.Description,
-                p.StructuredFormatting?.MainText ?? p.Description,
-                p.StructuredFormatting?.SecondaryText ?? string.Empty
+                p.StructuredFormatting.MainText,
+                p.StructuredFormatting.SecondaryText
             )).ToList();
         }
         catch (HttpRequestException ex)
@@ -49,7 +49,7 @@ public class GooglePlacesService(HttpClient httpClient, IConfiguration configura
 
     public async Task<PlaceDetails?> GetPlaceDetailsAsync(string placeId, CancellationToken ct)
     {
-        var fields = "place_id,name,formatted_address,geometry,types";
+        var fields = "place_id,name,formatted_address,geometry,types,address_component,formatted_phone_number,international_phone_number,website,url,rating,user_ratings_total,business_status,photos";
         var url = $"{_detailsUrl}?place_id={Uri.EscapeDataString(placeId)}&key={_apiKey}&language=es&fields={fields}";
 
         try
@@ -68,7 +68,18 @@ public class GooglePlacesService(HttpClient httpClient, IConfiguration configura
                 place.FormattedAddress,
                 (decimal)place.Geometry.Location.Lat,
                 (decimal)place.Geometry.Location.Lng,
-                place.Types
+                place.Types,
+                PhoneNumber: place.InternationalPhoneNumber,
+                NationalPhoneNumber: place.FormattedPhoneNumber,
+                Website: place.Website,
+                GoogleMapsUrl: place.Url,
+                Rating: place.Rating.HasValue ? (decimal)place.Rating.Value : null,
+                RatingCount: place.UserRatingsTotal,
+                BusinessStatus: place.BusinessStatus,
+                AddressComponents: place.AddressComponents,
+                Photos: place.Photos?
+                    .Select(p => new PlacePhoto(p.PhotoReference, p.Width, p.Height, p.HtmlAttributions))
+                    .ToList() ?? []
             );
         }
         catch (HttpRequestException ex)
@@ -79,7 +90,7 @@ public class GooglePlacesService(HttpClient httpClient, IConfiguration configura
     }
 }
 
-// DTOs
+// Public DTOs
 public record PlaceAutocomplete(
     string PlaceId,
     string Description,
@@ -93,40 +104,66 @@ public record PlaceDetails(
     string FormattedAddress,
     decimal Latitude,
     decimal Longitude,
-    string[] Types
+    string[] Types,
+    string? PhoneNumber,
+    string? NationalPhoneNumber,
+    string? Website,
+    string? GoogleMapsUrl,
+    decimal? Rating,
+    int? RatingCount,
+    string? BusinessStatus,
+    GoogleAddressComponent[]? AddressComponents,
+    IReadOnlyList<PlacePhoto> Photos
+);
+
+public record PlacePhoto(
+    string PhotoReference,
+    int Width,
+    int Height,
+    string[] HtmlAttributions
+);
+
+// Made public so GooglePlacesMapperService in Camps feature can use it
+public record GoogleAddressComponent(
+    [property: JsonPropertyName("long_name")] string LongName,
+    [property: JsonPropertyName("short_name")] string ShortName,
+    [property: JsonPropertyName("types")] string[] Types
 );
 
 // Custom exception
 public class ExternalServiceException(string message) : Exception(message);
 
-// Google API response models
-internal record GoogleAutocompleteResponse(
-    [property: JsonPropertyName("predictions")] List<Prediction> Predictions
-);
+// Google API response models (internal)
+internal record GoogleAutocompleteResponse(List<Prediction> Predictions);
 internal record Prediction(
-    [property: JsonPropertyName("place_id")] string PlaceId,
-    [property: JsonPropertyName("description")] string Description,
-    [property: JsonPropertyName("structured_formatting")] StructuredFormatting? StructuredFormatting
+    string PlaceId,
+    string Description,
+    StructuredFormatting StructuredFormatting
 );
-internal record StructuredFormatting(
-    [property: JsonPropertyName("main_text")] string MainText,
-    [property: JsonPropertyName("secondary_text")] string? SecondaryText
-);
+internal record StructuredFormatting(string MainText, string SecondaryText);
 
-internal record GooglePlaceDetailsResponse(
-    [property: JsonPropertyName("result")] PlaceResult Result
-);
+internal record GooglePlaceDetailsResponse(PlaceResult Result);
 internal record PlaceResult(
     [property: JsonPropertyName("place_id")] string PlaceId,
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("formatted_address")] string FormattedAddress,
     [property: JsonPropertyName("geometry")] Geometry Geometry,
-    [property: JsonPropertyName("types")] string[] Types
+    [property: JsonPropertyName("types")] string[] Types,
+    [property: JsonPropertyName("international_phone_number")] string? InternationalPhoneNumber,
+    [property: JsonPropertyName("formatted_phone_number")] string? FormattedPhoneNumber,
+    [property: JsonPropertyName("website")] string? Website,
+    [property: JsonPropertyName("url")] string? Url,
+    [property: JsonPropertyName("rating")] double? Rating,
+    [property: JsonPropertyName("user_ratings_total")] int? UserRatingsTotal,
+    [property: JsonPropertyName("business_status")] string? BusinessStatus,
+    [property: JsonPropertyName("address_components")] GoogleAddressComponent[]? AddressComponents,
+    [property: JsonPropertyName("photos")] GooglePhotoResult[]? Photos
 );
-internal record Geometry(
-    [property: JsonPropertyName("location")] Location Location
-);
-internal record Location(
-    [property: JsonPropertyName("lat")] double Lat,
-    [property: JsonPropertyName("lng")] double Lng
+internal record Geometry([property: JsonPropertyName("location")] Location Location);
+internal record Location([property: JsonPropertyName("lat")] double Lat, [property: JsonPropertyName("lng")] double Lng);
+internal record GooglePhotoResult(
+    [property: JsonPropertyName("photo_reference")] string PhotoReference,
+    [property: JsonPropertyName("width")] int Width,
+    [property: JsonPropertyName("height")] int Height,
+    [property: JsonPropertyName("html_attributions")] string[] HtmlAttributions
 );

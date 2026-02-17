@@ -177,42 +177,85 @@ Represents an annual membership fee payment for a given year.
 
 ### Camp
 
-A camp event/edition organized by the association. Represents a specific camp happening in a given year and location.
+A reusable camp location template that can have multiple editions per year. Extended with Google Places data when a `googlePlaceId` is provided.
 
 **Fields:**
 
 - `id`: Unique identifier for the Camp entity (Primary Key, UUID)
 - `name`: Camp name (required, max 200 characters)
-- `year`: Camp year (required, integer, e.g. 2026)
-- `startDate`: Camp start date (required)
-- `endDate`: Camp end date (required)
-- `location`: Camp location description (required, max 500 characters)
-- `coordinates`: Geographic coordinates for the camp location (optional, e.g. "40.4168,-3.7038")
-- `description`: Detailed camp description (optional, rich text)
-- `basePrice`: Base price per person in euros (required, decimal, >= 0)
-- `maxCapacity`: Maximum number of participants (required, integer, > 0)
-- `contactEmail`: Contact email for inquiries (optional, valid email format)
-- `contactPhone`: Contact phone for inquiries (optional, max 20 characters)
-- `status`: Current camp status (required, enum: `Draft` | `Open` | `Closed` | `Completed`)
+- `description`: Detailed camp description (optional)
+- `location`: Free-text location description (optional, max 500 characters)
+- `latitude`: Geographic latitude (optional, decimal, range: -90 to 90)
+- `longitude`: Geographic longitude (optional, decimal, range: -180 to 180)
+- `googlePlaceId`: Google Places ID for the location (optional, max 500 characters)
+- `formattedAddress`: Full formatted address from Google Places (optional, max 500 characters)
+- `streetAddress`: Street name and number from Google Places (optional, max 200 characters)
+- `locality`: City/town from Google Places (optional, max 100 characters)
+- `administrativeArea`: Province/region from Google Places (optional, max 100 characters)
+- `postalCode`: Postal code from Google Places (optional, max 20 characters)
+- `country`: Country name from Google Places (optional, max 100 characters)
+- `phoneNumber`: International phone number from Google Places (optional, max 30 characters)
+- `nationalPhoneNumber`: National format phone from Google Places (optional, max 30 characters)
+- `websiteUrl`: Website URL from Google Places (optional, max 500 characters)
+- `googleMapsUrl`: Google Maps URL for the place (optional, max 500 characters)
+- `googleRating`: Google rating (optional, decimal, precision 3,1, range 1.0–5.0)
+- `googleRatingCount`: Number of Google reviews (optional, integer)
+- `lastGoogleSyncAt`: When Google Places data was last fetched (optional, datetime UTC)
+- `businessStatus`: Google business status, e.g. `OPERATIONAL` (optional, max 50 characters)
+- `placeTypes`: JSON array of Google place types, e.g. `["campground","lodging"]` (optional, max 500 characters)
+- `pricePerAdult`: Pricing template for adults in euros (required, decimal, >= 0)
+- `pricePerChild`: Pricing template for children in euros (required, decimal, >= 0)
+- `pricePerBaby`: Pricing template for babies in euros (required, decimal, >= 0)
+- `isActive`: Whether the camp is active (required, default: true)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
 **Validation rules:**
 
-- EndDate must be after StartDate
-- BasePrice must be >= 0
-- MaxCapacity must be > 0
-- Status transitions: Draft -> Open -> Closed -> Completed (no backwards transitions)
-- Registrations can only be created when status is Open
+- Latitude, when provided, must be between -90 and 90
+- Longitude, when provided, must be between -180 and 180
+- All prices must be >= 0
+- When `googlePlaceId` is provided at creation, the backend auto-enriches all Google Places fields
 
 **Relationships:**
 
+- One Camp can have many CampEditions
+- One Camp can have many CampPhotos (cascade delete)
 - One Camp can have many Registrations
 - One Camp can have many Faqs (camp-specific FAQs)
 - One Camp can have many PhotoAlbums
 - One Camp can have many CampIdeas
-- One Camp can have many Documents
-- One Camp can have many 'Comisiones' (committees or groups responsible for organizing different aspects of the camp, e.g. logistics, activities, food)
+
+---
+
+### CampPhoto
+
+A photo associated with a camp, sourced from the Google Places API (Phase 1: photo references only, not downloaded).
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID)
+- `campId`: The camp this photo belongs to (required, FK -> Camp, cascade delete)
+- `photoReference`: Google Places photo reference token (optional, max 500 characters)
+- `photoUrl`: Direct URL if downloaded and stored locally (optional, max 1000 characters; Phase 1: always null)
+- `width`: Photo width in pixels (required, integer)
+- `height`: Photo height in pixels (required, integer)
+- `attributionName`: Photo author name, required by Google Terms of Service (required, max 200 characters)
+- `attributionUrl`: Author profile URL (optional, max 500 characters)
+- `isOriginal`: Whether the photo came from Google Places (required, default: true)
+- `isPrimary`: Whether this is the primary display photo for the camp (required, default: false)
+- `displayOrder`: Sort order in the gallery, 1-based (required, default: 0)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- Attribution information must always be displayed when the photo is shown (Google T&C requirement)
+- Only one `isPrimary = true` photo should exist per camp (first photo from Google Places is set as primary)
+
+**Relationships:**
+
+- Each CampPhoto belongs to one Camp (via `campId`); deleted when the camp is deleted (cascade)
 
 ---
 
