@@ -134,7 +134,9 @@ public record GoogleAddressComponent(
 public class ExternalServiceException(string message) : Exception(message);
 
 // Google API response models (internal)
-internal record GoogleAutocompleteResponse(List<Prediction> Predictions);
+internal record GoogleAutocompleteResponse(
+    [property: JsonPropertyName("predictions")] List<Prediction> Predictions
+);
 internal record Prediction(
     string PlaceId,
     string Description,
