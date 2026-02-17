@@ -184,6 +184,7 @@ builder.Services.AddScoped<Abuvi.API.Common.Services.IEmailService, Abuvi.API.Co
 
 // Background services
 builder.Services.AddHostedService<Abuvi.API.Common.BackgroundServices.LogCleanupService>();
+builder.Services.AddHostedService<Abuvi.API.Common.BackgroundServices.AnnualFeeGenerationService>();
 
 var app = builder.Build();
 
