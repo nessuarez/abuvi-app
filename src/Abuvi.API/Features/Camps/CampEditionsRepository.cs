@@ -79,4 +79,36 @@ public class CampEditionsRepository : ICampEditionsRepository
 
         return true;
     }
+
+    public async Task<bool> ExistsAsync(Guid campId, int year, CancellationToken cancellationToken = default)
+    {
+        return await _context.CampEditions
+            .AnyAsync(e => e.CampId == campId && e.Year == year && !e.IsArchived, cancellationToken);
+    }
+
+    public async Task<List<CampEdition>> GetAllAsync(
+        int? year = null,
+        CampEditionStatus? status = null,
+        Guid? campId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.CampEditions
+            .AsNoTracking()
+            .Include(e => e.Camp)
+            .Where(e => !e.IsArchived);
+
+        if (year.HasValue)
+            query = query.Where(e => e.Year == year.Value);
+
+        if (status.HasValue)
+            query = query.Where(e => e.Status == status.Value);
+
+        if (campId.HasValue)
+            query = query.Where(e => e.CampId == campId.Value);
+
+        return await query
+            .OrderByDescending(e => e.Year)
+            .ThenBy(e => e.StartDate)
+            .ToListAsync(cancellationToken);
+    }
 }

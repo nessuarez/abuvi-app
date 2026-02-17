@@ -187,3 +187,75 @@ public class ProposeCampEditionRequestValidator : AbstractValidator<ProposeCampE
         });
     }
 }
+
+/// <summary>
+/// Validator for UpdateCampEditionRequest
+/// </summary>
+public class UpdateCampEditionRequestValidator : AbstractValidator<UpdateCampEditionRequest>
+{
+    public UpdateCampEditionRequestValidator()
+    {
+        RuleFor(x => x.StartDate)
+            .NotEmpty().WithMessage("La fecha de inicio es obligatoria");
+
+        RuleFor(x => x.EndDate)
+            .NotEmpty().WithMessage("La fecha de fin es obligatoria")
+            .GreaterThan(x => x.StartDate).WithMessage("La fecha de fin debe ser posterior a la fecha de inicio");
+
+        RuleFor(x => x.PricePerAdult)
+            .GreaterThanOrEqualTo(0).WithMessage("El precio por adulto debe ser mayor o igual a 0");
+
+        RuleFor(x => x.PricePerChild)
+            .GreaterThanOrEqualTo(0).WithMessage("El precio por niño debe ser mayor o igual a 0");
+
+        RuleFor(x => x.PricePerBaby)
+            .GreaterThanOrEqualTo(0).WithMessage("El precio por bebé debe ser mayor o igual a 0");
+
+        RuleFor(x => x.MaxCapacity)
+            .GreaterThan(0).WithMessage("La capacidad máxima debe ser mayor a 0")
+            .When(x => x.MaxCapacity.HasValue);
+
+        RuleFor(x => x.Notes)
+            .MaximumLength(2000).WithMessage("Las notas no deben superar los 2000 caracteres")
+            .When(x => !string.IsNullOrWhiteSpace(x.Notes));
+
+        When(x => x.UseCustomAgeRanges, () =>
+        {
+            RuleFor(x => x.CustomBabyMaxAge)
+                .NotNull().WithMessage("La edad máxima de bebé es obligatoria con rangos personalizados");
+
+            RuleFor(x => x.CustomChildMinAge)
+                .NotNull().WithMessage("La edad mínima de niño es obligatoria con rangos personalizados");
+
+            RuleFor(x => x.CustomChildMaxAge)
+                .NotNull().WithMessage("La edad máxima de niño es obligatoria con rangos personalizados");
+
+            RuleFor(x => x.CustomAdultMinAge)
+                .NotNull().WithMessage("La edad mínima de adulto es obligatoria con rangos personalizados");
+
+            RuleFor(x => x)
+                .Must(x => x.CustomBabyMaxAge!.Value < x.CustomChildMinAge!.Value)
+                .When(x => x.CustomBabyMaxAge.HasValue && x.CustomChildMinAge.HasValue)
+                .WithMessage("La edad máxima de bebé debe ser menor a la edad mínima de niño")
+                .WithName("CustomBabyMaxAge");
+
+            RuleFor(x => x)
+                .Must(x => x.CustomChildMaxAge!.Value < x.CustomAdultMinAge!.Value)
+                .When(x => x.CustomChildMaxAge.HasValue && x.CustomAdultMinAge.HasValue)
+                .WithMessage("La edad máxima de niño debe ser menor a la edad mínima de adulto")
+                .WithName("CustomChildMaxAge");
+        });
+    }
+}
+
+/// <summary>
+/// Validator for ChangeEditionStatusRequest
+/// </summary>
+public class ChangeEditionStatusRequestValidator : AbstractValidator<ChangeEditionStatusRequest>
+{
+    public ChangeEditionStatusRequestValidator()
+    {
+        RuleFor(x => x.Status)
+            .IsInEnum().WithMessage("El estado proporcionado no es válido");
+    }
+}

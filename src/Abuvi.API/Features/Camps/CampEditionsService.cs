@@ -41,6 +41,14 @@ public class CampEditionsService
             throw new InvalidOperationException("Cannot propose edition for inactive camp");
         }
 
+        // Check for existing non-archived edition for same camp+year
+        var exists = await _repository.ExistsAsync(request.CampId, request.Year, cancellationToken);
+        if (exists)
+        {
+            throw new InvalidOperationException(
+                $"Ya existe una edición para este campamento en el año {request.Year}");
+        }
+
         // Use provided prices or inherit from camp
         var pricePerAdult = request.PricePerAdult ?? camp.PricePerAdult;
         var pricePerChild = request.PricePerChild ?? camp.PricePerChild;
@@ -136,6 +144,177 @@ public class CampEditionsService
         await _repository.UpdateAsync(edition, cancellationToken);
 
         return true;
+    }
+
+    /// <summary>
+    /// Changes the status of a camp edition, enforcing valid transitions and date constraints.
+    /// </summary>
+    public async Task<CampEditionResponse> ChangeStatusAsync(
+        Guid editionId,
+        CampEditionStatus newStatus,
+        CancellationToken cancellationToken = default)
+    {
+        var edition = await _repository.GetByIdAsync(editionId, cancellationToken);
+        if (edition == null)
+            throw new InvalidOperationException("La edición de campamento no fue encontrada");
+
+        ValidateStatusTransition(edition.Status, newStatus);
+        ValidateDateConstraintsForTransition(edition, newStatus);
+
+        edition.Status = newStatus;
+        var updated = await _repository.UpdateAsync(edition, cancellationToken);
+        return MapToCampEditionResponse(updated, updated.Camp.Name);
+    }
+
+    /// <summary>
+    /// Updates a camp edition with status-based field restrictions:
+    /// - Proposed/Draft: all fields can be updated
+    /// - Open: only Notes and MaxCapacity
+    /// - Closed/Completed: no updates allowed
+    /// </summary>
+    public async Task<CampEditionResponse> UpdateAsync(
+        Guid editionId,
+        UpdateCampEditionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var edition = await _repository.GetByIdAsync(editionId, cancellationToken);
+        if (edition == null)
+            throw new InvalidOperationException("La edición de campamento no fue encontrada");
+
+        if (edition.Status is CampEditionStatus.Closed or CampEditionStatus.Completed)
+            throw new InvalidOperationException(
+                "No se puede modificar una edición cerrada o completada");
+
+        if (edition.Status == CampEditionStatus.Open)
+        {
+            if (request.StartDate != edition.StartDate ||
+                request.EndDate != edition.EndDate ||
+                request.PricePerAdult != edition.PricePerAdult ||
+                request.PricePerChild != edition.PricePerChild ||
+                request.PricePerBaby != edition.PricePerBaby)
+            {
+                throw new InvalidOperationException(
+                    "No se pueden modificar las fechas ni los precios de una edición abierta");
+            }
+        }
+
+        edition.StartDate = request.StartDate;
+        edition.EndDate = request.EndDate;
+        edition.PricePerAdult = request.PricePerAdult;
+        edition.PricePerChild = request.PricePerChild;
+        edition.PricePerBaby = request.PricePerBaby;
+        edition.UseCustomAgeRanges = request.UseCustomAgeRanges;
+        edition.CustomBabyMaxAge = request.CustomBabyMaxAge;
+        edition.CustomChildMinAge = request.CustomChildMinAge;
+        edition.CustomChildMaxAge = request.CustomChildMaxAge;
+        edition.CustomAdultMinAge = request.CustomAdultMinAge;
+        edition.MaxCapacity = request.MaxCapacity;
+        edition.Notes = request.Notes;
+
+        var updated = await _repository.UpdateAsync(edition, cancellationToken);
+        return MapToCampEditionResponse(updated, updated.Camp.Name);
+    }
+
+    /// <summary>
+    /// Gets a camp edition by ID. Returns null if not found.
+    /// </summary>
+    public async Task<CampEditionResponse?> GetByIdAsync(
+        Guid editionId,
+        CancellationToken cancellationToken = default)
+    {
+        var edition = await _repository.GetByIdAsync(editionId, cancellationToken);
+        if (edition == null)
+            return null;
+
+        return MapToCampEditionResponse(edition, edition.Camp.Name);
+    }
+
+    /// <summary>
+    /// Gets all camp editions with optional filtering by year, status, and campId.
+    /// </summary>
+    public async Task<List<CampEditionResponse>> GetAllAsync(
+        int? year,
+        CampEditionStatus? status,
+        Guid? campId,
+        CancellationToken cancellationToken = default)
+    {
+        var editions = await _repository.GetAllAsync(year, status, campId, cancellationToken);
+        return editions.Select(e => MapToCampEditionResponse(e, e.Camp.Name)).ToList();
+    }
+
+    /// <summary>
+    /// Gets the active (Open) edition for the given year. Defaults to the current year.
+    /// Returns null if no Open edition exists.
+    /// </summary>
+    public async Task<ActiveCampEditionResponse?> GetActiveEditionAsync(
+        int? year,
+        CancellationToken cancellationToken = default)
+    {
+        var targetYear = year ?? DateTime.UtcNow.Year;
+
+        var editions = await _repository.GetByStatusAndYearAsync(
+            CampEditionStatus.Open,
+            targetYear,
+            cancellationToken);
+
+        var edition = editions.FirstOrDefault();
+        if (edition == null)
+            return null;
+
+        // RegistrationCount is always 0 until the Registrations feature is integrated.
+        return new ActiveCampEditionResponse(
+            Id: edition.Id,
+            CampId: edition.CampId,
+            CampName: edition.Camp.Name,
+            CampLocation: edition.Camp.Location,
+            CampFormattedAddress: edition.Camp.FormattedAddress,
+            Year: edition.Year,
+            StartDate: edition.StartDate,
+            EndDate: edition.EndDate,
+            PricePerAdult: edition.PricePerAdult,
+            PricePerChild: edition.PricePerChild,
+            PricePerBaby: edition.PricePerBaby,
+            UseCustomAgeRanges: edition.UseCustomAgeRanges,
+            CustomBabyMaxAge: edition.CustomBabyMaxAge,
+            CustomChildMinAge: edition.CustomChildMinAge,
+            CustomChildMaxAge: edition.CustomChildMaxAge,
+            CustomAdultMinAge: edition.CustomAdultMinAge,
+            Status: edition.Status,
+            MaxCapacity: edition.MaxCapacity,
+            RegistrationCount: 0,
+            Notes: edition.Notes,
+            CreatedAt: edition.CreatedAt,
+            UpdatedAt: edition.UpdatedAt
+        );
+    }
+
+    private static void ValidateStatusTransition(CampEditionStatus current, CampEditionStatus next)
+    {
+        var validTransitions = new Dictionary<CampEditionStatus, CampEditionStatus[]>
+        {
+            [CampEditionStatus.Proposed]  = [CampEditionStatus.Draft],
+            [CampEditionStatus.Draft]     = [CampEditionStatus.Open],
+            [CampEditionStatus.Open]      = [CampEditionStatus.Closed],
+            [CampEditionStatus.Closed]    = [CampEditionStatus.Completed],
+            [CampEditionStatus.Completed] = []
+        };
+
+        if (!validTransitions.TryGetValue(current, out var allowed) || !allowed.Contains(next))
+            throw new InvalidOperationException(
+                $"La transición de '{current}' a '{next}' no es válida");
+    }
+
+    private static void ValidateDateConstraintsForTransition(CampEdition edition, CampEditionStatus newStatus)
+    {
+        var today = DateTime.UtcNow.Date;
+
+        if (newStatus == CampEditionStatus.Open && edition.StartDate.Date < today)
+            throw new InvalidOperationException(
+                "No se puede abrir el registro de una edición con fecha de inicio en el pasado");
+
+        if (newStatus == CampEditionStatus.Completed && edition.EndDate.Date >= today)
+            throw new InvalidOperationException(
+                "No se puede marcar como completada una edición cuya fecha de fin no ha pasado");
     }
 
     private static CampEditionResponse MapToCampEditionResponse(CampEdition edition, string campName)
