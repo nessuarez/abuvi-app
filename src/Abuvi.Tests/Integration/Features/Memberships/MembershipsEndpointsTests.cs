@@ -1,0 +1,271 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Net.Http.Headers;
+using Abuvi.API.Common.Models;
+using Abuvi.API.Data;
+using Abuvi.API.Features.FamilyUnits;
+using Abuvi.API.Features.Memberships;
+using Abuvi.API.Features.Users;
+using Abuvi.API.Features.Auth;
+using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+
+namespace Abuvi.Tests.Integration.Features.Memberships;
+
+public class MembershipsEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly WebApplicationFactory<Program> _factory;
+    private readonly HttpClient _client;
+    private readonly HttpClient _authenticatedClient;
+    private string? _authToken;
+
+    public MembershipsEndpointsTests(WebApplicationFactory<Program> factory)
+    {
+        _factory = factory;
+        _client = factory.CreateClient();
+        _authenticatedClient = factory.CreateClient();
+    }
+
+    private async Task<string> GetAuthTokenAsync()
+    {
+        if (_authToken != null) return _authToken;
+
+        // Register and login to get token
+        var email = $"test{Guid.NewGuid()}@example.com";
+        var registerRequest = new RegisterRequest(email, "Password123!", "Test", "User", null);
+        await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+        var loginRequest = new LoginRequest(email, "Password123!");
+        var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", loginRequest);
+        var loginResult = await loginResponse.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>();
+
+        _authToken = loginResult!.Data!.Token;
+        _authenticatedClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", _authToken);
+
+        return _authToken;
+    }
+
+    [Fact]
+    public async Task CreateMembership_WithValidData_Returns201Created()
+    {
+        // Arrange
+        await GetAuthTokenAsync();
+        var (user, familyUnit, familyMember) = await SeedTestDataAsync();
+        var request = new CreateMembershipRequest(DateTime.UtcNow.AddDays(-1));
+
+        // Act
+        var response = await _authenticatedClient.PostAsJsonAsync(
+            $"/api/family-units/{familyUnit.Id}/members/{familyMember.Id}/membership",
+            request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<MembershipResponse>>();
+        result.Should().NotBeNull();
+        result!.Data.Should().NotBeNull();
+        result.Data!.FamilyMemberId.Should().Be(familyMember.Id);
+        result.Data.IsActive.Should().BeTrue();
+        result.Data.StartDate.Should().BeCloseTo(request.StartDate, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task CreateMembership_WithNonExistentFamilyMember_Returns404NotFound()
+    {
+        // Arrange
+        await GetAuthTokenAsync();
+        var familyUnitId = Guid.NewGuid();
+        var nonExistentMemberId = Guid.NewGuid();
+        var request = new CreateMembershipRequest(DateTime.UtcNow);
+
+        // Act
+        var response = await _authenticatedClient.PostAsJsonAsync(
+            $"/api/family-units/{familyUnitId}/members/{nonExistentMemberId}/membership",
+            request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task CreateMembership_WhenActiveMembershipExists_Returns409Conflict()
+    {
+        // Arrange
+        await GetAuthTokenAsync();
+        var (user, familyUnit, familyMember) = await SeedTestDataAsync();
+        var membership = await CreateTestMembershipAsync(familyMember.Id);
+        var request = new CreateMembershipRequest(DateTime.UtcNow);
+
+        // Act
+        var response = await _authenticatedClient.PostAsJsonAsync(
+            $"/api/family-units/{familyUnit.Id}/members/{familyMember.Id}/membership",
+            request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task CreateMembership_WithFutureStartDate_Returns400BadRequest()
+    {
+        // Arrange
+        await GetAuthTokenAsync();
+        var (user, familyUnit, familyMember) = await SeedTestDataAsync();
+        var request = new CreateMembershipRequest(DateTime.UtcNow.AddDays(1));
+
+        // Act
+        var response = await _authenticatedClient.PostAsJsonAsync(
+            $"/api/family-units/{familyUnit.Id}/members/{familyMember.Id}/membership",
+            request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task GetMembership_WhenExists_Returns200Ok()
+    {
+        // Arrange
+        await GetAuthTokenAsync();
+        var (user, familyUnit, familyMember) = await SeedTestDataAsync();
+        var membership = await CreateTestMembershipAsync(familyMember.Id);
+
+        // Act
+        var response = await _authenticatedClient.GetAsync(
+            $"/api/family-units/{familyUnit.Id}/members/{familyMember.Id}/membership");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<MembershipResponse>>();
+        result.Should().NotBeNull();
+        result!.Data.Should().NotBeNull();
+        result.Data!.Id.Should().Be(membership.Id);
+        result.Data.FamilyMemberId.Should().Be(familyMember.Id);
+    }
+
+    [Fact]
+    public async Task GetMembership_WhenNotExists_Returns404NotFound()
+    {
+        // Arrange
+        await GetAuthTokenAsync();
+        var (user, familyUnit, familyMember) = await SeedTestDataAsync();
+
+        // Act
+        var response = await _authenticatedClient.GetAsync(
+            $"/api/family-units/{familyUnit.Id}/members/{familyMember.Id}/membership");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task DeactivateMembership_WhenExists_Returns204NoContent()
+    {
+        // Arrange
+        await GetAuthTokenAsync();
+        var (user, familyUnit, familyMember) = await SeedTestDataAsync();
+        var membership = await CreateTestMembershipAsync(familyMember.Id);
+
+        // Act
+        var response = await _authenticatedClient.DeleteAsync(
+            $"/api/family-units/{familyUnit.Id}/members/{familyMember.Id}/membership");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Verify membership was deactivated
+        using var scope = _factory.Services.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IMembershipsRepository>();
+        var updated = await repository.GetByFamilyMemberIdAsync(familyMember.Id, CancellationToken.None);
+        updated.Should().BeNull(); // GetByFamilyMemberIdAsync only returns active memberships
+    }
+
+    [Fact]
+    public async Task DeactivateMembership_WhenNotExists_Returns404NotFound()
+    {
+        // Arrange
+        await GetAuthTokenAsync();
+        var (user, familyUnit, familyMember) = await SeedTestDataAsync();
+
+        // Act
+        var response = await _authenticatedClient.DeleteAsync(
+            $"/api/family-units/{familyUnit.Id}/members/{familyMember.Id}/membership");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // Helper methods
+    private async Task<(User user, FamilyUnit familyUnit, FamilyMember familyMember)> SeedTestDataAsync()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AbuviDbContext>();
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = $"test{Guid.NewGuid()}@example.com",
+            FirstName = "Test",
+            LastName = "User",
+            PasswordHash = "hashedpassword",
+            Role = UserRole.Member,
+            EmailVerified = true,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var familyUnit = new FamilyUnit
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Family",
+            RepresentativeUserId = user.Id,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var familyMember = new FamilyMember
+        {
+            Id = Guid.NewGuid(),
+            FamilyUnitId = familyUnit.Id,
+            FirstName = "John",
+            LastName = "Doe",
+            DateOfBirth = new DateOnly(1990, 1, 1),
+            Relationship = FamilyRelationship.Parent,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        dbContext.Users.Add(user);
+        dbContext.FamilyUnits.Add(familyUnit);
+        dbContext.FamilyMembers.Add(familyMember);
+        await dbContext.SaveChangesAsync();
+
+        return (user, familyUnit, familyMember);
+    }
+
+    private async Task<Membership> CreateTestMembershipAsync(Guid familyMemberId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AbuviDbContext>();
+
+        var membership = new Membership
+        {
+            Id = Guid.NewGuid(),
+            FamilyMemberId = familyMemberId,
+            StartDate = DateTime.UtcNow.AddDays(-30),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        dbContext.Memberships.Add(membership);
+        await dbContext.SaveChangesAsync();
+
+        return membership;
+    }
+}

@@ -1,4 +1,5 @@
 using Abuvi.API.Common.Models;
+using Abuvi.API.Common.Exceptions;
 
 namespace Abuvi.API.Common.Middleware;
 
@@ -9,6 +10,20 @@ public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExcep
         try
         {
             await next(context);
+        }
+        catch (NotFoundException ex)
+        {
+            logger.LogWarning(ex, "Resource not found: {Message}", ex.Message);
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            await context.Response.WriteAsJsonAsync(
+                ApiResponse<object>.Fail(ex.Message, "NOT_FOUND"));
+        }
+        catch (BusinessRuleException ex)
+        {
+            logger.LogWarning(ex, "Business rule violation: {Message}", ex.Message);
+            context.Response.StatusCode = StatusCodes.Status409Conflict;
+            await context.Response.WriteAsJsonAsync(
+                ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
         }
         catch (Exception ex)
         {
