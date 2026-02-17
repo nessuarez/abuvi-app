@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Abuvi.API.Features.GooglePlaces;
 
 public interface IGooglePlacesService
@@ -34,8 +36,8 @@ public class GooglePlacesService(HttpClient httpClient, IConfiguration configura
             return result.Predictions.Select(p => new PlaceAutocomplete(
                 p.PlaceId,
                 p.Description,
-                p.StructuredFormatting.MainText,
-                p.StructuredFormatting.SecondaryText
+                p.StructuredFormatting?.MainText ?? p.Description,
+                p.StructuredFormatting?.SecondaryText ?? string.Empty
             )).ToList();
         }
         catch (HttpRequestException ex)
@@ -98,21 +100,33 @@ public record PlaceDetails(
 public class ExternalServiceException(string message) : Exception(message);
 
 // Google API response models
-internal record GoogleAutocompleteResponse(List<Prediction> Predictions);
+internal record GoogleAutocompleteResponse(
+    [property: JsonPropertyName("predictions")] List<Prediction> Predictions
+);
 internal record Prediction(
-    string PlaceId,
-    string Description,
-    StructuredFormatting StructuredFormatting
+    [property: JsonPropertyName("place_id")] string PlaceId,
+    [property: JsonPropertyName("description")] string Description,
+    [property: JsonPropertyName("structured_formatting")] StructuredFormatting? StructuredFormatting
 );
-internal record StructuredFormatting(string MainText, string SecondaryText);
+internal record StructuredFormatting(
+    [property: JsonPropertyName("main_text")] string MainText,
+    [property: JsonPropertyName("secondary_text")] string? SecondaryText
+);
 
-internal record GooglePlaceDetailsResponse(PlaceResult Result);
-internal record PlaceResult(
-    string PlaceId,
-    string Name,
-    string FormattedAddress,
-    Geometry Geometry,
-    string[] Types
+internal record GooglePlaceDetailsResponse(
+    [property: JsonPropertyName("result")] PlaceResult Result
 );
-internal record Geometry(Location Location);
-internal record Location(double Lat, double Lng);
+internal record PlaceResult(
+    [property: JsonPropertyName("place_id")] string PlaceId,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("formatted_address")] string FormattedAddress,
+    [property: JsonPropertyName("geometry")] Geometry Geometry,
+    [property: JsonPropertyName("types")] string[] Types
+);
+internal record Geometry(
+    [property: JsonPropertyName("location")] Location Location
+);
+internal record Location(
+    [property: JsonPropertyName("lat")] double Lat,
+    [property: JsonPropertyName("lng")] double Lng
+);
