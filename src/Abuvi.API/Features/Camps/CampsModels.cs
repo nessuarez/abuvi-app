@@ -303,6 +303,42 @@ public record ProposeCampEditionRequest(
 );
 
 /// <summary>
+/// Request to change the status of a camp edition
+/// </summary>
+public record ChangeEditionStatusRequest(
+    CampEditionStatus Status
+);
+
+/// <summary>
+/// Active edition response including camp location details and registration statistics.
+/// RegistrationCount is always 0 until the Registrations feature is integrated.
+/// </summary>
+public record ActiveCampEditionResponse(
+    Guid Id,
+    Guid CampId,
+    string CampName,
+    string? CampLocation,
+    string? CampFormattedAddress,
+    int Year,
+    DateTime StartDate,
+    DateTime EndDate,
+    decimal PricePerAdult,
+    decimal PricePerChild,
+    decimal PricePerBaby,
+    bool UseCustomAgeRanges,
+    int? CustomBabyMaxAge,
+    int? CustomChildMinAge,
+    int? CustomChildMaxAge,
+    int? CustomAdultMinAge,
+    CampEditionStatus Status,
+    int? MaxCapacity,
+    int RegistrationCount,
+    string? Notes,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
+);
+
+/// <summary>
 /// Request to update a camp edition
 /// </summary>
 public record UpdateCampEditionRequest(

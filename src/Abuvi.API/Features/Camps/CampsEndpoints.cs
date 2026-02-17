@@ -139,6 +139,58 @@ public static class CampsEndpoints
             .Produces(403)
             .Produces(404);
 
+        // PATCH /api/camps/editions/{id}/status - Change edition status (Board+)
+        editionsGroup.MapPatch("/{id:guid}/status", ChangeEditionStatus)
+            .WithName("ChangeEditionStatus")
+            .WithSummary("Change the status of a camp edition (Proposed→Draft→Open→Closed→Completed)")
+            .AddEndpointFilter<ValidationFilter<ChangeEditionStatusRequest>>()
+            .Produces<ApiResponse<CampEditionResponse>>()
+            .Produces(400)
+            .Produces(401)
+            .Produces(403)
+            .Produces(404);
+
+        // Member+ read-only edition endpoints — separate group to override the Board-only group policy
+        var editionsMemberGroup = app.MapGroup("/api/camps/editions")
+            .WithTags("Camp Editions")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board", "Member"));
+
+        // GET /api/camps/editions/active - Get active (Open) edition (Member+)
+        // NOTE: Must be registered before /{id:guid} to avoid "active" being treated as a GUID
+        editionsMemberGroup.MapGet("/active", GetActiveEdition)
+            .WithName("GetActiveEdition")
+            .WithSummary("Get the currently open camp edition for the given year")
+            .Produces<ApiResponse<ActiveCampEditionResponse?>>()
+            .Produces(401);
+
+        // GET /api/camps/editions/{id} - Get edition by ID (Member+)
+        editionsMemberGroup.MapGet("/{id:guid}", GetEditionById)
+            .WithName("GetEditionById")
+            .WithSummary("Get a camp edition by ID")
+            .Produces<ApiResponse<CampEditionResponse>>()
+            .Produces(401)
+            .Produces(404);
+
+        // PUT /api/camps/editions/{id} - Update edition (Board+)
+        editionsGroup.MapPut("/{id:guid}", UpdateEdition)
+            .WithName("UpdateEdition")
+            .WithSummary("Update a camp edition (restrictions apply based on status)")
+            .AddEndpointFilter<ValidationFilter<UpdateCampEditionRequest>>()
+            .Produces<ApiResponse<CampEditionResponse>>()
+            .Produces(400)
+            .Produces(401)
+            .Produces(403)
+            .Produces(404);
+
+        // GET /api/camps/editions - List all editions with optional filtering (Board+)
+        editionsGroup.MapGet("/", GetAllEditions)
+            .WithName("GetAllEditions")
+            .WithSummary("Get all camp editions with optional filtering by year, status, and campId")
+            .Produces<ApiResponse<List<CampEditionResponse>>>()
+            .Produces(401)
+            .Produces(403);
+
         return app;
     }
 
@@ -365,5 +417,94 @@ public static class CampsEndpoints
         {
             return Results.BadRequest(ApiResponse<object>.Fail(ex.Message, "OPERATION_ERROR"));
         }
+    }
+
+    /// <summary>
+    /// Change the status of a camp edition
+    /// </summary>
+    private static async Task<IResult> ChangeEditionStatus(
+        [FromServices] CampEditionsService service,
+        Guid id,
+        ChangeEditionStatusRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var edition = await service.ChangeStatusAsync(id, request.Status, cancellationToken);
+            return Results.Ok(ApiResponse<CampEditionResponse>.Ok(edition));
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("no fue encontrada"))
+        {
+            return Results.NotFound(ApiResponse<CampEditionResponse>.NotFound(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(ApiResponse<CampEditionResponse>.Fail(ex.Message, "OPERATION_ERROR"));
+        }
+    }
+
+    /// <summary>
+    /// Get the currently active (Open) camp edition for the given year
+    /// </summary>
+    private static async Task<IResult> GetActiveEdition(
+        [FromServices] CampEditionsService service,
+        [FromQuery] int? year = null,
+        CancellationToken cancellationToken = default)
+    {
+        var edition = await service.GetActiveEditionAsync(year, cancellationToken);
+        return Results.Ok(ApiResponse<ActiveCampEditionResponse?>.Ok(edition));
+    }
+
+    /// <summary>
+    /// Get a camp edition by ID
+    /// </summary>
+    private static async Task<IResult> GetEditionById(
+        [FromServices] CampEditionsService service,
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var edition = await service.GetByIdAsync(id, cancellationToken);
+        if (edition == null)
+            return Results.NotFound(ApiResponse<CampEditionResponse>.NotFound("La edición de campamento no fue encontrada"));
+
+        return Results.Ok(ApiResponse<CampEditionResponse>.Ok(edition));
+    }
+
+    /// <summary>
+    /// Update a camp edition (restrictions apply based on status)
+    /// </summary>
+    private static async Task<IResult> UpdateEdition(
+        [FromServices] CampEditionsService service,
+        Guid id,
+        UpdateCampEditionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var edition = await service.UpdateAsync(id, request, cancellationToken);
+            return Results.Ok(ApiResponse<CampEditionResponse>.Ok(edition));
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("no fue encontrada"))
+        {
+            return Results.NotFound(ApiResponse<CampEditionResponse>.NotFound(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(ApiResponse<CampEditionResponse>.Fail(ex.Message, "OPERATION_ERROR"));
+        }
+    }
+
+    /// <summary>
+    /// Get all camp editions with optional filtering
+    /// </summary>
+    private static async Task<IResult> GetAllEditions(
+        [FromServices] CampEditionsService service,
+        [FromQuery] int? year = null,
+        [FromQuery] CampEditionStatus? status = null,
+        [FromQuery] Guid? campId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var editions = await service.GetAllAsync(year, status, campId, cancellationToken);
+        return Results.Ok(ApiResponse<List<CampEditionResponse>>.Ok(editions));
     }
 }

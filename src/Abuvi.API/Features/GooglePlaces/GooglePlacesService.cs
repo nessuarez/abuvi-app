@@ -36,8 +36,8 @@ public class GooglePlacesService(HttpClient httpClient, IConfiguration configura
             return result.Predictions.Select(p => new PlaceAutocomplete(
                 p.PlaceId,
                 p.Description,
-                p.StructuredFormatting?.MainText ?? p.Description,
-                p.StructuredFormatting?.SecondaryText ?? string.Empty
+                p.StructuredFormatting.MainText,
+                p.StructuredFormatting.SecondaryText
             )).ToList();
         }
         catch (HttpRequestException ex)
@@ -138,14 +138,11 @@ internal record GoogleAutocompleteResponse(
     [property: JsonPropertyName("predictions")] List<Prediction> Predictions
 );
 internal record Prediction(
-    [property: JsonPropertyName("place_id")] string PlaceId,
-    [property: JsonPropertyName("description")] string Description,
-    [property: JsonPropertyName("structured_formatting")] StructuredFormatting? StructuredFormatting
+    string PlaceId,
+    string Description,
+    StructuredFormatting StructuredFormatting
 );
-internal record StructuredFormatting(
-    [property: JsonPropertyName("main_text")] string MainText,
-    [property: JsonPropertyName("secondary_text")] string? SecondaryText
-);
+internal record StructuredFormatting(string MainText, string SecondaryText);
 
 internal record GooglePlaceDetailsResponse(PlaceResult Result);
 internal record PlaceResult(
