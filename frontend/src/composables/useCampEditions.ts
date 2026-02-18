@@ -4,13 +4,18 @@ import type {
   CampEdition,
   CreateCampEditionRequest,
   ProposeCampEditionRequest,
-  CampEditionStatus
+  CampEditionStatus,
+  UpdateCampEditionRequest,
+  ChangeEditionStatusRequest,
+  ActiveCampEditionResponse,
+  CampEditionFilters
 } from '@/types/camp-edition'
 import type { ApiResponse } from '@/types/api'
 
 export function useCampEditions() {
   const editions = ref<CampEdition[]>([])
-  const activeEdition = ref<CampEdition | null>(null)
+  const allEditions = ref<CampEdition[]>([])
+  const activeEdition = ref<ActiveCampEditionResponse | null>(null)
   const currentCampEdition = ref<CampEdition | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -37,16 +42,15 @@ export function useCampEditions() {
     }
   }
 
-  const getActiveEdition = async (): Promise<void> => {
+  const getActiveEdition = async (year?: number): Promise<void> => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get<ApiResponse<CampEdition>>('/camps/editions/active')
-      if (response.data.success && response.data.data) {
-        activeEdition.value = response.data.data
-      } else {
-        activeEdition.value = null
-      }
+      const url = year
+        ? `/camps/editions/active?year=${year}`
+        : '/camps/editions/active'
+      const response = await api.get<ApiResponse<ActiveCampEditionResponse>>(url)
+      activeEdition.value = response.data.success ? (response.data.data ?? null) : null
     } catch (err: unknown) {
       error.value = (err as { response?: { data?: { error?: { message?: string } } } })
         ?.response?.data?.error?.message || 'Error al cargar edición activa'
@@ -71,6 +75,27 @@ export function useCampEditions() {
         ?.response?.data?.error?.message || 'Error al cargar edición'
       console.error('Failed to fetch edition:', err)
       return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const fetchAllEditions = async (filters?: CampEditionFilters): Promise<void> => {
+    loading.value = true
+    error.value = null
+    try {
+      const params = new URLSearchParams()
+      if (filters?.year) params.append('year', String(filters.year))
+      if (filters?.status) params.append('status', filters.status)
+      if (filters?.campId) params.append('campId', filters.campId)
+      const query = params.toString() ? `?${params.toString()}` : ''
+      const response = await api.get<ApiResponse<CampEdition[]>>(`/camps/editions${query}`)
+      allEditions.value = response.data.success ? (response.data.data ?? []) : []
+    } catch (err: unknown) {
+      error.value = (err as { response?: { data?: { error?: { message?: string } } } })
+        ?.response?.data?.error?.message || 'Error al cargar ediciones'
+      console.error('Failed to fetch all editions:', err)
+      allEditions.value = []
     } finally {
       loading.value = false
     }
@@ -167,18 +192,23 @@ export function useCampEditions() {
 
   const updateEdition = async (
     id: string,
-    request: Partial<CreateCampEditionRequest>
+    request: UpdateCampEditionRequest
   ): Promise<CampEdition | null> => {
     loading.value = true
     error.value = null
     try {
       const response = await api.put<ApiResponse<CampEdition>>(`/camps/editions/${id}`, request)
       if (response.data.success && response.data.data) {
+        const updatedEdition = response.data.data
         const index = editions.value.findIndex((e) => e.id === id)
         if (index !== -1) {
-          editions.value[index] = response.data.data
+          editions.value[index] = updatedEdition
         }
-        return response.data.data
+        const allIndex = allEditions.value.findIndex((e) => e.id === id)
+        if (allIndex !== -1) {
+          allEditions.value[allIndex] = updatedEdition
+        }
+        return updatedEdition
       }
       return null
     } catch (err: unknown) {
@@ -198,18 +228,21 @@ export function useCampEditions() {
     loading.value = true
     error.value = null
     try {
-      const response = await api.post<ApiResponse<CampEdition>>(`/camps/editions/${id}/status`, {
-        newStatus
-      })
+      const response = await api.patch<ApiResponse<CampEdition>>(
+        `/camps/editions/${id}/status`,
+        { status: newStatus } satisfies ChangeEditionStatusRequest
+      )
       if (response.data.success && response.data.data) {
+        const updatedEdition = response.data.data
         const index = editions.value.findIndex((e) => e.id === id)
         if (index !== -1) {
-          editions.value[index] = response.data.data
+          editions.value[index] = updatedEdition
         }
-        if (activeEdition.value?.id === id) {
-          activeEdition.value = response.data.data
+        const allIndex = allEditions.value.findIndex((e) => e.id === id)
+        if (allIndex !== -1) {
+          allEditions.value[allIndex] = updatedEdition
         }
-        return response.data.data
+        return updatedEdition
       }
       return null
     } catch (err: unknown) {
@@ -268,6 +301,7 @@ export function useCampEditions() {
 
   return {
     editions,
+    allEditions,
     activeEdition,
     currentCampEdition,
     loading,
@@ -275,6 +309,7 @@ export function useCampEditions() {
     fetchProposedEditions,
     getActiveEdition,
     getEditionById,
+    fetchAllEditions,
     createEdition,
     proposeEdition,
     promoteEdition,

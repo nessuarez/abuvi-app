@@ -60,12 +60,14 @@ const filteredCamps = computed(() => {
 })
 
 const campLocations = computed(() => {
-  return filteredCamps.value.map((camp) => ({
-    latitude: camp.latitude,
-    longitude: camp.longitude,
-    name: camp.name,
-    year: undefined
-  }))
+  return filteredCamps.value
+    .filter((camp) => camp.latitude !== null && camp.longitude !== null)
+    .map((camp) => ({
+      latitude: camp.latitude as number,
+      longitude: camp.longitude as number,
+      name: camp.name,
+      year: undefined
+    }))
 })
 
 const formatCurrency = (amount: number): string => {
@@ -125,6 +127,10 @@ const handleDelete = (camp: Camp) => {
 
 const handleViewDetails = (camp: Camp) => {
   router.push({ name: 'camp-location-detail', params: { id: camp.id } })
+}
+
+const handleViewEditions = (campId: string) => {
+  router.push({ name: 'camp-editions', query: { campId } })
 }
 
 const handleViewEditions = (campId: string) => {
@@ -191,39 +197,18 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
       <div class="flex flex-1 gap-2">
         <span class="p-input-icon-left flex-1">
           <i class="pi pi-search" />
-          <InputText
-            v-model="searchQuery"
-            placeholder="Buscar campamentos..."
-            class="w-full"
-          />
+          <InputText v-model="searchQuery" placeholder="Buscar campamentos..." class="w-full" />
         </span>
-        <Select
-          v-model="selectedStatus"
-          :options="statusOptions"
-          option-label="label"
-          option-value="value"
-          placeholder="Filtrar por estado"
-          class="w-48"
-        />
+        <Select v-model="selectedStatus" :options="statusOptions" option-label="label" option-value="value"
+          placeholder="Filtrar por estado" class="w-48" />
       </div>
 
       <!-- View Mode & Create Button -->
       <div class="flex gap-2">
-        <Button
-          :icon="viewMode === 'table' ? 'pi pi-table' : 'pi pi-th-large'"
-          :outlined="viewMode !== 'table'"
-          @click="viewMode = viewMode === 'table' ? 'cards' : 'table'"
-        />
-        <Button
-          icon="pi pi-map"
-          :outlined="viewMode !== 'map'"
-          @click="viewMode = 'map'"
-        />
-        <Button
-          label="Nuevo Campamento"
-          icon="pi pi-plus"
-          @click="handleCreate"
-        />
+        <Button :icon="viewMode === 'table' ? 'pi pi-table' : 'pi pi-th-large'" :outlined="viewMode !== 'table'"
+          @click="viewMode = viewMode === 'table' ? 'cards' : 'table'" />
+        <Button icon="pi pi-map" :outlined="viewMode !== 'map'" @click="viewMode = 'map'" />
+        <Button label="Nuevo Campamento" icon="pi pi-plus" @click="handleCreate" />
       </div>
     </div>
 
@@ -239,10 +224,8 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
     </Message>
 
     <!-- Empty State -->
-    <div
-      v-else-if="filteredCamps.length === 0"
-      class="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center"
-    >
+    <div v-else-if="filteredCamps.length === 0"
+      class="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
       <i class="pi pi-map-marker mb-4 text-4xl text-gray-400"></i>
       <h3 class="mb-2 text-lg font-semibold text-gray-900">No hay campamentos registrados</h3>
       <p class="mb-4 text-gray-600">Comienza creando tu primer campamento</p>
@@ -275,13 +258,10 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
 
         <Column field="status" header="Estado" sortable>
           <template #body="{ data }">
-            <span
-              :class="{
-                'bg-green-100 text-green-800': data.isActive,
-                'bg-gray-100 text-gray-800': !data.isActive
-              }"
-              class="rounded-full px-2 py-1 text-xs font-medium"
-            >
+            <span :class="{
+              'bg-green-100 text-green-800': data.isActive,
+              'bg-gray-100 text-gray-800': !data.isActive
+            }" class="rounded-full px-2 py-1 text-xs font-medium">
               {{ statusLabel(data.isActive) }}
             </span>
           </template>
@@ -298,44 +278,15 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
         <Column header="Acciones">
           <template #body="{ data }">
             <div class="flex gap-1">
-              <Button
-                v-tooltip.top="'Ver detalle'"
-                icon="pi pi-eye"
-                text
-                rounded
-                size="small"
-                aria-label="Ver detalle de ubicación"
-                @click="handleViewDetails(data)"
-              />
-              <Button
-                v-tooltip.top="'Ver ediciones'"
-                icon="pi pi-calendar"
-                text
-                rounded
-                size="small"
-                aria-label="Ver ediciones de esta ubicación"
-                data-testid="view-camp-editions-btn"
-                @click="handleViewEditions(data.id)"
-              />
-              <Button
-                v-tooltip.top="'Editar'"
-                icon="pi pi-pencil"
-                text
-                rounded
-                size="small"
-                aria-label="Editar ubicación"
-                @click="handleEdit(data)"
-              />
-              <Button
-                v-tooltip.top="'Eliminar'"
-                icon="pi pi-trash"
-                text
-                rounded
-                size="small"
-                severity="danger"
-                aria-label="Eliminar ubicación"
-                @click="handleDelete(data)"
-              />
+              <Button v-tooltip.top="'Ver detalle'" icon="pi pi-eye" text rounded size="small"
+                aria-label="Ver detalle de ubicación" @click="handleViewDetails(data)" />
+              <Button v-tooltip.top="'Ver ediciones'" icon="pi pi-calendar" text rounded size="small"
+                aria-label="Ver ediciones de esta ubicación" data-testid="view-camp-editions-btn"
+                @click="handleViewEditions(data.id)" />
+              <Button v-tooltip.top="'Editar'" icon="pi pi-pencil" text rounded size="small"
+                aria-label="Editar ubicación" @click="handleEdit(data)" />
+              <Button v-tooltip.top="'Eliminar'" icon="pi pi-trash" text rounded size="small" severity="danger"
+                aria-label="Eliminar ubicación" @click="handleDelete(data)" />
             </div>
           </template>
         </Column>
@@ -344,14 +295,8 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
 
     <!-- Cards View -->
     <div v-else-if="viewMode === 'cards'" class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      <CampLocationCard
-        v-for="camp in filteredCamps"
-        :key="camp.id"
-        :camp="camp"
-        @edit="handleEdit"
-        @delete="handleDelete"
-        @view-details="handleViewDetails"
-      />
+      <CampLocationCard v-for="camp in filteredCamps" :key="camp.id" :camp="camp" @edit="handleEdit"
+        @delete="handleDelete" @view-details="handleViewDetails" />
     </div>
 
     <!-- Map View -->
@@ -360,29 +305,14 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
     </div>
 
     <!-- Create Dialog -->
-    <Dialog
-      v-model:visible="showCreateDialog"
-      header="Nuevo Campamento"
-      modal
-      class="w-full max-w-2xl"
-    >
+    <Dialog v-model:visible="showCreateDialog" header="Nuevo Campamento" modal class="w-full max-w-2xl">
       <CampLocationForm mode="create" @submit="handleSubmitCreate" @cancel="showCreateDialog = false" />
     </Dialog>
 
     <!-- Edit Dialog -->
-    <Dialog
-      v-model:visible="showEditDialog"
-      header="Editar Campamento"
-      modal
-      class="w-full max-w-2xl"
-    >
-      <CampLocationForm
-        v-if="selectedCamp"
-        mode="edit"
-        :camp="selectedCamp"
-        @submit="handleSubmitEdit"
-        @cancel="showEditDialog = false"
-      />
+    <Dialog v-model:visible="showEditDialog" header="Editar Campamento" modal class="w-full max-w-2xl">
+      <CampLocationForm v-if="selectedCamp" mode="edit" :camp="selectedCamp" @submit="handleSubmitEdit"
+        @cancel="showEditDialog = false" />
     </Dialog>
   </div>
 </template>

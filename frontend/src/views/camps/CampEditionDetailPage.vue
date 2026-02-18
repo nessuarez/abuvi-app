@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Container from '@/components/ui/Container.vue'
+import CampEditionStatusBadge from '@/components/camps/CampEditionStatusBadge.vue'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
@@ -30,13 +31,7 @@ onMounted(async () => {
 <template>
   <Container>
     <div class="py-8">
-      <Button
-        label="Volver"
-        icon="pi pi-arrow-left"
-        text
-        class="mb-4"
-        @click="router.back()"
-      />
+      <Button label="Volver" icon="pi pi-arrow-left" text class="mb-4" @click="router.back()" />
 
       <div v-if="loading" class="flex justify-center py-12">
         <ProgressSpinner />
@@ -67,7 +62,7 @@ onMounted(async () => {
             <div class="space-y-2 text-sm">
               <div class="flex justify-between">
                 <span class="text-gray-600">Estado:</span>
-                <span class="font-medium">{{ edition.status }}</span>
+                <CampEditionStatusBadge :status="edition.status" size="sm" />
               </div>
               <div class="flex justify-between">
                 <span class="text-gray-600">Año:</span>

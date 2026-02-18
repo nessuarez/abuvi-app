@@ -149,6 +149,7 @@ public record PlaceDetails(
 #### 1e. Update `GetPlaceDetailsAsync` method
 
 Change the fields query parameter:
+
 ```
 // Old:
 var fields = "place_id,name,formatted_address,geometry,types";
@@ -158,6 +159,7 @@ var fields = "place_id,name,formatted_address,geometry,types,address_component,f
 ```
 
 Update the `PlaceDetails` construction in the return statement to map all new fields:
+
 ```csharp
 return new PlaceDetails(
     place.PlaceId,
@@ -910,6 +912,7 @@ private static CampPhotoResponse MapToPhotoResponse(CampPhoto photo) => new(
 - **Action**: Update GET by ID to return `CampDetailResponse`, and POST to return `CampDetailResponse`
 
 **Changes**:
+
 1. `GET /{id:guid}` — change `Produces<ApiResponse<CampResponse>>()` to `Produces<ApiResponse<CampDetailResponse>>()`
 2. `POST /` — change `Produces<ApiResponse<CampResponse>>(StatusCodes.Status201Created)` to `Produces<ApiResponse<CampDetailResponse>>(StatusCodes.Status201Created)`
 3. Update handler return types accordingly
@@ -1131,11 +1134,13 @@ Existing tests that create `CampResponse` assertions need to be updated to `Camp
 - **Action**: Review and update relevant documentation files after implementation is complete
 
 **1. `ai-specs/specs/data-model.md`**
+
 - Add `camp_photos` table definition (all columns, types, constraints, indexes)
 - Update `camps` table definition to include the 14 new nullable columns
 - Add `camp_photos` → `camps` FK relationship
 
 **2. `ai-specs/specs/api-endpoints.md`**
+
 - Update `GET /api/camps/{id}` response schema to show `CampDetailResponse` fields (including Photos array)
 - Update `POST /api/camps` response schema to show `CampDetailResponse`
 - Note that `GET /api/camps` (list) returns `CampResponse` (lightweight, no Photos)
@@ -1217,6 +1222,7 @@ Error messages for user-facing errors must be in **Spanish** (per backend-standa
 ### NuGet Packages
 
 No new NuGet packages required. All necessary packages are already present:
+
 - `Microsoft.EntityFrameworkCore.Relational` — for `Include()`
 - `System.Text.Json` — for JSON serialization of PlaceTypes
 - `System.Text.RegularExpressions` — for HTML attribution parsing
