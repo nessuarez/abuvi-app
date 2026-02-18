@@ -210,6 +210,56 @@ public class AuthService : IAuthService
         _logger.LogInformation("Verification email resent to {Email}", user.Email);
     }
 
+    /// <summary>
+    /// Initiates password reset flow — always succeeds to prevent user enumeration.
+    /// If user exists and is active, saves a reset token and sends reset email.
+    /// </summary>
+    public virtual async Task ForgotPasswordAsync(string email, CancellationToken ct)
+    {
+        var user = await _usersRepository.GetByEmailAsync(email, ct);
+
+        if (user is null || !user.IsActive)
+        {
+            _logger.LogInformation(
+                "Password reset requested for {Email} — user not found or inactive, no action taken",
+                email);
+            return; // Intentional: never reveal whether user exists
+        }
+
+        var resetToken = GenerateVerificationToken(); // reuses existing private method
+        var tokenExpiry = DateTime.UtcNow.AddHours(1);
+
+        user.PasswordResetToken = resetToken;
+        user.PasswordResetTokenExpiry = tokenExpiry;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _usersRepository.UpdateAsync(user, ct);
+        await _emailService.SendPasswordResetEmailAsync(user.Email, user.FirstName, resetToken, ct);
+
+        _logger.LogInformation("Password reset email sent to {Email}", email);
+    }
+
+    /// <summary>
+    /// Completes password reset — validates token, updates password hash, invalidates token.
+    /// </summary>
+    public virtual async Task ResetPasswordAsync(string token, string newPassword, CancellationToken ct)
+    {
+        var user = await _usersRepository.GetByPasswordResetTokenAsync(token, ct)
+            ?? throw new BusinessRuleException("El enlace de recuperación es inválido o ha expirado");
+
+        if (user.PasswordResetTokenExpiry < DateTime.UtcNow)
+            throw new BusinessRuleException("El enlace de recuperación es inválido o ha expirado");
+
+        user.PasswordHash = _passwordHasher.HashPassword(newPassword);
+        user.PasswordResetToken = null;       // one-time use — clear immediately
+        user.PasswordResetTokenExpiry = null;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _usersRepository.UpdateAsync(user, ct);
+
+        _logger.LogInformation("Password reset completed for user {UserId}", user.Id);
+    }
+
     private static string GenerateVerificationToken()
     {
         var randomBytes = new byte[32];

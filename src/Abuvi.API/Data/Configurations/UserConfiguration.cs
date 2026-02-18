@@ -89,6 +89,13 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.EmailVerificationTokenExpiry)
             .HasColumnName("email_verification_token_expiry");
 
+        builder.Property(u => u.PasswordResetToken)
+            .HasMaxLength(512)
+            .HasColumnName("password_reset_token");
+
+        builder.Property(u => u.PasswordResetTokenExpiry)
+            .HasColumnName("password_reset_token_expiry");
+
         // Timestamps: required, default NOW()
         builder.Property(u => u.CreatedAt)
             .IsRequired()

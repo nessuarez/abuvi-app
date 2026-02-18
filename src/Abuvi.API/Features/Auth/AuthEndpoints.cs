@@ -49,6 +49,18 @@ public static class AuthEndpoints
             .Produces<ApiResponse<object>>()
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPost("/forgot-password", ForgotPassword)
+            .AddEndpointFilter<ValidationFilter<ForgotPasswordRequest>>()
+            .WithName("ForgotPassword")
+            .Produces<ApiResponse<object>>()
+            .Produces(StatusCodes.Status400BadRequest);
+
+        group.MapPost("/reset-password", ResetPassword)
+            .AddEndpointFilter<ValidationFilter<ResetPasswordRequest>>()
+            .WithName("ResetPassword")
+            .Produces<ApiResponse<object>>()
+            .Produces(StatusCodes.Status400BadRequest);
     }
 
     /// <summary>
@@ -144,6 +156,44 @@ public static class AuthEndpoints
         {
             return Results.Json(
                 ApiResponse<object>.Fail(ex.Message, "VERIFICATION_FAILED"),
+                statusCode: 400
+            );
+        }
+    }
+
+    /// <summary>
+    /// Initiates password reset — always returns 200 regardless of whether email exists.
+    /// </summary>
+    private static async Task<IResult> ForgotPassword(
+        [FromBody] ForgotPasswordRequest request,
+        IAuthService authService,
+        CancellationToken cancellationToken)
+    {
+        await authService.ForgotPasswordAsync(request.Email, cancellationToken);
+        return Results.Ok(ApiResponse<object>.Ok(
+            new { message = "Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña." }
+        ));
+    }
+
+    /// <summary>
+    /// Resets user password using a valid one-time token.
+    /// </summary>
+    private static async Task<IResult> ResetPassword(
+        [FromBody] ResetPasswordRequest request,
+        IAuthService authService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await authService.ResetPasswordAsync(request.Token, request.NewPassword, cancellationToken);
+            return Results.Ok(ApiResponse<object>.Ok(
+                new { message = "Contraseña restablecida exitosamente." }
+            ));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return Results.Json(
+                ApiResponse<object>.Fail(ex.Message, "INVALID_OR_EXPIRED_TOKEN"),
                 statusCode: 400
             );
         }

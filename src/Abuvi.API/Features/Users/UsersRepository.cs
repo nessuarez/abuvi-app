@@ -35,6 +35,9 @@ public class UsersRepository(AbuviDbContext context) : IUsersRepository
             .FirstOrDefaultAsync(u => u.EmailVerificationToken == token, cancellationToken);
     }
 
+    public async Task<User?> GetByPasswordResetTokenAsync(string token, CancellationToken cancellationToken = default)
+        => await context.Users.FirstOrDefaultAsync(u => u.PasswordResetToken == token, cancellationToken);
+
     public async Task<List<User>> GetAllAsync(int skip = 0, int take = 100, CancellationToken cancellationToken = default)
     {
         return await context.Users
