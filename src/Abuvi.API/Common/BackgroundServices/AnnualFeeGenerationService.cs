@@ -25,7 +25,14 @@ public class AnnualFeeGenerationService(
 
             try
             {
-                await Task.Delay(delay, stoppingToken);
+                // Task.Delay maximum is Int32.MaxValue ms (~24.8 days), so break large delays into chunks
+                var maxChunk = TimeSpan.FromHours(12);
+                while (DateTime.UtcNow < nextRun)
+                {
+                    var remaining = nextRun - DateTime.UtcNow;
+                    var chunk = remaining < maxChunk ? remaining : maxChunk;
+                    await Task.Delay(chunk, stoppingToken);
+                }
 
                 // Generate fees when the time comes
                 await GenerateAnnualFeesAsync(stoppingToken);

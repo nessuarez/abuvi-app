@@ -3,6 +3,7 @@ using System;
 using Abuvi.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Abuvi.API.Migrations
 {
     [DbContext(typeof(AbuviDbContext))]
-    partial class AbuviDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260218212740_FixGuestEntityModelSnapshot")]
+    partial class FixGuestEntityModelSnapshot
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -679,7 +682,7 @@ namespace Abuvi.API.Migrations
 
                     b.HasIndex("FamilyUnitId");
 
-                    b.ToTable("Guests", (string)null);
+                    b.ToTable("Guests");
                 });
 
             modelBuilder.Entity("Abuvi.API.Features.Memberships.Membership", b =>
@@ -897,7 +900,7 @@ namespace Abuvi.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("UserRoleChangeLogs", (string)null);
+                    b.ToTable("UserRoleChangeLogs");
                 });
 
             modelBuilder.Entity("Abuvi.API.Features.Camps.CampEdition", b =>
