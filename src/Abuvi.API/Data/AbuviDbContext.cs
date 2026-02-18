@@ -1,10 +1,7 @@
 using Abuvi.API.Features.Users;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
-<<<<<<< feature/story-1.3-membership-fee-management
 using Abuvi.API.Features.Guests;
-=======
->>>>>>> main
 using Abuvi.API.Features.Memberships;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,10 +21,7 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<Membership> Memberships => Set<Membership>();
     public DbSet<MembershipFee> MembershipFees => Set<MembershipFee>();
-<<<<<<< feature/story-1.3-membership-fee-management
     public DbSet<Guest> Guests => Set<Guest>();
-=======
->>>>>>> main
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
