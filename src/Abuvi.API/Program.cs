@@ -218,6 +218,39 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+// ========================================
+// Auto-apply Pending Migrations
+// ========================================
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<AbuviDbContext>();
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    var pendingMigrations = (await dbContext.Database.GetPendingMigrationsAsync()).ToList();
+
+    if (pendingMigrations.Count == 0)
+    {
+        startupLogger.LogInformation("Database schema is up to date. No pending migrations.");
+    }
+    else
+    {
+        startupLogger.LogInformation(
+            "Applying {PendingMigrationCount} pending database migration(s): {PendingMigrations}",
+            pendingMigrations.Count,
+            pendingMigrations);
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        await dbContext.Database.MigrateAsync();
+        sw.Stop();
+
+        startupLogger.LogInformation(
+            "Successfully applied {AppliedMigrationCount} database migration(s) in {ElapsedMs}ms: {AppliedMigrations}",
+            pendingMigrations.Count,
+            sw.ElapsedMilliseconds,
+            pendingMigrations);
+    }
+}
+
 // Middleware pipeline
 if (app.Environment.IsDevelopment())
 {
