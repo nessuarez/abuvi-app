@@ -133,10 +133,6 @@ const handleViewEditions = (campId: string) => {
   router.push({ name: 'camp-editions', query: { campId } })
 }
 
-const handleViewEditions = (campId: string) => {
-  router.push({ name: 'camp-editions', query: { campId } })
-}
-
 const handleSubmitCreate = async (data: CreateCampRequest) => {
   const result = await createCamp(data)
   if (result) {
