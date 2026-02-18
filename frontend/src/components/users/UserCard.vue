@@ -2,6 +2,7 @@
 import Card from 'primevue/card'
 import Tag from 'primevue/tag'
 import type { User } from '@/types/user'
+import { getRoleLabel } from '@/utils/user'
 
 interface Props {
   user: User
@@ -43,7 +44,7 @@ const handleCardClick = (user: User) => {
     <template #title>
       <div class="flex items-center justify-between">
         <span>{{ user.firstName }} {{ user.lastName }}</span>
-        <Tag :value="user.role" :severity="getRoleSeverity(user.role)" />
+        <Tag :value="getRoleLabel(user.role)" :severity="getRoleSeverity(user.role)" />
       </div>
     </template>
     <template #content>
@@ -62,7 +63,7 @@ const handleCardClick = (user: User) => {
             :class="user.isActive ? 'pi-check-circle' : 'pi-times-circle'"
           />
           <span class="text-gray-700">
-            {{ user.isActive ? 'Active' : 'Inactive' }}
+            {{ user.isActive ? 'Activo' : 'Inactivo' }}
           </span>
         </div>
       </div>

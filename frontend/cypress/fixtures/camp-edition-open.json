@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "data": {
+    "id": "edition-2026",
+    "campId": "camp-1",
+    "year": 2026,
+    "status": "Open",
+    "startDate": "2026-07-01",
+    "endDate": "2026-07-15",
+    "location": "Montaña Norte",
+    "description": "Campamento de verano 2026 en plena naturaleza.",
+    "pricePerAdult": 450,
+    "pricePerChild": 300,
+    "pricePerBaby": 0,
+    "useCustomAgeRanges": false,
+    "maxCapacity": 120,
+    "isArchived": false,
+    "registrationCount": 45,
+    "availableSpots": 75,
+    "createdAt": "2026-01-01T00:00:00Z",
+    "updatedAt": "2026-01-01T00:00:00Z",
+    "camp": {
+      "id": "camp-1",
+      "name": "Mountain Camp",
+      "latitude": 40.4168,
+      "longitude": -3.7038
+    }
+  },
+  "error": null
+}

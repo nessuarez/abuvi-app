@@ -17,10 +17,6 @@ const navigationLinks = [
   { label: 'Mi Perfil', path: '/profile', icon: 'pi pi-user' }
 ]
 
-const adminBoardLinks = [
-  { label: 'Usuarios', path: '/users', icon: 'pi pi-users' }
-]
-
 const isActive = (path: string): boolean => {
   return router.currentRoute.value.path === path
 }
@@ -60,25 +56,9 @@ const toggleMobileMenu = () => {
             {{ link.label }}
           </router-link>
 
-          <!-- Admin/Board links -->
+          <!-- Admin link (visible to Board and Admin users) -->
           <router-link
-            v-for="link in adminBoardLinks"
             v-if="auth.isBoard"
-            :key="link.path"
-            :to="link.path"
-            class="rounded-md px-4 py-2 text-sm font-medium transition-colors"
-            :class="
-              isActive(link.path)
-                ? 'bg-primary-50 text-primary-700'
-                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-            "
-          >
-            {{ link.label }}
-          </router-link>
-
-          <!-- Admin link (visible only to admins) -->
-          <router-link
-            v-if="auth.isAdmin"
             to="/admin"
             class="rounded-md px-4 py-2 text-sm font-medium transition-colors"
             :class="
@@ -128,27 +108,9 @@ const toggleMobileMenu = () => {
             {{ link.label }}
           </router-link>
 
-          <!-- Admin/Board links (mobile) -->
+          <!-- Admin link (mobile, visible to Board and Admin users) -->
           <router-link
-            v-for="link in adminBoardLinks"
             v-if="auth.isBoard"
-            :key="link.path"
-            :to="link.path"
-            class="flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium transition-colors"
-            :class="
-              isActive(link.path)
-                ? 'bg-primary-50 text-primary-700'
-                : 'text-gray-700 hover:bg-gray-100'
-            "
-            @click="mobileMenuOpen = false"
-          >
-            <i :class="link.icon" />
-            {{ link.label }}
-          </router-link>
-
-          <!-- Admin link (mobile) -->
-          <router-link
-            v-if="auth.isAdmin"
             to="/admin"
             class="flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium transition-colors"
             :class="

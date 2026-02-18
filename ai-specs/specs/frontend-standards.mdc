@@ -116,6 +116,9 @@ frontend/
 │   │   │   ├── AppHeader.vue
 │   │   │   ├── AppFooter.vue
 │   │   │   └── UserMenu.vue
+│   │   ├── legal/              # Legal page layout components (public pages)
+│   │   │   ├── LegalPageLayout.vue    # Shared content layout for all legal pages
+│   │   │   └── TableOfContents.vue    # Prop-driven anchor TOC navigation
 │   │   ├── auth/               # Authentication components
 │   │   │   ├── AuthContainer.vue
 │   │   │   ├── LoginForm.vue
@@ -142,7 +145,12 @@ frontend/
 │   │   ├── CampPage.vue
 │   │   ├── AnniversaryPage.vue
 │   │   ├── ProfilePage.vue
-│   │   └── AdminPage.vue
+│   │   ├── AdminPage.vue
+│   │   └── legal/              # Public legal pages (no auth required)
+│   │       ├── NoticeLegalPage.vue    # Aviso Legal (/legal/notice)
+│   │       ├── PrivacyPage.vue        # Política de Privacidad (/legal/privacy)
+│   │       ├── BylawsPage.vue         # Estatutos (/legal/bylaws)
+│   │       └── TransparencyPage.vue   # Transparencia (/legal/transparency)
 │   ├── pages/                  # Legacy route components (to be migrated to views/)
 │   │   ├── HomePage.vue
 │   │   ├── LoginPage.vue
@@ -661,7 +669,27 @@ const { camps, loading, error, fetchCamps } = useCamps()
 
 ### Route Protection
 
-All routes except the landing page (`/`) require authentication. Route guards enforce this in `router/index.ts`:
+All routes except the landing page (`/`) and legal pages (`/legal/*`) require authentication. Route guards enforce this in `router/index.ts`. **Public routes** (no `requiresAuth: true`) pass through the guard without restrictions.
+
+### Public Route Pattern
+
+For pages that must be accessible without login (e.g., legal pages), omit `requiresAuth` or set it to `false`. These pages render via `<router-view v-else />` for unauthenticated users and inside `AuthenticatedLayout` for authenticated users.
+
+Use a self-contained content layout component (like `LegalPageLayout`) that includes its own minimal navigation so the page is usable in both contexts.
+
+```typescript
+// Public legal routes — accessible without authentication
+{
+  path: '/legal/notice',
+  name: 'legal-notice',
+  component: () => import('@/views/legal/NoticeLegalPage.vue'),
+  meta: { title: 'ABUVI | Aviso Legal', requiresAuth: false }
+}
+```
+
+### Auth Guard Pattern
+
+Route guards enforce this in `router/index.ts`:
 
 ```typescript
 router.beforeEach((to, from, next) => {
@@ -822,6 +850,84 @@ export function useRegistrations() {
   return { registrations, loading, error, register, fetchMyRegistrations }
 }
 ```
+
+### External Service Integration Pattern (with Debouncing)
+
+When integrating with external APIs through backend proxies (e.g., Google Places, geocoding services), use the following pattern:
+
+1. **Composable** encapsulates API communication with loading/error state
+2. **Debouncing** from `@vueuse/core` reduces unnecessary API calls
+3. **Minimum input length** prevents wasted requests
+4. **User-friendly error messages** in Spanish when services are unavailable
+
+```typescript
+// composables/useGooglePlaces.ts
+import { ref } from 'vue'
+import { api } from '@/utils/api'
+import type { ApiResponse } from '@/types/api'
+
+export interface PlaceAutocomplete {
+  placeId: string
+  description: string
+  mainText: string
+  secondaryText: string
+}
+
+export function useGooglePlaces() {
+  const loading = ref(false)
+  const error = ref<string | null>(null)
+
+  const searchPlaces = async (input: string): Promise<PlaceAutocomplete[]> => {
+    if (!input || input.length < 3) return []
+
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await api.post<ApiResponse<PlaceAutocomplete[]>>(
+        '/places/autocomplete',
+        { input }
+      )
+      if (response.data.success && response.data.data) return response.data.data
+      error.value = response.data.error?.message || 'Error al buscar lugares'
+      return []
+    } catch (err: any) {
+      error.value = err.response?.data?.error?.message || 'Error al buscar lugares'
+      return []
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, error, searchPlaces }
+}
+```
+
+**Debounced usage in a component:**
+
+```vue
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
+import { useGooglePlaces, type PlaceAutocomplete } from '@/composables/useGooglePlaces'
+
+const { loading, error, searchPlaces } = useGooglePlaces()
+const suggestions = ref<PlaceAutocomplete[]>([])
+const query = ref('')
+
+const debouncedSearch = useDebounceFn(async (value: string) => {
+  suggestions.value = await searchPlaces(value)
+}, 300)
+
+watch(query, (newQuery) => debouncedSearch(newQuery))
+</script>
+```
+
+**Key principles:**
+- Use `useDebounceFn` from `@vueuse/core` (installed as project dependency)
+- Minimum 3 characters before triggering search
+- 300ms debounce delay balances UX and API cost
+- Error messages in Spanish for user-facing text
 
 ### Axios Configuration
 
@@ -1711,24 +1817,34 @@ toast.add({
 
 ### Role Translation Helper
 
-Always use a helper function for role translation:
+Always use the shared `getRoleLabel` utility from `@/utils/user` — never inline role translation logic in components.
 
 ```typescript
-const translateRole = (role: string): string => {
-  const roleMap: Record<string, string> = {
-    'Admin': 'Administrador',
-    'Board': 'Junta Directiva',
-    'Member': 'Socio',
-    'Guardian': 'Tutor'
-  }
-  return roleMap[role] || role
-}
+// ✅ Correct — import and use the shared utility
+import { getRoleLabel } from '@/utils/user'
 
 // Usage in template
 <template>
-  <span>{{ translateRole(user.role) }}</span>
+  <span>{{ getRoleLabel(user.role) }}</span>
 </template>
 ```
+
+The utility is defined in `frontend/src/utils/user.ts` and maps API role values (which stay as English strings) to Spanish display labels:
+
+```typescript
+// frontend/src/utils/user.ts
+const ROLE_LABELS: Record<string, string> = {
+  Admin: 'Administrador',
+  Board: 'Junta Directiva',
+  Member: 'Socio',
+}
+
+export const getRoleLabel = (role: UserRole | string): string => {
+  return ROLE_LABELS[role] ?? role
+}
+```
+
+> **Note:** API role values (`Admin`, `Board`, `Member`) are always stored and compared in English. Only the _display_ label is translated.
 
 ### API Error Handling
 

@@ -310,4 +310,40 @@ public class FamilyUnitsService(
     }
 
     #endregion
+
+    #region Admin Operations
+
+    /// <summary>
+    /// Returns a paginated list of all family units for admin/board use.
+    /// Supports search by family name or representative name, and sorting.
+    /// </summary>
+    public async Task<PagedFamilyUnitsResponse> GetAllFamilyUnitsAsync(
+        int page,
+        int pageSize,
+        string? search,
+        string? sortBy,
+        string? sortOrder,
+        CancellationToken ct)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var (items, totalCount) = await repository.GetAllPagedAsync(
+            page, pageSize, search, sortBy, sortOrder, ct);
+
+        var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PagedFamilyUnitsResponse(
+            Items: items.Select(p => new FamilyUnitListItemResponse(
+                p.Id, p.Name, p.RepresentativeUserId,
+                p.RepresentativeName, p.MembersCount, p.CreatedAt, p.UpdatedAt
+            )).ToList(),
+            TotalCount: totalCount,
+            Page: page,
+            PageSize: pageSize,
+            TotalPages: totalPages
+        );
+    }
+
+    #endregion
 }

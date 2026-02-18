@@ -32,4 +32,25 @@ public interface ICampEditionsRepository
     /// Deletes a camp edition by its unique identifier
     /// </summary>
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks if a non-archived edition already exists for the given camp and year
+    /// </summary>
+    Task<bool> ExistsAsync(Guid campId, int year, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all non-archived editions with optional filtering by year, status, and campId
+    /// </summary>
+    Task<List<CampEdition>> GetAllAsync(
+        int? year = null,
+        CampEditionStatus? status = null,
+        Guid? campId = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the best available camp edition for the given year (Open preferred, then Closed),
+    /// falling back to the most recent Completed or Closed edition from the previous year.
+    /// Returns null if no qualifying edition exists within the lookback window.
+    /// </summary>
+    Task<CampEdition?> GetCurrentAsync(int currentYear, CancellationToken cancellationToken = default);
 }

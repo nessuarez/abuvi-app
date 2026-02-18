@@ -61,6 +61,7 @@ Currently, the application has:
 **Location**: [`frontend/src/components/layout/AppHeader.vue`](frontend/src/components/layout/AppHeader.vue)
 
 **Current State**:
+
 ```typescript
 const adminBoardLinks = [
   { label: 'Usuarios', path: '/users', icon: 'pi pi-users' }
@@ -73,6 +74,7 @@ const adminBoardLinks = [
 ```
 
 **New Structure**:
+
 ```typescript
 // REMOVE adminBoardLinks array entirely
 // const adminBoardLinks = [] // DELETE THIS
@@ -84,12 +86,14 @@ const adminBoardLinks = [
 ```
 
 **Changes**:
+
 - **Remove** the `adminBoardLinks` array and its references (lines 20-22, 64-77, 132-147)
 - **Remove** separate "Usuarios" link from navigation
 - **Update** "Administración" button visibility from `auth.isAdmin` to `auth.isBoard`
 - **Keep** the admin button styling and icon
 
 **Behavior**:
+
 - Visible to both Admin AND Board users (`auth.isBoard === true`)
 - Shows in both desktop and mobile navigation
 - Links to `/admin` route which will have a tabbed interface for:
@@ -102,6 +106,7 @@ const adminBoardLinks = [
 #### Keep "Campamento" Menu Item (All Users)
 
 **Changes**:
+
 - Keep in main navigation for all authenticated users
 - Keep label as "Campamento" (simple and clean)
 - Route remains `/camp`
@@ -113,6 +118,7 @@ const adminBoardLinks = [
 **Location**: User profile page or user dropdown menu
 
 **New Feature**:
+
 - Add quick access to family unit management from user profile
 - Implementation options:
   - **Option A**: Add "Mi Familia" section directly in profile page with embedded management
@@ -443,6 +449,7 @@ If you want users to "select" a preferred camp edition (rather than just showing
 **Purpose**: List all family units for Board/Admin users
 
 **Query Parameters**:
+
 - `page`: Page number (default: 1)
 - `pageSize`: Items per page (default: 20, max: 100)
 - `search`: Search by family name or representative name
@@ -450,6 +457,7 @@ If you want users to "select" a preferred camp edition (rather than just showing
 - `sortOrder`: asc | desc
 
 **Response Schema**:
+
 ```json
 {
   "success": true,
@@ -1082,15 +1090,17 @@ export type CampEditionStatus = 'Draft' | 'Open' | 'Closed' | 'Completed'
 ## Summary of Changes from Original Requirements
 
 ### Original Requirements
+
 1. Add "Campamentos" menu for Board users (separate from "Campamento 2026")
 2. Update "Campamento 2026" page to show current or recent camp edition
 3. Determine logic for "current" or "selected" camp
 
 ### Expanded Requirements Added
-4. **Centralized Admin Panel**: Instead of multiple admin menu items, consolidate all admin functions under single "Administración" entry
-5. **Family Unit Management in Profile**: Users can access their family unit management from their profile page
-6. **Admin Panel for Family Units**: Board/Admin can manage all family units from admin panel
-7. **Unified Admin Interface**: Tabbed admin page with three sections:
+
+1. **Centralized Admin Panel**: Instead of multiple admin menu items, consolidate all admin functions under single "Administración" entry
+2. **Family Unit Management in Profile**: Users can access their family unit management from their profile page
+3. **Admin Panel for Family Units**: Board/Admin can manage all family units from admin panel
+4. **Unified Admin Interface**: Tabbed admin page with three sections:
    - Campamentos (camps and editions management)
    - Unidades Familiares (family units management)
    - Usuarios (users management - migrated from separate page)
@@ -1128,6 +1138,7 @@ export type CampEditionStatus = 'Draft' | 'Open' | 'Closed' | 'Completed'
 ## Definition of Done
 
 ### Backend
+
 - [ ] `GET /api/camps/current` endpoint implemented and tested
 - [ ] `GET /api/family-units` paginated endpoint verified/implemented for admin
 - [ ] All backend unit tests pass with >90% coverage
@@ -1135,6 +1146,7 @@ export type CampEditionStatus = 'Draft' | 'Open' | 'Closed' | 'Completed'
 - [ ] No breaking changes to existing endpoints
 
 ### Frontend - Navigation & Admin
+
 - [ ] Navigation menu updated (adminBoardLinks removed, Admin button updated)
 - [ ] Admin page restructured with tabbed interface
 - [ ] All three admin panels implemented (Camps, Family Units, Users)
@@ -1143,6 +1155,7 @@ export type CampEditionStatus = 'Draft' | 'Open' | 'Closed' | 'Completed'
 - [ ] Tab navigation works correctly with keyboard
 
 ### Frontend - Profile & Family Management
+
 - [ ] Profile page updated with family unit section
 - [ ] MyFamilyUnitPage created and functional
 - [ ] Users can create/edit their family unit from profile
@@ -1150,6 +1163,7 @@ export type CampEditionStatus = 'Draft' | 'Open' | 'Closed' | 'Completed'
 - [ ] Family unit management respects permissions
 
 ### Frontend - Current Camp Display
+
 - [ ] CampPage.vue updated with dynamic content
 - [ ] CampEditionDetails component created
 - [ ] useCampEditions composable created
@@ -1158,6 +1172,7 @@ export type CampEditionStatus = 'Draft' | 'Open' | 'Closed' | 'Completed'
 - [ ] Registration CTA shown when status is 'Open'
 
 ### Testing
+
 - [ ] E2E tests pass for all new features:
   - [ ] Admin panel navigation and tabs
   - [ ] Family unit section in profile
@@ -1168,6 +1183,7 @@ export type CampEditionStatus = 'Draft' | 'Open' | 'Closed' | 'Completed'
 - [ ] No accessibility violations (WCAG AA)
 
 ### Quality & Deployment
+
 - [ ] Code reviewed and approved
 - [ ] Tested on Chrome, Firefox, Safari
 - [ ] Tested on mobile devices (responsive)

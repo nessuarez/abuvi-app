@@ -3,33 +3,34 @@
 export interface Camp {
   id: string
   name: string
-  description: string
-  latitude: number
-  longitude: number
-  basePriceAdult: number
-  basePriceChild: number
-  basePriceBaby: number
-  status: CampStatus
+  description: string | null
+  location: string | null
+  latitude: number | null
+  longitude: number | null
+  googlePlaceId: string | null
+  pricePerAdult: number
+  pricePerChild: number
+  pricePerBaby: number
+  isActive: boolean
   createdAt: string
   updatedAt: string
   editionCount?: number // For display in list view
 }
 
-export type CampStatus = 'Active' | 'Inactive' | 'HistoricalArchive'
-
 export interface CreateCampRequest {
   name: string
-  description: string
-  latitude: number
-  longitude: number
-  basePriceAdult: number
-  basePriceChild: number
-  basePriceBaby: number
-  status: CampStatus
+  description: string | null
+  location: string | null
+  latitude: number | null
+  longitude: number | null
+  googlePlaceId: string | null
+  pricePerAdult: number
+  pricePerChild: number
+  pricePerBaby: number
 }
 
 export interface UpdateCampRequest extends CreateCampRequest {
-  id: string
+  isActive: boolean
 }
 
 export interface CampLocation {

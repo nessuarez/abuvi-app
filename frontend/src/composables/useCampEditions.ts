@@ -11,6 +11,7 @@ import type { ApiResponse } from '@/types/api'
 export function useCampEditions() {
   const editions = ref<CampEdition[]>([])
   const activeEdition = ref<CampEdition | null>(null)
+  const currentCampEdition = ref<CampEdition | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -221,6 +222,30 @@ export function useCampEditions() {
     }
   }
 
+  const fetchCurrentCampEdition = async (): Promise<void> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.get<ApiResponse<CampEdition>>('/camps/current')
+      if (response.data.success && response.data.data) {
+        currentCampEdition.value = response.data.data
+      } else {
+        currentCampEdition.value = null
+      }
+    } catch (err: unknown) {
+      const apiErr = err as { response?: { status?: number; data?: { error?: { message?: string } } } }
+      if (apiErr?.response?.status === 404) {
+        currentCampEdition.value = null
+        error.value = null
+      } else {
+        error.value = apiErr?.response?.data?.error?.message || 'Error al cargar campamento actual'
+        console.error('Failed to fetch current camp edition:', err)
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
   const deleteEdition = async (id: string): Promise<boolean> => {
     loading.value = true
     error.value = null
@@ -244,6 +269,7 @@ export function useCampEditions() {
   return {
     editions,
     activeEdition,
+    currentCampEdition,
     loading,
     error,
     fetchProposedEditions,
@@ -255,6 +281,7 @@ export function useCampEditions() {
     rejectEdition,
     updateEdition,
     changeStatus,
-    deleteEdition
+    deleteEdition,
+    fetchCurrentCampEdition
   }
 }
