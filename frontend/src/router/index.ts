@@ -98,6 +98,28 @@ const router = createRouter({
 			}
 		},
 
+		// Camp Editions Management (Board only)
+		{
+			path: "/camps/editions",
+			name: "camp-editions",
+			component: () => import("@/views/camps/CampEditionsPage.vue"),
+			meta: {
+				title: "ABUVI | Gestión de Ediciones",
+				requiresAuth: true,
+				requiresBoard: true
+			}
+		},
+		// Camp Edition Detail (authenticated users)
+		{
+			path: "/camps/editions/:id",
+			name: "camp-edition-detail",
+			component: () => import("@/views/camps/CampEditionDetailPage.vue"),
+			meta: {
+				title: "ABUVI | Detalle de Edición",
+				requiresAuth: true
+			}
+		},
+
 		// Legacy user management routes — redirect to admin panel
 		{
 			path: "/users",

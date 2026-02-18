@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
+import Toast from 'primevue/toast'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import CampLocationMap from '@/components/camps/CampLocationMap.vue'
@@ -11,11 +13,30 @@ import { useCamps } from '@/composables/useCamps'
 import { useAuthStore } from '@/stores/auth'
 import type { Camp } from '@/types/camp'
 import type { CampPhoto } from '@/types/camp-photo'
-
+import type { CampEdition } from '@/types/camp-edition'
 const route = useRoute()
 const router = useRouter()
-const auth = useAuthStore()
+const toast = useToast()
 const { loading, error, getCampById } = useCamps()
+
+const showProposeDialog = ref(false)
+
+const goToEditions = () => {
+  router.push({ name: 'camp-editions', query: { campId: route.params.id as string } })
+}
+
+const proposeNewEdition = () => {
+  showProposeDialog.value = true
+}
+
+const handleEditionProposed = (_edition: CampEdition) => {
+  toast.add({
+    severity: 'success',
+    summary: 'Propuesta enviada',
+    detail: 'La propuesta de edición ha sido enviada correctamente.',
+    life: 4000
+  })
+}
 
 const camp = ref<Camp | null>(null)
 const campPhotos = ref<CampPhoto[]>([])
@@ -57,6 +78,16 @@ const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
 
 <template>
   <div class="container mx-auto p-4">
+    <Toast />
+
+    <!-- Propose Edition Dialog -->
+    <CampEditionProposeDialog
+      v-model:visible="showProposeDialog"
+      :camp-id="route.params.id as string"
+      :camp="camp"
+      @saved="handleEditionProposed"
+    />
+
     <!-- Loading State -->
     <div v-if="loading" class="flex justify-center p-12">
       <ProgressSpinner />
@@ -139,10 +170,36 @@ const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
                 <span class="text-gray-600">Última actualización:</span>
                 <span>{{ new Date(camp.updatedAt).toLocaleDateString('es-ES') }}</span>
               </div>
-              <div v-if="camp.editionCount !== undefined" class="flex justify-between">
-                <span class="text-gray-600">Ediciones:</span>
-                <span>{{ camp.editionCount }} {{ camp.editionCount === 1 ? 'edición' : 'ediciones' }}</span>
-              </div>
+            </div>
+          </div>
+
+          <!-- Editions -->
+          <div class="rounded-lg border border-gray-200 bg-white p-6">
+            <div class="mb-4 flex items-center justify-between">
+              <h2 class="text-lg font-semibold text-gray-900">Ediciones</h2>
+              <span
+                v-if="camp.editionCount !== undefined"
+                class="rounded-full bg-gray-100 px-2 py-0.5 text-sm text-gray-600"
+              >
+                {{ camp.editionCount }} {{ camp.editionCount === 1 ? 'edición' : 'ediciones' }}
+              </span>
+            </div>
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <Button
+                label="Ver ediciones"
+                icon="pi pi-list"
+                outlined
+                class="flex-1"
+                data-testid="view-editions-btn"
+                @click="goToEditions"
+              />
+              <Button
+                label="Nueva propuesta"
+                icon="pi pi-plus"
+                class="flex-1"
+                data-testid="propose-edition-btn"
+                @click="proposeNewEdition"
+              />
             </div>
           </div>
         </div>

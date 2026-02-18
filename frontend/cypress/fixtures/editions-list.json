@@ -1,0 +1,60 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": "edition-2026",
+      "campId": "camp-1",
+      "year": 2026,
+      "status": "Open",
+      "startDate": "2026-07-01",
+      "endDate": "2026-07-15",
+      "location": "Montaña Norte",
+      "pricePerAdult": 450,
+      "pricePerChild": 300,
+      "pricePerBaby": 0,
+      "useCustomAgeRanges": false,
+      "maxCapacity": 120,
+      "isArchived": false,
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-01-01T00:00:00Z",
+      "camp": { "id": "camp-1", "name": "Camping El Pinar", "latitude": 40.4168, "longitude": -3.7038 }
+    },
+    {
+      "id": "edition-2025",
+      "campId": "camp-1",
+      "year": 2025,
+      "status": "Completed",
+      "startDate": "2025-07-01",
+      "endDate": "2025-07-15",
+      "location": "Montaña Norte",
+      "pricePerAdult": 400,
+      "pricePerChild": 250,
+      "pricePerBaby": 0,
+      "useCustomAgeRanges": false,
+      "maxCapacity": 100,
+      "isArchived": false,
+      "createdAt": "2025-01-01T00:00:00Z",
+      "updatedAt": "2025-08-01T00:00:00Z",
+      "camp": { "id": "camp-1", "name": "Camping El Pinar", "latitude": 40.4168, "longitude": -3.7038 }
+    },
+    {
+      "id": "edition-2027-draft",
+      "campId": "camp-1",
+      "year": 2027,
+      "status": "Draft",
+      "startDate": "2027-07-01",
+      "endDate": "2027-07-15",
+      "location": "Montaña Norte",
+      "pricePerAdult": 500,
+      "pricePerChild": 330,
+      "pricePerBaby": 0,
+      "useCustomAgeRanges": false,
+      "maxCapacity": 130,
+      "isArchived": false,
+      "createdAt": "2027-01-01T00:00:00Z",
+      "updatedAt": "2027-01-01T00:00:00Z",
+      "camp": { "id": "camp-1", "name": "Camping El Pinar", "latitude": 40.4168, "longitude": -3.7038 }
+    }
+  ],
+  "error": null
+}

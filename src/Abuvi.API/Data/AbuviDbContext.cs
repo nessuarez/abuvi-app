@@ -1,6 +1,7 @@
 using Abuvi.API.Features.Users;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
+using Abuvi.API.Features.Guests;
 using Abuvi.API.Features.Memberships;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,6 +21,7 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<Membership> Memberships => Set<Membership>();
     public DbSet<MembershipFee> MembershipFees => Set<MembershipFee>();
+    public DbSet<Guest> Guests => Set<Guest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

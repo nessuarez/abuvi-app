@@ -175,6 +175,43 @@ Represents an annual membership fee payment for a given year.
 
 ---
 
+### Guest
+
+An external person invited by a family unit to attend a camp. Guests are not platform users and do not have their own accounts. They are managed entirely by the family unit's representative.
+
+**Fields:**
+
+- `id`: Unique identifier for the Guest entity (Primary Key, UUID)
+- `familyUnitId`: The family unit that invited this guest (required, FK -> FamilyUnit)
+- `firstName`: Guest first name (required, max 100 characters)
+- `lastName`: Guest last name (required, max 100 characters)
+- `dateOfBirth`: Date of birth, used for camp age validation (required)
+- `documentNumber`: National ID/passport number (optional, max 50 characters, uppercase alphanumeric, e.g., "12345678A")
+- `email`: Email address (optional, max 255 characters, valid email format)
+- `phone`: Contact phone number (optional, max 20 characters, E.164 format, e.g., "+34612345678")
+- `medicalNotes`: Medical information (optional, max 2000 characters, sensitive data, must be stored encrypted at rest)
+- `allergies`: Allergy information (optional, max 1000 characters, sensitive data, must be stored encrypted at rest)
+- `isActive`: Whether the guest record is active (soft delete flag, required, default: true)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- DateOfBirth must be a valid past date
+- DocumentNumber format: uppercase letters and numbers only (e.g., "12345678A", "ABC123")
+- Email must be a valid email format when provided
+- Phone must be in E.164 format when provided (e.g., "+34612345678")
+- MedicalNotes (max 2000 chars) and Allergies (max 1000 chars) must be encrypted at rest (AES-256) due to sensitive health data
+- Sensitive fields (medicalNotes, allergies) are NEVER exposed in API responses — only boolean flags (`hasMedicalNotes`, `hasAllergies`) indicate their presence
+- Deletion is soft delete (isActive = false), not hard delete
+- A Guest can only belong to one FamilyUnit
+
+**Relationships:**
+
+- Each Guest belongs to exactly one FamilyUnit (via `familyUnitId`, cascade delete on FamilyUnit deletion)
+
+---
+
 ### Camp
 
 A reusable camp location template that can have multiple editions per year. Extended with Google Places data when a `googlePlaceId` is provided.
@@ -580,6 +617,65 @@ A historical camp location for the interactive map. Each record represents a spe
 - One CampLocation can be referenced by many Memories (via Memory.campLocationId)
 - One CampLocation can be referenced by many MediaItems (via MediaItem.campLocationId)
 
+## Membership
+
+Represents an active membership for a family member. Members pay annual fees and gain certain privileges (e.g., discounted camp prices).
+
+**Fields:**
+
+- `id`: Unique identifier for the Membership entity (Primary Key, UUID)
+- `familyMemberId`: The family member who holds this membership (required, FK -> FamilyMember, unique)
+- `startDate`: When the membership became active (required, TIMESTAMP)
+- `endDate`: When the membership ended (optional, TIMESTAMP, null if currently active)
+- `isActive`: Whether the membership is currently active (required, BOOLEAN)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- Each family member can have at most one membership record (unique constraint on `familyMemberId`)
+- StartDate must not be in the future
+- EndDate is only set when membership is deactivated
+- A family member with an active membership cannot be deleted from the system (database constraint: Restrict delete)
+
+**Relationships:**
+
+- Each Membership belongs to exactly one FamilyMember (via `familyMemberId`, one-to-one)
+- One Membership can have many MembershipFees (one per year)
+
+---
+
+### MembershipFee
+
+Represents an annual membership fee payment for a given year.
+
+**Fields:**
+
+- `id`: Unique identifier for the MembershipFee entity (Primary Key, UUID)
+- `membershipId`: The membership this fee belongs to (required, FK -> Membership)
+- `year`: Calendar year for this fee (required, INTEGER, e.g., 2026)
+- `amount`: Fee amount in euros (required, NUMERIC(10,2), >= 0)
+- `status`: Payment status (required, enum: `Pending` | `Paid` | `Overdue`)
+- `paidDate`: When the fee was paid (optional, TIMESTAMP, only set when status is Paid)
+- `paymentReference`: External payment reference or transaction ID (optional, max 100 characters)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- Each membership can have at most one fee per year (unique constraint on (`membershipId`, `year`))
+- Amount must be >= 0 with exactly 2 decimal places
+- Status enum values: Pending (waiting for payment), Paid (payment received), Overdue (payment deadline passed)
+- PaidDate must be set when status changes to Paid
+- Status can transition: Pending -> Paid or Pending -> Overdue
+- Cannot transition from Paid back to Pending or Overdue
+
+**Relationships:**
+
+- Each MembershipFee belongs to exactly one Membership (via `membershipId`)
+- When a Membership is deleted, all its fees are cascade deleted
+
+
 ## Entity-Relationship Diagram
 
 ```mermaid
@@ -587,6 +683,10 @@ erDiagram
     User ||--o| FamilyUnit : "represents"
     FamilyUnit ||--|{ FamilyMember : "contains"
     FamilyMember |o--o| User : "may have account"
+    FamilyUnit ||--o{ Guest : "invites"
+
+    FamilyMember ||--o| Membership : "holds"
+    Membership ||--o{ MembershipFee : "has"
 
     Camp ||--o{ Registration : "has"
     FamilyUnit ||--o{ Registration : "registers"
@@ -646,6 +746,44 @@ erDiagram
         enum relationship
         string medicalNotes
         string allergies
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Membership {
+        UUID id PK
+        UUID familyMemberId FK
+        date startDate
+        date endDate
+        boolean isActive
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    MembershipFee {
+        UUID id PK
+        UUID membershipId FK
+        integer year
+        decimal amount
+        enum status
+        date paidDate
+        string paymentReference
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Guest {
+        UUID id PK
+        UUID familyUnitId FK
+        string firstName
+        string lastName
+        date dateOfBirth
+        string documentNumber
+        string email
+        string phone
+        string medicalNotes
+        string allergies
+        boolean isActive
         datetime createdAt
         datetime updatedAt
     }

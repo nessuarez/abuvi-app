@@ -7,6 +7,75 @@ This document describes the REST API endpoints for the ABUVI web application.
 - **Development**: `http://localhost:5079/api`
 - **Production**: TBD
 
+---
+
+## System Endpoints
+
+### GET /health
+
+Returns the health status of the API and its external dependencies. Does not require authentication.
+
+**Response — All healthy (HTTP 200):**
+
+```json
+{
+  "status": "Healthy",
+  "totalDuration": "00:00:00.0523416",
+  "entries": {
+    "database": {
+      "status": "Healthy",
+      "description": "Host=localhost;Database=abuvi",
+      "duration": "00:00:00.0412341",
+      "data": {}
+    },
+    "resend": {
+      "status": "Healthy",
+      "description": "Resend API key is configured",
+      "duration": "00:00:00.0000123",
+      "data": {}
+    }
+  }
+}
+```
+
+**Response — Dependency unavailable (HTTP 503):**
+
+```json
+{
+  "status": "Unhealthy",
+  "totalDuration": "00:00:05.0001234",
+  "entries": {
+    "database": {
+      "status": "Unhealthy",
+      "description": "Exception during check: ...",
+      "duration": "00:00:05.0001123",
+      "data": {}
+    },
+    "resend": {
+      "status": "Healthy",
+      "description": "Resend API key is configured",
+      "duration": "00:00:00.0000101",
+      "data": {}
+    }
+  }
+}
+```
+
+**HTTP Status Codes:**
+
+| Overall Status | HTTP Code | Meaning                                            |
+| -------------- | --------- | -------------------------------------------------- |
+| `Healthy`      | 200       | All checks pass                                    |
+| `Degraded`     | 200       | Non-critical issue (e.g. Resend not configured)    |
+| `Unhealthy`    | 503       | Critical dependency unavailable (e.g. DB down)     |
+
+**Checks included:**
+
+| Check name | Failure status | What it verifies                                      |
+| ---------- | -------------- | ----------------------------------------------------- |
+| `database` | `Unhealthy`    | PostgreSQL connectivity via `SELECT 1` (5s timeout)   |
+| `resend`   | `Degraded`     | Resend API key is configured in settings              |
+
 ## Response Format
 
 All API responses follow a consistent envelope format:
@@ -1453,6 +1522,7 @@ Changes the status of a camp edition following the allowed transition chain.
 | `Closed` | `Completed` |
 
 Additional date constraints:
+
 - `Draft → Open`: Edition's `startDate` must not be in the past
 - `Closed → Completed`: Edition's `endDate` must be in the past
 
@@ -1472,3 +1542,329 @@ Additional date constraints:
 - **401 Unauthorized**: User not authenticated
 - **403 Forbidden**: Insufficient role
 - **404 Not Found**: Edition not found (`NOT_FOUND`)
+
+---
+
+## Membership Endpoints
+
+A membership represents a family member's status as an active member (socio/a) of the association. Each family member can have at most one membership. Annual fees are generated automatically by a background service.
+
+### Authorization
+
+- **Representative**: Can manage memberships for members of their own family unit
+- **Admin/Board**: Can manage memberships for any family unit
+- All endpoints require authentication
+
+### GET /api/family-units/{familyUnitId}/members/{memberId}/membership
+
+Gets the membership for a specific family member, including all associated fees.
+
+**Authorization**: Representative OR Admin/Board
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "5fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "familyMemberId": "4fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "startDate": "2026-01-01",
+    "endDate": null,
+    "isActive": true,
+    "fees": [
+      {
+        "id": "6fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "membershipId": "5fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "year": 2026,
+        "amount": 50.00,
+        "status": "Pending",
+        "paidDate": null,
+        "paymentReference": null,
+        "createdAt": "2026-01-01T00:00:00Z"
+      }
+    ],
+    "createdAt": "2026-01-01T09:00:00Z",
+    "updatedAt": "2026-01-01T09:00:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+- **404 Not Found**: Member has no membership (treat as "not yet a socio", not an error)
+- **403 Forbidden**: User is not authorized
+- **404 Not Found**: Family unit or member doesn't exist
+
+---
+
+### POST /api/family-units/{familyUnitId}/members/{memberId}/membership
+
+Activates a membership for a family member.
+
+**Authorization**: Representative OR Admin/Board
+
+**Request Body:**
+
+```json
+{
+  "startDate": "2026-01-01"
+}
+```
+
+**Field Notes:**
+
+- `startDate`: Required, ISO 8601 date string (`YYYY-MM-DD`), must not be in the future
+
+**Success Response (201 Created):** Same structure as GET response above
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed (startDate in future)
+- **403 Forbidden**: User is not authorized
+- **404 Not Found**: Family unit or member doesn't exist
+- **409 Conflict**: Member already has an active membership (`MEMBERSHIP_EXISTS`)
+
+---
+
+### DELETE /api/family-units/{familyUnitId}/members/{memberId}/membership
+
+Deactivates the membership for a family member. Sets `isActive = false` and records `endDate`.
+
+**Authorization**: Representative OR Admin/Board
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **403 Forbidden**: User is not authorized
+- **404 Not Found**: Family unit, member, or membership doesn't exist
+
+---
+
+## Membership Fees Endpoints
+
+Annual fees are auto-generated by a background service when a membership is active. The frontend can list fees and mark them as paid.
+
+### GET /api/memberships/{membershipId}/fees
+
+Lists all fees for a membership, ordered by year descending.
+
+**Authorization**: Representative OR Admin/Board
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "6fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "membershipId": "5fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "year": 2026,
+      "amount": 50.00,
+      "status": "Pending",
+      "paidDate": null,
+      "paymentReference": null,
+      "createdAt": "2026-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden**: User is not authorized
+- **404 Not Found**: Membership doesn't exist
+
+---
+
+### GET /api/memberships/{membershipId}/fees/current
+
+Gets the fee for the current calendar year.
+
+**Authorization**: Representative OR Admin/Board
+
+**Success Response (200 OK):** Single fee object (same structure as above)
+
+**Error Responses:**
+
+- **403 Forbidden**: User is not authorized
+- **404 Not Found**: Membership or current-year fee doesn't exist
+
+---
+
+### POST /api/memberships/{membershipId}/fees/{feeId}/pay
+
+Marks a fee as paid.
+
+**Authorization**: Admin/Board only
+
+**Request Body:**
+
+```json
+{
+  "paidDate": "2026-02-01",
+  "paymentReference": "TRF-2026-001"
+}
+```
+
+**Field Notes:**
+
+- `paidDate`: Required, ISO 8601 date string (`YYYY-MM-DD`), must not be in the future
+- `paymentReference`: Optional, max 100 characters, external reference or transaction ID
+
+**Success Response (200 OK):** Updated fee object
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed (paidDate in future)
+- **403 Forbidden**: User does not have Admin/Board role
+- **404 Not Found**: Membership or fee doesn't exist
+- **409 Conflict**: Fee is already marked as paid (`FEE_ALREADY_PAID`)
+
+---
+
+## Guest Endpoints
+
+Guests are external people invited by a family unit to attend camps. They are not platform users. Their sensitive health data (medicalNotes, allergies) is encrypted at rest.
+
+### Authorization
+
+- **Representative**: Can manage guests for their own family unit
+- **Admin/Board**: Can manage guests for any family unit
+- All endpoints require authentication
+
+### POST /api/family-units/{familyUnitId}/guests
+
+Creates a new guest for a family unit.
+
+**Authorization**: Representative only
+
+**Request Body:**
+
+```json
+{
+  "firstName": "Ana",
+  "lastName": "Pérez",
+  "dateOfBirth": "1990-05-20",
+  "documentNumber": "12345678B",
+  "email": "ana@example.com",
+  "phone": "+34612345679",
+  "medicalNotes": "Asthma - requires inhaler",
+  "allergies": "Peanuts"
+}
+```
+
+**Field Notes:**
+
+- `firstName`, `lastName`, `dateOfBirth`: Required
+- `documentNumber`: Optional, uppercase alphanumeric, max 50 characters
+- `email`: Optional, valid email format, max 255 characters
+- `phone`: Optional, E.164 format (e.g., +34612345678)
+- `medicalNotes`: Optional, max 2000 characters, encrypted at rest
+- `allergies`: Optional, max 1000 characters, encrypted at rest
+
+**Success Response (201 Created):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "7fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "familyUnitId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "firstName": "Ana",
+    "lastName": "Pérez",
+    "dateOfBirth": "1990-05-20",
+    "documentNumber": "12345678B",
+    "email": "ana@example.com",
+    "phone": "+34612345679",
+    "hasMedicalNotes": true,
+    "hasAllergies": true,
+    "isActive": true,
+    "createdAt": "2026-02-15T09:00:00Z",
+    "updatedAt": "2026-02-15T09:00:00Z"
+  }
+}
+```
+
+**Security Note:** `medicalNotes` and `allergies` are NEVER exposed in responses. Only boolean flags (`hasMedicalNotes`, `hasAllergies`) indicate their presence.
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **403 Forbidden**: User is not the representative
+- **404 Not Found**: Family unit doesn't exist
+
+---
+
+### GET /api/family-units/{familyUnitId}/guests
+
+Lists all active guests for a family unit, ordered by last name then first name.
+
+**Authorization**: Representative OR Admin/Board
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    { /* guest object */ },
+    { /* guest object */ }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden**: User is not authorized
+- **404 Not Found**: Family unit doesn't exist
+
+---
+
+### GET /api/family-units/{familyUnitId}/guests/{guestId}
+
+Gets a single guest by ID.
+
+**Authorization**: Representative OR Admin/Board
+
+**Success Response (200 OK):** Same as POST response
+
+**Error Responses:**
+
+- **403 Forbidden**: User is not authorized
+- **404 Not Found**: Family unit or guest doesn't exist
+
+---
+
+### PUT /api/family-units/{familyUnitId}/guests/{guestId}
+
+Updates a guest's information.
+
+**Authorization**: Representative only
+
+**Request Body:** Same as POST request
+
+**Success Response (200 OK):** Updated guest object
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **403 Forbidden**: User is not the representative
+- **404 Not Found**: Family unit or guest doesn't exist
+
+---
+
+### DELETE /api/family-units/{familyUnitId}/guests/{guestId}
+
+Soft-deletes a guest (sets `isActive = false`). The record is retained in the database.
+
+**Authorization**: Representative only
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **403 Forbidden**: User is not the representative
+- **404 Not Found**: Family unit or guest doesn't exist
