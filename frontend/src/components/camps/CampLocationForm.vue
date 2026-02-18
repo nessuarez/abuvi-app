@@ -8,7 +8,8 @@ import AutoComplete from 'primevue/autocomplete'
 import Message from 'primevue/message'
 import Button from 'primevue/button'
 import { useGooglePlaces, type PlaceAutocomplete } from '@/composables/useGooglePlaces'
-import type { Camp, CreateCampRequest, UpdateCampRequest } from '@/types/camp'
+import AccommodationCapacityForm from '@/components/camps/AccommodationCapacityForm.vue'
+import type { Camp, CreateCampRequest, UpdateCampRequest, AccommodationCapacity } from '@/types/camp'
 
 interface Props {
   camp?: Camp
@@ -33,6 +34,7 @@ const formData = reactive<CreateCampRequest | UpdateCampRequest>({
   pricePerAdult: 0,
   pricePerChild: 0,
   pricePerBaby: 0,
+  accommodationCapacity: null,
   ...(props.mode === 'edit' && { isActive: true })
 })
 
@@ -55,6 +57,7 @@ if (props.mode === 'edit' && props.camp) {
     pricePerAdult: props.camp.pricePerAdult,
     pricePerChild: props.camp.pricePerChild,
     pricePerBaby: props.camp.pricePerBaby,
+    accommodationCapacity: props.camp.accommodationCapacity ?? null,
     isActive: props.camp.isActive
   })
   searchQuery.value = props.camp.name
@@ -381,6 +384,12 @@ watch(
         </div>
       </div>
     </div>
+
+    <!-- Accommodation Capacity -->
+    <AccommodationCapacityForm
+      :model-value="formData.accommodationCapacity ?? null"
+      @update:model-value="(val: AccommodationCapacity | null) => (formData.accommodationCapacity = val)"
+    />
 
     <!-- Status (Edit mode only) -->
     <div v-if="mode === 'edit' && 'isActive' in formData">

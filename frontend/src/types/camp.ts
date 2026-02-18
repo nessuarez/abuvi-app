@@ -1,4 +1,25 @@
 // Camp location types matching backend DTOs
+import type { CampPhoto } from './camp-photo'
+
+export interface SharedRoomInfo {
+  quantity: number
+  bedsPerRoom: number
+  hasBathroom: boolean
+  hasShower: boolean
+  notes?: string | null
+}
+
+export interface AccommodationCapacity {
+  privateRoomsWithBathroom?: number | null
+  privateRoomsSharedBathroom?: number | null
+  sharedRooms?: SharedRoomInfo[] | null
+  bungalows?: number | null
+  campOwnedTents?: number | null
+  memberTentAreaSquareMeters?: number | null
+  memberTentCapacityEstimate?: number | null
+  motorhomeSpots?: number | null
+  notes?: string | null
+}
 
 export interface Camp {
   id: string
@@ -15,6 +36,9 @@ export interface Camp {
   createdAt: string
   updatedAt: string
   editionCount?: number // For display in list view
+  accommodationCapacity?: AccommodationCapacity | null
+  calculatedTotalBedCapacity?: number | null
+  photos?: CampPhoto[]
 }
 
 export interface CreateCampRequest {
@@ -27,6 +51,7 @@ export interface CreateCampRequest {
   pricePerAdult: number
   pricePerChild: number
   pricePerBaby: number
+  accommodationCapacity?: AccommodationCapacity | null
 }
 
 export interface UpdateCampRequest extends CreateCampRequest {

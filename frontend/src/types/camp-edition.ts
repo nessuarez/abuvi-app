@@ -1,6 +1,6 @@
 // Camp edition types matching backend DTOs
 
-import type { Camp } from './camp'
+import type { Camp, AccommodationCapacity } from './camp'
 
 export interface CampEdition {
   id: string
@@ -32,6 +32,8 @@ export interface CampEdition {
   // Computed fields from backend (present in GET /api/camps/current response)
   registrationCount?: number
   availableSpots?: number
+  accommodationCapacity?: AccommodationCapacity | null
+  calculatedTotalBedCapacity?: number | null
 }
 
 export type CampEditionStatus = 'Proposed' | 'Draft' | 'Open' | 'Closed' | 'Completed'
@@ -60,6 +62,7 @@ export interface CreateCampEditionRequest {
 export interface ProposeCampEditionRequest extends CreateCampEditionRequest {
   proposalReason: string
   proposalNotes: string
+  accommodationCapacity?: AccommodationCapacity | null
 }
 
 export interface CampEditionExtra {

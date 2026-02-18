@@ -7,11 +7,13 @@ import Toast from 'primevue/toast'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import CampLocationMap from '@/components/camps/CampLocationMap.vue'
-import CampEditionProposeDialog from '@/components/camps/CampEditionProposeDialog.vue'
+import AccommodationCapacityDisplay from '@/components/camps/AccommodationCapacityDisplay.vue'
+import CampPhotoGallery from '@/components/camps/CampPhotoGallery.vue'
 import { useCamps } from '@/composables/useCamps'
+import { useAuthStore } from '@/stores/auth'
 import type { Camp } from '@/types/camp'
+import type { CampPhoto } from '@/types/camp-photo'
 import type { CampEdition } from '@/types/camp-edition'
-
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
@@ -37,6 +39,7 @@ const handleEditionProposed = (_edition: CampEdition) => {
 }
 
 const camp = ref<Camp | null>(null)
+const campPhotos = ref<CampPhoto[]>([])
 
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('es-ES', {
@@ -60,11 +63,16 @@ onMounted(async () => {
   const result = await getCampById(campId)
   if (result) {
     camp.value = result
+    campPhotos.value = result.photos ?? []
   }
 })
 
 const goBack = () => {
   router.push({ name: 'camp-locations' })
+}
+
+const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
+  campPhotos.value = updatedPhotos
 }
 </script>
 
@@ -106,7 +114,7 @@ const goBack = () => {
           <div>
             <h1 class="mb-2 text-3xl font-bold text-gray-900">{{ camp.name }}</h1>
             <p class="text-gray-600">
-              {{ camp.latitude.toFixed(4) }}, {{ camp.longitude.toFixed(4) }}
+              {{ camp.latitude?.toFixed(4) }}, {{ camp.longitude?.toFixed(4) }}
             </p>
           </div>
           <span
@@ -210,6 +218,25 @@ const goBack = () => {
               ]"
             />
           </div>
+        </div>
+      </div>
+
+      <!-- Accommodation Capacity Section -->
+      <div v-if="camp.accommodationCapacity" class="mt-6">
+        <AccommodationCapacityDisplay
+          :capacity="camp.accommodationCapacity"
+          :total-bed-capacity="camp.calculatedTotalBedCapacity"
+        />
+      </div>
+
+      <!-- Photo Gallery Section (Board+ only) -->
+      <div v-if="auth.isBoard" class="mt-6">
+        <div class="rounded-lg border border-gray-200 bg-white p-6">
+          <CampPhotoGallery
+            :camp-id="camp.id"
+            :initial-photos="campPhotos"
+            @photos-changed="handlePhotosChanged"
+          />
         </div>
       </div>
     </div>

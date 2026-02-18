@@ -6,6 +6,7 @@ import type { CampLocation } from '@/types/camp'
 import Card from 'primevue/card'
 import PricingBreakdown from '@/components/camps/PricingBreakdown.vue'
 import CampLocationMap from '@/components/camps/CampLocationMap.vue'
+import AccommodationCapacityDisplay from '@/components/camps/AccommodationCapacityDisplay.vue'
 
 interface Props {
   campEdition: CampEdition
@@ -139,6 +140,14 @@ const mapLocations = computed<CampLocation[]>(() => {
         </div>
       </template>
     </Card>
+
+    <!-- Accommodation Capacity Card -->
+    <AccommodationCapacityDisplay
+      v-if="campEdition.accommodationCapacity"
+      :capacity="campEdition.accommodationCapacity"
+      :total-bed-capacity="campEdition.calculatedTotalBedCapacity"
+      class="md:col-span-2"
+    />
 
     <!-- Contact Card -->
     <Card v-if="campEdition.contactEmail || campEdition.contactPhone">
