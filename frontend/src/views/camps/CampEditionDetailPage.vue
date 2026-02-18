@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Container from '@/components/ui/Container.vue'
+import CampEditionStatusBadge from '@/components/camps/CampEditionStatusBadge.vue'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
@@ -67,7 +68,7 @@ onMounted(async () => {
             <div class="space-y-2 text-sm">
               <div class="flex justify-between">
                 <span class="text-gray-600">Estado:</span>
-                <span class="font-medium">{{ edition.status }}</span>
+                <CampEditionStatusBadge :status="edition.status" size="sm" />
               </div>
               <div class="flex justify-between">
                 <span class="text-gray-600">Año:</span>
