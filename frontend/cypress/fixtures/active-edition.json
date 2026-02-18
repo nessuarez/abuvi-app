@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "data": {
+    "id": "edition-2026",
+    "campId": "camp-1",
+    "campName": "Campamento 2026",
+    "campLocation": "Montaña Norte",
+    "campFormattedAddress": "Calle del Pinar, 1, 28000 Madrid",
+    "year": 2026,
+    "startDate": "2026-07-01",
+    "endDate": "2026-07-15",
+    "pricePerAdult": 450,
+    "pricePerChild": 300,
+    "pricePerBaby": 0,
+    "useCustomAgeRanges": false,
+    "status": "Open",
+    "maxCapacity": 120,
+    "registrationCount": 0,
+    "notes": "Campamento de verano en la sierra.",
+    "createdAt": "2026-01-01T00:00:00Z",
+    "updatedAt": "2026-01-01T00:00:00Z"
+  },
+  "error": null
+}

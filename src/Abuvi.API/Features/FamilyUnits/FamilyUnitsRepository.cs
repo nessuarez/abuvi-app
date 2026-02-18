@@ -25,6 +25,7 @@ public interface IFamilyUnitsRepository
 
     // User operations
     Task<User?> GetUserByIdAsync(Guid id, CancellationToken ct);
+    Task<User?> GetUserByEmailAsync(string email, CancellationToken ct);
     Task UpdateUserFamilyUnitIdAsync(Guid userId, Guid? familyUnitId, CancellationToken ct);
 
     // Admin list
@@ -116,6 +117,11 @@ public class FamilyUnitsRepository(AbuviDbContext db) : IFamilyUnitsRepository
         => await db.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == id, ct);
+
+    public async Task<User?> GetUserByEmailAsync(string email, CancellationToken ct)
+        => await db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Email == email, ct);
 
     public async Task UpdateUserFamilyUnitIdAsync(Guid userId, Guid? familyUnitId, CancellationToken ct)
     {

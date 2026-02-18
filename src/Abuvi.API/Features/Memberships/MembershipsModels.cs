@@ -52,3 +52,35 @@ public enum FeeStatus
     Paid,       // Payment received
     Overdue     // Payment deadline passed
 }
+
+// Request DTOs
+public record CreateMembershipRequest(DateTime StartDate);
+
+// Fee management DTOs
+public record PayFeeRequest(
+    DateTime PaidDate,
+    string? PaymentReference = null
+);
+
+// Response DTOs
+public record MembershipResponse(
+    Guid Id,
+    Guid FamilyMemberId,
+    DateTime StartDate,
+    DateTime? EndDate,
+    bool IsActive,
+    IReadOnlyList<MembershipFeeResponse> Fees,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
+);
+
+public record MembershipFeeResponse(
+    Guid Id,
+    Guid MembershipId,
+    int Year,
+    decimal Amount,
+    FeeStatus Status,
+    DateTime? PaidDate,
+    string? PaymentReference,
+    DateTime CreatedAt
+);

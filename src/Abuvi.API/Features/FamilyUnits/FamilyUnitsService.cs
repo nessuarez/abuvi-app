@@ -54,6 +54,7 @@ public class FamilyUnitsService(
             UserId = userId,
             FirstName = user.FirstName,
             LastName = user.LastName,
+            Email = user.Email,
             DateOfBirth = DateOnly.MinValue, // User should update this later
             Relationship = FamilyRelationship.Parent,
             CreatedAt = DateTime.UtcNow,
@@ -152,6 +153,20 @@ public class FamilyUnitsService(
         var familyUnit = await repository.GetFamilyUnitByIdAsync(familyUnitId, ct)
             ?? throw new NotFoundException("Unidad Familiar", familyUnitId);
 
+        // Check if email belongs to an existing user and auto-link
+        Guid? userId = null;
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var existingUser = await repository.GetUserByEmailAsync(request.Email, ct);
+            if (existingUser != null)
+            {
+                userId = existingUser.Id;
+                logger.LogInformation(
+                    "Family member auto-linked to user {UserId} by email {Email}",
+                    userId, request.Email);
+            }
+        }
+
         // Encrypt sensitive data if provided
         var encryptedMedicalNotes = !string.IsNullOrEmpty(request.MedicalNotes)
             ? encryptionService.Encrypt(request.MedicalNotes)
@@ -166,7 +181,7 @@ public class FamilyUnitsService(
         {
             Id = Guid.NewGuid(),
             FamilyUnitId = familyUnitId,
-            UserId = null,
+            UserId = userId,
             FirstName = request.FirstName,
             LastName = request.LastName,
             DateOfBirth = request.DateOfBirth,
@@ -218,6 +233,33 @@ public class FamilyUnitsService(
     {
         var member = await repository.GetFamilyMemberByIdAsync(id, ct)
             ?? throw new NotFoundException("Miembro Familiar", id);
+
+        // Update user linking based on email
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var existingUser = await repository.GetUserByEmailAsync(request.Email, ct);
+            if (existingUser != null && member.UserId != existingUser.Id)
+            {
+                member.UserId = existingUser.Id;
+                logger.LogInformation(
+                    "Family member {MemberId} auto-linked to user {UserId} by email {Email}",
+                    id, existingUser.Id, request.Email);
+            }
+            else if (existingUser == null && member.UserId.HasValue)
+            {
+                logger.LogInformation(
+                    "Family member {MemberId} unlinked from user {UserId} - email no longer matches",
+                    id, member.UserId.Value);
+                member.UserId = null;
+            }
+        }
+        else if (member.UserId.HasValue)
+        {
+            logger.LogInformation(
+                "Family member {MemberId} unlinked from user {UserId} - email removed",
+                id, member.UserId.Value);
+            member.UserId = null;
+        }
 
         // Update basic fields
         member.FirstName = request.FirstName;

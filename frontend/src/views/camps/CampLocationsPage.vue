@@ -17,7 +17,7 @@ import CampLocationCard from '@/components/camps/CampLocationCard.vue'
 import CampLocationForm from '@/components/camps/CampLocationForm.vue'
 import CampLocationMap from '@/components/camps/CampLocationMap.vue'
 import { useCamps } from '@/composables/useCamps'
-import type { Camp, CreateCampRequest, CampStatus } from '@/types/camp'
+import type { Camp, CreateCampRequest } from '@/types/camp'
 
 const router = useRouter()
 const toast = useToast()
@@ -29,14 +29,13 @@ const showCreateDialog = ref(false)
 const showEditDialog = ref(false)
 const selectedCamp = ref<Camp | null>(null)
 const searchQuery = ref('')
-const selectedStatus = ref<CampStatus | null>(null)
+const selectedStatus = ref<boolean | null>(null)
 const viewMode = ref<'table' | 'cards' | 'map'>('table')
 
 const statusOptions = [
   { label: 'Todos', value: null },
-  { label: 'Activo', value: 'Active' },
-  { label: 'Inactivo', value: 'Inactive' },
-  { label: 'Archivo Histórico', value: 'HistoricalArchive' }
+  { label: 'Activo', value: true },
+  { label: 'Inactivo', value: false }
 ]
 
 const filteredCamps = computed(() => {
@@ -48,25 +47,27 @@ const filteredCamps = computed(() => {
     result = result.filter(
       (camp) =>
         camp.name.toLowerCase().includes(query) ||
-        camp.description.toLowerCase().includes(query)
+        (camp.description?.toLowerCase() ?? '').includes(query)
     )
   }
 
   // Filter by status
-  if (selectedStatus.value) {
-    result = result.filter((camp) => camp.status === selectedStatus.value)
+  if (selectedStatus.value !== null) {
+    result = result.filter((camp) => camp.isActive === selectedStatus.value)
   }
 
   return result
 })
 
 const campLocations = computed(() => {
-  return filteredCamps.value.map((camp) => ({
-    latitude: camp.latitude,
-    longitude: camp.longitude,
-    name: camp.name,
-    year: undefined
-  }))
+  return filteredCamps.value
+    .filter((camp) => camp.latitude !== null && camp.longitude !== null)
+    .map((camp) => ({
+      latitude: camp.latitude as number,
+      longitude: camp.longitude as number,
+      name: camp.name,
+      year: undefined
+    }))
 })
 
 const formatCurrency = (amount: number): string => {
@@ -77,13 +78,8 @@ const formatCurrency = (amount: number): string => {
   }).format(amount)
 }
 
-const statusLabel = (status: string): string => {
-  const labels: Record<string, string> = {
-    Active: 'Activo',
-    Inactive: 'Inactivo',
-    HistoricalArchive: 'Archivo Histórico'
-  }
-  return labels[status] || status
+const statusLabel = (isActive: boolean): string => {
+  return isActive ? 'Activo' : 'Inactivo'
 }
 
 onMounted(() => {
@@ -131,6 +127,10 @@ const handleDelete = (camp: Camp) => {
 
 const handleViewDetails = (camp: Camp) => {
   router.push({ name: 'camp-location-detail', params: { id: camp.id } })
+}
+
+const handleViewEditions = (campId: string) => {
+  router.push({ name: 'camp-editions', query: { campId } })
 }
 
 const handleSubmitCreate = async (data: CreateCampRequest) => {
@@ -193,39 +193,18 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
       <div class="flex flex-1 gap-2">
         <span class="p-input-icon-left flex-1">
           <i class="pi pi-search" />
-          <InputText
-            v-model="searchQuery"
-            placeholder="Buscar campamentos..."
-            class="w-full"
-          />
+          <InputText v-model="searchQuery" placeholder="Buscar campamentos..." class="w-full" />
         </span>
-        <Select
-          v-model="selectedStatus"
-          :options="statusOptions"
-          option-label="label"
-          option-value="value"
-          placeholder="Filtrar por estado"
-          class="w-48"
-        />
+        <Select v-model="selectedStatus" :options="statusOptions" option-label="label" option-value="value"
+          placeholder="Filtrar por estado" class="w-48" />
       </div>
 
       <!-- View Mode & Create Button -->
       <div class="flex gap-2">
-        <Button
-          :icon="viewMode === 'table' ? 'pi pi-table' : 'pi pi-th-large'"
-          :outlined="viewMode !== 'table'"
-          @click="viewMode = viewMode === 'table' ? 'cards' : 'table'"
-        />
-        <Button
-          icon="pi pi-map"
-          :outlined="viewMode !== 'map'"
-          @click="viewMode = 'map'"
-        />
-        <Button
-          label="Nuevo Campamento"
-          icon="pi pi-plus"
-          @click="handleCreate"
-        />
+        <Button :icon="viewMode === 'table' ? 'pi pi-table' : 'pi pi-th-large'" :outlined="viewMode !== 'table'"
+          @click="viewMode = viewMode === 'table' ? 'cards' : 'table'" />
+        <Button icon="pi pi-map" :outlined="viewMode !== 'map'" @click="viewMode = 'map'" />
+        <Button label="Nuevo Campamento" icon="pi pi-plus" @click="handleCreate" />
       </div>
     </div>
 
@@ -241,10 +220,8 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
     </Message>
 
     <!-- Empty State -->
-    <div
-      v-else-if="filteredCamps.length === 0"
-      class="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center"
-    >
+    <div v-else-if="filteredCamps.length === 0"
+      class="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
       <i class="pi pi-map-marker mb-4 text-4xl text-gray-400"></i>
       <h3 class="mb-2 text-lg font-semibold text-gray-900">No hay campamentos registrados</h3>
       <p class="mb-4 text-gray-600">Comienza creando tu primer campamento</p>
@@ -259,7 +236,7 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
             <div>
               <p class="font-semibold">{{ data.name }}</p>
               <p class="text-sm text-gray-500">
-                {{ data.latitude.toFixed(4) }}, {{ data.longitude.toFixed(4) }}
+                {{ data.latitude?.toFixed(4) ?? '-' }}, {{ data.longitude?.toFixed(4) ?? '-' }}
               </p>
             </div>
           </template>
@@ -268,24 +245,20 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
         <Column header="Precios">
           <template #body="{ data }">
             <div class="text-sm">
-              <p>Adulto: {{ formatCurrency(data.basePriceAdult) }}</p>
-              <p>Niño: {{ formatCurrency(data.basePriceChild) }}</p>
-              <p>Bebé: {{ formatCurrency(data.basePriceBaby) }}</p>
+              <p>Adulto: {{ formatCurrency(data.pricePerAdult) }}</p>
+              <p>Niño: {{ formatCurrency(data.pricePerChild) }}</p>
+              <p>Bebé: {{ formatCurrency(data.pricePerBaby) }}</p>
             </div>
           </template>
         </Column>
 
         <Column field="status" header="Estado" sortable>
           <template #body="{ data }">
-            <span
-              :class="{
-                'bg-green-100 text-green-800': data.status === 'Active',
-                'bg-gray-100 text-gray-800': data.status === 'Inactive',
-                'bg-blue-100 text-blue-800': data.status === 'HistoricalArchive'
-              }"
-              class="rounded-full px-2 py-1 text-xs font-medium"
-            >
-              {{ statusLabel(data.status) }}
+            <span :class="{
+              'bg-green-100 text-green-800': data.isActive,
+              'bg-gray-100 text-gray-800': !data.isActive
+            }" class="rounded-full px-2 py-1 text-xs font-medium">
+              {{ statusLabel(data.isActive) }}
             </span>
           </template>
         </Column>
@@ -301,22 +274,15 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
         <Column header="Acciones">
           <template #body="{ data }">
             <div class="flex gap-1">
-              <Button
-                icon="pi pi-eye"
-                text
-                rounded
-                size="small"
-                @click="handleViewDetails(data)"
-              />
-              <Button icon="pi pi-pencil" text rounded size="small" @click="handleEdit(data)" />
-              <Button
-                icon="pi pi-trash"
-                text
-                rounded
-                size="small"
-                severity="danger"
-                @click="handleDelete(data)"
-              />
+              <Button v-tooltip.top="'Ver detalle'" icon="pi pi-eye" text rounded size="small"
+                aria-label="Ver detalle de ubicación" @click="handleViewDetails(data)" />
+              <Button v-tooltip.top="'Ver ediciones'" icon="pi pi-calendar" text rounded size="small"
+                aria-label="Ver ediciones de esta ubicación" data-testid="view-camp-editions-btn"
+                @click="handleViewEditions(data.id)" />
+              <Button v-tooltip.top="'Editar'" icon="pi pi-pencil" text rounded size="small"
+                aria-label="Editar ubicación" @click="handleEdit(data)" />
+              <Button v-tooltip.top="'Eliminar'" icon="pi pi-trash" text rounded size="small" severity="danger"
+                aria-label="Eliminar ubicación" @click="handleDelete(data)" />
             </div>
           </template>
         </Column>
@@ -325,14 +291,8 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
 
     <!-- Cards View -->
     <div v-else-if="viewMode === 'cards'" class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      <CampLocationCard
-        v-for="camp in filteredCamps"
-        :key="camp.id"
-        :camp="camp"
-        @edit="handleEdit"
-        @delete="handleDelete"
-        @view-details="handleViewDetails"
-      />
+      <CampLocationCard v-for="camp in filteredCamps" :key="camp.id" :camp="camp" @edit="handleEdit"
+        @delete="handleDelete" @view-details="handleViewDetails" />
     </div>
 
     <!-- Map View -->
@@ -341,29 +301,14 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
     </div>
 
     <!-- Create Dialog -->
-    <Dialog
-      v-model:visible="showCreateDialog"
-      header="Nuevo Campamento"
-      modal
-      class="w-full max-w-2xl"
-    >
+    <Dialog v-model:visible="showCreateDialog" header="Nuevo Campamento" modal class="w-full max-w-2xl">
       <CampLocationForm mode="create" @submit="handleSubmitCreate" @cancel="showCreateDialog = false" />
     </Dialog>
 
     <!-- Edit Dialog -->
-    <Dialog
-      v-model:visible="showEditDialog"
-      header="Editar Campamento"
-      modal
-      class="w-full max-w-2xl"
-    >
-      <CampLocationForm
-        v-if="selectedCamp"
-        mode="edit"
-        :camp="selectedCamp"
-        @submit="handleSubmitEdit"
-        @cancel="showEditDialog = false"
-      />
+    <Dialog v-model:visible="showEditDialog" header="Editar Campamento" modal class="w-full max-w-2xl">
+      <CampLocationForm v-if="selectedCamp" mode="edit" :camp="selectedCamp" @submit="handleSubmitEdit"
+        @cancel="showEditDialog = false" />
     </Dialog>
   </div>
 </template>
