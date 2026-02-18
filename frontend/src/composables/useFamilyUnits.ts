@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import type { Ref } from 'vue'
 import { api } from '@/utils/api'
-import type { ApiResponse } from '@/types/api'
+import type { ApiResponse, PagedResult } from '@/types/api'
 import type {
   FamilyUnitResponse,
   CreateFamilyUnitRequest,
@@ -15,6 +15,10 @@ export function useFamilyUnits() {
   // State
   const familyUnit: Ref<FamilyUnitResponse | null> = ref(null)
   const familyMembers: Ref<FamilyMemberResponse[]> = ref([])
+  const allFamilyUnits: Ref<FamilyUnitResponse[]> = ref([])
+  const familyUnitsPagination = ref({
+    totalCount: 0, page: 1, pageSize: 20, totalPages: 0
+  })
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -230,6 +234,47 @@ export function useFamilyUnits() {
   }
 
   /**
+   * Get all family units (Admin/Board only, paginated)
+   */
+  const fetchAllFamilyUnits = async (params: {
+    page?: number
+    pageSize?: number
+    search?: string
+    sortBy?: string
+    sortOrder?: 'asc' | 'desc'
+  } = {}): Promise<void> => {
+    loading.value = true
+    error.value = null
+    try {
+      const queryParams = new URLSearchParams({
+        page: String(params.page ?? 1),
+        pageSize: String(params.pageSize ?? 20)
+      })
+      if (params.search) queryParams.set('search', params.search)
+      if (params.sortBy) queryParams.set('sortBy', params.sortBy)
+      if (params.sortOrder) queryParams.set('sortOrder', params.sortOrder)
+
+      const response = await api.get<ApiResponse<PagedResult<FamilyUnitResponse>>>(
+        `/family-units?${queryParams.toString()}`
+      )
+      if (response.data.success && response.data.data) {
+        allFamilyUnits.value = response.data.data.items
+        familyUnitsPagination.value = {
+          totalCount: response.data.data.totalCount,
+          page: response.data.data.page,
+          pageSize: response.data.data.pageSize,
+          totalPages: response.data.data.totalPages
+        }
+      }
+    } catch (err: unknown) {
+      const apiErr = err as { response?: { data?: { error?: { message?: string } } } }
+      error.value = apiErr?.response?.data?.error?.message || 'Error al obtener unidades familiares'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * Delete family member
    */
   const deleteFamilyMember = async (
@@ -258,6 +303,8 @@ export function useFamilyUnits() {
     // State
     familyUnit,
     familyMembers,
+    allFamilyUnits,
+    familyUnitsPagination,
     loading,
     error,
 
@@ -267,6 +314,7 @@ export function useFamilyUnits() {
     getFamilyUnitById,
     updateFamilyUnit,
     deleteFamilyUnit,
+    fetchAllFamilyUnits,
 
     // Family Member Methods
     createFamilyMember,

@@ -386,4 +386,50 @@ describe('useFamilyUnits', () => {
       expect(result).toEqual(mockMember)
     })
   })
+
+  describe('fetchAllFamilyUnits', () => {
+    it('should fetch paginated family units successfully', async () => {
+      const mockPagedResult = {
+        items: [
+          { id: 'unit-1', name: 'Garcia Family', representativeUserId: 'user-1',
+            representativeName: 'Juan Garcia', membersCount: 4,
+            createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' }
+        ],
+        totalCount: 1, page: 1, pageSize: 20, totalPages: 1,
+        hasNextPage: false, hasPreviousPage: false
+      }
+      vi.mocked(api.get).mockResolvedValueOnce({
+        data: { success: true, data: mockPagedResult, error: null }
+      })
+
+      const { allFamilyUnits, fetchAllFamilyUnits } = useFamilyUnits()
+      await fetchAllFamilyUnits()
+
+      expect(allFamilyUnits.value).toEqual(mockPagedResult.items)
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining('/family-units'))
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining('page=1'))
+    })
+
+    it('should pass search parameter when provided', async () => {
+      vi.mocked(api.get).mockResolvedValueOnce({
+        data: { success: true, data: { items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0, hasNextPage: false, hasPreviousPage: false }, error: null }
+      })
+
+      const { fetchAllFamilyUnits } = useFamilyUnits()
+      await fetchAllFamilyUnits({ search: 'Garcia' })
+
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining('search=Garcia'))
+    })
+
+    it('should set error message on failure', async () => {
+      vi.mocked(api.get).mockRejectedValueOnce({
+        response: { data: { error: { message: 'No autorizado' } } }
+      })
+
+      const { error, fetchAllFamilyUnits } = useFamilyUnits()
+      await fetchAllFamilyUnits()
+
+      expect(error.value).toBe('No autorizado')
+    })
+  })
 })

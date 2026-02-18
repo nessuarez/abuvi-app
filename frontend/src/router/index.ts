@@ -58,7 +58,7 @@ const router = createRouter({
 			component: () => import("@/views/AdminPage.vue"),
 			meta: {
 				requiresAuth: true,
-				requiresAdmin: true,
+				requiresBoard: true,
 				title: "ABUVI | Administración"
 			}
 		},
@@ -72,13 +72,8 @@ const router = createRouter({
 			}
 		},
 		{
-			path: "/family-unit",
-			name: "family-unit",
-			component: () => import("@/views/FamilyUnitPage.vue"),
-			meta: {
-				requiresAuth: true,
-				title: "ABUVI | Mi Unidad Familiar"
-			}
+			path: "/family-unit/me",
+			redirect: "/family-unit"
 		},
 
 		// Camp Management routes (Board only)
@@ -103,25 +98,14 @@ const router = createRouter({
 			}
 		},
 
-		// Legacy routes for user management (backward compatibility)
+		// Legacy user management routes — redirect to admin panel
 		{
 			path: "/users",
-			name: "users",
-			component: () => import("@/pages/UsersPage.vue"),
-			meta: {
-				title: "ABUVI | Gestión de Usuarios",
-				requiresAuth: true,
-				requiresBoard: true
-			}
+			redirect: "/admin"
 		},
 		{
 			path: "/users/:id",
-			name: "user-detail",
-			component: () => import("@/pages/UserDetailPage.vue"),
-			meta: {
-				title: "ABUVI | Detalle de Usuario",
-				requiresAuth: true
-			}
+			redirect: "/admin"
 		},
 
 		// Public legal routes — no auth required

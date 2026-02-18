@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "data": {
+    "id": "edition-2025",
+    "campId": "camp-1",
+    "year": 2025,
+    "status": "Completed",
+    "startDate": "2025-07-01",
+    "endDate": "2025-07-15",
+    "location": "Valle del Sur",
+    "description": "Campamento de verano 2025.",
+    "pricePerAdult": 420,
+    "pricePerChild": 280,
+    "pricePerBaby": 0,
+    "useCustomAgeRanges": false,
+    "maxCapacity": 100,
+    "isArchived": false,
+    "registrationCount": 98,
+    "availableSpots": 2,
+    "createdAt": "2025-01-01T00:00:00Z",
+    "updatedAt": "2025-07-15T00:00:00Z",
+    "camp": {
+      "id": "camp-1",
+      "name": "Southern Valley Camp",
+      "latitude": 37.3891,
+      "longitude": -5.9845
+    }
+  },
+  "error": null
+}
