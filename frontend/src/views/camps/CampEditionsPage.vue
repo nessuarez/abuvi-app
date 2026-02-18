@@ -28,7 +28,8 @@ const {
   loading,
   error,
   fetchAllEditions,
-  changeStatus
+  changeStatus,
+  promoteEdition
 } = useCampEditions()
 
 const { camps, fetchCamps } = useCamps()
@@ -107,7 +108,9 @@ const handleViewDetail = (edition: CampEdition) => {
 const handleStatusConfirm = async (newStatus: CampEditionStatus) => {
   if (!selectedEdition.value) return
   statusLoading.value = true
-  const result = await changeStatus(selectedEdition.value.id, newStatus)
+  const result = selectedEdition.value.status === 'Proposed'
+    ? await promoteEdition(selectedEdition.value.id)
+    : await changeStatus(selectedEdition.value.id, newStatus)
   statusLoading.value = false
   showStatusDialog.value = false
 

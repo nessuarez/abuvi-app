@@ -1,25 +1,38 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
+import Toast from 'primevue/toast'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import CampLocationMap from '@/components/camps/CampLocationMap.vue'
+import CampEditionProposeDialog from '@/components/camps/CampEditionProposeDialog.vue'
 import { useCamps } from '@/composables/useCamps'
 import type { Camp } from '@/types/camp'
+import type { CampEdition } from '@/types/camp-edition'
 
 const route = useRoute()
 const router = useRouter()
+const toast = useToast()
 const { loading, error, getCampById } = useCamps()
+
+const showProposeDialog = ref(false)
 
 const goToEditions = () => {
   router.push({ name: 'camp-editions', query: { campId: route.params.id as string } })
 }
 
 const proposeNewEdition = () => {
-  router.push({
-    name: 'camp-editions',
-    query: { campId: route.params.id as string, action: 'propose' }
+  showProposeDialog.value = true
+}
+
+const handleEditionProposed = (_edition: CampEdition) => {
+  toast.add({
+    severity: 'success',
+    summary: 'Propuesta enviada',
+    detail: 'La propuesta de edición ha sido enviada correctamente.',
+    life: 4000
   })
 }
 
@@ -57,6 +70,16 @@ const goBack = () => {
 
 <template>
   <div class="container mx-auto p-4">
+    <Toast />
+
+    <!-- Propose Edition Dialog -->
+    <CampEditionProposeDialog
+      v-model:visible="showProposeDialog"
+      :camp-id="route.params.id as string"
+      :camp="camp"
+      @saved="handleEditionProposed"
+    />
+
     <!-- Loading State -->
     <div v-if="loading" class="flex justify-center p-12">
       <ProgressSpinner />

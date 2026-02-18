@@ -20,6 +20,7 @@ const emit = defineEmits<{
 }>()
 
 const validNextStatus: Partial<Record<CampEditionStatus, CampEditionStatus>> = {
+  Proposed: 'Draft',
   Draft: 'Open',
   Open: 'Closed',
   Closed: 'Completed'
