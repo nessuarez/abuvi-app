@@ -673,9 +673,13 @@ All routes except the landing page (`/`) and legal pages (`/legal/*`) require au
 
 ### Public Route Pattern
 
-For pages that must be accessible without login (e.g., legal pages), omit `requiresAuth` or set it to `false`. These pages render via `<router-view v-else />` for unauthenticated users and inside `AuthenticatedLayout` for authenticated users.
+For pages that must be accessible without login, omit `requiresAuth` or set it to `false`. These pages render via `<router-view v-else />` for unauthenticated users and inside `AuthenticatedLayout` for authenticated users.
 
-Use a self-contained content layout component (like `LegalPageLayout`) that includes its own minimal navigation so the page is usable in both contexts.
+**Public routes in this project include:**
+- Legal pages (`/legal/notice`, `/legal/privacy`, `/legal/bylaws`, `/legal/transparency`)
+- Password reset pages (`/forgot-password`, `/reset-password`)
+
+Use a self-contained content layout component (like `LegalPageLayout`) for legal pages, or a full-screen layout (matching `LandingPage.vue`'s background + dark overlay + centered card) for auth-related public pages.
 
 ```typescript
 // Public legal routes — accessible without authentication
@@ -685,6 +689,20 @@ Use a self-contained content layout component (like `LegalPageLayout`) that incl
   component: () => import('@/views/legal/NoticeLegalPage.vue'),
   meta: { title: 'ABUVI | Aviso Legal', requiresAuth: false }
 }
+
+// Password reset routes — public, full-screen layout matching LandingPage
+{
+  path: '/forgot-password',
+  name: 'forgot-password',
+  component: () => import('@/views/ForgotPasswordPage.vue'),
+  meta: { requiresAuth: false, title: 'ABUVI | Recuperar Contraseña' }
+},
+{
+  path: '/reset-password',
+  name: 'reset-password',
+  component: () => import('@/views/ResetPasswordPage.vue'),
+  meta: { requiresAuth: false, title: 'ABUVI | Nueva Contraseña' }
+},
 ```
 
 ### Auth Guard Pattern

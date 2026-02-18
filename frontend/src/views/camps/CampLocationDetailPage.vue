@@ -17,6 +17,7 @@ import type { CampEdition } from '@/types/camp-edition'
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const auth = useAuthStore()
 const { loading, error, getCampById } = useCamps()
 
 const showProposeDialog = ref(false)

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import TabView from 'primevue/tabview'
+import Tabs from 'primevue/tabs'
+import TabList from 'primevue/tablist'
+import Tab from 'primevue/tab'
+import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import LoginForm from './LoginForm.vue'
 import RegisterForm from './RegisterForm.vue'
 
-const activeTab = ref(0)
+const activeTab = ref('login')
 </script>
 
 <template>
@@ -17,24 +20,30 @@ const activeTab = ref(0)
       </p>
     </div>
 
-    <TabView v-model:activeIndex="activeTab" class="auth-tabs">
-      <TabPanel header="Iniciar Sesión">
-        <LoginForm />
-      </TabPanel>
-      <TabPanel header="Registrarse">
-        <RegisterForm />
-      </TabPanel>
-    </TabView>
+    <Tabs v-model:value="activeTab" class="auth-tabs">
+      <TabList>
+        <Tab value="login">Iniciar Sesión</Tab>
+        <Tab value="register">Registrarse</Tab>
+      </TabList>
+      <TabPanels>
+        <TabPanel value="login">
+          <LoginForm />
+        </TabPanel>
+        <TabPanel value="register">
+          <RegisterForm />
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
   </div>
 </template>
 
 <style>
-.auth-tabs .p-tabview-nav {
+.auth-tabs .p-tablist {
   background: transparent;
   border: none;
 }
 
-.auth-tabs .p-tabview-panels {
+.auth-tabs .p-tabpanels {
   background: transparent;
   padding: 1.5rem 0 0 0;
 }
