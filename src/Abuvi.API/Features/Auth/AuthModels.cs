@@ -37,3 +37,6 @@ public record UserInfo(
     string LastName,
     string Role
 );
+
+public record ForgotPasswordRequest(string Email);
+public record ResetPasswordRequest(string Token, string NewPassword);

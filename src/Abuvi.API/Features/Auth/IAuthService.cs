@@ -12,4 +12,6 @@ public interface IAuthService
     Task<UserResponse> RegisterUserAsync(RegisterUserRequest request, CancellationToken ct);
     Task VerifyEmailAsync(string token, CancellationToken ct);
     Task ResendVerificationAsync(string email, CancellationToken ct);
+    Task ForgotPasswordAsync(string email, CancellationToken ct);
+    Task ResetPasswordAsync(string token, string newPassword, CancellationToken ct);
 }
