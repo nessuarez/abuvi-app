@@ -13,6 +13,7 @@ import type {
   FamilyRelationship
 } from '@/types/family-unit'
 import { FamilyRelationshipLabels } from '@/types/family-unit'
+import { formatDateLocal, parseDateLocal } from '@/utils/date'
 
 const props = defineProps<{
   member?: FamilyMemberResponse | null
@@ -35,7 +36,7 @@ const relationshipOptions = Object.entries(FamilyRelationshipLabels).map(([value
 // Form data
 const firstName = ref(props.member?.firstName || '')
 const lastName = ref(props.member?.lastName || '')
-const dateOfBirth = ref<Date | null>(props.member?.dateOfBirth ? new Date(props.member.dateOfBirth) : null)
+const dateOfBirth = ref<Date | null>(props.member?.dateOfBirth ? parseDateLocal(props.member.dateOfBirth) : null)
 const relationship = ref<FamilyRelationship | null>(props.member?.relationship || null)
 const documentNumber = ref(props.member?.documentNumber || '')
 const email = ref(props.member?.email || '')
@@ -189,7 +190,7 @@ const handleSubmit = () => {
   const request: CreateFamilyMemberRequest | UpdateFamilyMemberRequest = {
     firstName: firstName.value.trim(),
     lastName: lastName.value.trim(),
-    dateOfBirth: dateOfBirth.value!.toISOString().split('T')[0], // YYYY-MM-DD
+    dateOfBirth: formatDateLocal(dateOfBirth.value!),
     relationship: relationship.value!,
     documentNumber: documentNumber.value.trim() || null,
     email: email.value.trim() || null,

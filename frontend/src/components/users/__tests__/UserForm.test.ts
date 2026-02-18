@@ -41,7 +41,7 @@ describe('UserForm', () => {
   it('should emit cancel event when cancel button clicked', async () => {
     const wrapper = mountComponent({ mode: 'create' })
 
-    const cancelButton = wrapper.findAll('button').find((b) => b.text() === 'Cancel')
+    const cancelButton = wrapper.findAll('button').find((b) => b.text() === 'Cancelar')
     await cancelButton?.trigger('click')
 
     expect(wrapper.emitted('cancel')).toHaveLength(1)
@@ -50,7 +50,32 @@ describe('UserForm', () => {
   it('should disable submit button when form is invalid', () => {
     const wrapper = mountComponent({ mode: 'create' })
 
-    const submitButton = wrapper.findAll('button').find((b) => b.text().includes('Create User'))
+    const submitButton = wrapper.findAll('button').find((b) => b.text().includes('Crear usuario'))
     expect(submitButton?.attributes('disabled')).toBeDefined()
+  })
+
+  it('should display Spanish label for email field', () => {
+    const wrapper = mountComponent({ mode: 'create' })
+    expect(wrapper.text()).toContain('Correo electrónico')
+  })
+
+  it('should display Spanish label for password field', () => {
+    const wrapper = mountComponent({ mode: 'create' })
+    expect(wrapper.text()).toContain('Contraseña')
+  })
+
+  it('should display Spanish label for first name field', () => {
+    const wrapper = mountComponent({ mode: 'create' })
+    expect(wrapper.text()).toContain('Nombre')
+  })
+
+  it('should display Spanish label for last name field', () => {
+    const wrapper = mountComponent({ mode: 'create' })
+    expect(wrapper.text()).toContain('Apellidos')
+  })
+
+  it('should display "Actualizar usuario" button in edit mode', () => {
+    const wrapper = mountComponent({ mode: 'edit', user: mockUser })
+    expect(wrapper.text()).toContain('Actualizar usuario')
   })
 })

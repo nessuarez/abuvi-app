@@ -2,6 +2,7 @@
 import Button from 'primevue/button'
 import { useAuthStore } from '@/stores/auth'
 import type { User } from '@/types/user'
+import { getRoleLabel } from '@/utils/user'
 
 interface Props {
   user: User
@@ -44,7 +45,7 @@ const handleEditClick = () => {
         'bg-gray-100 text-gray-800': user.role === 'Member'
       }"
     >
-      {{ user.role }}
+      {{ getRoleLabel(user.role) }}
     </span>
 
     <Button
@@ -54,7 +55,7 @@ const handleEditClick = () => {
       text
       rounded
       size="small"
-      aria-label="Edit role"
+      aria-label="Editar rol"
       data-testid="role-edit-button"
       @click="handleEditClick"
     />

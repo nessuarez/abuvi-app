@@ -8,6 +8,7 @@ import Message from 'primevue/message'
 import { useUsers } from '@/composables/useUsers'
 import { useAuthStore } from '@/stores/auth'
 import type { User, UserRole, UpdateUserRoleRequest } from '@/types/user'
+import { getRoleLabel } from '@/utils/user'
 
 interface Props {
   visible: boolean
@@ -31,9 +32,9 @@ const reason = ref('')
 // Available roles based on current user's role
 const availableRoles = computed(() => {
   const roles: { label: string; value: UserRole }[] = [
-    { label: 'Member', value: 'Member' },
-    { label: 'Board', value: 'Board' },
-    { label: 'Admin', value: 'Admin' }
+    { label: getRoleLabel('Member'), value: 'Member' },
+    { label: getRoleLabel('Board'), value: 'Board' },
+    { label: getRoleLabel('Admin'), value: 'Admin' }
   ]
 
   // Board members can only set Member role
@@ -96,7 +97,7 @@ const handleCancel = () => {
 <template>
   <Dialog
     :visible="visible"
-    :header="`Update Role: ${user?.firstName} ${user?.lastName}`"
+    :header="`Actualizar rol: ${user?.firstName} ${user?.lastName}`"
     modal
     :closable="!loading"
     class="w-full max-w-md"
@@ -106,7 +107,7 @@ const handleCancel = () => {
     <div v-if="user" class="flex flex-col gap-4">
       <!-- Self-change warning -->
       <Message v-if="isSelfChange" severity="warn" :closable="false">
-        You cannot change your own role
+        No puedes cambiar tu propio rol
       </Message>
 
       <!-- Error message -->
@@ -121,7 +122,7 @@ const handleCancel = () => {
 
       <!-- Current role display -->
       <div class="flex flex-col gap-2">
-        <label class="text-sm font-medium text-gray-700">Current Role</label>
+        <label class="text-sm font-medium text-gray-700">Rol actual</label>
         <div class="rounded-md bg-gray-100 px-3 py-2">
           <span
             class="inline-block rounded-full px-2 py-1 text-xs font-semibold"
@@ -131,7 +132,7 @@ const handleCancel = () => {
               'bg-gray-100 text-gray-800': user.role === 'Member'
             }"
           >
-            {{ user.role }}
+            {{ getRoleLabel(user.role) }}
           </span>
         </div>
       </div>
@@ -139,7 +140,7 @@ const handleCancel = () => {
       <!-- New role dropdown -->
       <div class="flex flex-col gap-2">
         <label for="newRole" class="text-sm font-medium text-gray-700"
-          >New Role *</label
+          >Nuevo rol *</label
         >
         <Select
           id="newRole"
@@ -147,7 +148,7 @@ const handleCancel = () => {
           :options="availableRoles"
           option-label="label"
           option-value="value"
-          placeholder="Select new role"
+          placeholder="Seleccionar nuevo rol"
           :disabled="loading || isSelfChange"
           class="w-full"
           data-testid="role-dropdown"
@@ -157,32 +158,32 @@ const handleCancel = () => {
       <!-- Reason textarea -->
       <div class="flex flex-col gap-2">
         <label for="reason" class="text-sm font-medium text-gray-700">
-          Reason (optional)
+          Motivo (opcional)
         </label>
         <Textarea
           id="reason"
           v-model="reason"
           rows="3"
-          placeholder="Provide a reason for this role change (for audit purposes)"
+          placeholder="Indica el motivo del cambio de rol (para auditoría)"
           :disabled="loading || isSelfChange"
           class="w-full"
           maxlength="500"
           data-testid="reason-textarea"
         />
-        <small class="text-gray-500">{{ reason.length }}/500 characters</small>
+        <small class="text-gray-500">{{ reason.length }}/500 caracteres</small>
       </div>
 
       <!-- Action buttons -->
       <div class="flex justify-end gap-2 pt-4">
         <Button
-          label="Cancel"
+          label="Cancelar"
           severity="secondary"
           text
           :disabled="loading"
           @click="handleCancel"
         />
         <Button
-          label="Update Role"
+          label="Actualizar rol"
           :loading="loading"
           :disabled="!canSubmit"
           data-testid="submit-button"

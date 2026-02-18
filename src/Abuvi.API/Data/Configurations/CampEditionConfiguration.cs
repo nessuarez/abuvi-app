@@ -118,6 +118,11 @@ public class CampEditionConfiguration : IEntityTypeConfiguration<CampEdition>
             .HasColumnName("updated_at")
             .HasDefaultValueSql("NOW()");
 
+        // Accommodation capacity JSON (nullable text column)
+        builder.Property(e => e.AccommodationCapacityJson)
+            .HasColumnType("text")
+            .HasColumnName("accommodation_capacity_json");
+
         // Relationships
         builder.HasOne(e => e.Camp)
             .WithMany(c => c.Editions)

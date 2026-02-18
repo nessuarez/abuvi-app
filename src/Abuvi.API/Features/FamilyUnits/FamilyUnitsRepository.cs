@@ -26,6 +26,19 @@ public interface IFamilyUnitsRepository
     // User operations
     Task<User?> GetUserByIdAsync(Guid id, CancellationToken ct);
     Task UpdateUserFamilyUnitIdAsync(Guid userId, Guid? familyUnitId, CancellationToken ct);
+
+    // Admin list
+    /// <summary>
+    /// Returns a paginated list of all family units with representative name and member count.
+    /// Supports text search on family name or representative full name.
+    /// </summary>
+    Task<(List<FamilyUnitAdminProjection> Items, int TotalCount)> GetAllPagedAsync(
+        int page,
+        int pageSize,
+        string? search,
+        string? sortBy,
+        string? sortOrder,
+        CancellationToken ct);
 }
 
 /// <summary>
@@ -111,5 +124,55 @@ public class FamilyUnitsRepository(AbuviDbContext db) : IFamilyUnitsRepository
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(u => u.FamilyUnitId, familyUnitId)
                 .SetProperty(u => u.UpdatedAt, DateTime.UtcNow), ct);
+    }
+
+    public async Task<(List<FamilyUnitAdminProjection> Items, int TotalCount)> GetAllPagedAsync(
+        int page, int pageSize, string? search, string? sortBy, string? sortOrder, CancellationToken ct)
+    {
+        var query = from fu in db.FamilyUnits
+                    join user in db.Users on fu.RepresentativeUserId equals user.Id into userGroup
+                    from u in userGroup.DefaultIfEmpty()
+                    select new
+                    {
+                        fu.Id,
+                        fu.Name,
+                        fu.RepresentativeUserId,
+                        RepresentativeName = u != null
+                            ? u.FirstName + " " + u.LastName
+                            : string.Empty,
+                        MembersCount = db.FamilyMembers.Count(m => m.FamilyUnitId == fu.Id),
+                        fu.CreatedAt,
+                        fu.UpdatedAt
+                    };
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(x =>
+                x.Name.ToLower().Contains(term) ||
+                x.RepresentativeName.ToLower().Contains(term));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+
+        query = (sortBy?.ToLower(), sortOrder?.ToLower()) switch
+        {
+            ("createdat", "desc") => query.OrderByDescending(x => x.CreatedAt),
+            ("createdat", _)      => query.OrderBy(x => x.CreatedAt),
+            ("name", "desc")      => query.OrderByDescending(x => x.Name),
+            _                     => query.OrderBy(x => x.Name),
+        };
+
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        var projections = items.Select(x => new FamilyUnitAdminProjection(
+            x.Id, x.Name, x.RepresentativeUserId,
+            x.RepresentativeName, x.MembersCount, x.CreatedAt, x.UpdatedAt
+        )).ToList();
+
+        return (projections, totalCount);
     }
 }

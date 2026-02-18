@@ -39,10 +39,6 @@ Required by GDPR and Spanish LOPD that explains how personal data is collected, 
 
 Organizational statutes that define ABUVI's structure, governance, objectives, and internal regulations.
 
-### 4. Transparencia (Transparency)
-
-Voluntary transparency page showing organizational information, financial reports, governance structure, and activities in line with good governance practices for non-profit organizations.
-
 ---
 
 ## Page Specifications
@@ -58,18 +54,17 @@ Voluntary transparency page showing organizational information, financial report
 
 ##### 1.1 Organization Identification
 
-- **Full legal name**: Asociación ABUVI (Amigos de la Buena Vida)
+- **Full legal name**: Asociación ABUVI (Amigos de la BUena VIda)
 - **Legal form**: Asociación (Non-profit Association)
-- **CIF/NIF**: [Tax identification number]
-- **Registered address**: [Full address]
+- **CIF/NIF**: G-79013322
+- **Registered address**: C/BUTRÓN 27, 28022 Madrid
 - **Registration**: [Registry number and location]
-- **Email**: <info@abuvi.org>
-- **Phone**: +34 600 000 000
+- **Email**: <juntaabuvi@gmail.com>
 
 ##### 1.2 Website Information
 
-- **Domain name**: [Domain]
-- **Hosting provider**: [Provider information if required]
+- **Domain name**: abuvi.org
+- **Hosting provider**: NAMECHEAP INC. (<www.namecheap.com>)
 - **Purpose**: Information and services for members and camp participants
 
 ##### 1.3 Intellectual Property
@@ -219,8 +214,8 @@ El presente sitio web tiene como objeto...
 ## 1. Responsable del Tratamiento
 
 Asociación ABUVI
-- **Correo electrónico:** info@abuvi.org
-- **Dirección:** [Address]
+- **Correo electrónico:** juntaabuvi@gmail.com
+- **Dirección:** C/BUTRÓN 27, 28022 Madrid
 
 ## 2. Datos Personales que Recopilamos
 

@@ -32,7 +32,17 @@ describe('UserCard', () => {
     expect(wrapper.text()).toContain('John Doe')
     expect(wrapper.text()).toContain('john@example.com')
     expect(wrapper.text()).toContain('+34 123 456 789')
-    expect(wrapper.text()).toContain('Member')
+    expect(wrapper.text()).toContain('Socio')
+  })
+
+  it('should display "Activo" when user is active', () => {
+    const wrapper = mountComponent({ user: mockUser })
+    expect(wrapper.text()).toContain('Activo')
+  })
+
+  it('should display "Inactivo" when user is inactive', () => {
+    const wrapper = mountComponent({ user: { ...mockUser, isActive: false } })
+    expect(wrapper.text()).toContain('Inactivo')
   })
 
   it('should emit select event when clicked', async () => {

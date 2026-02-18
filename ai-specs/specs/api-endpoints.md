@@ -7,6 +7,75 @@ This document describes the REST API endpoints for the ABUVI web application.
 - **Development**: `http://localhost:5079/api`
 - **Production**: TBD
 
+---
+
+## System Endpoints
+
+### GET /health
+
+Returns the health status of the API and its external dependencies. Does not require authentication.
+
+**Response — All healthy (HTTP 200):**
+
+```json
+{
+  "status": "Healthy",
+  "totalDuration": "00:00:00.0523416",
+  "entries": {
+    "database": {
+      "status": "Healthy",
+      "description": "Host=localhost;Database=abuvi",
+      "duration": "00:00:00.0412341",
+      "data": {}
+    },
+    "resend": {
+      "status": "Healthy",
+      "description": "Resend API key is configured",
+      "duration": "00:00:00.0000123",
+      "data": {}
+    }
+  }
+}
+```
+
+**Response — Dependency unavailable (HTTP 503):**
+
+```json
+{
+  "status": "Unhealthy",
+  "totalDuration": "00:00:05.0001234",
+  "entries": {
+    "database": {
+      "status": "Unhealthy",
+      "description": "Exception during check: ...",
+      "duration": "00:00:05.0001123",
+      "data": {}
+    },
+    "resend": {
+      "status": "Healthy",
+      "description": "Resend API key is configured",
+      "duration": "00:00:00.0000101",
+      "data": {}
+    }
+  }
+}
+```
+
+**HTTP Status Codes:**
+
+| Overall Status | HTTP Code | Meaning                                            |
+| -------------- | --------- | -------------------------------------------------- |
+| `Healthy`      | 200       | All checks pass                                    |
+| `Degraded`     | 200       | Non-critical issue (e.g. Resend not configured)    |
+| `Unhealthy`    | 503       | Critical dependency unavailable (e.g. DB down)     |
+
+**Checks included:**
+
+| Check name | Failure status | What it verifies                                      |
+| ---------- | -------------- | ----------------------------------------------------- |
+| `database` | `Unhealthy`    | PostgreSQL connectivity via `SELECT 1` (5s timeout)   |
+| `resend`   | `Degraded`     | Resend API key is configured in settings              |
+
 ## Response Format
 
 All API responses follow a consistent envelope format:
@@ -56,6 +125,7 @@ Registers a new user with email verification workflow.
 ```
 
 **Validation Rules:**
+
 - `email`: Required, valid email format, max 255 characters, must be unique
 - `password`: Required, min 8 characters, must contain:
   - At least one uppercase letter
@@ -91,6 +161,7 @@ Registers a new user with email verification workflow.
 **Error Responses:**
 
 - **400 Bad Request** - Validation failed
+
   ```json
   {
     "success": false,
@@ -105,6 +176,7 @@ Registers a new user with email verification workflow.
   ```
 
 - **400 Bad Request** - Duplicate email
+
   ```json
   {
     "success": false,
@@ -116,6 +188,7 @@ Registers a new user with email verification workflow.
   ```
 
 - **400 Bad Request** - Duplicate document number
+
   ```json
   {
     "success": false,
@@ -127,6 +200,7 @@ Registers a new user with email verification workflow.
   ```
 
 **Notes:**
+
 - User account starts with `isActive: false` and `emailVerified: false`
 - A verification email is sent with a token (24-hour expiration)
 - User must verify email before logging in
@@ -146,6 +220,7 @@ Verifies user's email address using the token sent via email.
 ```
 
 **Validation Rules:**
+
 - `token`: Required, URL-safe base64 string
 
 **Success Response (200 OK):**
@@ -162,6 +237,7 @@ Verifies user's email address using the token sent via email.
 **Error Responses:**
 
 - **404 Not Found** - Invalid token
+
   ```json
   {
     "success": false,
@@ -173,6 +249,7 @@ Verifies user's email address using the token sent via email.
   ```
 
 - **400 Bad Request** - Expired token
+
   ```json
   {
     "success": false,
@@ -184,6 +261,7 @@ Verifies user's email address using the token sent via email.
   ```
 
 **Notes:**
+
 - Once verified, both `emailVerified` and `isActive` become `true`
 - User can then log in normally
 - Token can only be used once
@@ -203,6 +281,7 @@ Resends the email verification link to the user.
 ```
 
 **Validation Rules:**
+
 - `email`: Required, valid email format
 
 **Success Response (200 OK):**
@@ -219,6 +298,7 @@ Resends the email verification link to the user.
 **Error Responses:**
 
 - **404 Not Found** - Email not found
+
   ```json
   {
     "success": false,
@@ -230,6 +310,7 @@ Resends the email verification link to the user.
   ```
 
 - **400 Bad Request** - Email already verified
+
   ```json
   {
     "success": false,
@@ -241,6 +322,7 @@ Resends the email verification link to the user.
   ```
 
 **Notes:**
+
 - Generates a new verification token (invalidates previous one)
 - New token expires 24 hours from generation
 - Can only resend for unverified accounts
@@ -261,6 +343,7 @@ Authenticates a user and returns a JWT token.
 ```
 
 **Validation Rules:**
+
 - `email`: Required, valid email format
 - `password`: Required
 
@@ -285,6 +368,7 @@ Authenticates a user and returns a JWT token.
 **Error Responses:**
 
 - **401 Unauthorized** - Invalid credentials
+
   ```json
   {
     "success": false,
@@ -296,6 +380,7 @@ Authenticates a user and returns a JWT token.
   ```
 
 - **401 Unauthorized** - Email not verified
+
   ```json
   {
     "success": false,
@@ -307,6 +392,7 @@ Authenticates a user and returns a JWT token.
   ```
 
 - **401 Unauthorized** - Account inactive
+
   ```json
   {
     "success": false,
@@ -318,6 +404,7 @@ Authenticates a user and returns a JWT token.
   ```
 
 **Notes:**
+
 - JWT token expires after 24 hours (configurable)
 - Token must be included in `Authorization: Bearer <token>` header for protected endpoints
 - User must have verified email and active account to log in
@@ -343,6 +430,7 @@ Registers a new user without email verification (legacy endpoint).
 ```
 
 **Notes:**
+
 - Creates user with `isActive: true` and `emailVerified: true` immediately
 - No email verification required
 - Kept for backward compatibility only
@@ -397,6 +485,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 **Token Claims:**
+
 - `sub`: User ID (UUID)
 - `email`: User email
 - `role`: User role (Admin, Board, Member)
@@ -426,6 +515,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ## Rate Limiting
 
 **Currently not implemented.** Future consideration:
+
 - Login: 5 attempts per minute per IP
 - Registration: 3 attempts per hour per IP
 - Resend verification: 3 attempts per hour per email
@@ -435,9 +525,11 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ## CORS Configuration
 
 **Allowed Origins (Development):**
+
 - `http://localhost:5173` (Vite dev server)
 
 **Allowed Origins (Production):**
+
 - TBD
 
 ---
@@ -513,11 +605,59 @@ Family units represent groups of people (families) who attend camp together. Eac
 - **Admin/Board**: Can view any family unit and its members
 - All endpoints require authentication
 
+---
+
+### GET /api/family-units
+
+Returns a paginated, searchable list of all family units. For admin panel use only.
+
+**Authorization**: Admin or Board only
+
+**Query Parameters:**
+
+- `page` (optional, integer, default: 1): Page number (minimum 1)
+- `pageSize` (optional, integer, default: 20, max: 100): Items per page
+- `search` (optional, string): Filter by family unit name or representative full name (case-insensitive, partial match)
+- `sortBy` (optional, string): Sort field — `name` (default) or `createdAt`
+- `sortOrder` (optional, string): Sort direction — `asc` (default) or `desc`
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "name": "Familia García",
+        "representativeUserId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "representativeName": "Juan García",
+        "membersCount": 4,
+        "createdAt": "2026-01-15T10:00:00Z",
+        "updatedAt": "2026-01-15T10:00:00Z"
+      }
+    ],
+    "totalCount": 42,
+    "page": 1,
+    "pageSize": 20,
+    "totalPages": 3
+  }
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User role is not Admin or Board
+
+---
+
 ### POST /api/family-units
 
 Creates a new family unit for the authenticated user. Automatically creates the representative as the first family member.
 
-**Authorization**: Authenticated users  
+**Authorization**: Authenticated users
 **Request Body:**
 
 ```json
@@ -542,6 +682,7 @@ Creates a new family unit for the authenticated user. Automatically creates the 
 ```
 
 **Error Responses:**
+
 - **409 Conflict**: User already has a family unit (`FAMILY_UNIT_EXISTS`)
 
 ---
@@ -550,9 +691,10 @@ Creates a new family unit for the authenticated user. Automatically creates the 
 
 Gets the family unit for the current authenticated user.
 
-**Authorization**: Authenticated users  
-**Success Response (200 OK):** Same as POST response  
+**Authorization**: Authenticated users
+**Success Response (200 OK):** Same as POST response
 **Error Responses:**
+
 - **404 Not Found**: User doesn't have a family unit
 
 ---
@@ -561,9 +703,10 @@ Gets the family unit for the current authenticated user.
 
 Gets a specific family unit by ID.
 
-**Authorization**: Representative OR Admin/Board  
-**Success Response (200 OK):** Same as POST response  
+**Authorization**: Representative OR Admin/Board
+**Success Response (200 OK):** Same as POST response
 **Error Responses:**
+
 - **403 Forbidden**: User is not the representative and not Admin/Board
 - **404 Not Found**: Family unit doesn't exist
 
@@ -573,7 +716,7 @@ Gets a specific family unit by ID.
 
 Updates a family unit.
 
-**Authorization**: Representative only  
+**Authorization**: Representative only
 **Request Body:**
 
 ```json
@@ -582,8 +725,9 @@ Updates a family unit.
 }
 ```
 
-**Success Response (200 OK):** Same as POST response  
+**Success Response (200 OK):** Same as POST response
 **Error Responses:**
+
 - **403 Forbidden**: User is not the representative
 - **404 Not Found**: Family unit doesn't exist
 
@@ -593,9 +737,10 @@ Updates a family unit.
 
 Deletes a family unit and all its members (cascade delete).
 
-**Authorization**: Representative only  
-**Success Response:** 204 No Content  
+**Authorization**: Representative only
+**Success Response:** 204 No Content
 **Error Responses:**
+
 - **403 Forbidden**: User is not the representative
 - **404 Not Found**: Family unit doesn't exist
 
@@ -607,7 +752,7 @@ Deletes a family unit and all its members (cascade delete).
 
 Adds a new family member to a family unit.
 
-**Authorization**: Representative only  
+**Authorization**: Representative only
 **Request Body:**
 
 ```json
@@ -625,6 +770,7 @@ Adds a new family member to a family unit.
 ```
 
 **Field Notes:**
+
 - `relationship`: Enum - `Parent`, `Child`, `Sibling`, `Spouse`, `Other`
 - `documentNumber`: Optional, uppercase alphanumeric only
 - `email`: Optional, valid email format
@@ -659,6 +805,7 @@ Adds a new family member to a family unit.
 **Security Note:** Medical notes and allergies are NEVER exposed in responses. Only boolean flags (`hasMedicalNotes`, `hasAllergies`) indicate their presence.
 
 **Error Responses:**
+
 - **403 Forbidden**: User is not the representative
 - **404 Not Found**: Family unit doesn't exist
 
@@ -668,7 +815,7 @@ Adds a new family member to a family unit.
 
 Gets all family members for a family unit.
 
-**Authorization**: Representative OR Admin/Board  
+**Authorization**: Representative OR Admin/Board
 **Success Response (200 OK):**
 
 ```json
@@ -682,6 +829,7 @@ Gets all family members for a family unit.
 ```
 
 **Error Responses:**
+
 - **403 Forbidden**: User is not the representative and not Admin/Board
 - **404 Not Found**: Family unit doesn't exist
 
@@ -691,9 +839,10 @@ Gets all family members for a family unit.
 
 Gets a single family member by ID.
 
-**Authorization**: Representative OR Admin/Board  
-**Success Response (200 OK):** Same as POST response  
+**Authorization**: Representative OR Admin/Board
+**Success Response (200 OK):** Same as POST response
 **Error Responses:**
+
 - **403 Forbidden**: User is not the representative and not Admin/Board
 - **404 Not Found**: Family unit or member doesn't exist
 
@@ -703,10 +852,11 @@ Gets a single family member by ID.
 
 Updates a family member.
 
-**Authorization**: Representative only  
-**Request Body:** Same as POST request  
-**Success Response (200 OK):** Same as POST response  
+**Authorization**: Representative only
+**Request Body:** Same as POST request
+**Success Response (200 OK):** Same as POST response
 **Error Responses:**
+
 - **403 Forbidden**: User is not the representative
 - **404 Not Found**: Family unit or member doesn't exist
 
@@ -716,10 +866,678 @@ Updates a family member.
 
 Deletes a family member. Representatives cannot delete their own family member record.
 
-**Authorization**: Representative only  
-**Success Response:** 204 No Content  
+**Authorization**: Representative only
+**Success Response:** 204 No Content
+**Success Response:** 204 No Content
 **Error Responses:**
+
 - **403 Forbidden**: User is not the representative
 - **404 Not Found**: Family unit or member doesn't exist
 - **409 Conflict**: Attempting to delete representative's own record (`CANNOT_DELETE_REPRESENTATIVE`)
 
+---
+
+## Google Places API (Backend Proxy)
+
+These endpoints proxy Google Places API calls through the backend to protect the API key from client exposure.
+
+**Base Path:** `/api/places`
+**Authentication Required:** Yes (JWT)
+
+---
+
+### POST /api/places/autocomplete
+
+Search for location suggestions based on text input. Results are restricted to Spain (`components=country:es`) and returned in Spanish.
+
+**Authorization**: Any authenticated user
+
+**Request Body:**
+
+```json
+{
+  "input": "Camping Madrid"
+}
+```
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "placeId": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+      "description": "Camping El Pinar, Madrid, España",
+      "mainText": "Camping El Pinar",
+      "secondaryText": "Madrid, España"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **503 Service Unavailable**: Google Places API is unavailable (`PLACES_SERVICE_UNAVAILABLE`)
+
+**Notes:**
+
+- Minimum meaningful input length: 3 characters (enforced client-side)
+- Frontend applies 300ms debounce before calling this endpoint
+
+---
+
+### POST /api/places/details
+
+Fetch detailed information for a specific place by its Google Place ID, including coordinates.
+
+**Authorization**: Any authenticated user
+
+**Request Body:**
+
+```json
+{
+  "placeId": "ChIJN1t_tDeuEmsRUsoyG83frY4"
+}
+```
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "placeId": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+    "name": "Camping El Pinar",
+    "formattedAddress": "Calle Example, 123, Madrid, España",
+    "latitude": 40.416775,
+    "longitude": -3.703790,
+    "types": ["campground", "lodging"]
+  }
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **404 Not Found**: Place ID not found
+- **503 Service Unavailable**: Google Places API is unavailable (`PLACES_SERVICE_UNAVAILABLE`)
+
+**Usage Context:**
+
+- Called after user selects a suggestion from the autocomplete endpoint
+- Used to auto-fill `name`, `location`, `latitude`, `longitude`, and `googlePlaceId` fields in camp creation/edit forms
+
+---
+
+## Camp Management Endpoints
+
+Manage camp location templates. All endpoints require Admin or Board role.
+
+**Base Path:** `/api/camps`
+
+---
+
+### GET /api/camps/current
+
+Returns the best available camp edition for the current user. Uses status-priority and year-fallback logic:
+
+1. **Priority 1**: Current year + `Open` status
+2. **Priority 2**: Current year + `Closed` status
+3. **Priority 3**: Previous year + `Completed` status
+4. **Priority 4**: Previous year + `Closed` status
+5. **404**: No qualifying edition found within the 1-year lookback window
+
+**Authorization**: Admin, Board, or Member
+
+**No query parameters.**
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "campId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "campName": "Camping El Pinar",
+    "campLocation": "Sierra de Guadarrama",
+    "campFormattedAddress": "Calle del Pinar, 1, 28740 Rascafría, Madrid",
+    "campLatitude": 40.8842,
+    "campLongitude": -3.8668,
+    "year": 2026,
+    "startDate": "2026-07-01T00:00:00Z",
+    "endDate": "2026-07-10T00:00:00Z",
+    "pricePerAdult": 180.00,
+    "pricePerChild": 120.00,
+    "pricePerBaby": 60.00,
+    "useCustomAgeRanges": false,
+    "customBabyMaxAge": null,
+    "customChildMinAge": null,
+    "customChildMaxAge": null,
+    "customAdultMinAge": null,
+    "status": "Open",
+    "maxCapacity": 100,
+    "registrationCount": 0,
+    "availableSpots": 100,
+    "notes": null,
+    "createdAt": "2026-02-17T10:00:00Z",
+    "updatedAt": "2026-02-17T10:00:00Z"
+  }
+}
+```
+
+> **Note:** `registrationCount` is always `0` and `availableSpots` equals `maxCapacity` until the Registrations feature is implemented.
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User role is not Member or above
+- **404 Not Found**: No qualifying camp edition exists within the 1-year lookback window
+
+---
+
+### GET /api/camps
+
+Returns all camp locations (lightweight, no photos).
+
+**Authorization**: Admin or Board
+
+**Query Parameters:**
+
+- `isActive` (optional, boolean): Filter by active status
+- `skip` (optional, integer, default: 0): Pagination offset
+- `take` (optional, integer, default: 100): Pagination limit
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "name": "Camping El Pinar",
+      "description": "A beautiful pine forest camp",
+      "location": "Sierra de Guadarrama",
+      "latitude": 40.8167,
+      "longitude": -3.9833,
+      "googlePlaceId": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+      "formattedAddress": "Calle del Pinar, 1, 28740 Rascafría, Madrid",
+      "phoneNumber": "+34 918 691 311",
+      "websiteUrl": "https://camping-elpinar.es",
+      "googleMapsUrl": "https://maps.google.com/?cid=123",
+      "googleRating": 4.3,
+      "googleRatingCount": 156,
+      "businessStatus": "OPERATIONAL",
+      "pricePerAdult": 180.00,
+      "pricePerChild": 120.00,
+      "pricePerBaby": 60.00,
+      "isActive": true,
+      "createdAt": "2026-02-17T10:00:00Z",
+      "updatedAt": "2026-02-17T10:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/camps/{id}
+
+Returns full camp details including all Google Places fields and photos.
+
+**Authorization**: Admin or Board
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "name": "Camping El Pinar",
+    "description": "A beautiful pine forest camp",
+    "location": "Sierra de Guadarrama",
+    "latitude": 40.8167,
+    "longitude": -3.9833,
+    "googlePlaceId": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+    "formattedAddress": "Calle del Pinar, 1, 28740 Rascafría, Madrid",
+    "streetAddress": "Calle del Pinar, 1",
+    "locality": "Rascafría",
+    "administrativeArea": "Madrid",
+    "postalCode": "28740",
+    "country": "Spain",
+    "phoneNumber": "+34 918 691 311",
+    "nationalPhoneNumber": "918 691 311",
+    "websiteUrl": "https://camping-elpinar.es",
+    "googleMapsUrl": "https://maps.google.com/?cid=123",
+    "googleRating": 4.3,
+    "googleRatingCount": 156,
+    "businessStatus": "OPERATIONAL",
+    "placeTypes": "[\"campground\",\"lodging\"]",
+    "lastGoogleSyncAt": "2026-02-17T10:00:00Z",
+    "pricePerAdult": 180.00,
+    "pricePerChild": 120.00,
+    "pricePerBaby": 60.00,
+    "isActive": true,
+    "photos": [
+      {
+        "id": "1fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "photoReference": "ATplDJa...",
+        "photoUrl": null,
+        "width": 4032,
+        "height": 3024,
+        "attributionName": "Google User",
+        "attributionUrl": "https://profiles.google.com/1234567890",
+        "isPrimary": true,
+        "displayOrder": 1
+      }
+    ],
+    "createdAt": "2026-02-17T10:00:00Z",
+    "updatedAt": "2026-02-17T10:00:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+- **404 Not Found**: Camp does not exist
+
+---
+
+### POST /api/camps
+
+Creates a new camp. If `googlePlaceId` is provided, the backend automatically enriches the record with Google Places data (address, phone, website, rating, photos).
+
+**Authorization**: Admin or Board
+**Request Body:**
+
+```json
+{
+  "name": "Camping El Pinar",
+  "description": "A beautiful pine forest camp",
+  "location": "Sierra de Guadarrama",
+  "latitude": 40.8167,
+  "longitude": -3.9833,
+  "googlePlaceId": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+  "pricePerAdult": 180.00,
+  "pricePerChild": 120.00,
+  "pricePerBaby": 60.00
+}
+```
+
+**Success Response (201 Created):** Same as `GET /api/camps/{id}` response (CampDetailResponse with photos)
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed (negative prices, invalid coordinates)
+
+---
+
+### PUT /api/camps/{id}
+
+Updates an existing camp.
+
+**Authorization**: Admin or Board
+
+**Request Body:** Same as POST plus `isActive` boolean
+
+**Success Response (200 OK):** Same as `GET /api/camps/{id}` response
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **404 Not Found**: Camp does not exist
+
+---
+
+### DELETE /api/camps/{id}
+
+Deletes a camp. Fails if the camp has any editions.
+
+**Authorization**: Admin or Board
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **400 Bad Request**: Camp has existing editions (`OPERATION_ERROR`)
+- **404 Not Found**: Camp does not exist
+
+---
+
+## Google Places API (Backend Proxy)
+
+These endpoints proxy Google Places API calls through the backend to protect the API key from client exposure.
+
+**Base Path:** `/api/places`
+**Authentication Required:** Yes (JWT)
+
+---
+
+### POST /api/places/autocomplete
+
+Search for location suggestions based on text input. Results are restricted to Spain (`components=country:es`) and returned in Spanish.
+
+**Authorization**: Any authenticated user
+
+**Request Body:**
+
+```json
+{
+  "input": "Camping Madrid"
+}
+```
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "placeId": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+      "description": "Camping El Pinar, Madrid, España",
+      "mainText": "Camping El Pinar",
+      "secondaryText": "Madrid, España"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **503 Service Unavailable**: Google Places API is unavailable (`PLACES_SERVICE_UNAVAILABLE`)
+
+**Notes:**
+
+- Minimum meaningful input length: 3 characters (enforced client-side)
+- Frontend applies 300ms debounce before calling this endpoint
+
+---
+
+### POST /api/places/details
+
+Fetch detailed information for a specific place by its Google Place ID, including coordinates.
+
+**Authorization**: Any authenticated user
+
+**Request Body:**
+
+```json
+{
+  "placeId": "ChIJN1t_tDeuEmsRUsoyG83frY4"
+}
+```
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "placeId": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+    "name": "Camping El Pinar",
+    "formattedAddress": "Calle Example, 123, Madrid, España",
+    "latitude": 40.416775,
+    "longitude": -3.703790,
+    "types": ["campground", "lodging"]
+  }
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **404 Not Found**: Place ID not found
+- **503 Service Unavailable**: Google Places API is unavailable (`PLACES_SERVICE_UNAVAILABLE`)
+
+**Usage Context:**
+
+- Called after user selects a suggestion from the autocomplete endpoint
+- Used to auto-fill `name`, `location`, `latitude`, `longitude`, and `googlePlaceId` fields in camp creation/edit forms
+
+---
+
+## Camp Edition Lifecycle Endpoints
+
+Manage the status lifecycle of camp editions. Status transitions follow a strict linear workflow: `Proposed → Draft → Open → Closed → Completed`. Rejection (archiving) is handled via `DELETE /api/camps/editions/{id}/reject`.
+
+**Base Path:** `/api/camps/editions`
+
+---
+
+### GET /api/camps/editions
+
+Returns all non-archived camp editions with optional filtering.
+
+**Authorization**: Admin or Board
+
+**Query Parameters:**
+
+- `year` (optional, integer): Filter by year
+- `status` (optional, enum): Filter by status (`Proposed`, `Draft`, `Open`, `Closed`, `Completed`)
+- `campId` (optional, GUID): Filter by camp
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "campId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "campName": "Camping El Pinar",
+      "year": 2026,
+      "startDate": "2026-07-01T00:00:00Z",
+      "endDate": "2026-07-10T00:00:00Z",
+      "pricePerAdult": 180.00,
+      "pricePerChild": 120.00,
+      "pricePerBaby": 60.00,
+      "useCustomAgeRanges": false,
+      "customBabyMaxAge": null,
+      "customChildMinAge": null,
+      "customChildMaxAge": null,
+      "customAdultMinAge": null,
+      "status": "Draft",
+      "maxCapacity": 100,
+      "notes": null,
+      "isArchived": false,
+      "createdAt": "2026-02-17T10:00:00Z",
+      "updatedAt": "2026-02-17T10:00:00Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User is not Admin or Board
+
+---
+
+### GET /api/camps/editions/active
+
+Returns the currently active (Open status) edition for the given year. Always returns 200; `data` is `null` if no open edition exists.
+
+**Authorization**: Admin, Board, or Member
+
+**Query Parameters:**
+
+- `year` (optional, integer, default: current year): Target year
+
+**Success Response (200 OK) — Edition exists:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "campId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "campName": "Camping El Pinar",
+    "campLocation": "Sierra de Guadarrama",
+    "campFormattedAddress": "Calle del Pinar, 1, 28740 Rascafría, Madrid",
+    "year": 2026,
+    "startDate": "2026-07-01T00:00:00Z",
+    "endDate": "2026-07-10T00:00:00Z",
+    "pricePerAdult": 180.00,
+    "pricePerChild": 120.00,
+    "pricePerBaby": 60.00,
+    "useCustomAgeRanges": false,
+    "customBabyMaxAge": null,
+    "customChildMinAge": null,
+    "customChildMaxAge": null,
+    "customAdultMinAge": null,
+    "status": "Open",
+    "maxCapacity": 100,
+    "registrationCount": 0,
+    "notes": null,
+    "createdAt": "2026-02-17T10:00:00Z",
+    "updatedAt": "2026-02-17T10:00:00Z"
+  }
+}
+```
+
+**Success Response (200 OK) — No active edition:**
+
+```json
+{
+  "success": true,
+  "data": null
+}
+```
+
+> **Note:** `registrationCount` is always `0` until the Registrations feature is integrated.
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User role is not Member or above
+
+---
+
+### GET /api/camps/editions/{id}
+
+Returns a single camp edition by ID.
+
+**Authorization**: Admin, Board, or Member
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "campId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "campName": "Camping El Pinar",
+    "year": 2026,
+    "startDate": "2026-07-01T00:00:00Z",
+    "endDate": "2026-07-10T00:00:00Z",
+    "pricePerAdult": 180.00,
+    "pricePerChild": 120.00,
+    "pricePerBaby": 60.00,
+    "useCustomAgeRanges": false,
+    "customBabyMaxAge": null,
+    "customChildMinAge": null,
+    "customChildMaxAge": null,
+    "customAdultMinAge": null,
+    "status": "Draft",
+    "maxCapacity": 100,
+    "notes": null,
+    "isArchived": false,
+    "createdAt": "2026-02-17T10:00:00Z",
+    "updatedAt": "2026-02-17T10:00:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: Insufficient role
+- **404 Not Found**: Edition not found (`NOT_FOUND`)
+
+---
+
+### PUT /api/camps/editions/{id}
+
+Updates a camp edition. Allowed fields depend on current status:
+
+| Status | Allowed fields |
+|--------|---------------|
+| `Proposed` / `Draft` | All fields |
+| `Open` | `notes`, `maxCapacity` only |
+| `Closed` / `Completed` | No updates allowed (400) |
+
+**Authorization**: Admin or Board
+
+**Request Body:**
+
+```json
+{
+  "startDate": "2026-07-01T00:00:00Z",
+  "endDate": "2026-07-10T00:00:00Z",
+  "pricePerAdult": 180.00,
+  "pricePerChild": 120.00,
+  "pricePerBaby": 60.00,
+  "useCustomAgeRanges": false,
+  "customBabyMaxAge": null,
+  "customChildMinAge": null,
+  "customChildMaxAge": null,
+  "customAdultMinAge": null,
+  "maxCapacity": 100,
+  "notes": "Updated notes"
+}
+```
+
+**Success Response (200 OK):** Returns the updated `CampEditionResponse` (same shape as GET by ID).
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation error or business rule violation (e.g. changing dates/prices on an Open edition) (`VALIDATION_ERROR` / `OPERATION_ERROR`)
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: Insufficient role
+- **404 Not Found**: Edition not found (`NOT_FOUND`)
+
+---
+
+### PATCH /api/camps/editions/{id}/status
+
+Changes the status of a camp edition following the allowed transition chain.
+
+**Authorization**: Admin or Board
+
+**Valid Transitions:**
+
+| From | To |
+|------|----|
+| `Proposed` | `Draft` |
+| `Draft` | `Open` |
+| `Open` | `Closed` |
+| `Closed` | `Completed` |
+
+Additional date constraints:
+- `Draft → Open`: Edition's `startDate` must not be in the past
+- `Closed → Completed`: Edition's `endDate` must be in the past
+
+**Request Body:**
+
+```json
+{
+  "status": "Draft"
+}
+```
+
+**Success Response (200 OK):** Returns the updated `CampEditionResponse`.
+
+**Error Responses:**
+
+- **400 Bad Request**: Invalid transition or date constraint violation (`VALIDATION_ERROR` / `OPERATION_ERROR`)
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: Insufficient role
+- **404 Not Found**: Edition not found (`NOT_FOUND`)

@@ -29,6 +29,9 @@ export interface CampEdition {
   createdAt: string
   updatedAt: string
   camp?: Camp
+  // Computed fields from backend (present in GET /api/camps/current response)
+  registrationCount?: number
+  availableSpots?: number
 }
 
 export type CampEditionStatus = 'Proposed' | 'Draft' | 'Open' | 'Closed' | 'Completed'

@@ -13,6 +13,9 @@ export interface FamilyUnitResponse {
   representativeUserId: string
   createdAt: string
   updatedAt: string
+  // Optional: populated in admin list endpoint (GET /api/family-units)
+  representativeName?: string
+  membersCount?: number
 }
 
 // Request to create family unit
