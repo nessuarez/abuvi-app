@@ -14,6 +14,7 @@ import UserForm from '@/components/users/UserForm.vue'
 import UserRoleCell from '@/components/users/UserRoleCell.vue'
 import UserRoleDialog from '@/components/users/UserRoleDialog.vue'
 import type { CreateUserRequest, User } from '@/types/user'
+import { getRoleLabel } from '@/utils/user'
 
 const router = useRouter()
 const toast = useToast()
@@ -65,8 +66,8 @@ const handleEditRole = (user: User) => {
 const handleRoleUpdated = (updatedUser: User) => {
   toast.add({
     severity: 'success',
-    summary: 'Role Updated',
-    detail: `${updatedUser.firstName} ${updatedUser.lastName}'s role has been updated to ${updatedUser.role}`,
+    summary: 'Rol actualizado',
+    detail: `El rol de ${updatedUser.firstName} ${updatedUser.lastName} ha sido actualizado a ${getRoleLabel(updatedUser.role)}`,
     life: 5000
   })
 }
@@ -96,8 +97,8 @@ const formatDate = (dateString: string) => {
 <template>
   <div class="container mx-auto p-4">
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-3xl font-bold text-gray-900">User Management</h1>
-      <Button label="Create User" icon="pi pi-plus" @click="openCreateDialog" />
+      <h1 class="text-3xl font-bold text-gray-900">Gestión de usuarios</h1>
+      <Button label="Crear usuario" icon="pi pi-plus" @click="openCreateDialog" />
     </div>
 
     <!-- Loading state -->
@@ -109,7 +110,7 @@ const formatDate = (dateString: string) => {
     <Message v-else-if="error" severity="error" :closable="false" class="mb-4">
       {{ error }}
       <Button
-        label="Retry"
+        label="Reintentar"
         text
         size="small"
         class="ml-2"
@@ -128,43 +129,43 @@ const formatDate = (dateString: string) => {
       class="rounded-lg"
       data-testid="users-table"
     >
-      <Column field="firstName" header="Name" sortable>
+      <Column field="firstName" header="Nombre" sortable>
         <template #body="{ data }">
           <span class="font-medium">{{ data.firstName }} {{ data.lastName }}</span>
         </template>
       </Column>
-      <Column field="email" header="Email" sortable />
-      <Column field="role" header="Role" sortable>
+      <Column field="email" header="Correo electrónico" sortable />
+      <Column field="role" header="Rol" sortable>
         <template #body="{ data }">
           <UserRoleCell :user="data" @edit-role="handleEditRole" />
         </template>
       </Column>
-      <Column field="phone" header="Phone">
+      <Column field="phone" header="Teléfono">
         <template #body="{ data }">
           <span class="text-gray-600">{{ data.phone || '—' }}</span>
         </template>
       </Column>
-      <Column field="isActive" header="Status" sortable>
+      <Column field="isActive" header="Estado" sortable>
         <template #body="{ data }">
           <Tag
-            :value="data.isActive ? 'Active' : 'Inactive'"
+            :value="data.isActive ? 'Activo' : 'Inactivo'"
             :severity="data.isActive ? 'success' : 'danger'"
           />
         </template>
       </Column>
-      <Column field="createdAt" header="Created" sortable>
+      <Column field="createdAt" header="Fecha de alta" sortable>
         <template #body="{ data }">
           <span class="text-sm text-gray-600">{{ formatDate(data.createdAt) }}</span>
         </template>
       </Column>
-      <Column header="Actions">
+      <Column header="Acciones">
         <template #body="{ data }">
           <Button
             icon="pi pi-eye"
             text
             rounded
             severity="info"
-            aria-label="View Details"
+            aria-label="Ver detalles"
             data-testid="view-user-button"
             @click="viewUserDetail(data.id)"
           />
@@ -175,7 +176,7 @@ const formatDate = (dateString: string) => {
     <!-- Create User Dialog -->
     <Dialog
       v-model:visible="showCreateDialog"
-      header="Create New User"
+      header="Crear nuevo usuario"
       modal
       class="w-full max-w-md"
     >

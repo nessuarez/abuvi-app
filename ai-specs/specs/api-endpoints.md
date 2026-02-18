@@ -536,6 +536,54 @@ Family units represent groups of people (families) who attend camp together. Eac
 - **Admin/Board**: Can view any family unit and its members
 - All endpoints require authentication
 
+---
+
+### GET /api/family-units
+
+Returns a paginated, searchable list of all family units. For admin panel use only.
+
+**Authorization**: Admin or Board only
+
+**Query Parameters:**
+
+- `page` (optional, integer, default: 1): Page number (minimum 1)
+- `pageSize` (optional, integer, default: 20, max: 100): Items per page
+- `search` (optional, string): Filter by family unit name or representative full name (case-insensitive, partial match)
+- `sortBy` (optional, string): Sort field — `name` (default) or `createdAt`
+- `sortOrder` (optional, string): Sort direction — `asc` (default) or `desc`
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "name": "Familia García",
+        "representativeUserId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "representativeName": "Juan García",
+        "membersCount": 4,
+        "createdAt": "2026-01-15T10:00:00Z",
+        "updatedAt": "2026-01-15T10:00:00Z"
+      }
+    ],
+    "totalCount": 42,
+    "page": 1,
+    "pageSize": 20,
+    "totalPages": 3
+  }
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User role is not Admin or Board
+
+---
+
 ### POST /api/family-units
 
 Creates a new family unit for the authenticated user. Automatically creates the representative as the first family member.
@@ -859,6 +907,65 @@ Fetch detailed information for a specific place by its Google Place ID, includin
 Manage camp location templates. All endpoints require Admin or Board role.
 
 **Base Path:** `/api/camps`
+
+---
+
+### GET /api/camps/current
+
+Returns the best available camp edition for the current user. Uses status-priority and year-fallback logic:
+
+1. **Priority 1**: Current year + `Open` status
+2. **Priority 2**: Current year + `Closed` status
+3. **Priority 3**: Previous year + `Completed` status
+4. **Priority 4**: Previous year + `Closed` status
+5. **404**: No qualifying edition found within the 1-year lookback window
+
+**Authorization**: Admin, Board, or Member
+
+**No query parameters.**
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "campId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "campName": "Camping El Pinar",
+    "campLocation": "Sierra de Guadarrama",
+    "campFormattedAddress": "Calle del Pinar, 1, 28740 Rascafría, Madrid",
+    "campLatitude": 40.8842,
+    "campLongitude": -3.8668,
+    "year": 2026,
+    "startDate": "2026-07-01T00:00:00Z",
+    "endDate": "2026-07-10T00:00:00Z",
+    "pricePerAdult": 180.00,
+    "pricePerChild": 120.00,
+    "pricePerBaby": 60.00,
+    "useCustomAgeRanges": false,
+    "customBabyMaxAge": null,
+    "customChildMinAge": null,
+    "customChildMaxAge": null,
+    "customAdultMinAge": null,
+    "status": "Open",
+    "maxCapacity": 100,
+    "registrationCount": 0,
+    "availableSpots": 100,
+    "notes": null,
+    "createdAt": "2026-02-17T10:00:00Z",
+    "updatedAt": "2026-02-17T10:00:00Z"
+  }
+}
+```
+
+> **Note:** `registrationCount` is always `0` and `availableSpots` equals `maxCapacity` until the Registrations feature is implemented.
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User role is not Member or above
+- **404 Not Found**: No qualifying camp edition exists within the 1-year lookback window
 
 ---
 

@@ -259,6 +259,54 @@ public class CampEditionsService
     }
 
     /// <summary>
+    /// Returns the best available camp edition using status-priority and year-fallback logic.
+    /// Priority: current year Open > current year Closed > previous year Completed > previous year Closed.
+    /// Returns null if no qualifying edition exists within the 1-year lookback window.
+    /// </summary>
+    public async Task<CurrentCampEditionResponse?> GetCurrentAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var currentYear = DateTime.UtcNow.Year;
+        var edition = await _repository.GetCurrentAsync(currentYear, cancellationToken);
+
+        if (edition == null)
+            return null;
+
+        var registrationCount = 0; // Placeholder until Registrations feature is built
+        var availableSpots = edition.MaxCapacity.HasValue
+            ? edition.MaxCapacity.Value - registrationCount
+            : (int?)null;
+
+        return new CurrentCampEditionResponse(
+            Id: edition.Id,
+            CampId: edition.CampId,
+            CampName: edition.Camp.Name,
+            CampLocation: edition.Camp.Location,
+            CampFormattedAddress: edition.Camp.FormattedAddress,
+            CampLatitude: edition.Camp.Latitude,
+            CampLongitude: edition.Camp.Longitude,
+            Year: edition.Year,
+            StartDate: edition.StartDate,
+            EndDate: edition.EndDate,
+            PricePerAdult: edition.PricePerAdult,
+            PricePerChild: edition.PricePerChild,
+            PricePerBaby: edition.PricePerBaby,
+            UseCustomAgeRanges: edition.UseCustomAgeRanges,
+            CustomBabyMaxAge: edition.CustomBabyMaxAge,
+            CustomChildMinAge: edition.CustomChildMinAge,
+            CustomChildMaxAge: edition.CustomChildMaxAge,
+            CustomAdultMinAge: edition.CustomAdultMinAge,
+            Status: edition.Status,
+            MaxCapacity: edition.MaxCapacity,
+            RegistrationCount: registrationCount,
+            AvailableSpots: availableSpots,
+            Notes: edition.Notes,
+            CreatedAt: edition.CreatedAt,
+            UpdatedAt: edition.UpdatedAt
+        );
+    }
+
+    /// <summary>
     /// Gets the active (Open) edition for the given year. Defaults to the current year.
     /// Returns null if no Open edition exists.
     /// </summary>

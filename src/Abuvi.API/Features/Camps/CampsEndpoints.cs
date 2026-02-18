@@ -156,6 +156,22 @@ public static class CampsEndpoints
             .WithOpenApi()
             .RequireAuthorization(policy => policy.RequireRole("Admin", "Board", "Member"));
 
+        // GET /api/camps/current - Get the current best-available camp edition (Member+)
+        // This is a separate group to keep routing clean (different base path: /api/camps vs /api/camps/editions)
+        var campCurrentGroup = app.MapGroup("/api/camps")
+            .WithTags("Camp Editions")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board", "Member"));
+
+        // NOTE: "current" is a literal string segment and does not conflict with /{id:guid}
+        // because the :guid constraint prevents non-GUID strings from matching.
+        campCurrentGroup.MapGet("/current", GetCurrentCampEdition)
+            .WithName("GetCurrentCampEdition")
+            .WithSummary("Get the current (best-available) camp edition")
+            .Produces<ApiResponse<CurrentCampEditionResponse>>()
+            .Produces(404)
+            .Produces(401);
+
         // GET /api/camps/editions/active - Get active (Open) edition (Member+)
         // NOTE: Must be registered before /{id:guid} to avoid "active" being treated as a GUID
         editionsMemberGroup.MapGet("/active", GetActiveEdition)
@@ -506,6 +522,23 @@ public static class CampsEndpoints
         {
             return Results.BadRequest(ApiResponse<CampEditionResponse>.Fail(ex.Message, "OPERATION_ERROR"));
         }
+    }
+
+    /// <summary>
+    /// Get the current best-available camp edition (status priority + year fallback)
+    /// </summary>
+    private static async Task<IResult> GetCurrentCampEdition(
+        [FromServices] CampEditionsService service,
+        CancellationToken cancellationToken = default)
+    {
+        var edition = await service.GetCurrentAsync(cancellationToken);
+
+        if (edition == null)
+            return Results.NotFound(
+                ApiResponse<CurrentCampEditionResponse>.NotFound(
+                    "No hay ninguna edición de campamento disponible"));
+
+        return Results.Ok(ApiResponse<CurrentCampEditionResponse>.Ok(edition));
     }
 
     /// <summary>

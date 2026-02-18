@@ -116,6 +116,9 @@ frontend/
 │   │   │   ├── AppHeader.vue
 │   │   │   ├── AppFooter.vue
 │   │   │   └── UserMenu.vue
+│   │   ├── legal/              # Legal page layout components (public pages)
+│   │   │   ├── LegalPageLayout.vue    # Shared content layout for all legal pages
+│   │   │   └── TableOfContents.vue    # Prop-driven anchor TOC navigation
 │   │   ├── auth/               # Authentication components
 │   │   │   ├── AuthContainer.vue
 │   │   │   ├── LoginForm.vue
@@ -142,7 +145,12 @@ frontend/
 │   │   ├── CampPage.vue
 │   │   ├── AnniversaryPage.vue
 │   │   ├── ProfilePage.vue
-│   │   └── AdminPage.vue
+│   │   ├── AdminPage.vue
+│   │   └── legal/              # Public legal pages (no auth required)
+│   │       ├── NoticeLegalPage.vue    # Aviso Legal (/legal/notice)
+│   │       ├── PrivacyPage.vue        # Política de Privacidad (/legal/privacy)
+│   │       ├── BylawsPage.vue         # Estatutos (/legal/bylaws)
+│   │       └── TransparencyPage.vue   # Transparencia (/legal/transparency)
 │   ├── pages/                  # Legacy route components (to be migrated to views/)
 │   │   ├── HomePage.vue
 │   │   ├── LoginPage.vue
@@ -661,7 +669,27 @@ const { camps, loading, error, fetchCamps } = useCamps()
 
 ### Route Protection
 
-All routes except the landing page (`/`) require authentication. Route guards enforce this in `router/index.ts`:
+All routes except the landing page (`/`) and legal pages (`/legal/*`) require authentication. Route guards enforce this in `router/index.ts`. **Public routes** (no `requiresAuth: true`) pass through the guard without restrictions.
+
+### Public Route Pattern
+
+For pages that must be accessible without login (e.g., legal pages), omit `requiresAuth` or set it to `false`. These pages render via `<router-view v-else />` for unauthenticated users and inside `AuthenticatedLayout` for authenticated users.
+
+Use a self-contained content layout component (like `LegalPageLayout`) that includes its own minimal navigation so the page is usable in both contexts.
+
+```typescript
+// Public legal routes — accessible without authentication
+{
+  path: '/legal/notice',
+  name: 'legal-notice',
+  component: () => import('@/views/legal/NoticeLegalPage.vue'),
+  meta: { title: 'ABUVI | Aviso Legal', requiresAuth: false }
+}
+```
+
+### Auth Guard Pattern
+
+Route guards enforce this in `router/index.ts`:
 
 ```typescript
 router.beforeEach((to, from, next) => {
@@ -1789,24 +1817,34 @@ toast.add({
 
 ### Role Translation Helper
 
-Always use a helper function for role translation:
+Always use the shared `getRoleLabel` utility from `@/utils/user` — never inline role translation logic in components.
 
 ```typescript
-const translateRole = (role: string): string => {
-  const roleMap: Record<string, string> = {
-    'Admin': 'Administrador',
-    'Board': 'Junta Directiva',
-    'Member': 'Socio',
-    'Guardian': 'Tutor'
-  }
-  return roleMap[role] || role
-}
+// ✅ Correct — import and use the shared utility
+import { getRoleLabel } from '@/utils/user'
 
 // Usage in template
 <template>
-  <span>{{ translateRole(user.role) }}</span>
+  <span>{{ getRoleLabel(user.role) }}</span>
 </template>
 ```
+
+The utility is defined in `frontend/src/utils/user.ts` and maps API role values (which stay as English strings) to Spanish display labels:
+
+```typescript
+// frontend/src/utils/user.ts
+const ROLE_LABELS: Record<string, string> = {
+  Admin: 'Administrador',
+  Board: 'Junta Directiva',
+  Member: 'Socio',
+}
+
+export const getRoleLabel = (role: UserRole | string): string => {
+  return ROLE_LABELS[role] ?? role
+}
+```
+
+> **Note:** API role values (`Admin`, `Board`, `Member`) are always stored and compared in English. Only the _display_ label is translated.
 
 ### API Error Handling
 
