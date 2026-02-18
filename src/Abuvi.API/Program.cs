@@ -5,6 +5,7 @@ using Abuvi.API.Features.Users;
 using Abuvi.API.Features.Auth;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
+using Abuvi.API.Features.Guests;
 using Abuvi.API.Features.Memberships;
 using Abuvi.API.Common.Services;
 using FluentValidation;
@@ -152,6 +153,10 @@ builder.Services.AddScoped<CampEditionsService>();
 builder.Services.AddScoped<IFamilyUnitsRepository, FamilyUnitsRepository>();
 builder.Services.AddScoped<FamilyUnitsService>();
 
+// Guests
+builder.Services.AddScoped<IGuestsRepository, GuestsRepository>();
+builder.Services.AddScoped<GuestsService>();
+
 // Memberships
 builder.Services.AddScoped<IMembershipsRepository, MembershipsRepository>();
 builder.Services.AddScoped<MembershipsService>();
@@ -184,6 +189,7 @@ builder.Services.AddScoped<Abuvi.API.Common.Services.IEmailService, Abuvi.API.Co
 
 // Background services
 builder.Services.AddHostedService<Abuvi.API.Common.BackgroundServices.LogCleanupService>();
+builder.Services.AddHostedService<Abuvi.API.Common.BackgroundServices.AnnualFeeGenerationService>();
 
 var app = builder.Build();
 
@@ -230,6 +236,7 @@ app.MapAuthEndpoints();
 app.MapUsersEndpoints();
 app.MapCampsEndpoints();
 app.MapFamilyUnitsEndpoints();
+app.MapGuestsEndpoints();
 app.MapMembershipsEndpoints();
 app.MapMembershipFeeEndpoints();
 
