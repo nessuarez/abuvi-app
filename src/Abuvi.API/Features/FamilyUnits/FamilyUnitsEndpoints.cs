@@ -21,6 +21,19 @@ public static class FamilyUnitsEndpoints
             .WithOpenApi()
             .RequireAuthorization();
 
+        // Board/Admin only group for administrative read operations
+        var adminGroup = app.MapGroup("/api/family-units")
+            .WithTags("Family Units")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"));
+
+        adminGroup.MapGet("/", GetAllFamilyUnits)
+            .WithName("GetAllFamilyUnits")
+            .WithSummary("Get paginated list of all family units (Admin/Board only)")
+            .Produces<ApiResponse<PagedFamilyUnitsResponse>>()
+            .Produces(401)
+            .Produces(403);
+
         // Family Unit endpoints
         group.MapPost("/", CreateFamilyUnit)
             .WithName("CreateFamilyUnit")
@@ -355,6 +368,19 @@ public static class FamilyUnitsEndpoints
         {
             return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
         }
+    }
+
+    private static async Task<IResult> GetAllFamilyUnits(
+        FamilyUnitsService service,
+        [Microsoft.AspNetCore.Mvc.FromQuery] int page = 1,
+        [Microsoft.AspNetCore.Mvc.FromQuery] int pageSize = 20,
+        [Microsoft.AspNetCore.Mvc.FromQuery] string? search = null,
+        [Microsoft.AspNetCore.Mvc.FromQuery] string? sortBy = null,
+        [Microsoft.AspNetCore.Mvc.FromQuery] string? sortOrder = null,
+        CancellationToken ct = default)
+    {
+        var result = await service.GetAllFamilyUnitsAsync(page, pageSize, search, sortBy, sortOrder, ct);
+        return TypedResults.Ok(ApiResponse<PagedFamilyUnitsResponse>.Ok(result));
     }
 
     private static async Task<IResult> DeleteFamilyMember(

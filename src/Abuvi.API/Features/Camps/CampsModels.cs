@@ -429,6 +429,39 @@ public record ActiveCampEditionResponse(
 );
 
 /// <summary>
+/// Response for the current (best-available) camp edition endpoint.
+/// Includes camp coordinates and computed availability fields.
+/// RegistrationCount is always 0 until the Registrations feature is implemented.
+/// </summary>
+public record CurrentCampEditionResponse(
+    Guid Id,
+    Guid CampId,
+    string CampName,
+    string? CampLocation,
+    string? CampFormattedAddress,
+    decimal? CampLatitude,
+    decimal? CampLongitude,
+    int Year,
+    DateTime StartDate,
+    DateTime EndDate,
+    decimal PricePerAdult,
+    decimal PricePerChild,
+    decimal PricePerBaby,
+    bool UseCustomAgeRanges,
+    int? CustomBabyMaxAge,
+    int? CustomChildMinAge,
+    int? CustomChildMaxAge,
+    int? CustomAdultMinAge,
+    CampEditionStatus Status,
+    int? MaxCapacity,
+    int RegistrationCount,
+    int? AvailableSpots,
+    string? Notes,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
+);
+
+/// <summary>
 /// Request to update a camp edition
 /// </summary>
 public record UpdateCampEditionRequest(

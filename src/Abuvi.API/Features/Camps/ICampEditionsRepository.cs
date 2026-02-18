@@ -46,4 +46,11 @@ public interface ICampEditionsRepository
         CampEditionStatus? status = null,
         Guid? campId = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the best available camp edition for the given year (Open preferred, then Closed),
+    /// falling back to the most recent Completed or Closed edition from the previous year.
+    /// Returns null if no qualifying edition exists within the lookback window.
+    /// </summary>
+    Task<CampEdition?> GetCurrentAsync(int currentYear, CancellationToken cancellationToken = default);
 }

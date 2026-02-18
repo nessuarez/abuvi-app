@@ -105,6 +105,46 @@ public record FamilyMemberResponse(
     DateTime UpdatedAt
 );
 
+// Admin list projections and response types
+
+/// <summary>
+/// Projection for admin list queries – joins FamilyUnit with User and counts members.
+/// Not a full entity; only returned from the repository's paged query.
+/// </summary>
+public record FamilyUnitAdminProjection(
+    Guid Id,
+    string Name,
+    Guid RepresentativeUserId,
+    string RepresentativeName,
+    int MembersCount,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
+);
+
+/// <summary>
+/// Response item for the admin family units list endpoint.
+/// </summary>
+public record FamilyUnitListItemResponse(
+    Guid Id,
+    string Name,
+    Guid RepresentativeUserId,
+    string RepresentativeName,
+    int MembersCount,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
+);
+
+/// <summary>
+/// Paginated response envelope for the admin family units list.
+/// </summary>
+public record PagedFamilyUnitsResponse(
+    List<FamilyUnitListItemResponse> Items,
+    int TotalCount,
+    int Page,
+    int PageSize,
+    int TotalPages
+);
+
 // Extension methods for mapping
 public static class FamilyUnitExtensions
 {
