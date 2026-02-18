@@ -1817,24 +1817,34 @@ toast.add({
 
 ### Role Translation Helper
 
-Always use a helper function for role translation:
+Always use the shared `getRoleLabel` utility from `@/utils/user` — never inline role translation logic in components.
 
 ```typescript
-const translateRole = (role: string): string => {
-  const roleMap: Record<string, string> = {
-    'Admin': 'Administrador',
-    'Board': 'Junta Directiva',
-    'Member': 'Socio',
-    'Guardian': 'Tutor'
-  }
-  return roleMap[role] || role
-}
+// ✅ Correct — import and use the shared utility
+import { getRoleLabel } from '@/utils/user'
 
 // Usage in template
 <template>
-  <span>{{ translateRole(user.role) }}</span>
+  <span>{{ getRoleLabel(user.role) }}</span>
 </template>
 ```
+
+The utility is defined in `frontend/src/utils/user.ts` and maps API role values (which stay as English strings) to Spanish display labels:
+
+```typescript
+// frontend/src/utils/user.ts
+const ROLE_LABELS: Record<string, string> = {
+  Admin: 'Administrador',
+  Board: 'Junta Directiva',
+  Member: 'Socio',
+}
+
+export const getRoleLabel = (role: UserRole | string): string => {
+  return ROLE_LABELS[role] ?? role
+}
+```
+
+> **Note:** API role values (`Admin`, `Board`, `Member`) are always stored and compared in English. Only the _display_ label is translated.
 
 ### API Error Handling
 

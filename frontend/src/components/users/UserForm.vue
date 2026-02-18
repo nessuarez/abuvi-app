@@ -5,6 +5,7 @@ import Select from 'primevue/select'
 import InputSwitch from 'primevue/inputswitch'
 import Button from 'primevue/button'
 import type { User, CreateUserRequest, UpdateUserRequest, UserRole } from '@/types/user'
+import { getRoleLabel } from '@/utils/user'
 
 interface Props {
   user?: User | null
@@ -35,9 +36,9 @@ const formData = reactive({
 const errors = reactive<Record<string, string>>({})
 
 const roleOptions = [
-  { label: 'Member', value: 'Member' },
-  { label: 'Board', value: 'Board' },
-  { label: 'Admin', value: 'Admin' }
+  { label: getRoleLabel('Member'), value: 'Member' },
+  { label: getRoleLabel('Board'), value: 'Board' },
+  { label: getRoleLabel('Admin'), value: 'Admin' }
 ]
 
 // Initialize form data in edit mode
@@ -61,24 +62,24 @@ const validate = (): boolean => {
 
   if (props.mode === 'create') {
     if (!formData.email.trim()) {
-      errors.email = 'Email is required'
+      errors.email = 'El correo electrónico es obligatorio'
     } else if (!formData.email.includes('@')) {
-      errors.email = 'Email must be valid'
+      errors.email = 'El formato del correo electrónico no es válido'
     }
 
     if (!formData.password.trim()) {
-      errors.password = 'Password is required'
+      errors.password = 'La contraseña es obligatoria'
     } else if (formData.password.length < 8) {
-      errors.password = 'Password must be at least 8 characters'
+      errors.password = 'La contraseña debe tener al menos 8 caracteres'
     }
   }
 
   if (!formData.firstName.trim()) {
-    errors.firstName = 'First name is required'
+    errors.firstName = 'El nombre es obligatorio'
   }
 
   if (!formData.lastName.trim()) {
-    errors.lastName = 'Last name is required'
+    errors.lastName = 'Los apellidos son obligatorios'
   }
 
   return Object.keys(errors).length === 0
@@ -130,67 +131,65 @@ const isFormValid = computed(() => {
   <form class="flex flex-col gap-4" @submit.prevent="handleSubmit">
     <!-- Email field (create mode only) -->
     <div v-if="mode === 'create'">
-      <label for="email" class="mb-2 block text-sm font-medium">Email *</label>
+      <label for="email" class="mb-2 block text-sm font-medium">Correo electrónico *</label>
       <InputText
         id="email"
         v-model="formData.email"
         type="email"
         class="w-full"
         :invalid="!!errors.email"
-        placeholder="user@example.com"
+        placeholder="usuario@ejemplo.com"
       />
       <small v-if="errors.email" class="text-red-500">{{ errors.email }}</small>
     </div>
 
     <!-- Email display (edit mode) -->
     <div v-else>
-      <label class="mb-2 block text-sm font-medium">Email</label>
+      <label class="mb-2 block text-sm font-medium">Correo electrónico</label>
       <p class="text-gray-700">{{ user?.email }}</p>
     </div>
 
     <!-- Password field (create mode only) -->
     <div v-if="mode === 'create'">
-      <label for="password" class="mb-2 block text-sm font-medium">Password *</label>
+      <label for="password" class="mb-2 block text-sm font-medium">Contraseña *</label>
       <InputText
         id="password"
         v-model="formData.password"
         type="password"
         class="w-full"
         :invalid="!!errors.password"
-        placeholder="Minimum 8 characters"
+        placeholder="Mínimo 8 caracteres"
       />
       <small v-if="errors.password" class="text-red-500">{{ errors.password }}</small>
     </div>
 
     <!-- First Name -->
     <div>
-      <label for="firstName" class="mb-2 block text-sm font-medium">First Name *</label>
+      <label for="firstName" class="mb-2 block text-sm font-medium">Nombre *</label>
       <InputText
         id="firstName"
         v-model="formData.firstName"
         class="w-full"
         :invalid="!!errors.firstName"
-        placeholder="John"
       />
       <small v-if="errors.firstName" class="text-red-500">{{ errors.firstName }}</small>
     </div>
 
     <!-- Last Name -->
     <div>
-      <label for="lastName" class="mb-2 block text-sm font-medium">Last Name *</label>
+      <label for="lastName" class="mb-2 block text-sm font-medium">Apellidos *</label>
       <InputText
         id="lastName"
         v-model="formData.lastName"
         class="w-full"
         :invalid="!!errors.lastName"
-        placeholder="Doe"
       />
       <small v-if="errors.lastName" class="text-red-500">{{ errors.lastName }}</small>
     </div>
 
     <!-- Phone -->
     <div>
-      <label for="phone" class="mb-2 block text-sm font-medium">Phone (optional)</label>
+      <label for="phone" class="mb-2 block text-sm font-medium">Teléfono (opcional)</label>
       <InputText
         id="phone"
         v-model="formData.phone"
@@ -202,7 +201,7 @@ const isFormValid = computed(() => {
 
     <!-- Role (create mode only) -->
     <div v-if="mode === 'create'">
-      <label for="role" class="mb-2 block text-sm font-medium">Role *</label>
+      <label for="role" class="mb-2 block text-sm font-medium">Rol *</label>
       <Select
         id="role"
         v-model="formData.role"
@@ -210,13 +209,13 @@ const isFormValid = computed(() => {
         option-label="label"
         option-value="value"
         class="w-full"
-        placeholder="Select a role"
+        placeholder="Seleccionar un rol"
       />
     </div>
 
     <!-- Active status (edit mode only) -->
     <div v-if="mode === 'edit'" class="flex items-center gap-3">
-      <label for="isActive" class="text-sm font-medium">Active</label>
+      <label for="isActive" class="text-sm font-medium">Activo</label>
       <InputSwitch id="isActive" v-model="formData.isActive" />
     </div>
 
@@ -224,14 +223,14 @@ const isFormValid = computed(() => {
     <div class="flex gap-3">
       <Button
         type="submit"
-        :label="mode === 'create' ? 'Create User' : 'Update User'"
+        :label="mode === 'create' ? 'Crear usuario' : 'Actualizar usuario'"
         :loading="loading"
         :disabled="!isFormValid || loading"
         class="flex-1"
       />
       <Button
         type="button"
-        label="Cancel"
+        label="Cancelar"
         severity="secondary"
         outlined
         @click="handleCancel"
