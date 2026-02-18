@@ -12,6 +12,7 @@
 This plan implements the complete Guests System, allowing families to register external guests who can attend camps.
 
 **Stories covered:**
+
 - Story 2.1.1: Create Guest Entity and Configuration
 - Story 2.1.2: Create Guests Repository
 - Story 2.2.1: Create Guests Service
@@ -88,10 +89,12 @@ dotnet ef database update --project src/Abuvi.API
 ### Step 9: Create Guest Validators
 
 **Files:**
+
 - `src/Abuvi.API/Features/Guests/CreateGuestValidator.cs`
 - `src/Abuvi.API/Features/Guests/UpdateGuestValidator.cs`
 
 Both validators enforce Spanish error messages for:
+
 - FirstName/LastName (required, max 100)
 - DateOfBirth (required, must be past date)
 - DocumentNumber (optional, uppercase alphanumeric, max 50)
@@ -143,6 +146,7 @@ Expected: All ~90+ tests passing
 ## Acceptance Criteria
 
 **Story 2.1.1:**
+
 - [x] Guest entity with all required fields
 - [x] Encrypted MedicalNotes and Allergies fields
 - [x] EF Core configuration with cascade delete
@@ -150,23 +154,27 @@ Expected: All ~90+ tests passing
 - [x] Migration created and applied
 
 **Story 2.1.2:**
+
 - [x] IGuestsRepository interface defined
 - [x] GuestsRepository with encryption/decryption
 - [x] Registered in DI
 - [x] Unit and integration tests
 
 **Story 2.2.1:**
+
 - [x] GuestsService with Create, Update, Get, List, Delete
 - [x] FamilyUnit validation
 - [x] DocumentNumber uppercase normalization
 - [x] Soft delete
 
 **Story 2.2.2:**
+
 - [x] CreateGuestValidator with Spanish messages
 - [x] UpdateGuestValidator with Spanish messages
 - [x] All field validations
 
 **Story 2.2.3:**
+
 - [x] 5 REST endpoints
 - [x] Validation filters applied
 - [x] OpenAPI documentation
@@ -177,6 +185,7 @@ Expected: All ~90+ tests passing
 ## Files Created/Modified
 
 **Created:**
+
 - `src/Abuvi.API/Features/Guests/GuestsModels.cs`
 - `src/Abuvi.API/Data/Configurations/GuestConfiguration.cs`
 - `src/Abuvi.API/Features/Guests/GuestsRepository.cs`
@@ -193,6 +202,7 @@ Expected: All ~90+ tests passing
 - `src/Abuvi.Tests/Integration/Features/Guests/GuestsEndpointsTests.cs`
 
 **Modified:**
+
 - `src/Abuvi.API/Data/AbuviDbContext.cs` (add Guest DbSet)
 - `src/Abuvi.API/appsettings.json` (add Encryption:Key)
 - `src/Abuvi.API/Program.cs` (register services and endpoints)
