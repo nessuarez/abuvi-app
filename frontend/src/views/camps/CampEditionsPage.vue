@@ -152,30 +152,12 @@ const handleEditionSaved = (_edition: CampEdition) => {
 
       <!-- Filters -->
       <div class="mb-6 flex flex-wrap gap-3">
-        <InputNumber
-          v-model="filters.year"
-          placeholder="Año"
-          :use-grouping="false"
-          :min="2000"
-          :max="2100"
-          class="w-32"
-        />
-        <Select
-          v-model="filters.status"
-          :options="statusOptions"
-          option-label="label"
-          option-value="value"
-          placeholder="Estado"
-          class="w-48"
-        />
-        <Select
-          v-model="filters.campId"
-          :options="campOptions"
-          option-label="label"
-          option-value="value"
-          placeholder="Ubicación"
-          class="w-56"
-        />
+        <InputNumber v-model="filters.year" placeholder="Año" :use-grouping="false" :min="2000" :max="2100"
+          class="w-32" />
+        <Select v-model="filters.status" :options="statusOptions" option-label="label" option-value="value"
+          placeholder="Estado" class="w-48" />
+        <Select v-model="filters.campId" :options="campOptions" option-label="label" option-value="value"
+          placeholder="Ubicación" class="w-56" />
       </div>
 
       <!-- Loading -->
@@ -190,28 +172,16 @@ const handleEditionSaved = (_edition: CampEdition) => {
       </Message>
 
       <!-- Empty -->
-      <div
-        v-else-if="!loading && allEditions.length === 0"
-        class="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center"
-      >
+      <div v-else-if="!loading && allEditions.length === 0"
+        class="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
         <i class="pi pi-calendar mb-4 text-4xl text-gray-400" />
         <p class="text-lg font-semibold text-gray-700">No hay ediciones</p>
         <p class="mt-1 text-sm text-gray-500">No se encontraron ediciones con los filtros seleccionados.</p>
       </div>
 
       <!-- DataTable -->
-      <div
-        v-else
-        class="overflow-hidden rounded-lg border border-gray-200 bg-white"
-        data-testid="editions-table"
-      >
-        <DataTable
-          :value="allEditions"
-          striped-rows
-          paginator
-          :rows="10"
-          :loading="loading"
-        >
+      <div v-else class="overflow-hidden rounded-lg border border-gray-200 bg-white" data-testid="editions-table">
+        <DataTable :value="allEditions" striped-rows paginator :rows="10" :loading="loading">
           <Column header="Ubicación" sortable sort-field="camp.name">
             <template #body="{ data }">
               <span class="font-medium">{{ data.camp?.name ?? '—' }}</span>
@@ -245,37 +215,14 @@ const handleEditionSaved = (_edition: CampEdition) => {
           <Column header="Acciones" class="w-36">
             <template #body="{ data }">
               <div class="flex gap-1">
-                <Button
-                  v-tooltip.top="'Ver detalle'"
-                  icon="pi pi-eye"
-                  text
-                  rounded
-                  size="small"
-                  aria-label="Ver detalle de edición"
-                  @click="handleViewDetail(data)"
-                />
-                <Button
-                  v-tooltip.top="'Cambiar estado'"
-                  icon="pi pi-sync"
-                  text
-                  rounded
-                  size="small"
-                  aria-label="Cambiar estado"
-                  :disabled="data.status === 'Completed'"
-                  data-testid="change-status-btn"
-                  @click="handleChangeStatus(data)"
-                />
-                <Button
-                  v-tooltip.top="'Editar'"
-                  icon="pi pi-pencil"
-                  text
-                  rounded
-                  size="small"
-                  aria-label="Editar edición"
-                  :disabled="data.status === 'Closed' || data.status === 'Completed'"
-                  data-testid="edit-edition-btn"
-                  @click="handleEdit(data)"
-                />
+                <Button v-tooltip.top="'Ver detalle'" icon="pi pi-eye" text rounded size="small"
+                  aria-label="Ver detalle de edición" @click="handleViewDetail(data)" />
+                <Button v-tooltip.top="'Cambiar estado'" icon="pi pi-sync" text rounded size="small"
+                  aria-label="Cambiar estado" :disabled="data.status === 'Completed'" data-testid="change-status-btn"
+                  @click="handleChangeStatus(data)" />
+                <Button v-tooltip.top="'Editar'" icon="pi pi-pencil" text rounded size="small"
+                  aria-label="Editar edición" :disabled="data.status === 'Closed' || data.status === 'Completed'"
+                  data-testid="edit-edition-btn" @click="handleEdit(data)" />
               </div>
             </template>
           </Column>
@@ -284,20 +231,11 @@ const handleEditionSaved = (_edition: CampEdition) => {
     </div>
 
     <!-- Status Dialog -->
-    <CampEditionStatusDialog
-      v-if="selectedEdition"
-      v-model:visible="showStatusDialog"
-      :edition="selectedEdition"
-      :loading="statusLoading"
-      @confirm="handleStatusConfirm"
-    />
+    <CampEditionStatusDialog v-if="selectedEdition" v-model:visible="showStatusDialog" :edition="selectedEdition"
+      :loading="statusLoading" @confirm="handleStatusConfirm" />
 
     <!-- Edit Dialog -->
-    <CampEditionUpdateDialog
-      v-if="selectedEdition"
-      v-model:visible="showEditDialog"
-      :edition="selectedEdition"
-      @saved="handleEditionSaved"
-    />
+    <CampEditionUpdateDialog v-if="selectedEdition" v-model:visible="showEditDialog" :edition="selectedEdition"
+      @saved="handleEditionSaved" />
   </Container>
 </template>

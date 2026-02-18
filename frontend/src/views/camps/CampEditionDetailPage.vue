@@ -31,13 +31,7 @@ onMounted(async () => {
 <template>
   <Container>
     <div class="py-8">
-      <Button
-        label="Volver"
-        icon="pi pi-arrow-left"
-        text
-        class="mb-4"
-        @click="router.back()"
-      />
+      <Button label="Volver" icon="pi pi-arrow-left" text class="mb-4" @click="router.back()" />
 
       <div v-if="loading" class="flex justify-center py-12">
         <ProgressSpinner />

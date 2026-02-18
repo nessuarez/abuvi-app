@@ -5,6 +5,7 @@
 This specification covers the implementation of the Camp Edition Extras feature, which allows board members to define and manage optional add-ons or services for specific camp editions (e.g., t-shirts, excursions, meals).
 
 **Related Specs:**
+
 - Parent: [camp-crud-enriched.md](../feat-camps-definition/camp-crud-enriched.md)
 - Implementation Plan: [IMPLEMENTATION_PLAN.md](../feat-camps-definition/IMPLEMENTATION_PLAN.md)
 - Dependencies: [camp-editions-management.md](../feat-camp-editions-management/camp-editions-management.md)
@@ -644,6 +645,7 @@ When a family registers for a camp, extras are handled as follows:
 4. **Quantity**: Validated against `max_quantity`
 
 **Registration Extras Table** (already exists):
+
 ```sql
 CREATE TABLE registration_extras (
     id UUID PRIMARY KEY,
