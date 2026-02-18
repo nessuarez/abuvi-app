@@ -12,6 +12,17 @@ const route = useRoute()
 const router = useRouter()
 const { loading, error, getCampById } = useCamps()
 
+const goToEditions = () => {
+  router.push({ name: 'camp-editions', query: { campId: route.params.id as string } })
+}
+
+const proposeNewEdition = () => {
+  router.push({
+    name: 'camp-editions',
+    query: { campId: route.params.id as string, action: 'propose' }
+  })
+}
+
 const camp = ref<Camp | null>(null)
 
 const formatCurrency = (amount: number): string => {
@@ -128,10 +139,36 @@ const goBack = () => {
                 <span class="text-gray-600">Última actualización:</span>
                 <span>{{ new Date(camp.updatedAt).toLocaleDateString('es-ES') }}</span>
               </div>
-              <div v-if="camp.editionCount !== undefined" class="flex justify-between">
-                <span class="text-gray-600">Ediciones:</span>
-                <span>{{ camp.editionCount }} {{ camp.editionCount === 1 ? 'edición' : 'ediciones' }}</span>
-              </div>
+            </div>
+          </div>
+
+          <!-- Editions -->
+          <div class="rounded-lg border border-gray-200 bg-white p-6">
+            <div class="mb-4 flex items-center justify-between">
+              <h2 class="text-lg font-semibold text-gray-900">Ediciones</h2>
+              <span
+                v-if="camp.editionCount !== undefined"
+                class="rounded-full bg-gray-100 px-2 py-0.5 text-sm text-gray-600"
+              >
+                {{ camp.editionCount }} {{ camp.editionCount === 1 ? 'edición' : 'ediciones' }}
+              </span>
+            </div>
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <Button
+                label="Ver ediciones"
+                icon="pi pi-list"
+                outlined
+                class="flex-1"
+                data-testid="view-editions-btn"
+                @click="goToEditions"
+              />
+              <Button
+                label="Nueva propuesta"
+                icon="pi pi-plus"
+                class="flex-1"
+                data-testid="propose-edition-btn"
+                @click="proposeNewEdition"
+              />
             </div>
           </div>
         </div>
