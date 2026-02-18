@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { api } from '@/utils/api'
-import type { Camp, CreateCampRequest, UpdateCampRequest, CampStatus } from '@/types/camp'
-import type { ApiResponse, PagedResult } from '@/types/api'
+import type { Camp, CreateCampRequest, UpdateCampRequest } from '@/types/camp'
+import type { ApiResponse } from '@/types/api'
 
 export function useCamps() {
   const camps = ref<Camp[]>([])
@@ -9,23 +9,23 @@ export function useCamps() {
   const error = ref<string | null>(null)
 
   const fetchCamps = async (params?: {
-    page?: number
-    pageSize?: number
-    status?: CampStatus
+    isActive?: boolean
+    skip?: number
+    take?: number
   }): Promise<void> => {
     loading.value = true
     error.value = null
     try {
       const queryParams = new URLSearchParams()
-      if (params?.page) queryParams.append('page', params.page.toString())
-      if (params?.pageSize) queryParams.append('pageSize', params.pageSize.toString())
-      if (params?.status) queryParams.append('status', params.status)
+      if (params?.isActive !== undefined) queryParams.append('isActive', params.isActive.toString())
+      if (params?.skip !== undefined) queryParams.append('skip', params.skip.toString())
+      if (params?.take !== undefined) queryParams.append('take', params.take.toString())
 
       const url = `/camps${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
-      const response = await api.get<ApiResponse<PagedResult<Camp>>>(url)
+      const response = await api.get<ApiResponse<Camp[]>>(url)
 
       if (response.data.success && response.data.data) {
-        camps.value = response.data.data.items
+        camps.value = response.data.data
       } else {
         camps.value = []
       }

@@ -71,12 +71,16 @@ const debouncedSearch = useDebounceFn(async (query: string) => {
 
 // Watch search query for autocomplete
 watch(searchQuery, (newQuery) => {
-  debouncedSearch(newQuery)
+  if (typeof newQuery === 'string') {
+    debouncedSearch(newQuery)
+  }
 })
 
 // Sync searchQuery with formData.name when typing directly
 watch(searchQuery, (newQuery) => {
-  formData.name = newQuery
+  if (typeof newQuery === 'string') {
+    formData.name = newQuery
+  }
 })
 
 // Handle place selection from autocomplete
