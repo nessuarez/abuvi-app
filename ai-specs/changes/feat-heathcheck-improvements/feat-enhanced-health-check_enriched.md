@@ -32,6 +32,7 @@ Use **`Microsoft.AspNetCore.Diagnostics.HealthChecks`** — the .NET standard ap
 ### Standard vs Custom Status Page
 
 The standard JSON format from this middleware is the **industry standard** and is supported out-of-the-box by:
+
 - Kubernetes liveness/readiness probes
 - Azure Monitor / Application Insights
 - AWS CloudWatch
@@ -60,6 +61,7 @@ A dedicated status page UI (`AspNetCore.HealthChecks.UI`) exists but is **out of
 Full health check. Used by monitoring tools and manual inspection.
 
 **Response — All healthy (HTTP 200):**
+
 ```json
 {
   "status": "Healthy",
@@ -82,6 +84,7 @@ Full health check. Used by monitoring tools and manual inspection.
 ```
 
 **Response — Database down (HTTP 503):**
+
 ```json
 {
   "status": "Unhealthy",
@@ -127,6 +130,7 @@ AspNetCore.HealthChecks.NpgSql  # PostgreSQL connectivity check
 ```
 
 Install via:
+
 ```bash
 dotnet add src/Abuvi.API/Abuvi.API.csproj package AspNetCore.HealthChecks.NpgSql
 ```
@@ -160,6 +164,7 @@ public class ResendHealthCheck(IConfiguration configuration) : IHealthCheck
 ### 2. `Program.cs` changes
 
 **Remove** the manual health check endpoint:
+
 ```csharp
 // REMOVE THIS:
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
@@ -168,6 +173,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = Dat
 ```
 
 **Add** health check registration in the services section:
+
 ```csharp
 // After the existing service registrations:
 builder.Services.AddHealthChecks()
@@ -183,6 +189,7 @@ builder.Services.AddHealthChecks()
 ```
 
 **Add** health check middleware after `app.Build()`:
+
 ```csharp
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
@@ -222,11 +229,13 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 #### Option B: Use `AspNetCore.HealthChecks.UI.Client` (standard rich format)
 
 Install:
+
 ```bash
 dotnet add src/Abuvi.API/Abuvi.API.csproj package AspNetCore.HealthChecks.UI.Client
 ```
 
 Then:
+
 ```csharp
 using HealthChecks.UI.Client;
 
@@ -252,6 +261,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 - `Unhealthy` → HTTP 503
 
 > To make `Degraded` also return `503`, configure `ResultStatusCodes` in `HealthCheckOptions`:
+>
 > ```csharp
 > ResultStatusCodes = {
 >     [HealthStatus.Healthy] = StatusCodes.Status200OK,
@@ -265,6 +275,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 ## TDD Steps
 
 ### Test file location
+
 `tests/Abuvi.Tests/Unit/Common/HealthChecks/ResendHealthCheckTests.cs`
 
 ### Test scenarios (write these FIRST, in order)
@@ -349,9 +360,11 @@ public class ResendHealthCheckTests
 ## Non-Functional Requirements
 
 - Each health check should have a **timeout** to prevent a slow DB from blocking the endpoint indefinitely
+
   ```csharp
   .AddNpgSql(connectionString, timeout: TimeSpan.FromSeconds(5), ...)
   ```
+
 - The database check uses `SELECT 1` internally (from the `AspNetCore.HealthChecks.NpgSql` package) — this is extremely lightweight
 - The Resend check is synchronous and configuration-only — no network call, so no timeout needed
 
@@ -362,6 +375,7 @@ public class ResendHealthCheckTests
 When new external services are added to the project, register a new `IHealthCheck` in `Common/HealthChecks/` and add it to `AddHealthChecks()` in `Program.cs`. No other changes needed.
 
 Examples for future services:
+
 - **Redsys** (payment gateway): Check that secret key and merchant code are configured
 - **Google Places**: Check that API key is configured
 - **Seq**: Optional degraded check if the log server is unreachable
