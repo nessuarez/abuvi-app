@@ -7,6 +7,75 @@ This document describes the REST API endpoints for the ABUVI web application.
 - **Development**: `http://localhost:5079/api`
 - **Production**: TBD
 
+---
+
+## System Endpoints
+
+### GET /health
+
+Returns the health status of the API and its external dependencies. Does not require authentication.
+
+**Response — All healthy (HTTP 200):**
+
+```json
+{
+  "status": "Healthy",
+  "totalDuration": "00:00:00.0523416",
+  "entries": {
+    "database": {
+      "status": "Healthy",
+      "description": "Host=localhost;Database=abuvi",
+      "duration": "00:00:00.0412341",
+      "data": {}
+    },
+    "resend": {
+      "status": "Healthy",
+      "description": "Resend API key is configured",
+      "duration": "00:00:00.0000123",
+      "data": {}
+    }
+  }
+}
+```
+
+**Response — Dependency unavailable (HTTP 503):**
+
+```json
+{
+  "status": "Unhealthy",
+  "totalDuration": "00:00:05.0001234",
+  "entries": {
+    "database": {
+      "status": "Unhealthy",
+      "description": "Exception during check: ...",
+      "duration": "00:00:05.0001123",
+      "data": {}
+    },
+    "resend": {
+      "status": "Healthy",
+      "description": "Resend API key is configured",
+      "duration": "00:00:00.0000101",
+      "data": {}
+    }
+  }
+}
+```
+
+**HTTP Status Codes:**
+
+| Overall Status | HTTP Code | Meaning                                            |
+| -------------- | --------- | -------------------------------------------------- |
+| `Healthy`      | 200       | All checks pass                                    |
+| `Degraded`     | 200       | Non-critical issue (e.g. Resend not configured)    |
+| `Unhealthy`    | 503       | Critical dependency unavailable (e.g. DB down)     |
+
+**Checks included:**
+
+| Check name | Failure status | What it verifies                                      |
+| ---------- | -------------- | ----------------------------------------------------- |
+| `database` | `Unhealthy`    | PostgreSQL connectivity via `SELECT 1` (5s timeout)   |
+| `resend`   | `Degraded`     | Resend API key is configured in settings              |
+
 ## Response Format
 
 All API responses follow a consistent envelope format:

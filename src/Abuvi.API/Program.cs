@@ -1,15 +1,20 @@
 using Microsoft.EntityFrameworkCore;
 using Abuvi.API.Data;
 using Abuvi.API.Common.Middleware;
+using Abuvi.API.Common.HealthChecks;
 using Abuvi.API.Features.Users;
 using Abuvi.API.Features.Auth;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.GooglePlaces;
 using Abuvi.API.Features.FamilyUnits;
+using Abuvi.API.Features.Guests;
+using Abuvi.API.Features.Memberships;
 using Abuvi.API.Common.Services;
 using FluentValidation;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Serilog;
@@ -158,6 +163,14 @@ builder.Services.AddScoped<IGooglePlacesMapperService, GooglePlacesMapperService
 builder.Services.AddScoped<IFamilyUnitsRepository, FamilyUnitsRepository>();
 builder.Services.AddScoped<FamilyUnitsService>();
 
+// Guests
+builder.Services.AddScoped<IGuestsRepository, GuestsRepository>();
+builder.Services.AddScoped<GuestsService>();
+
+// Memberships
+builder.Services.AddScoped<IMembershipsRepository, MembershipsRepository>();
+builder.Services.AddScoped<MembershipsService>();
+
 // Encryption Service
 builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
 
@@ -186,6 +199,22 @@ builder.Services.AddScoped<Abuvi.API.Common.Services.IEmailService, Abuvi.API.Co
 
 // Background services
 builder.Services.AddHostedService<Abuvi.API.Common.BackgroundServices.LogCleanupService>();
+builder.Services.AddHostedService<Abuvi.API.Common.BackgroundServices.AnnualFeeGenerationService>();
+
+// ========================================
+// Health Checks
+// ========================================
+builder.Services.AddHealthChecks()
+    .AddNpgSql(
+        connectionString: connectionString,
+        name: "database",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["db", "postgresql"],
+        timeout: TimeSpan.FromSeconds(5))
+    .AddCheck<ResendHealthCheck>(
+        name: "resend",
+        failureStatus: HealthStatus.Degraded,
+        tags: ["email"]);
 
 var app = builder.Build();
 
@@ -232,10 +261,29 @@ app.UseSerilogRequestLogging(options =>
     };
 });
 
-// Health check endpoint
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
-    .WithName("HealthCheck")
-    .WithTags("System");
+// Health check endpoint (anonymous access — no auth required for monitoring tools)
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            totalDuration = report.TotalDuration.ToString(),
+            entries = report.Entries.ToDictionary(
+                kvp => kvp.Key,
+                kvp => new
+                {
+                    status = kvp.Value.Status.ToString(),
+                    description = kvp.Value.Description,
+                    duration = kvp.Value.Duration.ToString(),
+                    data = kvp.Value.Data
+                })
+        };
+        await context.Response.WriteAsJsonAsync(response);
+    }
+});
 
 // API endpoints
 app.MapAuthEndpoints();
@@ -243,6 +291,9 @@ app.MapUsersEndpoints();
 app.MapCampsEndpoints();
 app.MapGooglePlacesEndpoints();
 app.MapFamilyUnitsEndpoints();
+app.MapGuestsEndpoints();
+app.MapMembershipsEndpoints();
+app.MapMembershipFeeEndpoints();
 
 app.Run();
 

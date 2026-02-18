@@ -1,91 +1,40 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
-import { useCampEditions } from '@/composables/useCampEditions'
+import { onMounted } from 'vue'
 import Container from '@/components/ui/Container.vue'
-import CampEditionDetails from '@/components/camps/CampEditionDetails.vue'
-import CampStatusBadge from '@/components/camps/CampStatusBadge.vue'
-import Card from 'primevue/card'
-import Message from 'primevue/message'
+import ActiveEditionCard from '@/components/camps/ActiveEditionCard.vue'
+import { useCampEditions } from '@/composables/useCampEditions'
 import ProgressSpinner from 'primevue/progressspinner'
+import Message from 'primevue/message'
 
-const { currentCampEdition, loading, error, fetchCurrentCampEdition } = useCampEditions()
+const { activeEdition, loading, error, getActiveEdition } = useCampEditions()
 
-onMounted(() => { fetchCurrentCampEdition() })
-
-const displayTitle = computed(() =>
-  currentCampEdition.value ? `Campamento ${currentCampEdition.value.year}` : 'Campamento'
-)
-
-const isFromPreviousYear = computed(() => {
-  if (!currentCampEdition.value) return false
-  return currentCampEdition.value.year < new Date().getFullYear()
-})
+onMounted(() => getActiveEdition())
 </script>
 
 <template>
   <Container>
     <div class="py-8">
-      <!-- Loading state -->
-      <div
-        v-if="loading"
-        class="flex justify-center py-16"
-        data-testid="camp-loading"
-        role="status"
-      >
+      <h1 class="mb-6 text-3xl font-bold text-gray-900">
+        Campamento {{ new Date().getFullYear() }}
+      </h1>
+
+      <div v-if="loading" class="flex justify-center py-12" data-testid="camp-loading" role="status">
         <ProgressSpinner />
       </div>
 
-      <!-- Error state -->
       <Message v-else-if="error" severity="error" :closable="false" class="mb-4">
         {{ error }}
       </Message>
 
-      <!-- Empty state (no camp edition found) -->
-      <div v-else-if="!currentCampEdition" data-testid="camp-empty">
-        <Message severity="info" :closable="false">
-          No hay información de campamento disponible para este año. Contacta con la junta directiva
-          para más información.
-        </Message>
+      <div v-else-if="activeEdition">
+        <ActiveEditionCard :edition="activeEdition" />
       </div>
 
-      <!-- Camp edition content -->
-      <div v-else data-testid="camp-page-content">
-        <div class="mb-6 flex flex-wrap items-center gap-3">
-          <h1 class="text-4xl font-bold text-gray-900">{{ displayTitle }}</h1>
-          <CampStatusBadge :status="currentCampEdition.status" />
-        </div>
-
-        <!-- Previous year warning -->
-        <Message
-          v-if="isFromPreviousYear"
-          severity="warn"
-          :closable="false"
-          class="mb-4"
-        >
-          Mostrando información del campamento de {{ currentCampEdition.year }}
-        </Message>
-
-        <!-- Camp details -->
-        <CampEditionDetails :camp-edition="currentCampEdition" />
-
-        <!-- Registration CTA (only when Open) -->
-        <Card v-if="currentCampEdition.status === 'Open'" class="mt-6 border-l-4 border-green-500">
-          <template #title>
-            <div class="flex items-center gap-2 text-green-700">
-              <i class="pi pi-check-circle" />
-              Inscripciones Abiertas
-            </div>
-          </template>
-          <template #content>
-            <p class="mb-3 text-sm text-gray-700">
-              <span v-if="currentCampEdition.availableSpots !== undefined">
-                Quedan <strong>{{ currentCampEdition.availableSpots }}</strong> plazas disponibles.
-              </span>
-              Las inscripciones están abiertas. Contacta con la junta directiva para inscribir a tu
-              familia.
-            </p>
-          </template>
-        </Card>
+      <div v-else class="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center" data-testid="camp-empty">
+        <p class="text-gray-500">No hay ningún campamento abierto para este año.</p>
+        <p class="mt-1 text-sm text-gray-400">
+          Cuando haya una edición disponible, aparecerá aquí.
+        </p>
       </div>
     </div>
   </Container>

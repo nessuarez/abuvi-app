@@ -17,7 +17,7 @@ import CampLocationCard from '@/components/camps/CampLocationCard.vue'
 import CampLocationForm from '@/components/camps/CampLocationForm.vue'
 import CampLocationMap from '@/components/camps/CampLocationMap.vue'
 import { useCamps } from '@/composables/useCamps'
-import type { Camp, CreateCampRequest, CampStatus } from '@/types/camp'
+import type { Camp, CreateCampRequest } from '@/types/camp'
 
 const router = useRouter()
 const toast = useToast()
@@ -29,14 +29,13 @@ const showCreateDialog = ref(false)
 const showEditDialog = ref(false)
 const selectedCamp = ref<Camp | null>(null)
 const searchQuery = ref('')
-const selectedStatus = ref<CampStatus | null>(null)
+const selectedStatus = ref<boolean | null>(null)
 const viewMode = ref<'table' | 'cards' | 'map'>('table')
 
 const statusOptions = [
   { label: 'Todos', value: null },
-  { label: 'Activo', value: 'Active' },
-  { label: 'Inactivo', value: 'Inactive' },
-  { label: 'Archivo Histórico', value: 'HistoricalArchive' }
+  { label: 'Activo', value: true },
+  { label: 'Inactivo', value: false }
 ]
 
 const filteredCamps = computed(() => {
@@ -48,13 +47,13 @@ const filteredCamps = computed(() => {
     result = result.filter(
       (camp) =>
         camp.name.toLowerCase().includes(query) ||
-        camp.description.toLowerCase().includes(query)
+        (camp.description?.toLowerCase() ?? '').includes(query)
     )
   }
 
   // Filter by status
-  if (selectedStatus.value) {
-    result = result.filter((camp) => camp.status === selectedStatus.value)
+  if (selectedStatus.value !== null) {
+    result = result.filter((camp) => camp.isActive === selectedStatus.value)
   }
 
   return result
@@ -79,13 +78,8 @@ const formatCurrency = (amount: number): string => {
   }).format(amount)
 }
 
-const statusLabel = (status: string): string => {
-  const labels: Record<string, string> = {
-    Active: 'Activo',
-    Inactive: 'Inactivo',
-    HistoricalArchive: 'Archivo Histórico'
-  }
-  return labels[status] || status
+const statusLabel = (isActive: boolean): string => {
+  return isActive ? 'Activo' : 'Inactivo'
 }
 
 onMounted(() => {
@@ -133,6 +127,10 @@ const handleDelete = (camp: Camp) => {
 
 const handleViewDetails = (camp: Camp) => {
   router.push({ name: 'camp-location-detail', params: { id: camp.id } })
+}
+
+const handleViewEditions = (campId: string) => {
+  router.push({ name: 'camp-editions', query: { campId } })
 }
 
 const handleViewEditions = (campId: string) => {
@@ -242,7 +240,7 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
             <div>
               <p class="font-semibold">{{ data.name }}</p>
               <p class="text-sm text-gray-500">
-                {{ data.latitude.toFixed(4) }}, {{ data.longitude.toFixed(4) }}
+                {{ data.latitude?.toFixed(4) ?? '-' }}, {{ data.longitude?.toFixed(4) ?? '-' }}
               </p>
             </div>
           </template>
@@ -251,9 +249,9 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
         <Column header="Precios">
           <template #body="{ data }">
             <div class="text-sm">
-              <p>Adulto: {{ formatCurrency(data.basePriceAdult) }}</p>
-              <p>Niño: {{ formatCurrency(data.basePriceChild) }}</p>
-              <p>Bebé: {{ formatCurrency(data.basePriceBaby) }}</p>
+              <p>Adulto: {{ formatCurrency(data.pricePerAdult) }}</p>
+              <p>Niño: {{ formatCurrency(data.pricePerChild) }}</p>
+              <p>Bebé: {{ formatCurrency(data.pricePerBaby) }}</p>
             </div>
           </template>
         </Column>
@@ -261,11 +259,10 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
         <Column field="status" header="Estado" sortable>
           <template #body="{ data }">
             <span :class="{
-              'bg-green-100 text-green-800': data.status === 'Active',
-              'bg-gray-100 text-gray-800': data.status === 'Inactive',
-              'bg-blue-100 text-blue-800': data.status === 'HistoricalArchive'
+              'bg-green-100 text-green-800': data.isActive,
+              'bg-gray-100 text-gray-800': !data.isActive
             }" class="rounded-full px-2 py-1 text-xs font-medium">
-              {{ statusLabel(data.status) }}
+              {{ statusLabel(data.isActive) }}
             </span>
           </template>
         </Column>

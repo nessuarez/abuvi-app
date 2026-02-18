@@ -89,3 +89,53 @@ export interface CreateCampExtraRequest {
   maxQuantity?: number
   sortOrder: number
 }
+
+export interface UpdateCampEditionRequest {
+  startDate: string
+  endDate: string
+  pricePerAdult: number
+  pricePerChild: number
+  pricePerBaby: number
+  useCustomAgeRanges: boolean
+  customBabyMaxAge?: number
+  customChildMinAge?: number
+  customChildMaxAge?: number
+  customAdultMinAge?: number
+  maxCapacity?: number
+  notes?: string
+}
+
+export interface ChangeEditionStatusRequest {
+  status: CampEditionStatus
+}
+
+export interface ActiveCampEditionResponse {
+  id: string
+  campId: string
+  campName: string
+  campLocation: string | null
+  campFormattedAddress: string | null
+  year: number
+  startDate: string
+  endDate: string
+  pricePerAdult: number
+  pricePerChild: number
+  pricePerBaby: number
+  useCustomAgeRanges: boolean
+  customBabyMaxAge?: number
+  customChildMinAge?: number
+  customChildMaxAge?: number
+  customAdultMinAge?: number
+  status: CampEditionStatus
+  maxCapacity?: number
+  registrationCount: number
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CampEditionFilters {
+  year?: number
+  status?: CampEditionStatus
+  campId?: string
+}
