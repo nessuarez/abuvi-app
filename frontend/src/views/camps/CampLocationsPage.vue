@@ -127,6 +127,10 @@ const handleViewDetails = (camp: Camp) => {
   router.push({ name: 'camp-location-detail', params: { id: camp.id } })
 }
 
+const handleViewEditions = (campId: string) => {
+  router.push({ name: 'camp-editions', query: { campId } })
+}
+
 const handleSubmitCreate = async (data: CreateCampRequest) => {
   const result = await createCamp(data)
   if (result) {
@@ -295,19 +299,41 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
           <template #body="{ data }">
             <div class="flex gap-1">
               <Button
+                v-tooltip.top="'Ver detalle'"
                 icon="pi pi-eye"
                 text
                 rounded
                 size="small"
+                aria-label="Ver detalle de ubicación"
                 @click="handleViewDetails(data)"
               />
-              <Button icon="pi pi-pencil" text rounded size="small" @click="handleEdit(data)" />
               <Button
+                v-tooltip.top="'Ver ediciones'"
+                icon="pi pi-calendar"
+                text
+                rounded
+                size="small"
+                aria-label="Ver ediciones de esta ubicación"
+                data-testid="view-camp-editions-btn"
+                @click="handleViewEditions(data.id)"
+              />
+              <Button
+                v-tooltip.top="'Editar'"
+                icon="pi pi-pencil"
+                text
+                rounded
+                size="small"
+                aria-label="Editar ubicación"
+                @click="handleEdit(data)"
+              />
+              <Button
+                v-tooltip.top="'Eliminar'"
                 icon="pi pi-trash"
                 text
                 rounded
                 size="small"
                 severity="danger"
+                aria-label="Eliminar ubicación"
                 @click="handleDelete(data)"
               />
             </div>
