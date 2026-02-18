@@ -91,6 +91,7 @@ git checkout -b feature/feat-camp-editions-nav-frontend
 ```
 
 **Implementation Notes**:
+
 - Place these routes **before** the legacy user routes redirect block.
 - Both routes lazy-load their components.
 - `camp-edition-detail` requires only `requiresAuth: true` (Members can view open editions).
@@ -174,6 +175,7 @@ const goToCampEditions = () => router.push('/camps/editions')
 ```
 
 **Implementation Notes**:
+
 - Two equal cards replace the single placeholder — editions and locations.
 - Clicking anywhere on the card or the button navigates to the target page.
 - `.stop` modifier on the inner button prevents the card's `@click` from double-firing.
@@ -239,6 +241,7 @@ const proposeNewEdition = () => {
 ```
 
 **Implementation Notes**:
+
 - Remove the existing edition count display from the Metadata card's `v-if="camp.editionCount !== undefined"` block (it is now shown in the new Editions card header) to avoid duplication.
 - `goToEditions` navigates to `/camps/editions?campId={id}` — the `CampEditionsPage` must read `route.query.campId` on mount and pre-fill its camp filter.
 - `proposeNewEdition` passes `action=propose` as a query param — `CampEditionsPage` must detect this and auto-open the proposal dialog pre-filled with the campId. This behavior is implemented in `CampEditionsPage` (see Step 4).
@@ -279,6 +282,7 @@ onMounted(async () => {
 ```
 
 **Implementation Notes**:
+
 - `filters` is the reactive filter state: `{ year: null, status: null, campId: null }` — update `campId` from the query param.
 - `proposalCampId` and `showProposalDialog` are refs that control the proposal dialog. The proposal dialog opens pre-filled with the campId when `action=propose` is in the URL.
 - After the dialog opens, **clear the query params** from the URL using `router.replace({ name: 'camp-editions' })` to avoid the dialog re-opening on refresh.
@@ -317,6 +321,7 @@ const goToEditionsForCamp = (campId: string) => {
 ```
 
 **Implementation Notes**:
+
 - Add `v-tooltip` directive — PrimeVue `Tooltip` is available globally if `TooltipDirective` is registered in `main.ts`. If not, import and use `useTooltip` or simply rely on `aria-label`.
 - Check the existing action buttons in `CampLocationsPage.vue` for the correct icon button pattern (text + rounded + icon).
 - If the page has both a table view and a card view, add the editions link to both.
@@ -437,9 +442,11 @@ router.push({ name: 'camp-editions', query: { campId: camp.id, action: 'propose'
 ```
 
 The receiving page reads query params in `onMounted` and:
+
 1. Pre-fills filter state from `route.query.campId`
 2. Opens the relevant dialog if `route.query.action` matches
 3. Clears the query params after applying them via `router.replace({ name: '...' })` to avoid reactivation on refresh
+
 ```
 
 ---
@@ -504,11 +511,13 @@ import Container from '@/components/ui/Container.vue'
 ## 7. UI/UX Considerations
 
 ### Admin panel layout
+
 - Two equal-width cards in a responsive `sm:grid-cols-2` grid.
 - Cards have hover shadow (`hover:shadow-md`) to signal interactivity.
 - The "Gestionar ediciones" card is listed first (primary action).
 
 ### Camp location detail
+
 - The Editions section sits below the Metadata card in the info column.
 - Show the edition count in the card header (badge) — remove it from the Metadata card to avoid duplication.
 - Two buttons side by side on `sm+` breakpoints, stacked on mobile (`flex-col gap-2 sm:flex-row`).
@@ -516,11 +525,13 @@ import Container from '@/components/ui/Container.vue'
 - "Ver ediciones" uses `outlined` style — secondary action.
 
 ### Camp locations table
+
 - The editions icon button (`pi pi-calendar`) is added to the existing actions group.
 - Use `v-tooltip.top` for discoverability — the button has no label.
 - Maintain consistent icon button size with existing actions.
 
 ### Responsive
+
 - `CampsAdminPanel`: `grid-cols-1` on mobile → `sm:grid-cols-2`.
 - `CampLocationDetailPage` edition buttons: `flex-col` → `sm:flex-row`.
 - No DataTable responsiveness changes needed (action column already exists).
@@ -536,18 +547,22 @@ No new dependencies. All PrimeVue components used (`Card`, `Button`, `Tooltip`) 
 ## 9. Notes
 
 ### Critical ordering
+
 - This ticket's router changes (Step 1) **must be done first** — every other change depends on named routes existing.
 - `CampEditionsPage.vue` must exist (even as a placeholder) before committing the router entry, or the lazy import will throw a build error.
 
 ### `action=propose` URL contract
+
 - The `action=propose` query param is a UI-level contract between `CampLocationDetailPage` and `CampEditionsPage`. It is not part of the backend API.
 - The proposal dialog is part of `feat-camp-editions-management` scope. If that dialog doesn't exist yet, the `action=propose` handling should be a no-op until the dialog is implemented.
 
 ### Edition count on detail page
+
 - `camp.editionCount` is already displayed in the Metadata card (`v-if="camp.editionCount !== undefined"`). After this ticket, move it to the new Editions card header and remove it from the Metadata card to avoid duplication.
 - If `camp.editionCount` is `undefined` (backend doesn't return it for all responses), hide the badge gracefully.
 
 ### Language
+
 - All user-facing labels in **Spanish**: "Ediciones de Campamento", "Ver ediciones", "Nueva propuesta", "Gestionar ediciones".
 - All code/variables/event names in **English**.
 
