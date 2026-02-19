@@ -214,7 +214,11 @@ builder.Services.AddHealthChecks()
     .AddCheck<ResendHealthCheck>(
         name: "resend",
         failureStatus: HealthStatus.Degraded,
-        tags: ["email"]);
+        tags: ["email"])
+    .AddCheck<GooglePlacesHealthCheck>(
+        name: "google-places",
+        failureStatus: HealthStatus.Degraded,
+        tags: ["external"]);
 
 var app = builder.Build();
 
