@@ -275,7 +275,8 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
           <template #body="{ data }">
             <div class="flex gap-1">
               <Button v-tooltip.top="'Ver detalle'" icon="pi pi-eye" text rounded size="small"
-                aria-label="Ver detalle de ubicación" @click="handleViewDetails(data)" />
+                aria-label="Ver detalle de ubicación" data-testid="view-camp-detail-btn"
+                @click="handleViewDetails(data)" />
               <Button v-tooltip.top="'Ver ediciones'" icon="pi pi-calendar" text rounded size="small"
                 aria-label="Ver ediciones de esta ubicación" data-testid="view-camp-editions-btn"
                 @click="handleViewEditions(data.id)" />

@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { api } from '@/utils/api'
-import type { Camp, CreateCampRequest, UpdateCampRequest } from '@/types/camp'
+import type { Camp, CampDetailResponse, CreateCampRequest, UpdateCampRequest } from '@/types/camp'
 import type { ApiResponse } from '@/types/api'
 
 export function useCamps() {
@@ -39,11 +39,11 @@ export function useCamps() {
     }
   }
 
-  const getCampById = async (id: string): Promise<Camp | null> => {
+  const getCampById = async (id: string): Promise<CampDetailResponse | null> => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get<ApiResponse<Camp>>(`/camps/${id}`)
+      const response = await api.get<ApiResponse<CampDetailResponse>>(`/camps/${id}`)
       if (response.data.success && response.data.data) {
         return response.data.data
       }
@@ -58,11 +58,11 @@ export function useCamps() {
     }
   }
 
-  const createCamp = async (request: CreateCampRequest): Promise<Camp | null> => {
+  const createCamp = async (request: CreateCampRequest): Promise<CampDetailResponse | null> => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.post<ApiResponse<Camp>>('/camps', request)
+      const response = await api.post<ApiResponse<CampDetailResponse>>('/camps', request)
       if (response.data.success && response.data.data) {
         camps.value = [...(camps.value || []), response.data.data]
         return response.data.data

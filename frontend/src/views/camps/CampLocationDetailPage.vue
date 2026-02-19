@@ -9,10 +9,12 @@ import Message from 'primevue/message'
 import CampLocationMap from '@/components/camps/CampLocationMap.vue'
 import AccommodationCapacityDisplay from '@/components/camps/AccommodationCapacityDisplay.vue'
 import CampPhotoGallery from '@/components/camps/CampPhotoGallery.vue'
+import CampContactInfo from '@/components/camps/CampContactInfo.vue'
+import CampPlacesGallery from '@/components/camps/CampPlacesGallery.vue'
 import CampEditionProposeDialog from '@/components/camps/CampEditionProposeDialog.vue'
 import { useCamps } from '@/composables/useCamps'
 import { useAuthStore } from '@/stores/auth'
-import type { Camp } from '@/types/camp'
+import type { CampDetailResponse } from '@/types/camp'
 import type { CampPhoto } from '@/types/camp-photo'
 import type { CampEdition } from '@/types/camp-edition'
 const route = useRoute()
@@ -40,7 +42,7 @@ const handleEditionProposed = (_edition: CampEdition) => {
   })
 }
 
-const camp = ref<Camp | null>(null)
+const camp = ref<CampDetailResponse | null>(null)
 const campPhotos = ref<CampPhoto[]>([])
 
 const formatCurrency = (amount: number): string => {
@@ -51,21 +53,11 @@ const formatCurrency = (amount: number): string => {
   }).format(amount)
 }
 
-const statusLabel = (status: string): string => {
-  const labels: Record<string, string> = {
-    Active: 'Activo',
-    Inactive: 'Inactivo',
-    HistoricalArchive: 'Archivo Histórico'
-  }
-  return labels[status] || status
-}
-
 onMounted(async () => {
   const campId = route.params.id as string
   const result = await getCampById(campId)
   if (result) {
     camp.value = result
-    campPhotos.value = result.photos ?? []
   }
 })
 
@@ -115,19 +107,15 @@ const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
         <div class="flex items-start justify-between">
           <div>
             <h1 class="mb-2 text-3xl font-bold text-gray-900">{{ camp.name }}</h1>
-            <p class="text-gray-600">
-              {{ camp.latitude?.toFixed(4) }}, {{ camp.longitude?.toFixed(4) }}
+            <p v-if="camp.latitude !== null && camp.longitude !== null" class="text-gray-600">
+              {{ camp.latitude.toFixed(4) }}, {{ camp.longitude.toFixed(4) }}
             </p>
           </div>
           <span
-            :class="{
-              'bg-green-100 text-green-800': camp.status === 'Active',
-              'bg-gray-100 text-gray-800': camp.status === 'Inactive',
-              'bg-blue-100 text-blue-800': camp.status === 'HistoricalArchive'
-            }"
+            :class="camp.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
             class="rounded-full px-3 py-1 text-sm font-medium"
           >
-            {{ statusLabel(camp.status) }}
+            {{ camp.isActive ? 'Activo' : 'Inactivo' }}
           </span>
         </div>
       </div>
@@ -140,6 +128,9 @@ const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
             <h2 class="mb-3 text-lg font-semibold text-gray-900">Descripción</h2>
             <p class="text-gray-700">{{ camp.description || 'Sin descripción' }}</p>
           </div>
+
+          <!-- Contact Information (Google Places) -->
+          <CampContactInfo :camp="camp" />
 
           <!-- Pricing -->
           <div class="rounded-lg border border-gray-200 bg-white p-6">
@@ -220,6 +211,13 @@ const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
               ]"
             />
           </div>
+
+          <!-- Photo Gallery (Google Places) -->
+          <CampPlacesGallery
+            v-if="camp.photos.length > 0"
+            :photos="camp.photos"
+            class="mt-6"
+          />
         </div>
       </div>
 
