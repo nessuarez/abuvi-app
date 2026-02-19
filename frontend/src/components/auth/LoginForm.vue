@@ -102,9 +102,9 @@ const handleSubmit = async () => {
         />
         <label for="rememberMe" class="text-sm text-gray-700">Recordarme</label>
       </div>
-      <a href="#" class="text-sm text-primary-600 hover:text-primary-700">
+      <RouterLink to="/forgot-password" class="text-sm text-primary-600 hover:text-primary-700">
         ¿Olvidaste tu contraseña?
-      </a>
+      </RouterLink>
     </div>
 
     <Button

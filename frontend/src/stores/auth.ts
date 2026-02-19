@@ -115,10 +115,12 @@ export const useAuthStore = defineStore('auth', () => {
   // Helper functions
   function loadUserFromStorage(): UserInfo | null {
     const userData = localStorage.getItem(USER_KEY)
+    if (!userData || userData === 'undefined' || userData === 'null') return null
     try {
-      return userData ? JSON.parse(userData) : null
+      return JSON.parse(userData)
     } catch (error) {
       console.error('Failed to parse stored user data', error)
+      localStorage.removeItem(USER_KEY)
       return null
     }
   }

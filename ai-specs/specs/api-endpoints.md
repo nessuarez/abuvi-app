@@ -411,6 +411,71 @@ Authenticates a user and returns a JWT token.
 
 ---
 
+### POST /api/auth/forgot-password
+
+Initiates a password reset. Always returns 200 to prevent user enumeration.
+
+**Request Body:**
+
+```json
+{ "email": "user@example.com" }
+```
+
+**Validation:** email required, valid format, max 255 characters.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": { "message": "Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña." }
+}
+```
+
+**Notes:**
+
+- Always returns 200 regardless of whether the email exists — never reveals user existence.
+- Reset token expires after 1 hour (shorter than email verification due to higher sensitivity).
+
+---
+
+### POST /api/auth/reset-password
+
+Completes password reset using a one-time token.
+
+**Request Body:**
+
+```json
+{ "token": "...", "newPassword": "NewPassword1!" }
+```
+
+**Validation:** token required; newPassword min 8 chars, uppercase, lowercase, digit, special char (`@$!%*?&#`).
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": { "message": "Contraseña restablecida exitosamente." }
+}
+```
+
+**Error Response (400 Bad Request):**
+
+```json
+{
+  "success": false,
+  "error": { "message": "El enlace de recuperación es inválido o ha expirado", "code": "INVALID_OR_EXPIRED_TOKEN" }
+}
+```
+
+**Notes:**
+
+- Same error message for both invalid and expired tokens — never reveals which case applies.
+- Token is single-use: cleared immediately after successful password reset.
+
+---
+
 ### POST /api/auth/register (Legacy)
 
 **DEPRECATED**: Use `/api/auth/register-user` instead.
@@ -504,6 +569,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 | `DOCUMENT_EXISTS` | 400 | Document number already registered |
 | `VERIFICATION_FAILED` | 400 | Email verification failed (expired/invalid token) |
 | `RESEND_FAILED` | 400 | Cannot resend verification (already verified) |
+| `INVALID_OR_EXPIRED_TOKEN` | 400 | Password reset token is invalid or has expired |
 | `INVALID_CREDENTIALS` | 401 | Invalid email or password |
 | `EMAIL_NOT_VERIFIED` | 401 | Email not verified yet |
 | `ACCOUNT_INACTIVE` | 401 | Account is inactive |

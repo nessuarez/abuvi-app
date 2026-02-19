@@ -9,6 +9,7 @@ import Message from 'primevue/message'
 import CampLocationMap from '@/components/camps/CampLocationMap.vue'
 import AccommodationCapacityDisplay from '@/components/camps/AccommodationCapacityDisplay.vue'
 import CampPhotoGallery from '@/components/camps/CampPhotoGallery.vue'
+import CampEditionProposeDialog from '@/components/camps/CampEditionProposeDialog.vue'
 import { useCamps } from '@/composables/useCamps'
 import { useAuthStore } from '@/stores/auth'
 import type { Camp } from '@/types/camp'
@@ -17,6 +18,7 @@ import type { CampEdition } from '@/types/camp-edition'
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const auth = useAuthStore()
 const { loading, error, getCampById } = useCamps()
 
 const showProposeDialog = ref(false)
@@ -145,15 +147,15 @@ const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
             <div class="space-y-3">
               <div class="flex justify-between">
                 <span class="text-gray-600">Precio adulto:</span>
-                <span class="font-semibold">{{ formatCurrency(camp.basePriceAdult) }}</span>
+                <span class="font-semibold">{{ formatCurrency(camp.pricePerAdult) }}</span>
               </div>
               <div class="flex justify-between">
                 <span class="text-gray-600">Precio niño:</span>
-                <span class="font-semibold">{{ formatCurrency(camp.basePriceChild) }}</span>
+                <span class="font-semibold">{{ formatCurrency(camp.pricePerChild) }}</span>
               </div>
               <div class="flex justify-between">
                 <span class="text-gray-600">Precio bebé:</span>
-                <span class="font-semibold">{{ formatCurrency(camp.basePriceBaby) }}</span>
+                <span class="font-semibold">{{ formatCurrency(camp.pricePerBaby) }}</span>
               </div>
             </div>
           </div>

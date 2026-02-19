@@ -156,6 +156,20 @@ const router = createRouter({
 			meta: { title: "ABUVI | Transparencia", requiresAuth: false }
 		},
 
+		// Password reset routes — public, no auth required
+		{
+			path: "/forgot-password",
+			name: "forgot-password",
+			component: () => import("@/views/ForgotPasswordPage.vue"),
+			meta: { requiresAuth: false, title: "ABUVI | Recuperar Contraseña" }
+		},
+		{
+			path: "/reset-password",
+			name: "reset-password",
+			component: () => import("@/views/ResetPasswordPage.vue"),
+			meta: { requiresAuth: false, title: "ABUVI | Nueva Contraseña" }
+		},
+
 		// Legacy login/register routes - redirect to landing
 		{
 			path: "/login",

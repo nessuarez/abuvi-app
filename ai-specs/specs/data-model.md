@@ -23,6 +23,8 @@ Represents a platform account for accessing the application. Each user is a memb
 - `emailVerified`: Whether the email has been verified (required, default: false)
 - `emailVerificationToken`: Token for email verification (optional, max 512 characters, URL-safe base64)
 - `emailVerificationTokenExpiry`: Token expiration datetime (optional, defaults to 24 hours from creation)
+- `passwordResetToken`: Token for password reset (optional, max 512 characters, URL-safe base64, expires 1h)
+- `passwordResetTokenExpiry`: Password reset token expiration datetime (optional, 1 hour from request creation)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
@@ -828,6 +830,8 @@ erDiagram
         boolean emailVerified
         string emailVerificationToken
         datetime emailVerificationTokenExpiry
+        string passwordResetToken
+        datetime passwordResetTokenExpiry
         datetime createdAt
         datetime updatedAt
     }
