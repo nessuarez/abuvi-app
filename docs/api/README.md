@@ -7,6 +7,7 @@ Welcome to the Abuvi Camp Management API documentation!
 ### Getting Started
 - **[Quick Start Guide](./quick-start.md)** - Get up and running in 5 minutes
 - **[Full API Reference](./camps-api.md)** - Complete endpoint documentation
+- **[Configuration Reference](../configuration.md)** - All `appsettings.json` settings and production Docker setup
 
 ### API Sections
 
