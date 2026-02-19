@@ -243,9 +243,14 @@ A reusable camp location template that can have multiple editions per year. Exte
 - `pricePerAdult`: Pricing template for adults in euros (required, decimal, >= 0)
 - `pricePerChild`: Pricing template for children in euros (required, decimal, >= 0)
 - `pricePerBaby`: Pricing template for babies in euros (required, decimal, >= 0)
+- `accommodationCapacityJson`: JSON-serialized `AccommodationCapacity` object describing room types and sleeping capacity (optional, stored as `text`). Use `GetAccommodationCapacity()` / `SetAccommodationCapacity()` helpers; never access the raw JSON directly.
 - `isActive`: Whether the camp is active (required, default: true)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Computed (not stored):**
+
+- `calculatedTotalBedCapacity`: Derived from `AccommodationCapacity.CalculateTotalBedCapacity()`; included in API responses when `accommodationCapacityJson` is not null.
 
 **Validation rules:**
 
@@ -253,6 +258,7 @@ A reusable camp location template that can have multiple editions per year. Exte
 - Longitude, when provided, must be between -180 and 180
 - All prices must be >= 0
 - When `googlePlaceId` is provided at creation, the backend auto-enriches all Google Places fields
+- `accommodationCapacityJson` stores camelCase JSON; all numeric accommodation fields must be >= 0
 
 **Relationships:**
 
@@ -267,32 +273,129 @@ A reusable camp location template that can have multiple editions per year. Exte
 
 ### CampPhoto
 
-A photo associated with a camp, sourced from the Google Places API (Phase 1: photo references only, not downloaded).
+A photo associated with a camp. Supports both Google Places-sourced photos (`isOriginal = true`) and manually managed photos added by Admin/Board users (`isOriginal = false`).
 
 **Fields:**
 
 - `id`: Unique identifier (Primary Key, UUID)
 - `campId`: The camp this photo belongs to (required, FK -> Camp, cascade delete)
-- `photoReference`: Google Places photo reference token (optional, max 500 characters)
-- `photoUrl`: Direct URL if downloaded and stored locally (optional, max 1000 characters; Phase 1: always null)
-- `width`: Photo width in pixels (required, integer)
-- `height`: Photo height in pixels (required, integer)
-- `attributionName`: Photo author name, required by Google Terms of Service (required, max 200 characters)
-- `attributionUrl`: Author profile URL (optional, max 500 characters)
-- `isOriginal`: Whether the photo came from Google Places (required, default: true)
-- `isPrimary`: Whether this is the primary display photo for the camp (required, default: false)
-- `displayOrder`: Sort order in the gallery, 1-based (required, default: 0)
+- `photoReference`: Google Places photo reference token (optional, max 500 characters; only set for Google Places photos)
+- `photoUrl`: Direct URL to the photo image (optional, max 1000 characters). For Google Places photos: currently null (Phase 1). For manually managed photos: the URL provided by the admin/board (max 2000 characters in API input, stored max 1000).
+- `description`: Optional caption or description for the photo (optional, max 500 characters)
+- `width`: Photo width in pixels (optional, integer; only populated for Google Places photos)
+- `height`: Photo height in pixels (optional, integer; only populated for Google Places photos)
+- `attributionName`: Photo author name (optional, max 200 characters; required by Google T&C for Google Places photos, not applicable to manually managed photos)
+- `attributionUrl`: Author profile URL (optional, max 500 characters; Google Places photos only)
+- `isOriginal`: Whether the photo came from Google Places (`true`) or was manually added by an admin/board user (`false`). Required, default: `true`.
+- `isPrimary`: Whether this is the primary display photo for the camp (required, default: false). Only one photo per camp may have `isPrimary = true` at a time.
+- `displayOrder`: Sort order in the gallery, 0-based (required, integer >= 0, default: 0)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
 **Validation rules:**
 
-- Attribution information must always be displayed when the photo is shown (Google T&C requirement)
-- Only one `isPrimary = true` photo should exist per camp (first photo from Google Places is set as primary)
+- Attribution information must always be displayed for Google Places photos (`isOriginal = true`) per Google T&C
+- Only one `isPrimary = true` photo is allowed per camp; setting a new primary clears the previous one
+- For manually managed photos: `photoUrl` is required and must be a valid URL (max 2000 characters in requests)
+- `displayOrder` must be >= 0
+- `description` max 500 characters when provided
 
 **Relationships:**
 
 - Each CampPhoto belongs to one Camp (via `campId`); deleted when the camp is deleted (cascade)
+
+---
+
+### AccommodationCapacity
+
+A value object (not a separate database table) serialized as JSON inside `Camp.accommodationCapacityJson` and `CampEdition.accommodationCapacityJson`. Describes the sleeping and accommodation infrastructure of a camp location.
+
+**Fields (all optional):**
+
+- `privateRoomsWithBathroom`: Number of private rooms with en-suite bathroom (integer >= 0)
+- `privateRoomsSharedBathroom`: Number of private rooms sharing a bathroom (integer >= 0)
+- `sharedRooms`: Array of `SharedRoomInfo` objects describing shared dormitory-style rooms (optional array)
+- `bungalows`: Number of bungalows or cabins (integer >= 0)
+- `campOwnedTents`: Number of tents provided by the camp (integer >= 0)
+- `memberTentAreaSquareMeters`: Available area in m² for member-brought tents (integer >= 0)
+- `memberTentCapacityEstimate`: Estimated number of people that can fit in the member tent area (integer >= 0)
+- `motorhomeSpots`: Number of motorhome/caravan pitches (integer >= 0)
+- `notes`: Free-text notes about accommodation (optional string)
+
+**SharedRoomInfo fields:**
+
+- `quantity`: Number of rooms of this type (required, integer > 0)
+- `bedsPerRoom`: Number of beds in each room (required, integer > 0)
+- `hasBathroom`: Whether rooms of this type have an en-suite bathroom (required, boolean)
+- `hasShower`: Whether rooms of this type have an en-suite shower (required, boolean)
+- `notes`: Optional description of this room type (optional string)
+
+**Computed:**
+
+- `CalculateTotalBedCapacity()`: Returns `(privateRoomsWithBathroom * 2) + (privateRoomsSharedBathroom * 2) + sum(sharedRooms[i].quantity * sharedRooms[i].bedsPerRoom)`. Bungalows, tents, and motorhome spots are excluded from the bed count.
+
+**Storage:**
+
+- Stored as camelCase JSON text in `accommodation_capacity_json` columns on `camps` and `camp_editions` tables.
+- Null fields are omitted from the serialized JSON.
+- Access via `Camp.GetAccommodationCapacity()` / `Camp.SetAccommodationCapacity()` helper methods.
+
+**Auto-sync behavior:**
+
+- When `accommodationCapacity` is set on a `CampEdition` via `POST /api/camps/editions/propose`, the parent `Camp.accommodationCapacityJson` is automatically synced in the same transaction.
+- When a `CampEdition` is promoted to `Draft` status and it has an accommodation capacity, the parent `Camp` is also updated.
+
+---
+
+### CampEdition
+
+A specific annual edition of a camp (e.g., Camp 2026). Defines dates, pricing, capacity, and status for a single year's camp event. One `Camp` can have many `CampEdition` records across years.
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID)
+- `campId`: The camp location template this edition belongs to (required, FK -> Camp)
+- `year`: The calendar year of this camp edition (required, integer, e.g., 2026)
+- `startDate`: Edition start date (required, datetime UTC)
+- `endDate`: Edition end date (required, datetime UTC)
+- `pricePerAdult`: Price per adult in euros for this edition (required, decimal, >= 0)
+- `pricePerChild`: Price per child in euros for this edition (required, decimal, >= 0)
+- `pricePerBaby`: Price per baby in euros for this edition (required, decimal, >= 0)
+- `useCustomAgeRanges`: Whether this edition overrides the default age range thresholds (required, boolean, default: false)
+- `customBabyMaxAge`: Custom maximum age (inclusive) to be priced as baby (optional, integer; only used when `useCustomAgeRanges = true`)
+- `customChildMinAge`: Custom minimum age (inclusive) to be priced as child (optional, integer)
+- `customChildMaxAge`: Custom maximum age (inclusive) to be priced as child (optional, integer)
+- `customAdultMinAge`: Custom minimum age (inclusive) to be priced as adult (optional, integer)
+- `status`: Current lifecycle status (required, enum: `Proposed` | `Draft` | `Open` | `Closed` | `Completed`, default: `Proposed`)
+- `maxCapacity`: Maximum number of participants for this edition (required, integer > 0)
+- `notes`: Free-text notes for internal use (optional)
+- `isArchived`: Whether the edition has been rejected/archived (required, boolean, default: false)
+- `accommodationCapacityJson`: JSON-serialized `AccommodationCapacity` for this specific edition (optional, stored as `text`). When set, auto-syncs to parent `Camp.accommodationCapacityJson`.
+- `proposalReason`: Reason provided when proposing the edition (optional, used in Proposed → Draft flow)
+- `proposalNotes`: Additional notes provided at proposal time (optional)
+- `contactEmail`: Contact email for this edition (optional)
+- `contactPhone`: Contact phone for this edition (optional)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Computed (not stored):**
+
+- `calculatedTotalBedCapacity`: Derived from the edition's `AccommodationCapacity.CalculateTotalBedCapacity()` when `accommodationCapacityJson` is not null.
+- `registrationCount`: Count of confirmed registrations for this edition (computed on query).
+- `availableSpots`: `maxCapacity - registrationCount` (computed on query).
+
+**Validation rules:**
+
+- `endDate` must be after `startDate`
+- All prices must be >= 0
+- Status transitions follow a strict chain: `Proposed → Draft → Open → Closed → Completed`; rejection sets `isArchived = true` (soft delete)
+- `Draft → Open`: `startDate` must not be in the past
+- `Closed → Completed`: `endDate` must be in the past
+- `Open` and `Closed` editions cannot have their dates or prices changed; only `notes` and `maxCapacity` are editable
+
+**Relationships:**
+
+- Each CampEdition belongs to one Camp (via `campId`)
 
 ---
 
@@ -675,7 +778,6 @@ Represents an annual membership fee payment for a given year.
 - Each MembershipFee belongs to exactly one Membership (via `membershipId`)
 - When a Membership is deleted, all its fees are cascade deleted
 
-
 ## Entity-Relationship Diagram
 
 ```mermaid
@@ -688,7 +790,9 @@ erDiagram
     FamilyMember ||--o| Membership : "holds"
     Membership ||--o{ MembershipFee : "has"
 
+    Camp ||--o{ CampEdition : "has"
     Camp ||--o{ Registration : "has"
+    CampEdition ||--o{ Registration : "has"
     FamilyUnit ||--o{ Registration : "registers"
     User ||--o{ Registration : "creates"
     Registration ||--|{ RegistrationMember : "includes"
@@ -791,18 +895,33 @@ erDiagram
     Camp {
         UUID id PK
         string name
+        string description
+        string location
+        decimal latitude
+        decimal longitude
+        string googlePlaceId
+        decimal pricePerAdult
+        decimal pricePerChild
+        decimal pricePerBaby
+        text accommodationCapacityJson
+        boolean isActive
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    CampEdition {
+        UUID id PK
+        UUID campId FK
         integer year
         date startDate
         date endDate
-        string location
-        string description
-        decimal basePrice
-        integer minAge
-        integer maxAge
-        integer maxCapacity
-        string contactEmail
-        string contactPhone
+        decimal pricePerAdult
+        decimal pricePerChild
+        decimal pricePerBaby
         enum status
+        integer maxCapacity
+        text accommodationCapacityJson
+        boolean isArchived
         datetime createdAt
         datetime updatedAt
     }

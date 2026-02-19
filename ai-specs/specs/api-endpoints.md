@@ -1121,17 +1121,31 @@ Returns full camp details including all Google Places fields and photos.
     "pricePerChild": 120.00,
     "pricePerBaby": 60.00,
     "isActive": true,
+    "accommodationCapacity": {
+      "privateRoomsWithBathroom": 10,
+      "privateRoomsSharedBathroom": 5,
+      "sharedRooms": [
+        { "quantity": 4, "bedsPerRoom": 8, "hasBathroom": false, "hasShower": false, "notes": "Cabin A" }
+      ],
+      "bungalows": 6,
+      "campOwnedTents": 20,
+      "memberTentAreaSquareMeters": 500,
+      "memberTentCapacityEstimate": 50,
+      "motorhomeSpots": 8,
+      "notes": "Main building has elevator access"
+    },
+    "calculatedTotalBedCapacity": 62,
     "photos": [
       {
         "id": "1fa85f64-5717-4562-b3fc-2c963f66afa6",
-        "photoReference": "ATplDJa...",
-        "photoUrl": null,
-        "width": 4032,
-        "height": 3024,
-        "attributionName": "Google User",
-        "attributionUrl": "https://profiles.google.com/1234567890",
+        "campId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "url": "https://example.com/photo.jpg",
+        "description": "Main entrance view",
         "isPrimary": true,
-        "displayOrder": 1
+        "isOriginal": false,
+        "displayOrder": 0,
+        "createdAt": "2026-02-17T10:00:00Z",
+        "updatedAt": "2026-02-17T10:00:00Z"
       }
     ],
     "createdAt": "2026-02-17T10:00:00Z",
@@ -1139,6 +1153,8 @@ Returns full camp details including all Google Places fields and photos.
   }
 }
 ```
+
+> **Note:** `accommodationCapacity` and `calculatedTotalBedCapacity` are `null` when no accommodation data has been set. `photos` is an empty array when no photos exist.
 
 **Error Responses:**
 
@@ -1163,7 +1179,12 @@ Creates a new camp. If `googlePlaceId` is provided, the backend automatically en
   "googlePlaceId": "ChIJN1t_tDeuEmsRUsoyG83frY4",
   "pricePerAdult": 180.00,
   "pricePerChild": 120.00,
-  "pricePerBaby": 60.00
+  "pricePerBaby": 60.00,
+  "accommodationCapacity": {
+    "privateRoomsWithBathroom": 10,
+    "bungalows": 6,
+    "notes": "Accessible facilities available"
+  }
 }
 ```
 
@@ -1181,7 +1202,7 @@ Updates an existing camp.
 
 **Authorization**: Admin or Board
 
-**Request Body:** Same as POST plus `isActive` boolean
+**Request Body:** Same as POST plus `isActive` boolean and optionally `accommodationCapacity`
 
 **Success Response (200 OK):** Same as `GET /api/camps/{id}` response
 
@@ -1346,6 +1367,8 @@ Returns all non-archived camp editions with optional filtering.
       "maxCapacity": 100,
       "notes": null,
       "isArchived": false,
+      "accommodationCapacity": null,
+      "calculatedTotalBedCapacity": null,
       "createdAt": "2026-02-17T10:00:00Z",
       "updatedAt": "2026-02-17T10:00:00Z"
     }
@@ -1450,6 +1473,8 @@ Returns a single camp edition by ID.
     "maxCapacity": 100,
     "notes": null,
     "isArchived": false,
+    "accommodationCapacity": null,
+    "calculatedTotalBedCapacity": null,
     "createdAt": "2026-02-17T10:00:00Z",
     "updatedAt": "2026-02-17T10:00:00Z"
   }
@@ -1542,6 +1567,191 @@ Additional date constraints:
 - **401 Unauthorized**: User not authenticated
 - **403 Forbidden**: Insufficient role
 - **404 Not Found**: Edition not found (`NOT_FOUND`)
+
+---
+
+### POST /api/camps/editions/propose
+
+Proposes a new camp edition. The edition is created with `Proposed` status and requires board review before becoming a `Draft`.
+
+**Authorization**: Admin or Board
+
+**Request Body:**
+
+```json
+{
+  "campId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "year": 2026,
+  "startDate": "2026-07-01T00:00:00Z",
+  "endDate": "2026-07-10T00:00:00Z",
+  "pricePerAdult": 180.00,
+  "pricePerChild": 120.00,
+  "pricePerBaby": 60.00,
+  "maxCapacity": 100,
+  "proposalReason": "Annual summer camp",
+  "proposalNotes": "Same location as last year",
+  "accommodationCapacity": {
+    "privateRoomsWithBathroom": 10,
+    "bungalows": 6
+  }
+}
+```
+
+**Field Notes:**
+
+- `proposalReason`: Required, reason for proposing this edition
+- `proposalNotes`: Required, additional context for the board
+- `accommodationCapacity`: Optional; when provided, is also synced to the parent `Camp.accommodationCapacityJson` in the same transaction
+
+**Success Response (201 Created):** Returns the created `CampEditionResponse` (same shape as `GET /api/camps/editions/{id}`) with `status: "Proposed"`.
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed (missing fields, invalid dates)
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User is not Admin or Board
+- **404 Not Found**: Camp not found
+
+---
+
+## Camp Photo Management Endpoints
+
+Manage photos for a camp location. Supports adding manual photos (by URL), editing, deleting, reordering, and setting a primary photo. All endpoints require Admin or Board role.
+
+**Base Path:** `/api/camps/{campId}/photos`
+
+---
+
+### POST /api/camps/{campId}/photos
+
+Adds a new manually managed photo to a camp.
+
+**Authorization**: Admin or Board
+
+**Request Body:**
+
+```json
+{
+  "url": "https://example.com/photo.jpg",
+  "description": "Main entrance in summer",
+  "displayOrder": 0,
+  "isPrimary": false
+}
+```
+
+**Field Notes:**
+
+- `url`: Required, valid URL, max 2000 characters
+- `description`: Optional, max 500 characters
+- `displayOrder`: Required, integer >= 0
+- `isPrimary`: Required boolean; if `true`, all other photos for this camp are set to `isPrimary = false`
+
+**Success Response (201 Created):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "9fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "campId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "url": "https://example.com/photo.jpg",
+    "description": "Main entrance in summer",
+    "isPrimary": false,
+    "isOriginal": false,
+    "displayOrder": 0,
+    "createdAt": "2026-02-17T10:00:00Z",
+    "updatedAt": "2026-02-17T10:00:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed (`VALIDATION_ERROR`)
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User is not Admin or Board
+- **404 Not Found**: Camp not found
+
+---
+
+### PUT /api/camps/{campId}/photos/{photoId}
+
+Updates an existing camp photo.
+
+**Authorization**: Admin or Board
+
+**Request Body:** Same as POST
+
+**Success Response (200 OK):** Updated photo object (same shape as POST response)
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User is not Admin or Board
+- **404 Not Found**: Photo not found or does not belong to this camp
+
+---
+
+### DELETE /api/camps/{campId}/photos/{photoId}
+
+Deletes a camp photo permanently.
+
+**Authorization**: Admin or Board
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User is not Admin or Board
+- **404 Not Found**: Photo not found or does not belong to this camp
+
+---
+
+### POST /api/camps/{campId}/photos/{photoId}/set-primary
+
+Sets the specified photo as the primary (main display) photo for the camp. Clears `isPrimary` on all other photos for this camp in the same operation.
+
+**Authorization**: Admin or Board
+
+**No request body.**
+
+**Success Response (200 OK):** Updated photo object with `isPrimary: true`
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User is not Admin or Board
+- **404 Not Found**: Photo not found or does not belong to this camp
+
+---
+
+### PUT /api/camps/{campId}/photos/reorder
+
+Updates the `displayOrder` for a set of photos. Only the specified photos are updated; unspecified photos are left unchanged.
+
+**Authorization**: Admin or Board
+
+**Request Body:**
+
+```json
+{
+  "photos": [
+    { "id": "9fa85f64-5717-4562-b3fc-2c963f66afa6", "displayOrder": 0 },
+    { "id": "8fa85f64-5717-4562-b3fc-2c963f66afa6", "displayOrder": 1 }
+  ]
+}
+```
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **400 Bad Request**: Any photo ID does not belong to this camp (`VALIDATION_ERROR`)
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User is not Admin or Board
+- **404 Not Found**: Camp not found
 
 ---
 
