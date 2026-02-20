@@ -272,6 +272,94 @@ public static class CampsEndpoints
             .Produces(403)
             .Produces(404);
 
+        // ── Camp Edition Extras (Board+ write — edition-scoped) ───────────────
+        var extrasWriteGroup = app.MapGroup("/api/camps/editions/{editionId:guid}/extras")
+            .WithTags("Camp Edition Extras")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"));
+
+        // POST /api/camps/editions/{editionId}/extras - Create extra
+        extrasWriteGroup.MapPost("/", CreateExtra)
+            .WithName("CreateCampEditionExtra")
+            .WithSummary("Create a new extra for a camp edition")
+            .AddEndpointFilter<ValidationFilter<CreateCampEditionExtraRequest>>()
+            .Produces<ApiResponse<CampEditionExtraResponse>>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
+        // ── Camp Edition Extras (Member+ read — edition-scoped) ───────────────
+        var extrasReadGroup = app.MapGroup("/api/camps/editions/{editionId:guid}/extras")
+            .WithTags("Camp Edition Extras")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board", "Member"));
+
+        // GET /api/camps/editions/{editionId}/extras - List extras for edition
+        extrasReadGroup.MapGet("/", GetExtrasByEdition)
+            .WithName("GetCampEditionExtras")
+            .WithSummary("List all extras for a camp edition")
+            .Produces<ApiResponse<List<CampEditionExtraResponse>>>()
+            .Produces(StatusCodes.Status401Unauthorized);
+
+        // ── Camp Edition Extras by ID (Board+ write) ──────────────────────────
+        var extrasByIdWriteGroup = app.MapGroup("/api/camps/editions/extras")
+            .WithTags("Camp Edition Extras")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"));
+
+        // PUT /api/camps/editions/extras/{id} - Update extra
+        extrasByIdWriteGroup.MapPut("/{id:guid}", UpdateExtra)
+            .WithName("UpdateCampEditionExtra")
+            .WithSummary("Update a camp edition extra")
+            .AddEndpointFilter<ValidationFilter<UpdateCampEditionExtraRequest>>()
+            .Produces<ApiResponse<CampEditionExtraResponse>>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
+
+        // DELETE /api/camps/editions/extras/{id} - Delete extra
+        extrasByIdWriteGroup.MapDelete("/{id:guid}", DeleteExtra)
+            .WithName("DeleteCampEditionExtra")
+            .WithSummary("Delete a camp edition extra (only if not sold)")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
+
+        // PATCH /api/camps/editions/extras/{id}/activate - Activate extra
+        extrasByIdWriteGroup.MapPatch("/{id:guid}/activate", ActivateExtra)
+            .WithName("ActivateCampEditionExtra")
+            .WithSummary("Activate a camp edition extra")
+            .Produces<ApiResponse<CampEditionExtraResponse>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
+
+        // PATCH /api/camps/editions/extras/{id}/deactivate - Deactivate extra
+        extrasByIdWriteGroup.MapPatch("/{id:guid}/deactivate", DeactivateExtra)
+            .WithName("DeactivateCampEditionExtra")
+            .WithSummary("Deactivate a camp edition extra")
+            .Produces<ApiResponse<CampEditionExtraResponse>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
+
+        // ── Camp Edition Extras by ID (Member+ read) ──────────────────────────
+        var extrasByIdReadGroup = app.MapGroup("/api/camps/editions/extras")
+            .WithTags("Camp Edition Extras")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board", "Member"));
+
+        // GET /api/camps/editions/extras/{id} - Get extra by ID
+        extrasByIdReadGroup.MapGet("/{id:guid}", GetExtraById)
+            .WithName("GetCampEditionExtraById")
+            .WithSummary("Get a specific camp edition extra by ID")
+            .Produces<ApiResponse<CampEditionExtraResponse>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound);
+
         return app;
     }
 
@@ -701,5 +789,118 @@ public static class CampsEndpoints
             return Results.NotFound(ApiResponse<CampPhotoResponse>.NotFound("Photo not found"));
 
         return Results.Ok(ApiResponse<CampPhotoResponse>.Ok(photo));
+    }
+
+    // ── Camp Edition Extras handlers ──────────────────────────────────────────
+
+    private static async Task<IResult> GetExtrasByEdition(
+        Guid editionId,
+        [FromQuery] bool? activeOnly,
+        [FromServices] CampEditionExtrasService service,
+        CancellationToken ct)
+    {
+        var extras = await service.GetByEditionAsync(editionId, activeOnly, ct);
+        return Results.Ok(ApiResponse<List<CampEditionExtraResponse>>.Ok(extras));
+    }
+
+    private static async Task<IResult> GetExtraById(
+        Guid id,
+        [FromServices] CampEditionExtrasService service,
+        CancellationToken ct)
+    {
+        var extra = await service.GetByIdAsync(id, ct);
+        return extra is not null
+            ? Results.Ok(ApiResponse<CampEditionExtraResponse>.Ok(extra))
+            : Results.NotFound(ApiResponse<CampEditionExtraResponse>.NotFound(
+                $"Extra con ID '{id}' no encontrado"));
+    }
+
+    private static async Task<IResult> CreateExtra(
+        Guid editionId,
+        CreateCampEditionExtraRequest request,
+        [FromServices] CampEditionExtrasService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var extra = await service.CreateAsync(editionId, request, ct);
+            return Results.Created(
+                $"/api/camps/editions/extras/{extra.Id}",
+                ApiResponse<CampEditionExtraResponse>.Ok(extra));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(
+                ApiResponse<CampEditionExtraResponse>.Fail(ex.Message, "OPERATION_ERROR"));
+        }
+    }
+
+    private static async Task<IResult> UpdateExtra(
+        Guid id,
+        UpdateCampEditionExtraRequest request,
+        [FromServices] CampEditionExtrasService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var extra = await service.UpdateAsync(id, request, ct);
+            return Results.Ok(ApiResponse<CampEditionExtraResponse>.Ok(extra));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(
+                ApiResponse<CampEditionExtraResponse>.Fail(ex.Message, "OPERATION_ERROR"));
+        }
+    }
+
+    private static async Task<IResult> DeleteExtra(
+        Guid id,
+        [FromServices] CampEditionExtrasService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var deleted = await service.DeleteAsync(id, ct);
+            return deleted
+                ? Results.NoContent()
+                : Results.NotFound(ApiResponse<object>.NotFound(
+                    $"Extra con ID '{id}' no encontrado"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(ApiResponse<object>.Fail(ex.Message, "OPERATION_ERROR"));
+        }
+    }
+
+    private static async Task<IResult> ActivateExtra(
+        Guid id,
+        [FromServices] CampEditionExtrasService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var extra = await service.ActivateAsync(id, ct);
+            return Results.Ok(ApiResponse<CampEditionExtraResponse>.Ok(extra));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> DeactivateExtra(
+        Guid id,
+        [FromServices] CampEditionExtrasService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var extra = await service.DeactivateAsync(id, ct);
+            return Results.Ok(ApiResponse<CampEditionExtraResponse>.Ok(extra));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
     }
 }

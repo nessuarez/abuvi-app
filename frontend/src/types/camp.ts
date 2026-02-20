@@ -1,5 +1,4 @@
 // Camp location types matching backend DTOs
-import type { CampPhoto } from './camp-photo'
 
 export interface SharedRoomInfo {
   quantity: number
@@ -29,6 +28,14 @@ export interface Camp {
   latitude: number | null
   longitude: number | null
   googlePlaceId: string | null
+  // Lightweight extended fields (present in list AND detail)
+  formattedAddress: string | null
+  phoneNumber: string | null
+  websiteUrl: string | null
+  googleMapsUrl: string | null
+  googleRating: number | null
+  googleRatingCount: number | null
+  businessStatus: string | null
   pricePerAdult: number
   pricePerChild: number
   pricePerBaby: number
@@ -38,7 +45,33 @@ export interface Camp {
   editionCount?: number // For display in list view
   accommodationCapacity?: AccommodationCapacity | null
   calculatedTotalBedCapacity?: number | null
-  photos?: CampPhoto[]
+}
+
+export interface CampPlacesPhoto {
+  id: string
+  photoReference: string | null
+  photoUrl: string | null
+  width: number
+  height: number
+  attributionName: string
+  attributionUrl: string | null
+  isPrimary: boolean
+  displayOrder: number
+}
+
+export interface CampDetailResponse extends Camp {
+  // Full address breakdown (detail-only)
+  streetAddress: string | null
+  locality: string | null
+  administrativeArea: string | null
+  postalCode: string | null
+  country: string | null
+  nationalPhoneNumber: string | null
+  // Metadata
+  placeTypes: string | null
+  lastGoogleSyncAt: string | null
+  // Photos from Google Places
+  photos: CampPlacesPhoto[]
 }
 
 export interface CreateCampRequest {

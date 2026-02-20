@@ -28,15 +28,6 @@ const formatCurrency = (amount: number): string => {
     minimumFractionDigits: 0
   }).format(amount)
 }
-
-const statusLabel = computed(() => {
-  const labels: Record<string, string> = {
-    Active: 'Activo',
-    Inactive: 'Inactivo',
-    HistoricalArchive: 'Archivo Histórico'
-  }
-  return labels[props.camp.status] || props.camp.status
-})
 </script>
 
 <template>
@@ -47,20 +38,26 @@ const statusLabel = computed(() => {
     <div class="mb-3 flex items-start justify-between">
       <div>
         <h3 class="text-lg font-semibold text-gray-900">{{ camp.name }}</h3>
-        <p class="text-sm text-gray-500">
+        <p v-if="camp.latitude !== null && camp.longitude !== null" class="text-sm text-gray-500">
           {{ camp.latitude.toFixed(4) }}, {{ camp.longitude.toFixed(4) }}
         </p>
       </div>
-      <span
-        :class="{
-          'bg-green-100 text-green-800': camp.status === 'Active',
-          'bg-gray-100 text-gray-800': camp.status === 'Inactive',
-          'bg-blue-100 text-blue-800': camp.status === 'HistoricalArchive'
-        }"
-        class="rounded-full px-2 py-1 text-xs font-medium"
-      >
-        {{ statusLabel }}
-      </span>
+      <div class="flex items-center gap-2">
+        <span
+          v-if="camp.googleRating !== null"
+          class="flex items-center gap-1 rounded-full bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-700"
+          :aria-label="`Valoración de Google: ${camp.googleRating.toFixed(1)}`"
+        >
+          <i class="pi pi-star-fill text-xs text-yellow-400"></i>
+          {{ camp.googleRating.toFixed(1) }}
+        </span>
+        <span
+          :class="camp.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
+          class="rounded-full px-2 py-1 text-xs font-medium"
+        >
+          {{ camp.isActive ? 'Activo' : 'Inactivo' }}
+        </span>
+      </div>
     </div>
 
     <!-- Description -->
@@ -70,15 +67,15 @@ const statusLabel = computed(() => {
     <div class="mb-4 grid grid-cols-3 gap-2">
       <div class="rounded bg-gray-50 p-2 text-center">
         <p class="text-xs text-gray-500">Adulto</p>
-        <p class="text-sm font-semibold text-gray-900">{{ formatCurrency(camp.basePriceAdult) }}</p>
+        <p class="text-sm font-semibold text-gray-900">{{ formatCurrency(camp.pricePerAdult) }}</p>
       </div>
       <div class="rounded bg-gray-50 p-2 text-center">
         <p class="text-xs text-gray-500">Niño</p>
-        <p class="text-sm font-semibold text-gray-900">{{ formatCurrency(camp.basePriceChild) }}</p>
+        <p class="text-sm font-semibold text-gray-900">{{ formatCurrency(camp.pricePerChild) }}</p>
       </div>
       <div class="rounded bg-gray-50 p-2 text-center">
         <p class="text-xs text-gray-500">Bebé</p>
-        <p class="text-sm font-semibold text-gray-900">{{ formatCurrency(camp.basePriceBaby) }}</p>
+        <p class="text-sm font-semibold text-gray-900">{{ formatCurrency(camp.pricePerBaby) }}</p>
       </div>
     </div>
 

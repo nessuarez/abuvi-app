@@ -224,6 +224,43 @@ public enum PricingPeriod
     PerDay      // Charged per day of camp
 }
 
+// ── Camp Edition Extras DTOs ──────────────────────────────────────────────────
+
+public record CampEditionExtraResponse(
+    Guid Id,
+    Guid CampEditionId,
+    string Name,
+    string? Description,
+    decimal Price,
+    PricingType PricingType,
+    PricingPeriod PricingPeriod,
+    bool IsRequired,
+    bool IsActive,
+    int? MaxQuantity,
+    int CurrentQuantitySold,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
+);
+
+public record CreateCampEditionExtraRequest(
+    string Name,
+    string? Description,
+    decimal Price,
+    PricingType PricingType,
+    PricingPeriod PricingPeriod,
+    bool IsRequired,
+    int? MaxQuantity
+);
+
+public record UpdateCampEditionExtraRequest(
+    string Name,
+    string? Description,
+    decimal Price,
+    bool IsRequired,
+    bool IsActive,
+    int? MaxQuantity
+);
+
 /// <summary>
 /// Association-wide settings
 /// </summary>
