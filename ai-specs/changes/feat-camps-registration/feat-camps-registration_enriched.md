@@ -11,12 +11,14 @@ This feature implements the full camp registration workflow for ABUVI, allowing 
 ### Key Entities (actual codebase, not outdated data-model.md)
 
 The codebase already has:
+
 - `Camp` → camp template (location, default pricing)
 - `CampEdition` → specific camp instance per year (with pricing, status, capacity, extras)
 - `CampEditionExtra` → optional services per edition
 - `FamilyUnit` / `FamilyMember` → families and their members
 
 This feature adds:
+
 - `Registration` → one per family unit per camp edition
 - `RegistrationMember` → which family members attend, with individual pricing
 - `RegistrationExtra` → selected extras per registration
@@ -359,6 +361,7 @@ POST /api/registrations/{id}/cancel        → Cancel registration (Member, repr
 ```
 
 **Authorization rules:**
+
 - All endpoints require authentication (`RequireAuthorization()`)
 - The representative check (family unit owner) is enforced in the service layer, not via policy, mirroring the existing `FamilyUnitsService` pattern
 - Admin/Board can view all registrations via `GET /api/registrations?all=true` (add `[FromQuery] bool all = false` parameter)
