@@ -120,6 +120,36 @@ const router = createRouter({
 			}
 		},
 
+		// Registration routes — authenticated members
+		// IMPORTANT: /registrations/new/:editionId MUST be before /registrations/:id
+		{
+			path: "/registrations",
+			name: "registrations",
+			component: () => import("@/views/registrations/RegistrationsPage.vue"),
+			meta: {
+				requiresAuth: true,
+				title: "ABUVI | Mis Inscripciones"
+			}
+		},
+		{
+			path: "/registrations/new/:editionId",
+			name: "registration-new",
+			component: () => import("@/views/registrations/RegisterForCampPage.vue"),
+			meta: {
+				requiresAuth: true,
+				title: "ABUVI | Nueva Inscripción"
+			}
+		},
+		{
+			path: "/registrations/:id",
+			name: "registration-detail",
+			component: () => import("@/views/registrations/RegistrationDetailPage.vue"),
+			meta: {
+				requiresAuth: true,
+				title: "ABUVI | Detalle de Inscripción"
+			}
+		},
+
 		// Legacy user management routes — redirect to admin panel
 		{
 			path: "/users",

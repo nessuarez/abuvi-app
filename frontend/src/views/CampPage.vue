@@ -1,14 +1,34 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import Container from '@/components/ui/Container.vue'
 import ActiveEditionCard from '@/components/camps/ActiveEditionCard.vue'
 import { useCampEditions } from '@/composables/useCampEditions'
+import { useFamilyUnits } from '@/composables/useFamilyUnits'
+import { useAuthStore } from '@/stores/auth'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
+import Button from 'primevue/button'
 
+const router = useRouter()
+const auth = useAuthStore()
 const { activeEdition, loading, error, getActiveEdition } = useCampEditions()
+const { familyUnit, getCurrentUserFamilyUnit } = useFamilyUnits()
 
-onMounted(() => getActiveEdition())
+const isRepresentative = computed(
+  () => !!familyUnit.value && familyUnit.value.representativeUserId === auth.user?.id
+)
+
+const goToRegister = () => {
+  if (activeEdition.value) {
+    router.push({ name: 'registration-new', params: { editionId: activeEdition.value.id } })
+  }
+}
+
+onMounted(() => {
+  getActiveEdition()
+  getCurrentUserFamilyUnit()
+})
 </script>
 
 <template>
@@ -28,6 +48,40 @@ onMounted(() => getActiveEdition())
 
       <div v-else-if="activeEdition">
         <ActiveEditionCard :edition="activeEdition" />
+
+        <!-- Registration action section -->
+        <div class="mt-6 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+          <Button
+            v-if="activeEdition.status === 'Open' && isRepresentative"
+            label="Inscribirse al campamento"
+            icon="pi pi-user-plus"
+            size="large"
+            @click="goToRegister"
+            data-testid="register-button"
+          />
+          <Button
+            v-else-if="activeEdition.status === 'Open' && !isRepresentative"
+            label="Solo el representante puede inscribirse"
+            icon="pi pi-info-circle"
+            severity="secondary"
+            size="large"
+            disabled
+          />
+          <RouterLink
+            :to="{ name: 'registrations' }"
+            class="text-sm text-blue-600 underline hover:text-blue-800"
+          >
+            Ver mis inscripciones
+          </RouterLink>
+        </div>
+
+        <!-- Non-representative note -->
+        <p
+          v-if="activeEdition.status === 'Open' && !isRepresentative && familyUnit"
+          class="mt-2 text-sm text-amber-600"
+        >
+          Solo el representante de la unidad familiar puede inscribir a la familia.
+        </p>
       </div>
 
       <div v-else class="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center" data-testid="camp-empty">
