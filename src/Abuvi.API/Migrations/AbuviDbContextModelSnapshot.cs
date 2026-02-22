@@ -758,6 +758,252 @@ namespace Abuvi.API.Migrations
                     b.ToTable("membership_fees", (string)null);
                 });
 
+            modelBuilder.Entity("Abuvi.API.Features.Registrations.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("ExternalReference")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("external_reference");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("method");
+
+                    b.Property<DateTime>("PaymentDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("payment_date");
+
+                    b.Property<Guid>("RegistrationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RegistrationId")
+                        .HasDatabaseName("IX_Payments_RegistrationId");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_Payments_Status");
+
+                    b.ToTable("payments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Payments_Amount", "amount > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Registrations.Registration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<decimal>("BaseTotalAmount")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("base_total_amount");
+
+                    b.Property<Guid>("CampEditionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("camp_edition_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<decimal>("ExtrasAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("extras_amount");
+
+                    b.Property<Guid>("FamilyUnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_unit_id");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("RegisteredByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registered_by_user_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("total_amount");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampEditionId")
+                        .HasDatabaseName("IX_Registrations_CampEditionId");
+
+                    b.HasIndex("RegisteredByUserId");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_Registrations_Status");
+
+                    b.HasIndex("FamilyUnitId", "CampEditionId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Registrations_FamilyUnitId_CampEditionId");
+
+                    b.ToTable("registrations", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Registrations_TotalAmount", "total_amount = base_total_amount + extras_amount");
+                        });
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Registrations.RegistrationExtra", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<int>("CampDurationDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("camp_duration_days");
+
+                    b.Property<Guid>("CampEditionExtraId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("camp_edition_extra_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("RegistrationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_id");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("total_amount");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("unit_price");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampEditionExtraId");
+
+                    b.HasIndex("RegistrationId", "CampEditionExtraId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RegistrationExtras_RegistrationId_CampEditionExtraId");
+
+                    b.ToTable("registration_extras", (string)null);
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Registrations.RegistrationMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<int>("AgeAtCamp")
+                        .HasColumnType("integer")
+                        .HasColumnName("age_at_camp");
+
+                    b.Property<string>("AgeCategory")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("age_category");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("FamilyMemberId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_member_id");
+
+                    b.Property<decimal>("IndividualAmount")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("individual_amount");
+
+                    b.Property<Guid>("RegistrationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FamilyMemberId");
+
+                    b.HasIndex("RegistrationId")
+                        .HasDatabaseName("IX_RegistrationMembers_RegistrationId");
+
+                    b.HasIndex("RegistrationId", "FamilyMemberId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RegistrationMembers_RegistrationId_FamilyMemberId");
+
+                    b.ToTable("registration_members", (string)null);
+                });
+
             modelBuilder.Entity("Abuvi.API.Features.Users.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -998,6 +1244,82 @@ namespace Abuvi.API.Migrations
                     b.Navigation("Membership");
                 });
 
+            modelBuilder.Entity("Abuvi.API.Features.Registrations.Payment", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Registrations.Registration", "Registration")
+                        .WithMany("Payments")
+                        .HasForeignKey("RegistrationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Registration");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Registrations.Registration", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Camps.CampEdition", "CampEdition")
+                        .WithMany()
+                        .HasForeignKey("CampEditionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Abuvi.API.Features.FamilyUnits.FamilyUnit", "FamilyUnit")
+                        .WithMany()
+                        .HasForeignKey("FamilyUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Abuvi.API.Features.Users.User", "RegisteredByUser")
+                        .WithMany()
+                        .HasForeignKey("RegisteredByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CampEdition");
+
+                    b.Navigation("FamilyUnit");
+
+                    b.Navigation("RegisteredByUser");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Registrations.RegistrationExtra", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Camps.CampEditionExtra", "CampEditionExtra")
+                        .WithMany()
+                        .HasForeignKey("CampEditionExtraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Abuvi.API.Features.Registrations.Registration", "Registration")
+                        .WithMany("Extras")
+                        .HasForeignKey("RegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CampEditionExtra");
+
+                    b.Navigation("Registration");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Registrations.RegistrationMember", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.FamilyUnits.FamilyMember", "FamilyMember")
+                        .WithMany()
+                        .HasForeignKey("FamilyMemberId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Abuvi.API.Features.Registrations.Registration", "Registration")
+                        .WithMany("Members")
+                        .HasForeignKey("RegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FamilyMember");
+
+                    b.Navigation("Registration");
+                });
+
             modelBuilder.Entity("Abuvi.API.Features.Users.UserRoleChangeLog", b =>
                 {
                     b.HasOne("Abuvi.API.Features.Users.User", null)
@@ -1028,6 +1350,15 @@ namespace Abuvi.API.Migrations
             modelBuilder.Entity("Abuvi.API.Features.Memberships.Membership", b =>
                 {
                     b.Navigation("Fees");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Registrations.Registration", b =>
+                {
+                    b.Navigation("Extras");
+
+                    b.Navigation("Members");
+
+                    b.Navigation("Payments");
                 });
 #pragma warning restore 612, 618
         }

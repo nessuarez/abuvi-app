@@ -9,6 +9,7 @@ using Abuvi.API.Features.GooglePlaces;
 using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.Guests;
 using Abuvi.API.Features.Memberships;
+using Abuvi.API.Features.Registrations;
 using Abuvi.API.Common.Services;
 using FluentValidation;
 using System.Text.Json.Serialization;
@@ -173,6 +174,13 @@ builder.Services.AddScoped<GuestsService>();
 builder.Services.AddScoped<IMembershipsRepository, MembershipsRepository>();
 builder.Services.AddScoped<MembershipsService>();
 
+// Registrations feature
+builder.Services.AddScoped<IRegistrationsRepository, RegistrationsRepository>();
+builder.Services.AddScoped<IRegistrationExtrasRepository, RegistrationExtrasRepository>();
+builder.Services.AddScoped<IPaymentsRepository, PaymentsRepository>();
+builder.Services.AddScoped<RegistrationPricingService>();
+builder.Services.AddScoped<RegistrationsService>();
+
 // Encryption Service
 builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
 
@@ -333,6 +341,7 @@ app.MapFamilyUnitsEndpoints();
 app.MapGuestsEndpoints();
 app.MapMembershipsEndpoints();
 app.MapMembershipFeeEndpoints();
+app.MapRegistrationsEndpoints();
 
 app.Run();
 

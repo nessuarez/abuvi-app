@@ -136,4 +136,17 @@ public class CampEditionsRepository : ICampEditionsRepository
             .OrderByDescending(e => e.Status == CampEditionStatus.Completed ? 1 : 0)
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<CampEdition>> GetOpenEditionsAsync(CancellationToken cancellationToken = default)
+        => await _context.CampEditions
+            .AsNoTracking()
+            .Include(e => e.Camp)
+            .Where(e => e.Status == CampEditionStatus.Open && !e.IsArchived)
+            .OrderBy(e => e.StartDate)
+            .ToListAsync(cancellationToken);
+
+    public async Task<CampEditionExtra?> GetExtraByIdAsync(Guid extraId, CancellationToken cancellationToken = default)
+        => await _context.CampEditionExtras
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == extraId, cancellationToken);
 }

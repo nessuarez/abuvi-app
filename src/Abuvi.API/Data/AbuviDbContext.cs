@@ -3,6 +3,7 @@ using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.Guests;
 using Abuvi.API.Features.Memberships;
+using Abuvi.API.Features.Registrations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
@@ -23,6 +24,10 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     public DbSet<Membership> Memberships => Set<Membership>();
     public DbSet<MembershipFee> MembershipFees => Set<MembershipFee>();
     public DbSet<Guest> Guests => Set<Guest>();
+    public DbSet<Registration> Registrations => Set<Registration>();
+    public DbSet<RegistrationMember> RegistrationMembers => Set<RegistrationMember>();
+    public DbSet<RegistrationExtra> RegistrationExtras => Set<RegistrationExtra>();
+    public DbSet<Payment> Payments => Set<Payment>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

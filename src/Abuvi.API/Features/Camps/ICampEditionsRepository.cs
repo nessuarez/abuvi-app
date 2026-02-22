@@ -53,4 +53,15 @@ public interface ICampEditionsRepository
     /// Returns null if no qualifying edition exists within the lookback window.
     /// </summary>
     Task<CampEdition?> GetCurrentAsync(int currentYear, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns all non-archived Open camp editions, ordered by start date.
+    /// Used by the registration flow to list editions available for registration.
+    /// </summary>
+    Task<IReadOnlyList<CampEdition>> GetOpenEditionsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a CampEditionExtra by its unique identifier.
+    /// </summary>
+    Task<CampEditionExtra?> GetExtraByIdAsync(Guid extraId, CancellationToken cancellationToken = default);
 }
