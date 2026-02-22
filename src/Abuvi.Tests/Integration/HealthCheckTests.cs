@@ -34,6 +34,7 @@ public class HealthCheckTests : IClassFixture<WebApplicationFactory<Program>>
         doc.RootElement.TryGetProperty("entries", out var entries).Should().BeTrue("response must include 'entries'");
         entries.TryGetProperty("database", out _).Should().BeTrue("entries must include 'database' check");
         entries.TryGetProperty("resend", out _).Should().BeTrue("entries must include 'resend' check");
+        entries.TryGetProperty("seq", out _).Should().BeTrue("entries must include 'seq' check");
     }
 
     [Fact]

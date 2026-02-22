@@ -228,7 +228,11 @@ builder.Services.AddHealthChecks()
     .AddCheck<GooglePlacesHealthCheck>(
         name: "google-places",
         failureStatus: HealthStatus.Degraded,
-        tags: ["external"]);
+        tags: ["external"])
+    .AddCheck<SeqHealthCheck>(
+        name: "seq",
+        failureStatus: HealthStatus.Degraded,
+        tags: ["logging", "external"]);
 
 var app = builder.Build();
 
