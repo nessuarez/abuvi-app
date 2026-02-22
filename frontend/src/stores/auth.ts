@@ -139,6 +139,15 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(TOKEN_KEY)
   }
 
+  // Update profile fields in the store (and persist if session was saved)
+  function updateProfile(data: { firstName?: string; lastName?: string; phone?: string | null }) {
+    if (!user.value) return
+    user.value = { ...user.value, ...data }
+    if (localStorage.getItem(USER_KEY)) {
+      localStorage.setItem(USER_KEY, JSON.stringify(user.value))
+    }
+  }
+
   return {
     user,
     token,
@@ -150,6 +159,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     register,
     logout,
+    updateProfile,
     // Legacy methods
     setAuth,
     clearAuth,

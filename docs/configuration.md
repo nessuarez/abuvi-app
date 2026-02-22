@@ -166,10 +166,13 @@ The annual membership fee amount used when generating fee records. Changing this
 Used by `EncryptionService` (AES-256) to encrypt sensitive health data stored for guests. The key string is hashed with SHA-256 to produce the 32-byte AES key.
 
 > **Critical warnings:**
+>
 > - **Do not commit a production key to the repository.** Supply it via environment variable:
+>
 >   ```
 >   Encryption__Key=${ENCRYPTION_KEY}
 >   ```
+>
 > - **Never change this key once the database contains encrypted data.** Existing records will become unreadable. If rotation is ever needed, all encrypted fields must be decrypted with the old key and re-encrypted with the new one before switching.
 > - Generate a strong key: `openssl rand -base64 32`
 

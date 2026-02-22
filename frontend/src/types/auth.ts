@@ -35,6 +35,7 @@ export interface UserInfo {
   email: string
   firstName: string
   lastName: string
+  phone?: string | null
   role: UserRole
   isActive: boolean
 }
