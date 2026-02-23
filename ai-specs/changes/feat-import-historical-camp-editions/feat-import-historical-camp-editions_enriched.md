@@ -73,6 +73,347 @@ Historical editions are inserted **directly with `Status = Completed`**. No stat
 
 ---
 
+## Phase 0 — Data Preparation: Interactive Jupyter Notebook
+
+Before any migration can be written, the raw data from the PDF must be parsed, reviewed, and geocoded. This is a **one-time offline step** implemented as a Jupyter notebook — consistent with the `feat-import-csv-families` pattern.
+
+**File:** `tools/import-historical-camps.ipynb`
+
+---
+
+### Input format (from the PDF)
+
+Each line in the PDF follows this pattern:
+
+```
+YEAR - CAMP NAME [ROMAN NUMERAL] (PROVINCE)
+```
+
+Real example:
+
+```
+1977 - SELVA DE OZA I (Huesca)
+1978 - SELVA DE OZA II (Huesca)
+1979 - CANDANCHU (Huesca)
+```
+
+**Key observations:**
+
+- **Roman numeral** (`I`, `II`, `III`, ...) indicates how many times ABUVI has camped at that same location. It is **not** part of the camp's name — it must be stripped.
+- **Province** in parentheses is the Spanish province (Huesca, Madrid, Segovia, etc.) — this is used as the geocoding hint and as part of the Camp's location description.
+- When the same (clean name + province) appears multiple times with incrementing roman numerals, they all map to the **same `Camp` entity** but to **different `CampEdition` rows**.
+
+**Parsing rules:**
+
+| Raw text | year | clean_name | roman_numeral | province |
+| --- | --- | --- | --- | --- |
+| `1977 - SELVA DE OZA I (Huesca)` | 1977 | `SELVA DE OZA` | 1 | `Huesca` |
+| `1978 - SELVA DE OZA II (Huesca)` | 1978 | `SELVA DE OZA` | 2 | `Huesca` |
+| `1979 - CANDANCHU (Huesca)` | 1979 | `CANDANCHU` | 1 (implied) | `Huesca` |
+
+---
+
+### Notebook structure
+
+The notebook has 5 sections (cells). Google Places API is called **on demand** in Section 3 — the user reviews the parsed data first and can add extra details before calling the API.
+
+---
+
+#### Section 1 — Paste raw data from PDF
+
+```python
+# Paste the lines from the PDF here (one per line)
+RAW_LINES = """
+1975 - LUGAR DE INICIO I (Madrid)
+1976 - LUGAR DE INICIO II (Madrid)
+1977 - SELVA DE OZA I (Huesca)
+1978 - SELVA DE OZA II (Huesca)
+1979 - CANDANCHU (Huesca)
+...
+2024 - ULTIMO CAMPAMENTO (Guadalajara)
+""".strip().splitlines()
+```
+
+---
+
+#### Section 2 — Parse and review all editions
+
+```python
+import re
+import pandas as pd
+
+ROMAN = {"I":1,"II":2,"III":3,"IV":4,"V":5,"VI":6,"VII":7,"VIII":8,"IX":9,"X":10,
+         "XI":11,"XII":12,"XIII":13,"XIV":14,"XV":15}
+
+LINE_RE = re.compile(
+    r"^(\d{4})\s*[-–]\s*(.+?)\s*((?:XI{0,3}|IX|IV|V?I{0,3})+)?\s*\(([^)]+)\)\s*$",
+    re.IGNORECASE
+)
+
+def parse_line(line: str) -> dict | None:
+    m = LINE_RE.match(line.strip())
+    if not m:
+        return None
+    year_str, raw_name, roman, province = m.groups()
+    roman = (roman or "").strip().upper()
+    edition_num = ROMAN.get(roman, 1)
+    clean_name = raw_name.strip().title()  # "SELVA DE OZA" → "Selva de Oza"
+    return {
+        "year": int(year_str),
+        "clean_name": clean_name,
+        "province": province.strip().title(),
+        "edition_num": edition_num,
+        "raw_line": line.strip(),
+    }
+
+rows = [parse_line(l) for l in RAW_LINES if l.strip()]
+failed = [l for l, r in zip(RAW_LINES, rows) if r is None]
+rows = [r for r in rows if r is not None]
+
+df = pd.DataFrame(rows).sort_values(["clean_name", "province", "year"]).reset_index(drop=True)
+
+if failed:
+    print(f"⚠ {len(failed)} lines could not be parsed:")
+    for l in failed:
+        print(f"  {l}")
+
+print(f"✅ Parsed {len(df)} editions across {df.groupby(['clean_name','province']).ngroups} unique locations\n")
+display(df)
+```
+
+**Expected output preview:**
+
+```
+✅ Parsed 50 editions across 32 unique locations
+
+  year  clean_name        province  edition_num
+  1977  Selva de Oza      Huesca    1
+  1978  Selva de Oza      Huesca    2
+  1979  Candanchu         Huesca    1
+  ...
+```
+
+**Review checkpoint:** Look at the DataFrame. Fix any parsing issues directly in `RAW_LINES` and re-run.
+
+---
+
+#### Section 3 — Preview unique locations and enrich before geocoding
+
+```python
+# Show one row per unique location so you can review/add extra info before calling the API
+locations = (
+    df.groupby(["clean_name", "province"])
+    .agg(
+        years=("year", list),
+        total_editions=("edition_num", "max"),
+    )
+    .reset_index()
+)
+
+# Add columns for manual enrichment (fill in what you know before calling Google)
+locations["search_override"] = ""   # optional: override the Google search query
+locations["notes"] = ""             # optional: any historical notes
+locations["latitude"] = None        # filled by Section 4
+locations["longitude"] = None       # filled by Section 4
+locations["formatted_address"] = "" # filled by Section 4
+locations["place_id"] = ""          # filled by Section 4
+locations["geocode_status"] = "pending"
+
+print(f"Unique locations to geocode: {len(locations)}\n")
+display(locations[["clean_name", "province", "years", "total_editions", "search_override", "notes"]])
+```
+
+**Fill in `search_override` for any ambiguous names.** For example:
+
+- `Selva de Oza` in Huesca → the default query `"Selva de Oza Huesca Spain"` is probably fine
+- A very generic name like `Prado` in `Madrid` might need `search_override = "Camping Prado Manzanares Madrid"`
+
+---
+
+#### Section 4 — Geocode on demand (per location)
+
+```python
+import requests
+import time
+import os
+
+API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY", "")
+if not API_KEY:
+    raise ValueError("Set GOOGLE_PLACES_API_KEY environment variable before running this cell")
+
+FIND_PLACE_URL = "https://maps.googleapis.com/maps/api/findplacefromtext/json"
+
+def geocode_location(name: str, province: str, search_override: str = "") -> dict:
+    query = search_override if search_override.strip() else f"{name} {province} España"
+    params = {
+        "input": query,
+        "inputtype": "textquery",
+        "fields": "name,geometry,formatted_address,place_id",
+        "language": "es",
+        "key": API_KEY,
+    }
+    resp = requests.get(FIND_PLACE_URL, params=params, timeout=10)
+    resp.raise_for_status()
+    candidates = resp.json().get("candidates", [])
+    if not candidates:
+        return {"geocode_status": "not_found"}
+    best = candidates[0]
+    loc = best.get("geometry", {}).get("location", {})
+    return {
+        "google_name": best.get("name", ""),
+        "formatted_address": best.get("formattedAddress") or best.get("formatted_address", ""),
+        "latitude": loc.get("lat"),
+        "longitude": loc.get("lng"),
+        "place_id": best.get("placeId") or best.get("place_id", ""),
+        "geocode_status": "ok",
+    }
+
+# Geocode only locations not yet resolved
+for i, row in locations.iterrows():
+    if row["geocode_status"] == "ok":
+        continue
+    name, province = row["clean_name"], row["province"]
+    print(f"[{i+1}/{len(locations)}] Geocoding: {name} ({province})...")
+    result = geocode_location(name, province, row.get("search_override", ""))
+    for key, val in result.items():
+        locations.at[i, key] = val
+    if result["geocode_status"] == "ok":
+        print(f"  ✅ {result['latitude']}, {result['longitude']} — {result['formatted_address']}")
+    else:
+        print(f"  ❌ Not found — fill in latitude/longitude manually")
+    time.sleep(0.3)
+
+# Summary
+not_found = locations[locations["geocode_status"] != "ok"]
+print(f"\nDone. {len(locations) - len(not_found)}/{len(locations)} locations resolved.")
+if len(not_found):
+    print("\n⚠ Fill in coordinates manually for these locations:")
+    display(not_found[["clean_name", "province"]])
+
+display(locations[["clean_name", "province", "latitude", "longitude", "formatted_address", "geocode_status"]])
+```
+
+**Review checkpoint:** Examine the results. For any row with wrong coordinates:
+
+```python
+# Manually correct a specific location (run this in a new cell)
+idx = locations[locations["clean_name"] == "Selva de Oza"].index[0]
+locations.at[idx, "latitude"] = 42.7833
+locations.at[idx, "longitude"] = -0.6833
+locations.at[idx, "formatted_address"] = "Selva de Oza, Hecho, Huesca"
+locations.at[idx, "geocode_status"] = "ok_manual"
+```
+
+---
+
+#### Section 5 — Generate SQL and save to file
+
+```python
+from datetime import date
+
+camp_sql_rows, edition_sql_rows, location_sql_rows = [], [], []
+
+def q(s):
+    """Escape single quotes for SQL."""
+    return str(s).replace("'", "''")
+
+for camp_idx, loc_row in locations.iterrows():
+    camp_id = f"00000000-0000-0000-0002-{camp_idx+1:012d}"
+    lat = loc_row["latitude"] if loc_row["latitude"] else "NULL"
+    lng = loc_row["longitude"] if loc_row["longitude"] else "NULL"
+    address = q(loc_row.get("formatted_address") or f"{loc_row['clean_name']}, {loc_row['province']}")
+
+    camp_sql_rows.append(
+        f"('{camp_id}', '{q(loc_row['clean_name'])}', '{address}', "
+        f"{lat}, {lng}, 0, 0, 0, false, '1975-01-01', '1975-01-01')"
+    )
+
+    # Editions for this camp
+    camp_editions = df[
+        (df["clean_name"] == loc_row["clean_name"]) &
+        (df["province"] == loc_row["province"])
+    ].sort_values("year")
+
+    for ed_idx, ed_row in camp_editions.iterrows():
+        ed_id = f"00000000-0000-0000-0003-{ed_idx+1:012d}"
+        year = ed_row["year"]
+        start_date = date(year, 7, 15).isoformat()
+        end_date   = date(year, 8,  1).isoformat()
+        edition_sql_rows.append(
+            f"('{ed_id}', '{camp_id}', {year}, '{start_date}', '{end_date}', "
+            f"0, 0, 0, 'Completed', false, false, '1975-01-01', '1975-01-01')"
+        )
+
+        loc_id = f"00000000-0000-0000-0004-{ed_idx+1:012d}"
+        location_sql_rows.append(
+            f"('{loc_id}', '{q(loc_row['clean_name'])}', {year}, "
+            f"{lat}, {lng}, '{address}', '1975-01-01', '1975-01-01')"
+        )
+
+sql = f"""
+-- ============================================================
+-- Historical ABUVI camp data — generated {date.today()}
+-- Paste into EF Core migration Up() method as migrationBuilder.Sql(...)
+-- ============================================================
+
+INSERT INTO camps ("Id", name, location, latitude, longitude,
+    price_per_adult, price_per_child, price_per_baby, is_active, created_at, updated_at)
+VALUES
+{",\n".join(camp_sql_rows)}
+ON CONFLICT ("Id") DO NOTHING;
+
+INSERT INTO camp_editions ("Id", camp_id, year, start_date, end_date,
+    price_per_adult, price_per_child, price_per_baby,
+    status, is_archived, use_custom_age_ranges, created_at, updated_at)
+VALUES
+{",\n".join(edition_sql_rows)}
+ON CONFLICT ("Id") DO NOTHING;
+
+INSERT INTO camp_locations ("Id", name, year, latitude, longitude, address, created_at, updated_at)
+VALUES
+{",\n".join(location_sql_rows)}
+ON CONFLICT ("Id") DO NOTHING;
+"""
+
+output_path = "tools/historical-camps-migration.sql"
+with open(output_path, "w", encoding="utf-8") as f:
+    f.write(sql)
+
+print(f"✅ SQL written to {output_path}")
+print(f"   {len(camp_sql_rows)} camps")
+print(f"   {len(edition_sql_rows)} editions")
+print(f"   {len(location_sql_rows)} camp locations")
+```
+
+---
+
+### Workflow summary
+
+```
+Section 1: Paste raw PDF lines
+     ↓
+Section 2: Parse & review DataFrame (fix parsing errors here)
+     ↓
+Section 3: Review unique locations, fill search_override for ambiguous names
+     ↓
+Section 4: Geocode on demand → review results → manually correct errors
+     ↓
+Section 5: Generate SQL → save to tools/historical-camps-migration.sql
+     ↓
+Copy SQL into EF Core migration Up() method
+```
+
+### API cost estimate for geocoding
+
+| Operation | Calls | Cost (2026) |
+| --- | --- | --- |
+| Find Place from Text (~32 unique locations) | ~32 | Free tier: first 1,000/month free |
+| Total | ~32 | **€0** |
+
+Note: only **unique locations** are geocoded (not every edition) — so ~32 calls, not ~50.
+
+---
+
 ## Data Entities Required
 
 Two entities must be seeded:
