@@ -49,31 +49,39 @@ This is a pure **logic change** — zero database schema changes, no migration r
 All 5 existing tests that call `_sut.ChangeStatusAsync(editionId, ...)` must be updated to add `force: false` (the new third argument):
 
 1. `ChangeStatusAsync_WithValidTransition_UpdatesStatus` (line 499):
+
    ```csharp
    var result = await _sut.ChangeStatusAsync(editionId, to, force: false);
    ```
+
    Also add a new `[InlineData]` entry for the new valid transition:
+
    ```csharp
    [InlineData(CampEditionStatus.Open, CampEditionStatus.Draft)]
    ```
+
    For `Open → Draft`, set `startDate = DateTime.UtcNow.AddDays(-30)` and `endDate = DateTime.UtcNow.AddDays(10)` (no date constraint applies on `→ Draft`).
 
 2. `ChangeStatusAsync_WithInvalidTransition_ThrowsException` (line 534):
+
    ```csharp
    var act = async () => await _sut.ChangeStatusAsync(editionId, to, force: false);
    ```
 
 3. `ChangeStatusAsync_ToOpen_WithPastStartDate_ThrowsException` (line 561):
+
    ```csharp
    var act = async () => await _sut.ChangeStatusAsync(editionId, CampEditionStatus.Open, force: false);
    ```
 
 4. `ChangeStatusAsync_ToCompleted_WithFutureEndDate_ThrowsException` (line 588):
+
    ```csharp
    var act = async () => await _sut.ChangeStatusAsync(editionId, CampEditionStatus.Completed, force: false);
    ```
 
 5. `ChangeStatusAsync_WithNotFoundEdition_ThrowsException` (line 602):
+
    ```csharp
    var act = async () => await _sut.ChangeStatusAsync(editionId, CampEditionStatus.Draft, force: false);
    ```
@@ -214,6 +222,7 @@ public async Task ChangeStatusAsync_WhenClosedToDraft_ThrowsInvalidTransitionExc
 - **Action**: Add `Force = false` optional parameter to the record
 
 **Find** (lines 434–437):
+
 ```csharp
 /// <summary>
 /// Request to change the status of a camp edition
@@ -224,6 +233,7 @@ public record ChangeEditionStatusRequest(
 ```
 
 **Replace with**:
+
 ```csharp
 /// <summary>
 /// Request to change the status of a camp edition
@@ -246,6 +256,7 @@ public record ChangeEditionStatusRequest(
 #### 3a. `ValidateStatusTransition` — add `Open → Draft`
 
 **Find** (lines 355–369):
+
 ```csharp
 private static void ValidateStatusTransition(CampEditionStatus current, CampEditionStatus next)
 {
@@ -265,6 +276,7 @@ private static void ValidateStatusTransition(CampEditionStatus current, CampEdit
 ```
 
 **Replace the `Open` entry only** (surgically):
+
 ```csharp
 [CampEditionStatus.Open]      = [CampEditionStatus.Closed, CampEditionStatus.Draft],
 ```
@@ -272,6 +284,7 @@ private static void ValidateStatusTransition(CampEditionStatus current, CampEdit
 #### 3b. `ChangeStatusAsync` — add `force` parameter
 
 **Find** (lines 167–183):
+
 ```csharp
 public async Task<CampEditionResponse> ChangeStatusAsync(
     Guid editionId,
@@ -292,6 +305,7 @@ public async Task<CampEditionResponse> ChangeStatusAsync(
 ```
 
 **Replace with**:
+
 ```csharp
 public async Task<CampEditionResponse> ChangeStatusAsync(
     Guid editionId,
@@ -326,6 +340,7 @@ public async Task<CampEditionResponse> ChangeStatusAsync(
 - **Action**: Add `ClaimsPrincipal user` parameter, Admin-only guards, and pass `force` to the service.
 
 **Find** (lines 592–613):
+
 ```csharp
 /// <summary>
 /// Change the status of a camp edition
@@ -353,6 +368,7 @@ private static async Task<IResult> ChangeEditionStatus(
 ```
 
 **Replace with**:
+
 ```csharp
 /// <summary>
 /// Change the status of a camp edition
@@ -416,6 +432,7 @@ private static async Task<IResult> ChangeEditionStatus(
 - **Action**: Locate the `ChangeEditionStatusRequest` schema entry and add the `force` boolean field
 
 Find the schema definition for `ChangeEditionStatusRequest` and add:
+
 ```yaml
 ChangeEditionStatusRequest:
   type: object
@@ -452,6 +469,7 @@ ChangeEditionStatusRequest:
 ### Unit Tests — `CampEditionsServiceTests.cs`
 
 #### Updated existing tests (signature change — add `force: false`)
+
 - [ ] `ChangeStatusAsync_WithValidTransition_UpdatesStatus` — add `force: false`; add `[InlineData(Open, Draft)]`
 - [ ] `ChangeStatusAsync_WithInvalidTransition_ThrowsException` — add `force: false`
 - [ ] `ChangeStatusAsync_ToOpen_WithPastStartDate_ThrowsException` — add `force: false`
@@ -459,6 +477,7 @@ ChangeEditionStatusRequest:
 - [ ] `ChangeStatusAsync_WithNotFoundEdition_ThrowsException` — add `force: false`
 
 #### New tests
+
 - [ ] `ChangeStatusAsync_WhenOpenToDraft_WithForceFalse_SetsStatusToDraft` — Open→Draft works (no date constraint on →Draft)
 - [ ] `ChangeStatusAsync_WhenDraftToOpen_WithForceTrue_AndStartDateInPast_UpdatesStatus` — `force=true` bypasses date check
 - [ ] `ChangeStatusAsync_WhenDraftToOpen_WithForceFalse_AndStartDateInPast_ThrowsException` — `force=false` still enforces date check
