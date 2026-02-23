@@ -2,7 +2,7 @@
 
 ## Summary
 
-As a **Board/Admin** user, I want to be able to modify certain fields of a camp edition that is already in `Open` status (accepting registrations) — such as prices, capacity, notes, and extras — so that I can correct mistakes or make last-minute adjustments without having to close and reopen the edition.
+As an **Admin** user, I want to be able to correct mistakes in a camp edition that is already in `Open` status (accepting registrations) — such as a wrong price or a missing extra — so that I can fix the issue without disrupting families who are already registered.
 
 ---
 
@@ -11,7 +11,7 @@ As a **Board/Admin** user, I want to be able to modify certain fields of a camp 
 The current system **blocks all price and date changes** once a `CampEdition` is in `Open` status:
 
 ```
-CampEditionsService.UpdateAsync (line 204–215):
+CampEditionsService.UpdateAsync (lines 204–215):
   if (edition.Status == CampEditionStatus.Open)
   {
       if (startDate changed || endDate changed || any price changed)
@@ -19,292 +19,328 @@ CampEditionsService.UpdateAsync (line 204–215):
   }
 ```
 
-Additionally, `Closed` and `Completed` editions reject all updates entirely.
-
 Real-world use cases that are currently impossible:
 
-- Fixing a typo in a price before families have paid
+- Correcting a price entered incorrectly when the edition was opened
 - Adding a new optional extra (e.g., "Camp Hoodie") after opening registration
 - Adjusting `maxCapacity` upward after securing more accommodation
-- Correcting a price that was entered incorrectly
 
 ---
 
-## Scope of This Story
+## Two Approaches Evaluated
+
+### Approach A — Relax field restrictions on Open editions
+
+Allow `pricePerAdult`, `pricePerChild`, `pricePerBaby` to be updated while the edition stays `Open`, with audit logging. Dates remain locked.
+
+**Pros:**
+
+- Edition stays `Open` → no interruption for families registering
+- Surgical: only the specific fields are relaxed
+- Simple code change (remove price check from the `if` block in `UpdateAsync`)
+
+**Cons:**
+
+- A price change could happen mid-registration (a family starts the form at the old price and submits at the new price — risk is low since prices are calculated server-side at submission time)
+- Age range fields (`useCustomAgeRanges`, `customBabyMaxAge`, etc.) are harder to relax safely — they affect pricing of new registrations
+
+---
+
+### Approach B — Admin can roll back an Open edition to Draft ✅ RECOMMENDED
+
+Allow an **Admin-only** backward status transition: `Open → Draft`. The Admin makes all necessary changes (prices, extras, dates, anything), then transitions back `Draft → Open`.
+
+**Pros:**
+
+- No relaxation of field restrictions — the existing `UpdateAsync` logic remains entirely unchanged
+- All fields can be edited during the Draft window, including dates and age ranges
+- The transition itself is an explicit action, making the intent clear in the audit trail
+- Consistent with the existing status machine pattern
+
+**Cons:**
+
+- The edition is temporarily unavailable for new registrations while in `Draft`
+- A second concern (see below): the `Draft → Open` transition currently rejects editions whose `startDate` is in the past — this blocks re-opening if the camp has already started
+
+**How to resolve the `startDate` blocker:**
+
+```csharp
+// Current check (ValidateDateConstraintsForTransition, line 375):
+if (newStatus == CampEditionStatus.Open && edition.StartDate.Date < today)
+    throw new InvalidOperationException("...");
+```
+
+This check exists to prevent opening registration for a camp that hasn't been organised yet and whose dates have already passed. But when the edition is being **re-opened** (it was already `Open` before and has existing registrations), this check is unnecessary.
+
+**Solution**: Accept an optional `force: bool` flag in `PATCH /api/camps/editions/{id}/status`, restricted to `Admin` role, that bypasses the `startDate < today` constraint. Board users cannot bypass it.
+
+Alternatively: check whether the edition has any existing registrations (indicating it was previously Open) and skip the date constraint in that case.
+
+---
+
+## Decision: Approach B
+
+Approach B is preferred because:
+
+1. Zero change to `UpdateAsync` and its existing restrictions
+2. The `Open → Draft` transition is a clear, auditable admin action
+3. Board users retain zero ability to bypass restrictions (only Admin can roll back)
+4. The `force` flag for re-opening is minimal and explicit
+
+---
+
+## Scope
 
 ### In scope
 
-1. **Relax price restrictions on Open editions**: Allow `pricePerAdult`, `pricePerChild`, `pricePerBaby` to be updated on an Open edition, with guard rules (see Business Rules).
-2. **Extras on Open editions**: Already allowed (the extras service only blocks `Closed`/`Completed`). No code change needed — this story validates and documents the existing behaviour.
-3. **Audit logging**: Log any change to prices of an Open edition with the old and new values.
+1. **New backward status transition `Open → Draft`** — Admin only
+2. **`force` flag on `PATCH .../status`** — allows Admin to reopen an edition even if `startDate` is in the past
+3. **Extras on Open editions** — already allowed, no change needed (documented here for clarity)
 
 ### Out of scope
 
-- Changing `startDate` / `endDate` / `year` on an Open edition (structural fields — remain locked).
-- Retroactively recalculating `TotalAmount` for existing registrations (snapshots are immutable by design).
-- UI changes (separate frontend ticket).
-- Changing the pricing type or period of existing extras that have already been sold (already blocked by `CampEditionExtrasService.UpdateAsync`).
+- Relaxing field restrictions in `UpdateAsync` (not needed with Approach B)
+- UI changes (separate frontend ticket)
+- Any changes to `Closed` or `Completed` status (remain immutable)
 
 ---
 
 ## Business Rules
 
-### Rule 1 — Price Change Guard
+### Rule 1 — `Open → Draft` transition is Admin-only
 
-**When a price is changed on an `Open` edition:**
+The backward transition `Open → Draft` must **not** be available to `Board` users. Only `Admin` can roll back a live edition to `Draft`.
 
-**Option A (Recommended — simple, safe):**
+Rationale: the edition going offline (even briefly) affects families who are actively registering. This is an escalated permission.
 
-- Allow price changes at **any point** while `Open`.
-- Existing registrations keep their **snapshot prices** (`RegistrationMember.IndividualAmount` and `Registration.TotalAmount` are never recalculated).
-- New registrations will use the updated prices.
-- Log the change: old price → new price, who made it, timestamp.
+### Rule 2 — Re-opening with `force` flag
 
-**Option B (Stricter):**
+When transitioning `Draft → Open` and the edition was previously `Open` (i.e., it has existing registrations OR the Admin explicitly sets `force: true`), the `startDate < today` date constraint is bypassed.
 
-- Block price changes if the edition has any registrations with `Status = Confirmed`.
-- Allow price changes if all existing registrations are still `Pending`.
+The `force` flag is only accepted when:
 
-**Decision**: Use **Option A**. It is simpler, consistent with the snapshot pattern already built into the registration system (`RegistrationMember.IndividualAmount`, `RegistrationExtra.UnitPrice` are both snapshots), and avoids a complex query guard. The audit log is the safety net.
+- The caller has `Admin` role
+- The current status is `Draft`
+- The target status is `Open`
 
-### Rule 2 — Date Fields Remain Locked
+If `force: true` is sent by a `Board` user → 403 Forbidden.
 
-`startDate`, `endDate`, and `year` **cannot** be changed on an `Open` edition. These are structural and families have already committed based on these dates.
+### Rule 3 — Extras on Open editions (existing behaviour, no change)
 
-### Rule 3 — Extras on Open Editions
-
-Adding a **new** extra to an `Open` edition is already allowed (no code change needed). This confirms the intended behaviour:
+Adding a new extra to an `Open` edition is already supported. No code change needed.
 
 | Extra operation | Proposed/Draft | Open | Closed/Completed |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Add extra | ✅ | ✅ | ❌ |
 | Update extra (no sold units) | ✅ | ✅ | ❌ |
 | Update extra price (has sold units) | ✅ | ❌ | ❌ |
-| Deactivate extra | ✅ | ✅ | ❌ |
+| Deactivate/activate extra | ✅ | ✅ | ❌ |
 | Delete extra (no sold units) | ✅ | ✅ | ❌ |
 | Delete extra (has sold units) | ❌ | ❌ | ❌ |
 
-### Rule 4 — `maxCapacity` on Open Editions
+### Rule 4 — Existing registrations are unaffected
 
-Already allowed today. Rule: `maxCapacity` cannot be reduced below the current number of non-cancelled registrations.
+When the edition returns to `Open` after a price correction, all existing registrations keep their snapshot amounts (`RegistrationMember.IndividualAmount`, `RegistrationExtra.UnitPrice`). No recalculation is performed.
 
 ---
 
 ## Technical Changes Required
 
-### Backend
+### 1. `ValidateStatusTransition` in `CampEditionsService.cs`
 
-#### File: `src/Abuvi.API/Features/Camps/CampEditionsService.cs`
+**Current** (line 355–368): only forward transitions.
 
-**Method:** `UpdateAsync`
-
-**Current behaviour (line 204–215):**
+**Change**: allow `Open → Draft` as a valid transition. The role restriction (`Admin` only) is enforced at the endpoint level (see below), not in this private method.
 
 ```csharp
-if (edition.Status == CampEditionStatus.Open)
+private static void ValidateStatusTransition(CampEditionStatus current, CampEditionStatus next)
 {
-    if (request.StartDate != edition.StartDate ||
-        request.EndDate != edition.EndDate ||
-        request.PricePerAdult != edition.PricePerAdult ||
-        request.PricePerChild != edition.PricePerChild ||
-        request.PricePerBaby != edition.PricePerBaby)
+    var validTransitions = new Dictionary<CampEditionStatus, CampEditionStatus[]>
     {
+        [CampEditionStatus.Proposed]  = [CampEditionStatus.Draft],
+        [CampEditionStatus.Draft]     = [CampEditionStatus.Open],
+        [CampEditionStatus.Open]      = [CampEditionStatus.Closed, CampEditionStatus.Draft], // ← Draft added
+        [CampEditionStatus.Closed]    = [CampEditionStatus.Completed],
+        [CampEditionStatus.Completed] = []
+    };
+
+    if (!validTransitions.TryGetValue(current, out var allowed) || !allowed.Contains(next))
         throw new InvalidOperationException(
-            "No se pueden modificar las fechas ni los precios de una edición abierta");
-    }
+            $"La transición de '{current}' a '{next}' no es válida");
 }
 ```
 
-**Required change:**
+### 2. `ChangeStatusAsync` — accept `force` flag
 
 ```csharp
-if (edition.Status == CampEditionStatus.Open)
+public async Task<CampEditionResponse> ChangeStatusAsync(
+    Guid editionId,
+    CampEditionStatus newStatus,
+    bool force,                   // ← NEW: only honoured for Admin role (validated by caller)
+    CancellationToken cancellationToken = default)
 {
-    // Dates and year are structural — always locked
-    if (request.StartDate != edition.StartDate ||
-        request.EndDate != edition.EndDate)
-    {
-        throw new InvalidOperationException(
-            "No se pueden modificar las fechas de una edición abierta");
-    }
+    var edition = await _repository.GetByIdAsync(editionId, cancellationToken);
+    if (edition == null)
+        throw new InvalidOperationException("La edición de campamento no fue encontrada");
 
-    // Log price changes for audit
-    if (request.PricePerAdult != edition.PricePerAdult ||
-        request.PricePerChild != edition.PricePerChild ||
-        request.PricePerBaby != edition.PricePerBaby)
-    {
-        _logger.LogWarning(
-            "Price change on Open edition {EditionId}: " +
-            "Adult {OldAdult}→{NewAdult}, Child {OldChild}→{NewChild}, Baby {OldBaby}→{NewBaby}",
-            edition.Id,
-            edition.PricePerAdult, request.PricePerAdult,
-            edition.PricePerChild, request.PricePerChild,
-            edition.PricePerBaby, request.PricePerBaby);
-    }
+    ValidateStatusTransition(edition.Status, newStatus);
+
+    if (!force)
+        ValidateDateConstraintsForTransition(edition, newStatus);
+    // When force=true, date constraints are skipped (Admin re-opening an in-progress edition)
+
+    edition.Status = newStatus;
+    var updated = await _repository.UpdateAsync(edition, cancellationToken);
+    return MapToCampEditionResponse(updated, updated.Camp.Name);
 }
 ```
 
-**`maxCapacity` guard** (add inside `UpdateAsync`, applies to Open editions):
+### 3. `PATCH /api/camps/editions/{id}/status` endpoint
 
-```csharp
-// When reducing maxCapacity on an Open edition, ensure it doesn't go below current active registrations
-if (edition.Status == CampEditionStatus.Open &&
-    request.MaxCapacity.HasValue &&
-    edition.MaxCapacity.HasValue &&
-    request.MaxCapacity.Value < edition.MaxCapacity.Value)
-{
-    var activeRegistrations = await _registrationsRepository.CountActiveByEditionAsync(edition.Id, cancellationToken);
-    if (request.MaxCapacity.Value < activeRegistrations)
-        throw new InvalidOperationException(
-            $"No se puede reducir la capacidad máxima a {request.MaxCapacity} " +
-            $"porque ya hay {activeRegistrations} inscripciones activas");
-}
-```
-
-> **Note:** `_registrationsRepository` will only be available once the Registrations feature is merged. Until then, skip the capacity guard (keep the existing `maxCapacity` update without the check) and add a `// TODO: add active registration check when IRegistrationsRepository is available` comment.
-
-**`CampEditionsService` constructor change** (once Registrations feature lands):
-
-```csharp
-public CampEditionsService(
-    ICampEditionsRepository repository,
-    ICampsRepository campsRepository,
-    IRegistrationsRepository registrationsRepository,  // NEW
-    ILogger<CampEditionsService> logger)               // NEW
-```
-
-#### File: `src/Abuvi.API/Features/Camps/CampsValidators.cs` (or `CampsModels.cs`)
-
-The `UpdateCampEditionRequest` validator currently accepts date fields for all statuses. Add a note: date field validation in the validator remains as-is (not empty, end > start). The _business rule_ rejecting date changes on Open editions lives in the service, not the validator.
-
----
-
-### Updated Field Editability Matrix
-
-| Field | Proposed | Draft | Open | Closed | Completed |
-|---|---|---|---|---|---|
-| `startDate` | ✅ | ✅ | ❌ | ❌ | ❌ |
-| `endDate` | ✅ | ✅ | ❌ | ❌ | ❌ |
-| `pricePerAdult` | ✅ | ✅ | ✅ (logged) | ❌ | ❌ |
-| `pricePerChild` | ✅ | ✅ | ✅ (logged) | ❌ | ❌ |
-| `pricePerBaby` | ✅ | ✅ | ✅ (logged) | ❌ | ❌ |
-| `maxCapacity` | ✅ | ✅ | ✅ (guard) | ❌ | ❌ |
-| `notes` | ✅ | ✅ | ✅ | ❌ | ❌ |
-| `useCustomAgeRanges` | ✅ | ✅ | ❌¹ | ❌ | ❌ |
-| `customBabyMaxAge` | ✅ | ✅ | ❌¹ | ❌ | ❌ |
-| `customChildMinAge` | ✅ | ✅ | ❌¹ | ❌ | ❌ |
-| `customChildMaxAge` | ✅ | ✅ | ❌¹ | ❌ | ❌ |
-| `customAdultMinAge` | ✅ | ✅ | ❌¹ | ❌ | ❌ |
-| Add extras | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Deactivate/activate extras | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Update extra price (0 sold) | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Update extra price (>0 sold) | ✅ | ✅ | ❌ | ❌ | ❌ |
-
-¹ Age range fields affect how new registrations are priced. Changing them on an Open edition could create inconsistent pricing. **Recommendation: lock these on Open editions** — same as dates.
-
----
-
-### API Contract Change
-
-#### `PUT /api/camps/editions/{id}`
-
-**Updated allowed fields when `status = Open`:**
-
-| Field | Previously allowed | After this change |
-|---|---|---|
-| `notes` | ✅ | ✅ |
-| `maxCapacity` | ✅ | ✅ (with guard) |
-| `pricePerAdult` | ❌ | ✅ |
-| `pricePerChild` | ❌ | ✅ |
-| `pricePerBaby` | ❌ | ✅ |
-| `startDate` | ❌ | ❌ |
-| `endDate` | ❌ | ❌ |
-| `useCustomAgeRanges` / custom ages | ❌ | ❌ |
-
-**Error response (unchanged format) for locked fields:**
-
+**Current request body:**
 ```json
+{ "status": "Draft" }
+```
+
+**Updated request body:**
+```json
+{ "status": "Draft", "force": false }
+```
+
+**Authorization change:**
+
+| Transition | Board | Admin |
+| --- | --- | --- |
+| `Proposed → Draft` | ✅ | ✅ |
+| `Draft → Open` | ✅ | ✅ |
+| `Draft → Open` (force) | ❌ | ✅ |
+| `Open → Draft` | ❌ | ✅ |
+| `Open → Closed` | ✅ | ✅ |
+| `Closed → Completed` | ✅ | ✅ |
+
+**Endpoint handler change** (`CampsEndpoints.cs`):
+
+```csharp
+private static async Task<IResult> ChangeEditionStatus(
+    Guid id,
+    ChangeEditionStatusRequest request,
+    ClaimsPrincipal user,
+    [FromServices] CampEditionsService service,
+    CancellationToken ct)
 {
-  "success": false,
-  "error": {
-    "message": "No se pueden modificar las fechas de una edición abierta",
-    "code": "OPERATION_ERROR"
-  }
+    var isAdmin = user.IsInRole("Admin");
+    var isBoard = user.IsInRole("Board");
+
+    // Open → Draft is Admin-only
+    if (request.Status == CampEditionStatus.Draft)
+    {
+        var edition = /* fetch current edition to check its status */;
+        if (edition?.Status == CampEditionStatus.Open && !isAdmin)
+            return Results.Forbid();
+    }
+
+    // force flag is Admin-only
+    if (request.Force && !isAdmin)
+        return Results.Forbid();
+
+    try
+    {
+        var updated = await service.ChangeStatusAsync(id, request.Status, request.Force, ct);
+        return Results.Ok(ApiResponse<CampEditionResponse>.Ok(updated));
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(ApiResponse<object>.Fail(ex.Message, "OPERATION_ERROR"));
+    }
 }
 ```
 
----
+**Updated DTO** (`CampsModels.cs`):
 
-### Data Model Impact
+```csharp
+public record ChangeEditionStatusRequest(
+    CampEditionStatus Status,
+    bool Force = false   // ← NEW: Admin-only flag to bypass startDate constraint on re-open
+);
+```
 
-**No migration required.** This story only changes business logic in the service layer. No new tables, columns, or indexes.
+### 4. Updated status transition diagram
 
-The existing snapshot pattern in `RegistrationMember.IndividualAmount` and `RegistrationExtra.UnitPrice` already ensures that price changes to the edition do NOT retroactively alter existing registrations. This is the correct, intended behaviour.
+```
+Proposed ──► Draft ──► Open ──► Closed ──► Completed
+                        ▲  │
+                        │  │  (Admin only: Open → Draft)
+                        └──┘
+```
 
 ---
 
 ## Files to Modify
 
 | File | Change |
-|---|---|
-| `src/Abuvi.API/Features/Camps/CampEditionsService.cs` | Relax Open edition price guard; add audit logging; add `maxCapacity` guard (post-Registrations) |
-| `src/Abuvi.Tests/Unit/Features/Camps/CampEditionsServiceTests.cs` | Update/add tests for new Open edition behaviour |
+| --- | --- |
+| `src/Abuvi.API/Features/Camps/CampEditionsService.cs` | Add `Open → Draft` to `ValidateStatusTransition`; add `force` param to `ChangeStatusAsync` |
+| `src/Abuvi.API/Features/Camps/CampsModels.cs` | Add `Force = false` to `ChangeEditionStatusRequest` |
+| `src/Abuvi.API/Features/Camps/CampsEndpoints.cs` | Add Admin-only guard for `Open → Draft`; pass `force` to service |
+| `src/Abuvi.Tests/Unit/Features/Camps/CampEditionsServiceTests.cs` | Add new test cases |
+| `src/Abuvi.Tests/Integration/Features/Camps/CampEditionsEndpointsTests.cs` | Add role-based transition tests |
+
+**No database migration required.**
 
 ---
 
 ## TDD Test Cases
 
-### New/Updated Unit Tests (`CampEditionsServiceTests.cs`)
+### Unit Tests (`CampEditionsServiceTests.cs`)
 
-**Existing test to update:**
+**New tests for `ChangeStatusAsync`:**
 
-- `UpdateAsync_WhenStatusIsOpen_CannotChangeDatesOrPrices` → **Split into two tests:**
-  - `UpdateAsync_WhenStatusIsOpen_CannotChangeDates`
-  - `UpdateAsync_WhenStatusIsOpen_CanChangePrices_AndLogsWarning`
+- `ChangeStatusAsync_WhenOpenToD raft_WithForce_False_UpdatesStatus`
+- `ChangeStatusAsync_WhenDraftToOpen_WithForceFalse_AndStartDateInPast_ThrowsInvalidOperationException`
+- `ChangeStatusAsync_WhenDraftToOpen_WithForceTrue_AndStartDateInPast_UpdatesStatus`
+- `ChangeStatusAsync_WhenClosedToDraft_ThrowsInvalidOperationException` (backward not allowed from Closed)
+- `ChangeStatusAsync_WhenOpenToDraft_SetsStatusToDraft`
 
-**New tests to add:**
+### Integration Tests (`CampEditionsEndpointsTests.cs`)
 
-- `UpdateAsync_WhenStatusIsOpen_ChangingPrices_ReturnsUpdatedEdition`
-- `UpdateAsync_WhenStatusIsOpen_ChangingStartDate_ThrowsInvalidOperationException`
-- `UpdateAsync_WhenStatusIsOpen_ChangingEndDate_ThrowsInvalidOperationException`
-- `UpdateAsync_WhenStatusIsOpen_ChangingAgeRanges_ThrowsInvalidOperationException`
-- `UpdateAsync_WhenStatusIsOpen_PriceChanges_LogsAuditWarning`
-- `UpdateAsync_WhenStatusIsOpen_ReducingCapacityBelowActiveRegistrations_ThrowsException` _(add as TODO until IRegistrationsRepository exists)_
-- `UpdateAsync_WhenStatusIsOpen_IncreasingCapacity_AllowsUpdate`
+- `ChangeStatus_OpenToDraft_WithBoardToken_ReturnsForbidden`
+- `ChangeStatus_OpenToDraft_WithAdminToken_Returns200`
+- `ChangeStatus_DraftToOpen_WithForce_WithBoardToken_ReturnsForbidden`
+- `ChangeStatus_DraftToOpen_WithForce_WithAdminToken_Returns200`
+- `ChangeStatus_DraftToOpen_WithForce_False_AndStartDateInPast_Returns400`
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `PUT /api/camps/editions/{id}` on an Open edition with changed prices returns 200 OK
-- [ ] `PUT /api/camps/editions/{id}` on an Open edition with changed `startDate` or `endDate` returns 400 with `OPERATION_ERROR`
-- [ ] `PUT /api/camps/editions/{id}` on an Open edition with changed age range fields returns 400 with `OPERATION_ERROR`
-- [ ] Changing prices on an Open edition produces a structured warning log entry with old and new values
-- [ ] Existing registrations for that edition retain their original `TotalAmount` (unaffected by price change)
-- [ ] New registrations created after the price change use the updated price
-- [ ] Adding a new extra to an Open edition (`POST /api/camps/editions/{editionId}/extras`) still returns 201 Created (no regression)
-- [ ] All existing tests pass
-- [ ] New unit tests pass (90%+ coverage on modified service)
+- [ ] `PATCH /api/camps/editions/{id}/status` with `{ "status": "Draft" }` on an Open edition returns 403 for Board role
+- [ ] Same call returns 200 for Admin role
+- [ ] After `Open → Draft`, `GET /api/camps/editions/active` returns `null` (no active edition)
+- [ ] All previously existing registrations for the edition remain intact
+- [ ] `PATCH` with `{ "status": "Open", "force": true }` on a Draft edition with `startDate` in the past returns 403 for Board role
+- [ ] Same call returns 200 for Admin role
+- [ ] `PATCH` with `{ "status": "Open", "force": false }` on a Draft edition with `startDate` in the past returns 400
+- [ ] `PATCH` from `Closed → Draft` or `Completed → Draft` still returns 400 (backward transition from Closed/Completed not allowed)
+- [ ] All existing tests pass (no regression)
 
 ---
 
 ## Security Considerations
 
-- Only `Admin` or `Board` roles can call `PUT /api/camps/editions/{id}` (no change to existing authorization).
-- Price changes are audit-logged at `Warning` level with the edition ID, old prices, and new prices.
-- Existing registration amounts are never recalculated server-side by this change.
+- The `Open → Draft` rollback is **Admin-only**. Board users cannot take an edition offline.
+- The `force` re-open flag is **Admin-only**. No Board user can bypass the `startDate` date constraint.
+- Role enforcement happens in the endpoint handler using `ClaimsPrincipal`, not in the service (service only accepts the already-validated `force` boolean).
+- No data is deleted when rolling back to Draft. Existing registrations are preserved in `Pending` or `Confirmed` state.
 
 ---
 
 ## Implementation Notes
 
-1. **Registrations repository dependency**: The `maxCapacity` guard requires `IRegistrationsRepository.CountActiveByEditionAsync`. Add a `// TODO` comment if that interface is not yet available when this story is implemented. The capacity guard is a nice-to-have safety net — it can land in a follow-up once the Registrations feature is merged.
-
-2. **Logger injection**: `CampEditionsService` currently does not inject `ILogger<CampEditionsService>`. Add it to the constructor.
-
-3. **No migration**: Zero database changes.
-
-4. **Extras behaviour confirmation**: The `CampEditionExtrasService.CreateAsync` currently rejects creation for `Closed` and `Completed` editions but allows `Open`. This is correct and requires no change.
+1. **No migration needed** — zero database changes.
+2. **`UpdateAsync` unchanged** — the existing field restriction logic in `CampEditionsService.UpdateAsync` is NOT modified. This is the key advantage of Approach B.
+3. **ClaimsPrincipal in endpoint** — `CampsEndpoints.cs` already receives `ClaimsPrincipal` in other handlers (pattern established). Use `user.IsInRole("Admin")`.
+4. **Registrations during Draft window** — families who attempt to register while the edition is `Draft` will receive a 422 `EDITION_NOT_OPEN` error (existing behaviour from `CreateRegistrationValidator`). This is expected and acceptable.
+5. **Extras during Draft window** — extras can still be added/modified while `Draft` (existing behaviour, no change needed).
 
 ---
 
@@ -313,5 +349,6 @@ The existing snapshot pattern in `RegistrationMember.IndividualAmount` and `Regi
 - **Feature ID**: `feat-open-edition-amendments`
 - **Date**: 2026-02-22
 - **Status**: ✅ Ready for implementation
-- **Depends on**: `feat-camp-edition-extras` (already merged), `feat-camps-registration` (for capacity guard — can be deferred)
+- **Approach selected**: B — Admin-only `Open → Draft` rollback
+- **Depends on**: `feat-camp-edition-extras` (already merged)
 - **No migration required**
