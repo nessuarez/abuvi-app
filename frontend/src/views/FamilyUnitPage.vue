@@ -7,9 +7,11 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import ConfirmDialog from 'primevue/confirmdialog'
 import { useFamilyUnits } from '@/composables/useFamilyUnits'
+import MembershipDialog from '@/components/memberships/MembershipDialog.vue'
 import FamilyUnitForm from '@/components/family-units/FamilyUnitForm.vue'
 import FamilyMemberForm from '@/components/family-units/FamilyMemberForm.vue'
 import FamilyMemberList from '@/components/family-units/FamilyMemberList.vue'
+import { useAuthStore } from '@/stores/auth'
 import type {
   CreateFamilyUnitRequest,
   UpdateFamilyUnitRequest,
@@ -36,10 +38,16 @@ const {
   deleteFamilyMember
 } = useFamilyUnits()
 
+const auth = useAuthStore()
+
 // UI State
 const showFamilyUnitDialog = ref(false)
 const showMemberDialog = ref(false)
 const editingMember = ref<FamilyMemberResponse | null>(null)
+
+// Membership dialog state
+const showMembershipDialog = ref(false)
+const selectedMemberForMembership = ref<FamilyMemberResponse | null>(null)
 
 // Load family unit and members on mount
 onMounted(async () => {
@@ -212,6 +220,11 @@ const handleDeleteMember = (member: FamilyMemberResponse) => {
     }
   })
 }
+
+const handleManageMembership = (member: FamilyMemberResponse) => {
+  selectedMemberForMembership.value = member
+  showMembershipDialog.value = true
+}
 </script>
 
 <template>
@@ -293,8 +306,10 @@ const handleDeleteMember = (member: FamilyMemberResponse) => {
           <FamilyMemberList
             :members="familyMembers"
             :loading="loading"
+            :can-manage-memberships="auth.isBoard"
             @edit="openEditMemberDialog"
             @delete="handleDeleteMember"
+            @manage-membership="handleManageMembership"
           />
         </template>
       </Card>
@@ -339,5 +354,14 @@ const handleDeleteMember = (member: FamilyMemberResponse) => {
         @cancel="showMemberDialog = false"
       />
     </Dialog>
+
+    <!-- Membership Dialog -->
+    <MembershipDialog
+      v-if="selectedMemberForMembership"
+      v-model:visible="showMembershipDialog"
+      :family-unit-id="familyUnit?.id ?? ''"
+      :member-id="selectedMemberForMembership.id"
+      :member-name="`${selectedMemberForMembership.firstName} ${selectedMemberForMembership.lastName}`"
+    />
   </div>
 </template>

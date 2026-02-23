@@ -9,6 +9,7 @@ import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
 import Container from '@/components/ui/Container.vue'
 import PayFeeDialog from '@/components/memberships/PayFeeDialog.vue'
+import MembershipDialog from '@/components/memberships/MembershipDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProfile } from '@/composables/useProfile'
 import { useFamilyUnits } from '@/composables/useFamilyUnits'
@@ -45,6 +46,10 @@ const memberDataLoading = ref(false)
 const payFeeVisible = ref(false)
 const selectedMemberData = ref<MemberMembershipData | null>(null)
 const payFeeLoading = ref(false)
+
+// --- Membership dialog ---
+const showMembershipDialog = ref(false)
+const selectedMemberForMembership = ref<MemberMembershipData | null>(null)
 
 // Helpers
 const formatDate = (iso: string) =>
@@ -207,6 +212,17 @@ const handlePayFee = async (request: PayFeeRequest) => {
   } else {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Error al registrar el pago', life: 5000 })
   }
+}
+
+const openMembershipDialog = (data: MemberMembershipData) => {
+  selectedMemberForMembership.value = data
+  showMembershipDialog.value = true
+}
+
+const handleMembershipDialogClose = async () => {
+  showMembershipDialog.value = false
+  selectedMemberForMembership.value = null
+  await loadMemberMembershipData()
 }
 
 const goToFamilyManagement = () => router.push('/family-unit/me')
@@ -432,6 +448,17 @@ const displayPhone = computed(() => fullUser.value?.phone ?? auth.user?.phone ??
                   </template>
 
                   <Button
+                    v-if="auth.isBoard"
+                    label="Gestionar membresía"
+                    icon="pi pi-id-card"
+                    size="small"
+                    severity="secondary"
+                    outlined
+                    :data-testid="`manage-membership-btn-${data.member.id}`"
+                    @click="openMembershipDialog(data)"
+                  />
+
+                  <Button
                     v-if="auth.isBoard && data.membershipId && data.isActiveMembership && data.currentFee && data.currentFee.status !== FeeStatus.Paid"
                     label="Pagar cuota"
                     icon="pi pi-credit-card"
@@ -484,5 +511,14 @@ const displayPhone = computed(() => fullUser.value?.phone ?? auth.user?.phone ??
     :fee="selectedMemberData?.currentFee ?? null"
     :loading="payFeeLoading"
     @submit="handlePayFee"
+  />
+
+  <MembershipDialog
+    v-if="selectedMemberForMembership"
+    v-model:visible="showMembershipDialog"
+    :family-unit-id="familyUnit?.id ?? ''"
+    :member-id="selectedMemberForMembership.member.id"
+    :member-name="`${selectedMemberForMembership.member.firstName} ${selectedMemberForMembership.member.lastName}`"
+    @update:visible="(val) => { if (!val) handleMembershipDialogClose() }"
   />
 </template>
