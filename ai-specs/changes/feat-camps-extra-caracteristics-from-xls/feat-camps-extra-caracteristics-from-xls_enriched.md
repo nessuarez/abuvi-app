@@ -1,0 +1,770 @@
+# Import Extra Camp Characteristics from CAMPAMENTOS.csv (ENRICHED)
+
+## Executive Summary
+
+Import 34 extra fields from the internal `CAMPAMENTOS.csv` spreadsheet into the `Camp` entity. This extends the data model, adds a CSV import service, and introduces two new audit/history mechanisms: a **`CampObservation`** table (structured notes with authorship) and a **`CampAuditLog`** table (automatic field-level change tracking for sensitive fields).
+
+**Target Entities:** `Camp`, `AccommodationCapacity` (JSON), `CampObservation` (NEW), `CampAuditLog` (NEW)
+**Primary Use Case:** Enrich Camp records with contact info, facilities, capacity, and internal tracking; provide full traceability of who changed what over time.
+**Key Dependencies:** Backend only (no frontend changes in this phase)
+
+---
+
+## Table of Contents
+
+1. [Objective](#objective)
+2. [Context and CSV Analysis](#context-and-csv-analysis)
+3. [Field Coverage Analysis](#field-coverage-analysis)
+4. [Data Model Changes](#data-model-changes)
+5. [Audit and Observations Design](#audit-and-observations-design)
+6. [Backend Implementation](#backend-implementation)
+7. [Testing Specifications (TDD)](#testing-specifications-tdd)
+8. [Security and Authorization](#security-and-authorization)
+9. [Migration and Deployment](#migration-and-deployment)
+10. [Acceptance Criteria](#acceptance-criteria)
+
+---
+
+## Objective
+
+1. Enrich `Camp` records with characteristics from `CAMPAMENTOS.csv`: contact info, pricing, facilities, capacity, and internal ABUVI tracking.
+2. Replace the flat `AbuViNotes*` CSV fields with a proper **`CampObservation`** entity — each note is append-only and records its author.
+3. Automatically track **who changed what** for a defined set of sensitive fields via a **`CampAuditLog`** entity.
+
+---
+
+## Context and CSV Analysis
+
+### CSV Structure
+
+- **Encoding:** Windows-1252 (ISO-8859-1) — must use this encoding to avoid garbled Spanish characters
+- **Separator:** Semicolons (`;`)
+- **Header row:** Row 1 (34 columns)
+
+### Column Mapping
+
+| # | CSV Column | Mapping Strategy | New/Existing |
+|---|-----------|-----------------|-------------|
+| 1 | `N°` | → `Camp.ExternalSourceId` | NEW |
+| 2 | `Gestión por` | → `Camp.AbuViManagedBy` | NEW |
+| 3 | `Contactado` | → `Camp.AbuViContactedAt` | NEW |
+| 4 | `Posibilidad` | → `Camp.AbuViPossibility` | NEW |
+| 5 | `Visitado ABUVI` | → `Camp.AbuViLastVisited` | NEW |
+| 6 | `NOMBRE` | → `Camp.Name` (match key) | EXISTING |
+| 7 | `Comunidad Autónoma` | → `Camp.AdministrativeArea` | EXISTING |
+| 8 | `Provincia` | → `Camp.Province` | NEW |
+| 9 | `Localidad / Municipio / Pueblo` | → `Camp.Locality` | EXISTING |
+| 10 | `Nombre` (contact) | → `Camp.ContactPerson` | NEW |
+| 11 | `Empresa` | → `Camp.ContactCompany` | NEW |
+| 12 | `Teléfono 1` | → `Camp.PhoneNumber` | EXISTING |
+| 13 | `Teléfono 2` | → `Camp.NationalPhoneNumber` | EXISTING |
+| 14 | `WEB` | → `Camp.WebsiteUrl` | EXISTING |
+| 15 | `WEB2` | → `Camp.SecondaryWebsiteUrl` | NEW |
+| 16 | `EMAIL` | → `Camp.ContactEmail` | NEW |
+| 17 | `Observaciones 2025 2026` | → `CampObservation` (season 2025/2026) | NEW ENTITY |
+| 18 | `PRECIO` | → `Camp.BasePrice` | NEW |
+| 19 | `IVA` | → `Camp.VatIncluded` | NEW |
+| 20 | `nº estancias` | → `AccommodationCapacity.TotalCapacity` | NEW |
+| 21 | `nº habitac` | → `AccommodationCapacity.RoomsDescription` | NEW |
+| 22 | `nº cabañas` | → `AccommodationCapacity.BungalowsDescription` | NEW |
+| 23 | `nº tiendas` | → `AccommodationCapacity.TentsDescription` | NEW |
+| 24 | `campa para tiendas` | → `AccommodationCapacity.TentAreaDescription` | NEW |
+| 25 | `nº aparcamientos` | → `AccommodationCapacity.ParkingSpots` | NEW |
+| 26 | `menú adaptado` | → `AccommodationCapacity.HasAdaptedMenu` | NEW |
+| 27 | `Comedor cerrado` | → `AccommodationCapacity.HasEnclosedDiningRoom` | NEW |
+| 28 | `Piscina` | → `AccommodationCapacity.HasSwimmingPool` | NEW |
+| 29 | `Pista polideportiva` | → `AccommodationCapacity.HasSportsCourt` | NEW |
+| 30 | `Pinar o similar en campa` | → `AccommodationCapacity.HasForestArea` | NEW |
+| 31 | `Observaciones campa 24` | → `CampObservation` (season 2024) | NEW ENTITY |
+| 32 | `Observaciones 23` | → `CampObservation` (season 2023) | NEW ENTITY |
+| 33 | `Observaciones 25` | → `CampObservation` (season 2025) | NEW ENTITY |
+| 34 | `Datos erroneos` | → `Camp.AbuViHasDataErrors` | NEW |
+
+### Matching Strategy (CSV row → existing Camp)
+
+1. **Primary:** `ExternalSourceId` match (if the Camp already has this set)
+2. **Fallback:** Name match — case-insensitive, trimmed
+3. **Fallback:** `WebsiteUrl` match against `WEB` or `WEB2`
+4. **No match → Create new Camp** with `IsActive = false` (pending manual review)
+
+---
+
+## Field Coverage Analysis
+
+This section maps every **existing** `Camp` and `AccommodationCapacity` field against the CSV to identify gaps, overlaps, and potential redundancies.
+
+### Camp — existing fields vs CSV
+
+| Existing Field | CSV equivalent | Status | Notes |
+|----------------|---------------|--------|-------|
+| `Id` | — | ✅ Internal | PK, not in CSV |
+| `Name` | `NOMBRE` | ✅ Mapped | Used as match key |
+| `Description` | — | ⬜ No CSV data | Free-text description — not in spreadsheet |
+| `Location` | — | ⚠️ Overlap | Free-text address; partially superseded by `Locality` + `Province` + `AdministrativeArea`. Consider whether it's still needed once Google Places address fields are populated. |
+| `Latitude` | — | ⬜ No CSV data | From Google Places only |
+| `Longitude` | — | ⬜ No CSV data | From Google Places only |
+| `GooglePlaceId` | — | ⬜ No CSV data | Google Places identifier |
+| `FormattedAddress` | — | ⬜ No CSV data | Full formatted address from Google Places |
+| `StreetAddress` | — | ⬜ No CSV data | From Google Places |
+| `Locality` | `Localidad / Municipio / Pueblo` | ✅ Mapped | |
+| `AdministrativeArea` | `Comunidad Autónoma` | ✅ Mapped | |
+| `PostalCode` | — | ⬜ No CSV data | From Google Places only |
+| `Country` | — | ⬜ No CSV data | From Google Places (always Spain for this dataset) |
+| `PhoneNumber` | `Teléfono 1` | ✅ Mapped | |
+| `NationalPhoneNumber` | `Teléfono 2` | ✅ Mapped | |
+| `WebsiteUrl` | `WEB` | ✅ Mapped | Used as match key |
+| `GoogleMapsUrl` | — | ⬜ No CSV data | From Google Places only |
+| `GoogleRating` | — | ⬜ No CSV data | From Google Places only |
+| `GoogleRatingCount` | — | ⬜ No CSV data | From Google Places only |
+| `LastGoogleSyncAt` | — | ⬜ No CSV data | Internal sync timestamp |
+| `BusinessStatus` | — | ⬜ No CSV data | From Google Places only |
+| `PlaceTypes` | — | ⬜ No CSV data | From Google Places only |
+| `PricePerAdult` | — | ⚠️ Overlap | Age-based pricing — not in CSV. The CSV has a single `PRECIO` → new `BasePrice`. **Two pricing models coexist**: age-based (PricePerAdult/Child/Baby) used for registrations, and `BasePrice` as a reference/catalogue price. Clarify ownership. |
+| `PricePerChild` | — | ⚠️ Overlap | See PricePerAdult |
+| `PricePerBaby` | — | ⚠️ Overlap | See PricePerAdult |
+| `IsActive` | — | ⬜ No CSV data | Set to `false` on import for new camps |
+| `CreatedAt` | — | ✅ Internal | Timestamp |
+| `UpdatedAt` | — | ✅ Internal | Timestamp |
+| `AccommodationCapacityJson` | Partial | ✅ Extended | New fields added to this JSON |
+
+### AccommodationCapacity — existing fields vs CSV
+
+| Existing Field | CSV equivalent | Status | Notes |
+|----------------|---------------|--------|-------|
+| `PrivateRoomsWithBathroom` | — | ⬜ No CSV data | Structured room data not in spreadsheet |
+| `PrivateRoomsSharedBathroom` | — | ⬜ No CSV data | |
+| `SharedRooms` (list of `SharedRoomInfo`) | `nº habitac` | ⚠️ Overlap | The CSV column is raw text (e.g., "12 + 2 grandes", "6 habitaciones de 10 plazas"). We import it into `RoomsDescription` (string). The structured `SharedRooms` list is populated via Google Places / manual entry only. **Risk of confusion** between the two representations. |
+| `Bungalows` (int) | `nº cabañas` | ⚠️ Overlap | CSV value is also raw text ("6 (de 8 personas)", "9+2"). We import it into `BungalowsDescription` (string). The existing `Bungalows` int field is for structured data. Consider whether `BungalowsDescription` makes `Bungalows` redundant or if they serve different purposes. |
+| `CampOwnedTents` (int) | `nº tiendas` | ⚠️ Overlap | Same situation as `Bungalows`. CSV text imported to `TentsDescription`; existing int field is for structured data. |
+| `MemberTentAreaSquareMeters` | — | ⬜ No CSV data | Precise area in m² — not in spreadsheet |
+| `MemberTentCapacityEstimate` | — | ⬜ No CSV data | |
+| `MotorhomeSpots` | — | ⬜ No CSV data | Not in spreadsheet |
+| `Notes` (in AccommodationCapacity) | — | ⬜ No CSV data | Free-text notes on capacity, not in CSV |
+
+### Summary of Potential Issues
+
+| Category | Fields | Decision needed |
+|----------|--------|-----------------|
+| **Pure Google Places fields** | `GooglePlaceId`, `FormattedAddress`, `StreetAddress`, `PostalCode`, `Country`, `GoogleMapsUrl`, `GoogleRating`, `GoogleRatingCount`, `LastGoogleSyncAt`, `BusinessStatus`, `PlaceTypes` | These have no CSV counterpart and are only populated via Google Places sync. **No action needed** — they serve a different purpose. |
+| **`Location` (free-text address)** | `Location` | With `Locality`, `Province`, `AdministrativeArea`, and `FormattedAddress` all available, `Location` may be a legacy catch-all. Evaluate if it can be deprecated in favour of the structured fields. |
+| **Dual pricing models** | `PricePerAdult/Child/Baby` vs new `BasePrice` | `PricePerAdult/Child/Baby` drives registration invoicing (age-based). `BasePrice` is the camp's catalogue price (from the spreadsheet, before ABUVI's internal age-based split). They coexist intentionally — but the UI should clearly distinguish them. |
+| **Structured vs text duplicates** | `Bungalows`/`CampOwnedTents` (int) vs `BungalowsDescription`/`TentsDescription` (string); `SharedRooms` list vs `RoomsDescription` | The structured int/list fields are populated from Google Places or manual structured input. The description strings come from the CSV raw text. Both can coexist, but consider displaying only one in the UI to avoid confusion. |
+
+---
+
+## Data Model Changes
+
+### 1. `Camp` Entity — New Fields
+
+Add to `src/Abuvi.API/Features/Camps/CampsModels.cs`:
+
+```csharp
+// Province (e.g., "CORDOBA", "HUELVA")
+public string? Province { get; set; }
+
+// Contact info (from CSV — may differ from Google Places data)
+public string? ContactEmail { get; set; }
+public string? ContactPerson { get; set; }     // "Nombre" column
+public string? ContactCompany { get; set; }    // "Empresa" column
+public string? SecondaryWebsiteUrl { get; set; }
+
+// Pricing from CSV
+public decimal? BasePrice { get; set; }        // PRECIO column
+public bool? VatIncluded { get; set; }         // IVA: true = "Si", false = "No", null = unknown
+
+// ABUVI internal tracking (imported from spreadsheet, updated manually)
+public int? ExternalSourceId { get; set; }     // N° — original CSV row number
+public string? AbuViManagedBy { get; set; }    // "Gestión por"
+public string? AbuViContactedAt { get; set; }  // "Contactado" (raw text — date serial or flag)
+public string? AbuViPossibility { get; set; }  // "Posibilidad" (si/no/$/@ etc.)
+public string? AbuViLastVisited { get; set; }  // "Visitado ABUVI" (e.g., "si 2023", "si 2018?")
+public bool? AbuViHasDataErrors { get; set; }  // "Datos erroneos"
+
+// Audit: who last modified this camp
+public Guid? LastModifiedByUserId { get; set; }
+
+// Navigation properties (new)
+public ICollection<CampObservation> Observations { get; set; } = new List<CampObservation>();
+public ICollection<CampAuditLog> AuditLogs { get; set; } = new List<CampAuditLog>();
+```
+
+> **Note:** The four flat notes fields (`AbuViNotes2023/2024/2025/20252026`) are **NOT** added to `Camp`. Instead they are stored as `CampObservation` records (see below).
+
+### 2. `CampObservation` Entity (NEW)
+
+Each observation is **append-only** — it cannot be edited or deleted to preserve the historical record.
+
+```csharp
+/// <summary>
+/// Append-only observation/note about a camp, created by a user.
+/// Replaces the flat AbuViNotes2023/2024/2025 fields from the CSV.
+/// </summary>
+public class CampObservation
+{
+    public Guid Id { get; set; }
+    public Guid CampId { get; set; }
+
+    public string Text { get; set; } = string.Empty;  // The observation text
+    public string? Season { get; set; }                // Optional tag: "2023", "2024", "2025", "2025/2026"
+
+    public Guid? CreatedByUserId { get; set; }         // Null = imported from CSV (system)
+    public DateTime CreatedAt { get; set; }
+
+    // Navigation
+    public Camp Camp { get; set; } = null!;
+}
+```
+
+**DB table:** `camp_observations`
+
+**Business rules:**
+- No `UPDATE` or `DELETE` allowed on this table (enforced at service level + no update endpoint)
+- Observations from CSV import use `CreatedByUserId = null` and `CreatedAt = import timestamp`
+- A camp can have unlimited observations
+
+### 3. `CampAuditLog` Entity (NEW)
+
+Automatically written by `CampsService` when a `PUT /api/camps/{id}` call changes any of the **tracked fields**.
+
+```csharp
+/// <summary>
+/// Automatic audit record for sensitive Camp field changes.
+/// Written by CampsService on every update that modifies a tracked field.
+/// </summary>
+public class CampAuditLog
+{
+    public Guid Id { get; set; }
+    public Guid CampId { get; set; }
+
+    public string FieldName { get; set; } = string.Empty;  // e.g., "BasePrice"
+    public string? OldValue { get; set; }                  // Serialized previous value
+    public string? NewValue { get; set; }                  // Serialized new value
+
+    public Guid ChangedByUserId { get; set; }
+    public DateTime ChangedAt { get; set; }
+
+    // Navigation
+    public Camp Camp { get; set; } = null!;
+}
+```
+
+**DB table:** `camp_audit_logs`
+
+**Tracked fields** (only these generate audit records):
+
+| Field | Rationale |
+|-------|----------|
+| `BasePrice` | Price negotiation history |
+| `VatIncluded` | Pricing structure change |
+| `AbuViPossibility` | Feasibility decision |
+| `AbuViLastVisited` | Visit record |
+| `AbuViContactedAt` | Contact history |
+| `AbuViManagedBy` | Ownership change |
+| `IsActive` | Activation/deactivation |
+| `ContactPerson` | Key contact changed |
+| `ContactEmail` | Key contact changed |
+
+### 4. `AccommodationCapacity` Class — New Fields
+
+Extend in `CampsModels.cs`:
+
+```csharp
+// Capacity from CSV
+public int? TotalCapacity { get; set; }             // "nº estancias"
+public string? RoomsDescription { get; set; }       // "nº habitac" (raw text)
+public string? BungalowsDescription { get; set; }   // "nº cabañas" (raw text)
+public string? TentsDescription { get; set; }       // "nº tiendas" (raw text)
+public string? TentAreaDescription { get; set; }    // "campa para tiendas"
+public int? ParkingSpots { get; set; }              // "nº aparcamientos"
+
+// Facility flags
+public bool? HasAdaptedMenu { get; set; }           // "menú adaptado"
+public bool? HasEnclosedDiningRoom { get; set; }    // "Comedor cerrado"
+public bool? HasSwimmingPool { get; set; }          // "Piscina"
+public bool? HasSportsCourt { get; set; }           // "Pista polideportiva"
+public bool? HasForestArea { get; set; }            // "Pinar o similar en campa"
+```
+
+These serialize into the existing `accommodation_capacity_json` column — no new DB column needed.
+
+### 5. EF Core Configuration
+
+#### `CampConfiguration.cs` — New columns
+
+```csharp
+builder.Property(c => c.Province).HasMaxLength(100).HasColumnName("province");
+builder.Property(c => c.ContactEmail).HasMaxLength(200).HasColumnName("contact_email");
+builder.Property(c => c.ContactPerson).HasMaxLength(200).HasColumnName("contact_person");
+builder.Property(c => c.ContactCompany).HasMaxLength(200).HasColumnName("contact_company");
+builder.Property(c => c.SecondaryWebsiteUrl).HasMaxLength(500).HasColumnName("secondary_website_url");
+builder.Property(c => c.BasePrice).HasPrecision(10, 2).HasColumnName("base_price");
+builder.Property(c => c.VatIncluded).HasColumnName("vat_included");
+builder.Property(c => c.ExternalSourceId).HasColumnName("external_source_id");
+builder.HasIndex(c => c.ExternalSourceId).HasDatabaseName("ix_camps_external_source_id");
+builder.Property(c => c.AbuViManagedBy).HasMaxLength(100).HasColumnName("abuvi_managed_by");
+builder.Property(c => c.AbuViContactedAt).HasMaxLength(100).HasColumnName("abuvi_contacted_at");
+builder.Property(c => c.AbuViPossibility).HasMaxLength(100).HasColumnName("abuvi_possibility");
+builder.Property(c => c.AbuViLastVisited).HasMaxLength(200).HasColumnName("abuvi_last_visited");
+builder.Property(c => c.AbuViHasDataErrors).HasColumnName("abuvi_has_data_errors");
+builder.Property(c => c.LastModifiedByUserId).HasColumnName("last_modified_by_user_id");
+
+// Relationships
+builder.HasMany(c => c.Observations)
+    .WithOne(o => o.Camp)
+    .HasForeignKey(o => o.CampId)
+    .OnDelete(DeleteBehavior.Cascade);
+
+builder.HasMany(c => c.AuditLogs)
+    .WithOne(a => a.Camp)
+    .HasForeignKey(a => a.CampId)
+    .OnDelete(DeleteBehavior.Cascade);
+```
+
+#### New file: `CampObservationConfiguration.cs`
+
+```csharp
+public class CampObservationConfiguration : IEntityTypeConfiguration<CampObservation>
+{
+    public void Configure(EntityTypeBuilder<CampObservation> builder)
+    {
+        builder.ToTable("camp_observations");
+        builder.HasKey(o => o.Id);
+        builder.Property(o => o.Id).HasColumnName("id");
+        builder.Property(o => o.CampId).HasColumnName("camp_id").IsRequired();
+        builder.Property(o => o.Text).HasMaxLength(4000).HasColumnName("text").IsRequired();
+        builder.Property(o => o.Season).HasMaxLength(20).HasColumnName("season");
+        builder.Property(o => o.CreatedByUserId).HasColumnName("created_by_user_id");
+        builder.Property(o => o.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("NOW()");
+
+        builder.HasIndex(o => o.CampId).HasDatabaseName("ix_camp_observations_camp_id");
+    }
+}
+```
+
+#### New file: `CampAuditLogConfiguration.cs`
+
+```csharp
+public class CampAuditLogConfiguration : IEntityTypeConfiguration<CampAuditLog>
+{
+    public void Configure(EntityTypeBuilder<CampAuditLog> builder)
+    {
+        builder.ToTable("camp_audit_logs");
+        builder.HasKey(a => a.Id);
+        builder.Property(a => a.Id).HasColumnName("id");
+        builder.Property(a => a.CampId).HasColumnName("camp_id").IsRequired();
+        builder.Property(a => a.FieldName).HasMaxLength(100).HasColumnName("field_name").IsRequired();
+        builder.Property(a => a.OldValue).HasMaxLength(2000).HasColumnName("old_value");
+        builder.Property(a => a.NewValue).HasMaxLength(2000).HasColumnName("new_value");
+        builder.Property(a => a.ChangedByUserId).HasColumnName("changed_by_user_id").IsRequired();
+        builder.Property(a => a.ChangedAt).HasColumnName("changed_at").HasDefaultValueSql("NOW()");
+
+        builder.HasIndex(a => a.CampId).HasDatabaseName("ix_camp_audit_logs_camp_id");
+        builder.HasIndex(a => new { a.CampId, a.ChangedAt }).HasDatabaseName("ix_camp_audit_logs_camp_id_changed_at");
+    }
+}
+```
+
+#### `AbuviDbContext.cs` — Add new DbSets
+
+```csharp
+public DbSet<CampObservation> CampObservations => Set<CampObservation>();
+public DbSet<CampAuditLog> CampAuditLogs => Set<CampAuditLog>();
+```
+
+### 6. EF Core Migration
+
+```bash
+dotnet ef migrations add AddCampExternalSourceFieldsAndAudit --project src/Abuvi.API
+```
+
+---
+
+## Audit and Observations Design
+
+### `CampObservation` — Usage Patterns
+
+| Scenario | `CreatedByUserId` | `Season` | `Text` |
+|----------|------------------|---------|--------|
+| CSV import (notes 2023) | `null` | `"2023"` | raw text from CSV |
+| CSV import (notes 2024) | `null` | `"2024"` | raw text from CSV |
+| CSV import (notes 2025) | `null` | `"2025"` | raw text from CSV |
+| CSV import (notes 2025/2026) | `null` | `"2025/2026"` | raw text from CSV |
+| Manual note by user | `<userId>` | optional | user-typed text |
+
+**API endpoints for observations:**
+
+```
+POST  /api/camps/{campId}/observations   → Add a new observation (Board+)
+GET   /api/camps/{campId}/observations   → List all observations, ordered by CreatedAt DESC (Board+)
+```
+
+No `PUT` or `DELETE` — observations are immutable.
+
+### `CampAuditLog` — Service Integration
+
+`CampsService.UpdateAsync` must:
+1. Accept `Guid updatedByUserId` as parameter (passed from endpoint via `ClaimsPrincipal`)
+2. Load the existing `Camp` from the repository **before** applying changes
+3. Compare old vs new values for each tracked field
+4. For each field that changed, insert a `CampAuditLog` record
+5. Set `Camp.LastModifiedByUserId = updatedByUserId` before saving
+
+```csharp
+// Pseudocode in CampsService.UpdateAsync
+public async Task<CampDetailResponse?> UpdateAsync(
+    Guid id, UpdateCampRequest request, Guid updatedByUserId, CancellationToken ct)
+{
+    var existing = await repository.GetByIdAsync(id, ct);
+    if (existing is null) return null;
+
+    var auditEntries = BuildAuditEntries(existing, request, updatedByUserId);
+
+    // Apply changes to existing...
+    existing.LastModifiedByUserId = updatedByUserId;
+    existing.UpdatedAt = DateTime.UtcNow;
+
+    await repository.UpdateAsync(existing, ct);
+
+    if (auditEntries.Count > 0)
+        await repository.AddAuditLogsAsync(auditEntries, ct);
+
+    return existing.ToDetailResponse();
+}
+
+private static List<CampAuditLog> BuildAuditEntries(
+    Camp existing, UpdateCampRequest request, Guid userId)
+{
+    var entries = new List<CampAuditLog>();
+    var now = DateTime.UtcNow;
+
+    void Track(string field, string? oldVal, string? newVal)
+    {
+        if (oldVal != newVal)
+            entries.Add(new CampAuditLog
+            {
+                Id = Guid.NewGuid(),
+                CampId = existing.Id,
+                FieldName = field,
+                OldValue = oldVal,
+                NewValue = newVal,
+                ChangedByUserId = userId,
+                ChangedAt = now
+            });
+    }
+
+    Track("BasePrice", existing.BasePrice?.ToString(), request.BasePrice?.ToString());
+    Track("VatIncluded", existing.VatIncluded?.ToString(), request.VatIncluded?.ToString());
+    Track("AbuViPossibility", existing.AbuViPossibility, request.AbuViPossibility);
+    Track("AbuViLastVisited", existing.AbuViLastVisited, request.AbuViLastVisited);
+    Track("AbuViContactedAt", existing.AbuViContactedAt, request.AbuViContactedAt);
+    Track("AbuViManagedBy", existing.AbuViManagedBy, request.AbuViManagedBy);
+    Track("IsActive", existing.IsActive.ToString(), request.IsActive.ToString());
+    Track("ContactPerson", existing.ContactPerson, request.ContactPerson);
+    Track("ContactEmail", existing.ContactEmail, request.ContactEmail);
+
+    return entries;
+}
+```
+
+**API endpoints for audit log:**
+
+```
+GET /api/camps/{campId}/audit-log   → List audit entries, ordered by ChangedAt DESC (Admin only)
+```
+
+---
+
+## Backend Implementation
+
+### Files to Create / Modify
+
+#### New files
+
+| File | Purpose |
+|------|---------|
+| `Features/Camps/CampCsvImportService.cs` | CSV parsing, matching, upsert, and observation creation |
+| `Features/Camps/ICampCsvImportService.cs` | Interface |
+| `Features/Camps/CampCsvImportModels.cs` | DTOs: `CampCsvRow`, `CampImportResult`, `CampImportRowResult` |
+| `Features/Camps/CampObservationsService.cs` | Add/list observations |
+| `Features/Camps/ICampObservationsRepository.cs` | Interface |
+| `Features/Camps/CampObservationsRepository.cs` | Implementation |
+| `Data/Configurations/CampObservationConfiguration.cs` | EF config |
+| `Data/Configurations/CampAuditLogConfiguration.cs` | EF config |
+
+#### Modified files
+
+| File | Change |
+|------|--------|
+| `CampsModels.cs` | Add new Camp fields + new entities + AccommodationCapacity fields + DTOs |
+| `CampConfiguration.cs` | Add column mappings + relationships to new entities |
+| `AbuviDbContext.cs` | Add `CampObservations` and `CampAuditLogs` DbSets |
+| `ICampsRepository.cs` | Add `GetAllForImportAsync`, `GetByExternalSourceIdAsync`, `AddAuditLogsAsync` |
+| `CampsRepository.cs` | Implement new repository methods |
+| `CampsService.cs` | Accept `updatedByUserId` in `UpdateAsync`; write audit logs |
+| `CampsEndpoints.cs` | Add import endpoint, observation endpoints, audit log endpoint; pass userId to UpdateAsync |
+| `Program.cs` | Register new services |
+
+### DTOs — additions to `CampsModels.cs`
+
+```csharp
+// Observation request/response
+public record AddCampObservationRequest(string Text, string? Season);
+
+public record CampObservationResponse(
+    Guid Id,
+    string Text,
+    string? Season,
+    Guid? CreatedByUserId,
+    DateTime CreatedAt
+);
+
+// Audit log response
+public record CampAuditLogResponse(
+    Guid Id,
+    string FieldName,
+    string? OldValue,
+    string? NewValue,
+    Guid ChangedByUserId,
+    DateTime ChangedAt
+);
+```
+
+Update `UpdateCampRequest` to include the new writable fields:
+
+```csharp
+public record UpdateCampRequest(
+    string Name,
+    string? Description,
+    string? Location,
+    decimal? Latitude,
+    decimal? Longitude,
+    string? GooglePlaceId,
+    decimal PricePerAdult,
+    decimal PricePerChild,
+    decimal PricePerBaby,
+    bool IsActive,
+    AccommodationCapacity? AccommodationCapacity = null,
+    // New fields
+    string? Province = null,
+    string? ContactEmail = null,
+    string? ContactPerson = null,
+    string? ContactCompany = null,
+    string? SecondaryWebsiteUrl = null,
+    decimal? BasePrice = null,
+    bool? VatIncluded = null,
+    string? AbuViManagedBy = null,
+    string? AbuViContactedAt = null,
+    string? AbuViPossibility = null,
+    string? AbuViLastVisited = null,
+    bool? AbuViHasDataErrors = null
+);
+```
+
+Update `CampDetailResponse` to include all new fields and the collections:
+
+```csharp
+public record CampDetailResponse(
+    // ... all existing fields ...
+    string? Province,
+    string? ContactEmail,
+    string? ContactPerson,
+    string? ContactCompany,
+    string? SecondaryWebsiteUrl,
+    decimal? BasePrice,
+    bool? VatIncluded,
+    int? ExternalSourceId,
+    string? AbuViManagedBy,
+    string? AbuViContactedAt,
+    string? AbuViPossibility,
+    string? AbuViLastVisited,
+    bool? AbuViHasDataErrors,
+    Guid? LastModifiedByUserId,
+    IReadOnlyList<CampObservationResponse> Observations
+    // Note: AuditLogs are fetched via a separate endpoint, not included here
+);
+```
+
+### Import Service — Key Logic
+
+```csharp
+public class CampCsvImportService(
+    ICampsRepository campsRepository,
+    ICampObservationsRepository observationsRepository,
+    ILogger<CampCsvImportService> logger) : ICampCsvImportService
+{
+    // ... (same overall structure as before) ...
+
+    private async Task<CampImportRowResult> ProcessRowAsync(CampCsvRow row, CancellationToken ct)
+    {
+        // 1. Map CSV row → Camp entity fields (excluding notes)
+        // 2. Find or create Camp
+        // 3. Import non-empty CSV notes as CampObservation records with CreatedByUserId = null
+        //    - row.Notes2023    → Season = "2023"
+        //    - row.Notes2024    → Season = "2024"
+        //    - row.Notes2025    → Season = "2025"
+        //    - row.Notes20252026 → Season = "2025/2026"
+        // 4. Only create the observation if the text is non-empty and non-"0"
+    }
+}
+```
+
+### Endpoints — Summary of New Additions
+
+```
+POST /api/admin/camps/import-csv            Admin only — upload CSV file
+POST /api/camps/{campId}/observations       Board+ — add manual observation
+GET  /api/camps/{campId}/observations       Board+ — list observations (desc)
+GET  /api/camps/{campId}/audit-log          Admin only — list audit entries (desc)
+```
+
+The existing `PUT /api/camps/{id}` endpoint must be updated to extract the `userId` from `ClaimsPrincipal` and pass it to `CampsService.UpdateAsync`.
+
+### `ICampsRepository` — New Methods
+
+```csharp
+Task<List<Camp>> GetAllForImportAsync(CancellationToken ct = default);
+Task<Camp?> GetByExternalSourceIdAsync(int externalSourceId, CancellationToken ct = default);
+Task AddAuditLogsAsync(IEnumerable<CampAuditLog> entries, CancellationToken ct = default);
+```
+
+---
+
+## Testing Specifications (TDD)
+
+All unit tests go in `tests/Abuvi.Tests/Unit/Features/Camps/`.
+
+### `CampCsvImportServiceTests.cs`
+
+#### Parsing
+```
+ParseCsv_WhenValidCsvStream_ReturnsCorrectNumberOfRows
+ParseCsv_WhenFileIsWindowsEncoded_ReturnsCorrectSpecialCharacters
+ParseCsv_WhenRowHasQuotedField_HandlesQuotesCorrectly
+ParseCsv_WhenRowHasEmptyName_StillReturnsRow
+ParseCsv_WhenPrecioIsDecimalWithComma_ParsesCorrectly
+ParseCsv_WhenIvaIsSi_ReturnsTrueVatIncluded
+ParseCsv_WhenIvaIsNo_ReturnsFalseVatIncluded
+ParseCsv_WhenIvaIsEmpty_ReturnsNullVatIncluded
+ParseCsv_WhenFacilityIsSi_ReturnsTrueFlag
+ParseCsv_WhenFacilityIs0_ReturnsNullFlag
+ParseCsv_WhenFacilityIsNo_ReturnsFalseFlag
+```
+
+#### Matching
+```
+FindMatchingCamp_WhenExternalSourceIdMatches_ReturnsThatCamp
+FindMatchingCamp_WhenNameMatchesCaseInsensitive_ReturnsThatCamp
+FindMatchingCamp_WhenWebsiteMatches_ReturnsThatCamp
+FindMatchingCamp_WhenSecondaryWebsiteMatches_ReturnsThatCamp
+FindMatchingCamp_WhenNoMatchFound_ReturnsNull
+FindMatchingCamp_WhenMultiplePossible_PrioritizesExternalSourceId
+```
+
+#### Orchestration
+```
+ImportFromStreamAsync_WhenCampNotFound_CreatesNewCampWithIsActiveFalse
+ImportFromStreamAsync_WhenCampFound_UpdatesExistingCamp
+ImportFromStreamAsync_WhenRowHasNonEmptyNotes_CreatesObservationRecords
+ImportFromStreamAsync_WhenRowHasEmptyNotes_SkipsObservationCreation
+ImportFromStreamAsync_WhenRowHasNoName_SkipsRow
+ImportFromStreamAsync_WhenAllRowsProcessed_ReturnsCorrectSummary
+ImportFromStreamAsync_WhenRepositoryThrows_ReturnsErrorForRow
+```
+
+### `CampsServiceTests.cs` — Audit log tests
+
+```
+UpdateAsync_WhenBasePriceChanges_CreatesAuditLogEntry
+UpdateAsync_WhenIsActiveChanges_CreatesAuditLogEntry
+UpdateAsync_WhenNoTrackedFieldChanges_DoesNotCreateAuditLog
+UpdateAsync_WhenMultipleTrackedFieldsChange_CreatesOneEntryPerField
+UpdateAsync_AlwaysSetsLastModifiedByUserId
+UpdateAsync_WhenCampNotFound_ReturnsNull
+```
+
+### `CampObservationsServiceTests.cs`
+
+```
+AddObservationAsync_WhenCampExists_CreatesAndReturnsObservation
+AddObservationAsync_WhenCampDoesNotExist_ThrowsNotFoundException
+GetObservationsAsync_ReturnsObservationsOrderedByCreatedAtDesc
+```
+
+### `CampCsvImportEndpointTests.cs`
+
+```
+ImportCampsCsv_WhenNoFileProvided_Returns400
+ImportCampsCsv_WhenValidFileProvided_Returns200WithSummary
+ImportCampsCsv_WhenUserIsNotAdmin_Returns403
+```
+
+### Test Data
+
+Add `tests/Abuvi.Tests/Helpers/TestFiles/sample_campamentos.csv` — a minimal 3-5 row test CSV covering: good row with notes, empty name row, quoted fields, special characters (ñ, á), and facilities.
+
+---
+
+## Security and Authorization
+
+| Endpoint | Role | Notes |
+|----------|------|-------|
+| `POST /api/admin/camps/import-csv` | Admin | File max 1MB |
+| `POST /api/camps/{id}/observations` | Board+ | Text max 4000 chars |
+| `GET /api/camps/{id}/observations` | Board+ | |
+| `GET /api/camps/{id}/audit-log` | Admin | Sensitive: shows who changed what |
+
+- No user-supplied data executed as SQL — EF Core parameterized queries throughout
+- Audit log cannot be modified or deleted via API (no write endpoints)
+- Observations cannot be edited or deleted via API (append-only)
+- Log CSV import operations: `logger.LogInformation("CSV import by Admin {UserId}: {Created} created, {Updated} updated, {Skipped} skipped", userId, result.Created, result.Updated, result.Skipped)`
+
+---
+
+## Migration and Deployment
+
+### Step 1 — Data model (tests first)
+1. Add properties to `Camp`, `AccommodationCapacity`, new entities to `CampsModels.cs`
+2. Add EF configurations
+3. Add `DbSet`s to `AbuviDbContext`
+4. `dotnet ef migrations add AddCampExternalSourceFieldsAndAudit --project src/Abuvi.API`
+5. `dotnet ef database update --project src/Abuvi.API`
+
+### Step 2 — Observations service (TDD)
+1. Write failing tests in `CampObservationsServiceTests.cs`
+2. Implement `CampObservationsService` + repository
+3. Add endpoints
+
+### Step 3 — Audit log in CampsService (TDD)
+1. Write failing audit tests in `CampsServiceTests.cs`
+2. Update `CampsService.UpdateAsync` to accept `updatedByUserId` and write audit entries
+3. Update `CampsEndpoints.UpdateCamp` to pass userId
+
+### Step 4 — CSV import service (TDD)
+1. Write failing import tests
+2. Implement `CampCsvImportService` (includes creating observations from notes columns)
+3. Add admin import endpoint
+
+### Step 5 — Run the import
+1. Upload `CAMPAMENTOS.csv` via `POST /api/admin/camps/import-csv`
+2. Review `CampImportResult` summary
+3. Verify observations created: `GET /api/camps/{id}/observations`
+4. Manually review and activate camps with `IsActive = false`
+
+---
+
+## Acceptance Criteria
+
+- [ ] 15 new `Camp` columns in DB (contact info + ABUVI tracking + `LastModifiedByUserId`)
+- [ ] `camp_observations` table: append-only, `created_by_user_id` nullable (null = CSV import)
+- [ ] `camp_audit_logs` table: auto-written on update for the 9 tracked fields
+- [ ] `AccommodationCapacity` JSON holds 11 new fields
+- [ ] `PUT /api/camps/{id}` writes audit entries only for changed tracked fields
+- [ ] `PUT /api/camps/{id}` sets `LastModifiedByUserId` on every save
+- [ ] `POST /api/camps/{campId}/observations` creates an immutable observation
+- [ ] `GET /api/camps/{campId}/observations` returns observations ordered newest-first
+- [ ] `GET /api/camps/{campId}/audit-log` returns field-level change history (Admin only)
+- [ ] `POST /api/admin/camps/import-csv` creates `CampObservation` records from CSV notes columns
+- [ ] Camps created by import have `IsActive = false`
+- [ ] Existing camps updated without losing Google Places data
+- [ ] Windows-1252 encoding handled correctly
+- [ ] Unit test coverage ≥ 90% for `CampCsvImportService`, `CampsService`, `CampObservationsService`

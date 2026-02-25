@@ -26,7 +26,7 @@ public class MembershipsServiceTests
         // Arrange
         var familyMemberId = Guid.NewGuid();
         var familyMember = CreateTestFamilyMember(familyMemberId);
-        var request = new CreateMembershipRequest(DateTime.UtcNow.AddDays(-1));
+        var request = new CreateMembershipRequest(DateTime.UtcNow.Year);
 
         _familyUnitsRepository.GetFamilyMemberByIdAsync(familyMemberId, Arg.Any<CancellationToken>())
             .Returns(familyMember);
@@ -40,7 +40,7 @@ public class MembershipsServiceTests
         result.Should().NotBeNull();
         result.FamilyMemberId.Should().Be(familyMemberId);
         result.IsActive.Should().BeTrue();
-        result.StartDate.Should().BeCloseTo(request.StartDate, TimeSpan.FromSeconds(1));
+        result.StartDate.Should().Be(new DateTime(request.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc));
 
         await _membershipsRepository.Received(1).AddAsync(
             Arg.Is<Membership>(m => m.FamilyMemberId == familyMemberId && m.IsActive),
@@ -48,11 +48,31 @@ public class MembershipsServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_WhenValidYear_SetsStartDateToJanFirst()
+    {
+        // Arrange
+        var familyMemberId = Guid.NewGuid();
+        var familyMember = CreateTestFamilyMember(familyMemberId);
+        var request = new CreateMembershipRequest(2023);
+
+        _familyUnitsRepository.GetFamilyMemberByIdAsync(familyMemberId, Arg.Any<CancellationToken>())
+            .Returns(familyMember);
+        _membershipsRepository.GetByFamilyMemberIdAsync(familyMemberId, Arg.Any<CancellationToken>())
+            .Returns((Membership?)null);
+
+        // Act
+        var result = await _service.CreateAsync(familyMemberId, request, CancellationToken.None);
+
+        // Assert
+        result.StartDate.Should().Be(new DateTime(2023, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+    }
+
+    [Fact]
     public async Task CreateAsync_WhenFamilyMemberDoesNotExist_ThrowsNotFoundException()
     {
         // Arrange
         var familyMemberId = Guid.NewGuid();
-        var request = new CreateMembershipRequest(DateTime.UtcNow);
+        var request = new CreateMembershipRequest(DateTime.UtcNow.Year);
 
         _familyUnitsRepository.GetFamilyMemberByIdAsync(familyMemberId, Arg.Any<CancellationToken>())
             .Returns((FamilyMember?)null);
@@ -73,7 +93,7 @@ public class MembershipsServiceTests
         var familyMemberId = Guid.NewGuid();
         var familyMember = CreateTestFamilyMember(familyMemberId);
         var existingMembership = CreateTestMembership(familyMemberId);
-        var request = new CreateMembershipRequest(DateTime.UtcNow);
+        var request = new CreateMembershipRequest(DateTime.UtcNow.Year);
 
         _familyUnitsRepository.GetFamilyMemberByIdAsync(familyMemberId, Arg.Any<CancellationToken>())
             .Returns(familyMember);
@@ -296,11 +316,156 @@ public class MembershipsServiceTests
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task BulkActivateAsync_WhenFamilyUnitNotFound_ThrowsNotFoundException()
+    {
+        // Arrange
+        var familyUnitId = Guid.NewGuid();
+        var request = new BulkActivateMembershipRequest(DateTime.UtcNow.Year);
+
+        _familyUnitsRepository.GetFamilyUnitByIdAsync(familyUnitId, Arg.Any<CancellationToken>())
+            .Returns((FamilyUnit?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _service.BulkActivateAsync(familyUnitId, request, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task BulkActivateAsync_WhenFamilyHasNoMembers_ReturnsZeroActivated()
+    {
+        // Arrange
+        var familyUnitId = Guid.NewGuid();
+        var familyUnit = CreateTestFamilyUnit(familyUnitId);
+        var request = new BulkActivateMembershipRequest(DateTime.UtcNow.Year);
+
+        _familyUnitsRepository.GetFamilyUnitByIdAsync(familyUnitId, Arg.Any<CancellationToken>())
+            .Returns(familyUnit);
+        _familyUnitsRepository.GetFamilyMembersByFamilyUnitIdAsync(familyUnitId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<FamilyMember>() as IReadOnlyList<FamilyMember>);
+
+        // Act
+        var result = await _service.BulkActivateAsync(familyUnitId, request, CancellationToken.None);
+
+        // Assert
+        result.Activated.Should().Be(0);
+        result.Skipped.Should().Be(0);
+        result.Results.Should().BeEmpty();
+        await _membershipsRepository.DidNotReceive().AddAsync(Arg.Any<Membership>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task BulkActivateAsync_WhenAllMembersHaveNoMembership_ActivatesAll()
+    {
+        // Arrange
+        var familyUnitId = Guid.NewGuid();
+        var familyUnit = CreateTestFamilyUnit(familyUnitId);
+        var member1 = CreateTestFamilyMember(Guid.NewGuid(), familyUnitId);
+        var member2 = CreateTestFamilyMember(Guid.NewGuid(), familyUnitId);
+        var members = new[] { member1, member2 };
+        var request = new BulkActivateMembershipRequest(DateTime.UtcNow.Year);
+
+        _familyUnitsRepository.GetFamilyUnitByIdAsync(familyUnitId, Arg.Any<CancellationToken>())
+            .Returns(familyUnit);
+        _familyUnitsRepository.GetFamilyMembersByFamilyUnitIdAsync(familyUnitId, Arg.Any<CancellationToken>())
+            .Returns(members as IReadOnlyList<FamilyMember>);
+        _membershipsRepository.GetByFamilyMemberIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((Membership?)null);
+
+        // Act
+        var result = await _service.BulkActivateAsync(familyUnitId, request, CancellationToken.None);
+
+        // Assert
+        result.Activated.Should().Be(2);
+        result.Skipped.Should().Be(0);
+        result.Results.Should().HaveCount(2);
+        result.Results.Should().AllSatisfy(r => r.Status.Should().Be(BulkMembershipResultStatus.Activated));
+        await _membershipsRepository.Received(2).AddAsync(Arg.Any<Membership>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task BulkActivateAsync_WhenSomeMembersAlreadyHaveMembership_SkipsThose()
+    {
+        // Arrange
+        var familyUnitId = Guid.NewGuid();
+        var familyUnit = CreateTestFamilyUnit(familyUnitId);
+        var member1 = CreateTestFamilyMember(Guid.NewGuid(), familyUnitId);
+        var member2 = CreateTestFamilyMember(Guid.NewGuid(), familyUnitId);
+        var existingMembership = CreateTestMembership(member2.Id);
+        var request = new BulkActivateMembershipRequest(DateTime.UtcNow.Year);
+
+        _familyUnitsRepository.GetFamilyUnitByIdAsync(familyUnitId, Arg.Any<CancellationToken>())
+            .Returns(familyUnit);
+        _familyUnitsRepository.GetFamilyMembersByFamilyUnitIdAsync(familyUnitId, Arg.Any<CancellationToken>())
+            .Returns(new[] { member1, member2 } as IReadOnlyList<FamilyMember>);
+        _membershipsRepository.GetByFamilyMemberIdAsync(member1.Id, Arg.Any<CancellationToken>())
+            .Returns((Membership?)null);
+        _membershipsRepository.GetByFamilyMemberIdAsync(member2.Id, Arg.Any<CancellationToken>())
+            .Returns(existingMembership);
+
+        // Act
+        var result = await _service.BulkActivateAsync(familyUnitId, request, CancellationToken.None);
+
+        // Assert
+        result.Activated.Should().Be(1);
+        result.Skipped.Should().Be(1);
+        result.Results.Should().HaveCount(2);
+        result.Results.Should().Contain(r => r.Status == BulkMembershipResultStatus.Activated);
+        result.Results.Should().Contain(r => r.Status == BulkMembershipResultStatus.Skipped && r.MemberId == member2.Id);
+        await _membershipsRepository.Received(1).AddAsync(Arg.Any<Membership>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task BulkActivateAsync_WhenMemberHasMembership_SetsStartDateToJanFirst()
+    {
+        // Arrange
+        var familyUnitId = Guid.NewGuid();
+        var familyUnit = CreateTestFamilyUnit(familyUnitId);
+        var member = CreateTestFamilyMember(Guid.NewGuid(), familyUnitId);
+        var request = new BulkActivateMembershipRequest(2023);
+
+        _familyUnitsRepository.GetFamilyUnitByIdAsync(familyUnitId, Arg.Any<CancellationToken>())
+            .Returns(familyUnit);
+        _familyUnitsRepository.GetFamilyMembersByFamilyUnitIdAsync(familyUnitId, Arg.Any<CancellationToken>())
+            .Returns(new[] { member } as IReadOnlyList<FamilyMember>);
+        _membershipsRepository.GetByFamilyMemberIdAsync(member.Id, Arg.Any<CancellationToken>())
+            .Returns((Membership?)null);
+
+        // Act
+        await _service.BulkActivateAsync(familyUnitId, request, CancellationToken.None);
+
+        // Assert — membership added with Jan 1st start date
+        await _membershipsRepository.Received(1).AddAsync(
+            Arg.Is<Membership>(m => m.StartDate == new DateTime(2023, 1, 1, 0, 0, 0, DateTimeKind.Utc)),
+            Arg.Any<CancellationToken>());
+    }
+
     // Helper methods
+    private static FamilyUnit CreateTestFamilyUnit(Guid id) => new()
+    {
+        Id = id,
+        Name = "Test Family",
+        RepresentativeUserId = Guid.NewGuid(),
+        CreatedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow
+    };
+
     private static FamilyMember CreateTestFamilyMember(Guid id) => new()
     {
         Id = id,
         FamilyUnitId = Guid.NewGuid(),
+        FirstName = "John",
+        LastName = "Doe",
+        DateOfBirth = new DateOnly(1990, 1, 1),
+        Relationship = FamilyRelationship.Parent,
+        CreatedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow
+    };
+
+    private static FamilyMember CreateTestFamilyMember(Guid id, Guid familyUnitId) => new()
+    {
+        Id = id,
+        FamilyUnitId = familyUnitId,
         FirstName = "John",
         LastName = "Doe",
         DateOfBirth = new DateOnly(1990, 1, 1),
