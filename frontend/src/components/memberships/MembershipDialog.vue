@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
-import Calendar from 'primevue/calendar'
+import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import ConfirmDialog from 'primevue/confirmdialog'
@@ -139,7 +139,7 @@ const handlePayFee = async (request: PayFeeRequest) => {
           <label for="membership-start-date" class="font-medium text-sm">
             Fecha de inicio <span class="text-red-500">*</span>
           </label>
-          <Calendar
+          <DatePicker
             id="membership-start-date"
             v-model="createStartDate"
             dateFormat="dd/mm/yy"
