@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import Dialog from 'primevue/dialog'
-import Calendar from 'primevue/calendar'
+import DatePicker from 'primevue/datepicker'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import type { MembershipFeeResponse, PayFeeRequest } from '@/types/membership'
@@ -104,7 +104,7 @@ const handleClose = () => {
         <label for="paid-date" class="font-medium text-sm">
           Fecha de pago <span class="text-red-500">*</span>
         </label>
-        <Calendar
+        <DatePicker
           id="paid-date"
           v-model="paidDate"
           dateFormat="dd/mm/yy"
