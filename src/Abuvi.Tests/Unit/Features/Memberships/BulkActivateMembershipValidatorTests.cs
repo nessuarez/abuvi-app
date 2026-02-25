@@ -4,20 +4,20 @@ using Xunit;
 
 namespace Abuvi.Tests.Unit.Features.Memberships;
 
-public class CreateMembershipValidatorTests
+public class BulkActivateMembershipValidatorTests
 {
-    private readonly CreateMembershipValidator _validator;
+    private readonly BulkActivateMembershipValidator _validator;
 
-    public CreateMembershipValidatorTests()
+    public BulkActivateMembershipValidatorTests()
     {
-        _validator = new CreateMembershipValidator();
+        _validator = new BulkActivateMembershipValidator();
     }
 
     [Fact]
     public void Validate_WhenYearIsCurrentYear_PassesValidation()
     {
         // Arrange
-        var request = new CreateMembershipRequest(DateTime.UtcNow.Year);
+        var request = new BulkActivateMembershipRequest(DateTime.UtcNow.Year);
 
         // Act
         var result = _validator.Validate(request);
@@ -31,7 +31,7 @@ public class CreateMembershipValidatorTests
     public void Validate_WhenYearIsPast_PassesValidation()
     {
         // Arrange
-        var request = new CreateMembershipRequest(2001);
+        var request = new BulkActivateMembershipRequest(2001);
 
         // Act
         var result = _validator.Validate(request);
@@ -45,43 +45,29 @@ public class CreateMembershipValidatorTests
     public void Validate_WhenYearIs2000_FailsValidation()
     {
         // Arrange
-        var request = new CreateMembershipRequest(2000);
+        var request = new BulkActivateMembershipRequest(2000);
 
         // Act
         var result = _validator.Validate(request);
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == nameof(CreateMembershipRequest.Year));
+        result.Errors.Should().Contain(e => e.PropertyName == nameof(BulkActivateMembershipRequest.Year));
         result.Errors.Should().Contain(e => e.ErrorMessage.Contains("válido"));
-    }
-
-    [Fact]
-    public void Validate_WhenYearIs1999_FailsValidation()
-    {
-        // Arrange
-        var request = new CreateMembershipRequest(1999);
-
-        // Act
-        var result = _validator.Validate(request);
-
-        // Assert
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == nameof(CreateMembershipRequest.Year));
     }
 
     [Fact]
     public void Validate_WhenYearIsFuture_FailsValidation()
     {
         // Arrange
-        var request = new CreateMembershipRequest(DateTime.UtcNow.Year + 1);
+        var request = new BulkActivateMembershipRequest(DateTime.UtcNow.Year + 1);
 
         // Act
         var result = _validator.Validate(request);
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == nameof(CreateMembershipRequest.Year));
+        result.Errors.Should().Contain(e => e.PropertyName == nameof(BulkActivateMembershipRequest.Year));
         result.Errors.Should().Contain(e => e.ErrorMessage.Contains("futuro"));
     }
 }

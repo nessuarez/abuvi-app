@@ -125,7 +125,7 @@ Represents an active membership for a family member. Members pay annual fees and
 
 - `id`: Unique identifier for the Membership entity (Primary Key, UUID)
 - `familyMemberId`: The family member who holds this membership (required, FK -> FamilyMember, unique)
-- `startDate`: When the membership became active (required, TIMESTAMP)
+- `startDate`: When the membership became active (required, TIMESTAMP). Always normalized to January 1st of the membership year (`{year}-01-01T00:00:00Z`). The API accepts `{ year: int }` and the backend normalizes it — the raw date within the year has no business meaning.
 - `endDate`: When the membership ended (optional, TIMESTAMP, null if currently active)
 - `isActive`: Whether the membership is currently active (required, BOOLEAN)
 - `createdAt`: Record creation timestamp (required, auto-generated)
@@ -134,7 +134,8 @@ Represents an active membership for a family member. Members pay annual fees and
 **Validation rules:**
 
 - Each family member can have at most one membership record (unique constraint on `familyMemberId`)
-- StartDate must not be in the future
+- Membership year must be > 2000 and ≤ current calendar year (cannot pre-register future memberships)
+- `startDate` is always stored as `{year}-01-01T00:00:00Z` — the service normalizes the input year to January 1st
 - EndDate is only set when membership is deactivated
 - A family member with an active membership cannot be deleted from the system (database constraint: Restrict delete)
 
