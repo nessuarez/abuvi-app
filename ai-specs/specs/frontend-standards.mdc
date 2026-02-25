@@ -1049,6 +1049,21 @@ const openDetails = (camp: Camp) => {
 </template>
 ```
 
+#### Year Pickers
+
+When collecting a calendar year (e.g. membership start year), use `InputNumber` from `primevue/inputnumber` — **not** `DatePicker` or `Calendar`. Set `:use-grouping="false"` so the year displays as a plain integer (no thousands separator), and constrain the valid range with `:min` / `:max`.
+
+```vue
+<InputNumber
+  id="membership-start-year"
+  v-model="startYear"
+  :min="2001"
+  :max="currentYear"
+  :use-grouping="false"
+  class="w-full"
+/>
+```
+
 ### Tailwind CSS Usage
 
 - **Utility-first**: Use Tailwind utility classes for styling. Do not write custom `<style>` blocks unless absolutely necessary (complex animations).
