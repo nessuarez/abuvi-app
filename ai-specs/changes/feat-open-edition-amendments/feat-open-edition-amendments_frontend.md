@@ -20,7 +20,7 @@ Expose the new Admin-only `Open → Draft` rollback and `force` re-open capabili
 | `frontend/src/views/camps/CampEditionsPage.vue` | Pass `force` from dialog confirmation |
 | `frontend/src/composables/__tests__/useCampEditions.test.ts` | New tests for `force` parameter |
 
-### No new routes or Pinia stores needed.
+### No new routes or Pinia stores needed
 
 ### Role access pattern
 
@@ -48,6 +48,7 @@ Expose the new Admin-only `Open → Draft` rollback and `force` re-open capabili
 - **Action**: Add `force?: boolean` to `ChangeEditionStatusRequest`
 
 **Find**:
+
 ```typescript
 export interface ChangeEditionStatusRequest {
   status: CampEditionStatus
@@ -55,6 +56,7 @@ export interface ChangeEditionStatusRequest {
 ```
 
 **Replace with**:
+
 ```typescript
 export interface ChangeEditionStatusRequest {
   status: CampEditionStatus
@@ -70,6 +72,7 @@ export interface ChangeEditionStatusRequest {
 - **Action**: Add optional `force` parameter to `changeStatus()` and include it in the request body
 
 **Find** the `changeStatus` function signature and request body:
+
 ```typescript
 const changeStatus = async (
   id: string,
@@ -83,6 +86,7 @@ const changeStatus = async (
 ```
 
 **Replace with**:
+
 ```typescript
 const changeStatus = async (
   id: string,
@@ -155,6 +159,7 @@ const handleRollback = () => {
 ```
 
 Update the `emit` definition to include `force`:
+
 ```typescript
 // Before
 const emit = defineEmits<{ confirm: [status: CampEditionStatus] }>()
@@ -253,6 +258,7 @@ The dialog currently has a single "Confirmar" button. Update it to:
 - **Action**: Update `handleStatusConfirm` to accept and forward the optional `force` parameter from the dialog's updated `confirm` event
 
 **Find**:
+
 ```typescript
 const handleStatusConfirm = async (newStatus: CampEditionStatus) => {
   if (!selectedEdition.value) return
@@ -263,6 +269,7 @@ const handleStatusConfirm = async (newStatus: CampEditionStatus) => {
 ```
 
 **Replace with**:
+
 ```typescript
 const handleStatusConfirm = async (newStatus: CampEditionStatus, force?: boolean) => {
   if (!selectedEdition.value) return
@@ -273,6 +280,7 @@ const handleStatusConfirm = async (newStatus: CampEditionStatus, force?: boolean
 ```
 
 Update the template's event binding on the dialog to match:
+
 ```vue
 <!-- Before -->
 <CampEditionStatusDialog
@@ -363,6 +371,7 @@ describe('changeStatus', () => {
 ## Testing Checklist
 
 ### Vitest unit tests — `useCampEditions.test.ts`
+
 - [ ] `changeStatus` sends `{ status, force: true }` when `force=true`
 - [ ] `changeStatus` sends `{ status }` (no `force` key) when `force` is omitted
 - [ ] `changeStatus` sends `{ status }` for normal forward transitions
@@ -370,11 +379,13 @@ describe('changeStatus', () => {
 ### Manual verification (critical user flows)
 
 #### Board user (no Admin role)
+
 - [ ] Opens status dialog on an `Open` edition — sees only "Cerrar inscripciones" (forward button) — no "Volver a Borrador" button visible
 - [ ] Dialog on a `Draft` edition with a past `startDate` — no special warning, forward "Confirmar" sends `{ status: 'Open' }` (no `force`)
 - [ ] Backend returns 400 if Board tries to open with past date (expected — user should not be creating this scenario)
 
 #### Admin user
+
 - [ ] Opens status dialog on an `Open` edition — sees both "Confirmar" (→ Closed) AND "Volver a Borrador" (→ Draft) buttons
 - [ ] "Volver a Borrador" shows rollback warning message
 - [ ] Clicking "Volver a Borrador" calls `changeStatus(id, 'Draft')` — no `force` sent

@@ -13,6 +13,7 @@ Wire the already-implemented `MembershipDialog.vue` into `FamilyUnitPage.vue` an
 **No new components. No new composables. No new routes. No backend changes.**
 
 The work is strictly:
+
 1. Add a `canManageMemberships` prop + `manageMembership` emit to `FamilyMemberList.vue`
 2. Import and wire `MembershipDialog` into `FamilyUnitPage.vue`
 3. Import and wire `MembershipDialog` into `ProfilePage.vue` (with reload-on-close)
@@ -65,14 +66,17 @@ These were confirmed by reading the actual source files:
 4. **`MembershipDialog` watcher** fetches membership when `visible` becomes `true` (and `familyUnitId`/`memberId` are truthy). Using `v-if="selectedMemberForMembership"` on the dialog ensures the composable state is fresh each time.
 
 5. **`ProfilePage.vue` member row structure** — the action buttons live in:
+
    ```html
    <div class="flex flex-wrap items-center gap-2">
      <!-- existing tags + Pagar cuota button -->
    </div>
    ```
+
    Add "Gestionar membresía" button here, before or after "Pagar cuota".
 
 6. **Close detection in `ProfilePage`** — intercept `@update:visible` to reload:
+
    ```html
    @update:visible="(val) => { if (!val) handleMembershipDialogClose() }"
    ```
@@ -166,7 +170,8 @@ These were confirmed by reading the actual source files:
   })
   ```
 
-  2. Run tests to confirm they fail:
+  1. Run tests to confirm they fail:
+
      ```bash
      cd frontend && npx vitest run src/components/family-units/__tests__/FamilyMemberList.spec.ts
      ```
@@ -183,6 +188,7 @@ These were confirmed by reading the actual source files:
 - **Action**: Add `canManageMemberships` prop, `manageMembership` emit, and action button
 
 **Change 1 — Add prop:**
+
 ```typescript
 const props = defineProps<{
   members: FamilyMemberResponse[]
@@ -192,6 +198,7 @@ const props = defineProps<{
 ```
 
 **Change 2 — Add emit:**
+
 ```typescript
 const emit = defineEmits<{
   edit: [member: FamilyMemberResponse]
@@ -222,6 +229,7 @@ const emit = defineEmits<{
   3. In the template, locate the "Acciones" `<Column>` body template
   4. Add the button before the existing `pi-pencil` (edit) button
   5. Run the tests again — they should now pass:
+
      ```bash
      cd frontend && npx vitest run src/components/family-units/__tests__/FamilyMemberList.spec.ts
      ```
@@ -297,6 +305,7 @@ describe('FamilyUnitPage — membership dialog', () => {
 ```
 
 Run to confirm failure:
+
 ```bash
 cd frontend && npx vitest run src/views/__tests__/FamilyUnitPage.spec.ts
 ```
@@ -309,12 +318,14 @@ cd frontend && npx vitest run src/views/__tests__/FamilyUnitPage.spec.ts
 - **Action**: Import `MembershipDialog`, add auth store, add dialog state + handler, wire to template
 
 **Change 1 — New imports (add to existing imports block):**
+
 ```typescript
 import MembershipDialog from '@/components/memberships/MembershipDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 ```
 
 **Change 2 — New state (add after existing const declarations):**
+
 ```typescript
 const auth = useAuthStore()
 
@@ -324,6 +335,7 @@ const selectedMemberForMembership = ref<FamilyMemberResponse | null>(null)
 ```
 
 **Change 3 — New handler (add after `handleDeleteMember`):**
+
 ```typescript
 const handleManageMembership = (member: FamilyMemberResponse) => {
   selectedMemberForMembership.value = member
@@ -334,6 +346,7 @@ const handleManageMembership = (member: FamilyMemberResponse) => {
 **Change 4 — Template: update `FamilyMemberList` usage:**
 
 Locate this in the template:
+
 ```html
 <FamilyMemberList
   :members="familyMembers"
@@ -344,6 +357,7 @@ Locate this in the template:
 ```
 
 Replace with:
+
 ```html
 <FamilyMemberList
   :members="familyMembers"
@@ -356,6 +370,7 @@ Replace with:
 ```
 
 **Change 5 — Template: add `MembershipDialog` at the bottom (after the Family Member Dialog block):**
+
 ```html
 <!-- Membership Dialog -->
 <MembershipDialog
@@ -374,6 +389,7 @@ Replace with:
   4. Update `<FamilyMemberList>` in template
   5. Add `<MembershipDialog>` in template
   6. Run tests — they should pass:
+
      ```bash
      cd frontend && npx vitest run src/views/__tests__/FamilyUnitPage.spec.ts
      ```
@@ -443,6 +459,7 @@ describe('ProfilePage — MembershipDialog mounting', () => {
 ```
 
 Run to confirm failure:
+
 ```bash
 cd frontend && npx vitest run src/views/__tests__/ProfilePage.spec.ts
 ```
@@ -455,11 +472,13 @@ cd frontend && npx vitest run src/views/__tests__/ProfilePage.spec.ts
 - **Action**: Import `MembershipDialog`, add dialog state, add button per member row, add reload on close
 
 **Change 1 — New import (add to existing imports):**
+
 ```typescript
 import MembershipDialog from '@/components/memberships/MembershipDialog.vue'
 ```
 
 **Change 2 — New state (add after existing `payFeeLoading` declaration):**
+
 ```typescript
 // Membership management dialog state
 const showMembershipDialog = ref(false)
@@ -467,6 +486,7 @@ const selectedMemberForMembership = ref<MemberMembershipData | null>(null)
 ```
 
 **Change 3 — New handlers (add after `handlePayFee`):**
+
 ```typescript
 const openMembershipDialog = (data: MemberMembershipData) => {
   selectedMemberForMembership.value = data
@@ -520,6 +540,7 @@ Locate the existing `<Button v-if="auth.isBoard && ..."` (the "Pagar cuota" butt
   4. Add "Gestionar membresía" button in the member row template
   5. Add `<MembershipDialog>` at the bottom of the template
   6. Run tests — they should pass:
+
      ```bash
      cd frontend && npx vitest run src/views/__tests__/ProfilePage.spec.ts
      ```

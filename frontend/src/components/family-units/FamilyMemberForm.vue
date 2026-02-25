@@ -2,8 +2,8 @@
 import { ref, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
-import Calendar from 'primevue/calendar'
-import Dropdown from 'primevue/dropdown'
+import DatePicker from 'primevue/datepicker'
+import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import type {
@@ -246,7 +246,7 @@ const handleCancel = () => {
       <label for="date-of-birth" class="font-medium text-sm">
         Fecha de Nacimiento <span class="text-red-500">*</span>
       </label>
-      <Calendar
+      <DatePicker
         id="date-of-birth"
         v-model="dateOfBirth"
         dateFormat="dd/mm/yy"
@@ -265,7 +265,7 @@ const handleCancel = () => {
       <label for="relationship" class="font-medium text-sm">
         Relación Familiar <span class="text-red-500">*</span>
       </label>
-      <Dropdown
+      <Select
         id="relationship"
         v-model="relationship"
         :options="relationshipOptions"

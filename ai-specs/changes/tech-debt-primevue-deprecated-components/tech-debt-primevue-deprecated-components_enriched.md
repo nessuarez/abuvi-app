@@ -35,12 +35,14 @@ These components are already using the correct v4 names in the codebase:
 ### 1. `frontend/src/components/family-units/FamilyMemberForm.vue`
 
 **Current:**
+
 ```ts
 import Calendar from 'primevue/calendar'
 import Dropdown from 'primevue/dropdown'
 ```
 
 **Target:**
+
 ```ts
 import DatePicker from 'primevue/datepicker'
 import Select from 'primevue/select'
@@ -54,11 +56,13 @@ import Select from 'primevue/select'
 ### 2. `frontend/src/components/guests/GuestForm.vue`
 
 **Current:**
+
 ```ts
 import Calendar from 'primevue/calendar'
 ```
 
 **Target:**
+
 ```ts
 import DatePicker from 'primevue/datepicker'
 ```
@@ -70,11 +74,13 @@ import DatePicker from 'primevue/datepicker'
 ### 3. `frontend/src/components/memberships/PayFeeDialog.vue`
 
 **Current:**
+
 ```ts
 import Calendar from 'primevue/calendar'
 ```
 
 **Target:**
+
 ```ts
 import DatePicker from 'primevue/datepicker'
 ```
@@ -86,11 +92,13 @@ import DatePicker from 'primevue/datepicker'
 ### 4. `frontend/src/components/memberships/MembershipDialog.vue`
 
 **Current:**
+
 ```ts
 import Calendar from 'primevue/calendar'
 ```
 
 **Target:**
+
 ```ts
 import DatePicker from 'primevue/datepicker'
 ```
@@ -102,11 +110,13 @@ import DatePicker from 'primevue/datepicker'
 ### 5. `frontend/src/components/users/UserForm.vue`
 
 **Current:**
+
 ```ts
 import InputSwitch from 'primevue/inputswitch'
 ```
 
 **Target:**
+
 ```ts
 import ToggleSwitch from 'primevue/toggleswitch'
 ```
@@ -120,6 +130,7 @@ import ToggleSwitch from 'primevue/toggleswitch'
 All three migrations are API-compatible (same props/events):
 
 ### `Calendar` → `DatePicker`
+
 - `v-model` — works identically
 - `date-format` / `dateFormat` — prop retained
 - `disabled` — retained
@@ -128,10 +139,12 @@ All three migrations are API-compatible (same props/events):
 - `class` — retained
 
 ### `Dropdown` → `Select`
+
 - Same API as documented in `merged/tech-debt/primevue-dropdown-migration.md`
 - All props (`v-model`, `:options`, `option-label`, `option-value`, `placeholder`, `class`, `disabled`, `filter`) are compatible
 
 ### `InputSwitch` → `ToggleSwitch`
+
 - `v-model` — works identically
 - `disabled` — retained
 - `class` — retained

@@ -423,6 +423,7 @@ Two entities must be seeded:
 Some historical camps may have been held at the same location in multiple years. Each distinct physical location gets one `Camp` record. Reuse existing Camp records where possible; create new ones with static UUIDs for historical-only locations.
 
 **Minimum required fields per Camp:**
+
 - `id`: Static UUID in `00000000-0000-0000-0002-xxxxxxxxxxxx` range (e.g., `00000000-0000-0000-0002-000000000001`)
 - `name`: Location name (e.g., "Camping El Escorial")
 - `location`: Free-text location (e.g., "El Escorial, Madrid")
@@ -436,6 +437,7 @@ Some historical camps may have been held at the same location in multiple years.
 One record per year per camp location.
 
 **Minimum required fields per CampEdition:**
+
 - `id`: Static UUID in `00000000-0000-0000-0003-xxxxxxxxxxxx` range
 - `camp_id`: FK → the corresponding historical Camp
 - `year`: The year (e.g., `1985`)
@@ -548,6 +550,7 @@ If the team prefers a non-deployment-dependent approach (e.g., filling data via 
 **Endpoint:** `POST /api/camps/editions/historical/import`
 **Auth:** Admin only
 **Request body:**
+
 ```json
 {
   "editions": [
@@ -564,6 +567,7 @@ If the team prefers a non-deployment-dependent approach (e.g., filling data via 
 ```
 
 **Service behaviour:**
+
 - Creates Camp record if `campId` not found (auto-creates historical camp with `isActive = false`)
 - Sets `status = Completed` directly — **no status machine traversal**
 - Skips duplicate check for `(campId, year)` if `isHistorical = true` flag present, OR checks that existing edition is already `Completed`

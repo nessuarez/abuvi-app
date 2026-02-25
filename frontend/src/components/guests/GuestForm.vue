@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
-import Calendar from 'primevue/calendar'
+import DatePicker from 'primevue/datepicker'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import type { GuestResponse, CreateGuestRequest } from '@/types/guest'
@@ -222,7 +222,7 @@ const handleCancel = () => {
       <label for="guest-date-of-birth" class="font-medium text-sm">
         Fecha de Nacimiento <span class="text-red-500">*</span>
       </label>
-      <Calendar
+      <DatePicker
         id="guest-date-of-birth"
         v-model="dateOfBirth"
         dateFormat="dd/mm/yy"
