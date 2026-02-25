@@ -14,6 +14,7 @@ Architecture: all changes follow the established composable-based architecture �
 ## Architecture Context
 
 **Files to modify:**
+
 - `frontend/src/types/membership.ts` — change `CreateMembershipRequest`, add bulk types, export `MemberMembershipData`
 - `frontend/src/composables/useMemberships.ts` — update `createMembership` (type only), add `bulkActivateMemberships`
 - `frontend/src/components/memberships/MembershipDialog.vue` — replace Calendar with InputNumber
@@ -21,14 +22,17 @@ Architecture: all changes follow the established composable-based architecture �
 - `frontend/src/views/ProfilePage.vue` — add button + wire `BulkMembershipDialog`, import shared `MemberMembershipData`
 
 **Files to create:**
+
 - `frontend/src/components/memberships/BulkMembershipDialog.vue` — new bulk activation dialog
 
 **Test files to update:**
+
 - `frontend/src/composables/__tests__/useMemberships.test.ts` (currently does not exist — check; if missing, create it)
 - `frontend/src/views/__tests__/FamilyUnitPage.spec.ts`
 - `frontend/src/views/__tests__/ProfilePage.spec.ts`
 
 **Test files to create:**
+
 - `frontend/src/components/memberships/__tests__/MembershipDialog.spec.ts`
 - `frontend/src/components/memberships/__tests__/BulkMembershipDialog.spec.ts`
 
@@ -37,6 +41,7 @@ Architecture: all changes follow the established composable-based architecture �
 **Routing:** No new routes.
 
 **PrimeVue components used:**
+
 - `InputNumber` (replaces `Calendar` in `MembershipDialog.vue` and used in `BulkMembershipDialog.vue`)
 - `Dialog`, `Button`, `Message`, `Tag` (already used)
 
@@ -202,12 +207,14 @@ return {
 **Script changes:**
 
 Remove:
+
 ```typescript
 import Calendar from 'primevue/calendar'
 const createStartDate = ref<Date>(new Date())
 ```
 
 Add:
+
 ```typescript
 import InputNumber from 'primevue/inputnumber'
 const currentYear = new Date().getFullYear()
@@ -476,6 +483,7 @@ const handleClose = () => {
 **Action A — Remove local interface, update import:**
 
 Remove from the script block:
+
 ```typescript
 // DELETE this local interface:
 interface MemberMembershipData {
@@ -488,6 +496,7 @@ interface MemberMembershipData {
 ```
 
 Update the membership type import line to include `MemberMembershipData`:
+
 ```typescript
 import {
   FeeStatus,
@@ -515,6 +524,7 @@ import BulkMembershipDialog from '@/components/memberships/BulkMembershipDialog.
 **Action D — Template: add button in family unit card `#title` slot:**
 
 The existing `#title` slot of the family unit `Card` in `ProfilePage`:
+
 ```html
 <template #title>
   <div class="flex items-center justify-between gap-2">
@@ -537,6 +547,7 @@ The existing `#title` slot of the family unit `Card` in `ProfilePage`:
 ```
 
 Replace with:
+
 ```html
 <template #title>
   <div class="flex items-center justify-between gap-2">
@@ -613,6 +624,7 @@ const showBulkMembershipDialog = ref(false)
 **Action C — Template: update the members `Card` `#title` slot:**
 
 Current template:
+
 ```html
 <template #title>
   <div class="flex justify-between items-center">
@@ -627,6 +639,7 @@ Current template:
 ```
 
 Replace with:
+
 ```html
 <template #title>
   <div class="flex justify-between items-center">
@@ -771,6 +784,7 @@ describe('useMemberships', () => {
 - **Action**: Test that the component renders `InputNumber` (not `Calendar`) and calls `createMembership` with `{ year }`.
 
 **Test cases:**
+
 - `renders InputNumber year picker when member has no membership`
 - `defaults InputNumber to current year`
 - `does not allow year > currentYear (max prop is set)`
@@ -794,6 +808,7 @@ vi.mock('@/composables/useMemberships', () => ({
 ```
 
 Key assertion for `InputNumber`:
+
 ```typescript
 const inputNumber = wrapper.findComponent({ name: 'InputNumber' })
 expect(inputNumber.exists()).toBe(true)
@@ -802,6 +817,7 @@ expect(inputNumber.props('useGrouping')).toBe(false)
 ```
 
 Key assertion for `createMembership` call:
+
 ```typescript
 await wrapper.find('[data-testid="activate-btn"]').trigger('click')  // or find the button by label
 expect(createMembershipMock).toHaveBeenCalledWith('fu1', 'member1', { year: currentYear })
@@ -854,11 +870,13 @@ it('does not emit done when closed with 0 activations', async () => {
   3. Add test cases for the "Activar membresía familiar" button visibility.
 
 **New test cases:**
+
 - `shows bulk-membership-btn for board users when familyUnit exists`
 - `does not show bulk-membership-btn for non-board users`
 - `does not show bulk-membership-btn when familyUnit is null`
 
 **Update mock:**
+
 ```typescript
 vi.mock('@/composables/useMemberships', () => ({
   useMemberships: () => ({
@@ -870,6 +888,7 @@ vi.mock('@/composables/useMemberships', () => ({
 ```
 
 **Update stubs:**
+
 ```typescript
 const componentStubs = {
   // ... existing stubs ...
@@ -883,6 +902,7 @@ const componentStubs = {
 - **Action**: Add `BulkMembershipDialog` stub and test cases for the button visibility.
 
 **New test cases:**
+
 - `shows bulk-membership-btn for board users`
 - `does not show bulk-membership-btn for non-board users`
 
@@ -893,9 +913,11 @@ const componentStubs = {
 - **Action**: Update frontend standards and API endpoint documentation.
 
 **`ai-specs/specs/frontend-standards.mdc`**:
+
 - Under "PrimeVue component usage", note that `InputNumber` is used for year pickers (`:use-grouping="false"`, `:min`, `:max`) — replacing `Calendar` for semantically annual inputs.
 
 **`ai-specs/specs/api-endpoints.md`**:
+
 - Already updated by the backend ticket, but verify the frontend-facing endpoint list matches:
   - `POST /api/family-units/{id}/members/{id}/membership` — request body: `{ year: number }`.
   - `POST /api/family-units/{id}/membership/bulk` — request body: `{ year: number }`, response: `{ activated, skipped, results[] }`.
