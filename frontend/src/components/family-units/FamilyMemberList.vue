@@ -10,11 +10,13 @@ import type { FamilyMemberResponse } from '@/types/family-unit'
 const props = defineProps<{
   members: FamilyMemberResponse[]
   loading?: boolean
+  canManageMemberships?: boolean
 }>()
 
 const emit = defineEmits<{
   edit: [member: FamilyMemberResponse]
   delete: [member: FamilyMemberResponse]
+  manageMembership: [member: FamilyMemberResponse]
 }>()
 
 const membersWithAge = computed(() => {
@@ -141,6 +143,16 @@ const handleDelete = (member: FamilyMemberResponse) => {
       <Column header="Acciones" :exportable="false" class="text-right">
         <template #body="{ data }">
           <div class="flex justify-end gap-2">
+            <Button
+              v-if="props.canManageMemberships"
+              icon="pi pi-id-card"
+              severity="secondary"
+              text
+              rounded
+              :data-testid="`manage-membership-btn-${data.id}`"
+              v-tooltip.top="'Gestionar membresía'"
+              @click="emit('manageMembership', data)"
+            />
             <Button
               icon="pi pi-pencil"
               severity="info"
