@@ -2,13 +2,45 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
 import RegistrationPricingBreakdown from '@/components/registrations/RegistrationPricingBreakdown.vue'
-import type { PricingBreakdown } from '@/types/registration'
+import type { PricingBreakdown, MemberPricingDetail } from '@/types/registration'
+
+const baseMember: MemberPricingDetail = {
+  familyMemberId: 'member-1',
+  fullName: 'Ana García',
+  ageAtCamp: 35,
+  ageCategory: 'Adult',
+  attendancePeriod: 'Complete',
+  attendanceDays: 14,
+  visitStartDate: null,
+  visitEndDate: null,
+  individualAmount: 450
+}
 
 const basePricing: PricingBreakdown = {
   members: [
-    { familyMemberId: 'member-1', fullName: 'Ana García', ageAtCamp: 35, ageCategory: 'Adult', individualAmount: 450 },
-    { familyMemberId: 'member-2', fullName: 'Luis García', ageAtCamp: 10, ageCategory: 'Child', individualAmount: 300 },
-    { familyMemberId: 'member-3', fullName: 'Sofía García', ageAtCamp: 1, ageCategory: 'Baby', individualAmount: 0 }
+    baseMember,
+    {
+      familyMemberId: 'member-2',
+      fullName: 'Luis García',
+      ageAtCamp: 10,
+      ageCategory: 'Child',
+      attendancePeriod: 'Complete',
+      attendanceDays: 14,
+      visitStartDate: null,
+      visitEndDate: null,
+      individualAmount: 300
+    },
+    {
+      familyMemberId: 'member-3',
+      fullName: 'Sofía García',
+      ageAtCamp: 1,
+      ageCategory: 'Baby',
+      attendancePeriod: 'Complete',
+      attendanceDays: 14,
+      visitStartDate: null,
+      visitEndDate: null,
+      individualAmount: 0
+    }
   ],
   baseTotalAmount: 750,
   extras: [],
@@ -40,17 +72,19 @@ describe('RegistrationPricingBreakdown', () => {
 
     const pricingWithExtras: PricingBreakdown = {
       ...basePricing,
-      extras: [{
-        campEditionExtraId: 'extra-1',
-        name: 'Camiseta',
-        unitPrice: 15,
-        pricingType: 'PerPerson',
-        pricingPeriod: 'OneTime',
-        quantity: 2,
-        campDurationDays: null,
-        calculation: '15 × 2 personas = 30 €',
-        totalAmount: 30
-      }],
+      extras: [
+        {
+          campEditionExtraId: 'extra-1',
+          name: 'Camiseta',
+          unitPrice: 15,
+          pricingType: 'PerPerson',
+          pricingPeriod: 'OneTime',
+          quantity: 2,
+          campDurationDays: null,
+          calculation: '15 × 2 personas = 30 €',
+          totalAmount: 30
+        }
+      ],
       extrasAmount: 30,
       totalAmount: 780
     }
@@ -69,5 +103,52 @@ describe('RegistrationPricingBreakdown', () => {
     const wrapper = mountComponent({ pricing: basePricing })
     expect(wrapper.text()).toContain('0')
     expect(wrapper.text()).toContain('Sin extras seleccionados')
+  })
+
+  it('should NOT show period column when all members have Complete period', () => {
+    const wrapper = mountComponent({ pricing: basePricing })
+    expect(wrapper.find('[data-testid="member-period-member-1"]').exists()).toBe(false)
+  })
+
+  it('should show period column when any member has a non-Complete period', () => {
+    const pricingWithPeriods: PricingBreakdown = {
+      ...basePricing,
+      members: [
+        { ...baseMember, attendancePeriod: 'FirstWeek', attendanceDays: 7 },
+        {
+          familyMemberId: 'member-2',
+          fullName: 'Luis García',
+          ageAtCamp: 10,
+          ageCategory: 'Child',
+          attendancePeriod: 'Complete',
+          attendanceDays: 14,
+          visitStartDate: null,
+          visitEndDate: null,
+          individualAmount: 300
+        }
+      ]
+    }
+    const wrapper = mountComponent({ pricing: pricingWithPeriods })
+    expect(wrapper.find('[data-testid="member-period-member-1"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Primera semana')
+  })
+
+  it('should show visit dates for WeekendVisit members', () => {
+    const pricingWithWeekend: PricingBreakdown = {
+      ...basePricing,
+      members: [
+        {
+          ...baseMember,
+          attendancePeriod: 'WeekendVisit',
+          attendanceDays: 2,
+          visitStartDate: '2025-07-05',
+          visitEndDate: '2025-07-07'
+        }
+      ]
+    }
+    const wrapper = mountComponent({ pricing: pricingWithWeekend })
+    expect(wrapper.find('[data-testid="member-period-member-1"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Visita de fin de semana')
+    expect(wrapper.text()).toContain('2025-07-05')
   })
 })

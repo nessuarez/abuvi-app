@@ -3,6 +3,7 @@ using System;
 using Abuvi.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Abuvi.API.Migrations
 {
     [DbContext(typeof(AbuviDbContext))]
-    partial class AbuviDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260226031831_AddProposalFieldsToCampEdition")]
+    partial class AddProposalFieldsToCampEdition
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -267,10 +270,6 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("end_date");
 
-                    b.Property<DateOnly?>("HalfDate")
-                        .HasColumnType("date")
-                        .HasColumnName("half_date");
-
                     b.Property<bool>("IsArchived")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -280,10 +279,6 @@ namespace Abuvi.API.Migrations
                     b.Property<int?>("MaxCapacity")
                         .HasColumnType("integer")
                         .HasColumnName("max_capacity");
-
-                    b.Property<int?>("MaxWeekendCapacity")
-                        .HasColumnType("integer")
-                        .HasColumnName("max_weekend_capacity");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(2000)
@@ -295,30 +290,10 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("price_per_adult");
 
-                    b.Property<decimal?>("PricePerAdultWeek")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("price_per_adult_week");
-
-                    b.Property<decimal?>("PricePerAdultWeekend")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("price_per_adult_weekend");
-
                     b.Property<decimal>("PricePerBaby")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("price_per_baby");
-
-                    b.Property<decimal?>("PricePerBabyWeek")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("price_per_baby_week");
-
-                    b.Property<decimal?>("PricePerBabyWeekend")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("price_per_baby_weekend");
 
                     b.Property<decimal>("PricePerChild")
                         .HasPrecision(10, 2)
@@ -334,15 +309,6 @@ namespace Abuvi.API.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("proposal_reason");
-                    b.Property<decimal?>("PricePerChildWeek")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("price_per_child_week");
-
-                    b.Property<decimal?>("PricePerChildWeekend")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("price_per_child_weekend");
 
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("timestamp with time zone")
@@ -365,14 +331,6 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("use_custom_age_ranges");
-
-                    b.Property<DateOnly?>("WeekendEndDate")
-                        .HasColumnType("date")
-                        .HasColumnName("weekend_end_date");
-
-                    b.Property<DateOnly?>("WeekendStartDate")
-                        .HasColumnType("date")
-                        .HasColumnName("weekend_start_date");
 
                     b.Property<int>("Year")
                         .HasColumnType("integer")
@@ -1026,14 +984,6 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("character varying(10)")
                         .HasColumnName("age_category");
 
-                    b.Property<string>("AttendancePeriod")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(15)
-                        .HasColumnType("character varying(15)")
-                        .HasDefaultValue("Complete")
-                        .HasColumnName("attendance_period");
-
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -1052,14 +1002,6 @@ namespace Abuvi.API.Migrations
                     b.Property<Guid>("RegistrationId")
                         .HasColumnType("uuid")
                         .HasColumnName("registration_id");
-
-                    b.Property<DateOnly?>("VisitEndDate")
-                        .HasColumnType("date")
-                        .HasColumnName("visit_end_date");
-
-                    b.Property<DateOnly?>("VisitStartDate")
-                        .HasColumnType("date")
-                        .HasColumnName("visit_start_date");
 
                     b.HasKey("Id");
 

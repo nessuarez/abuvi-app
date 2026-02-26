@@ -202,6 +202,7 @@ const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
           <div class="rounded-lg border border-gray-200 bg-white p-6">
             <h2 class="mb-4 text-lg font-semibold text-gray-900">Ubicación</h2>
             <CampLocationMap
+              v-if="camp.latitude !== null && camp.longitude !== null"
               :locations="[
                 {
                   latitude: camp.latitude,
@@ -210,6 +211,7 @@ const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
                 }
               ]"
             />
+            <p v-else class="text-sm italic text-gray-500">Sin ubicación registrada</p>
           </div>
 
           <!-- Photo Gallery (Google Places) -->

@@ -3,6 +3,7 @@ using System;
 using Abuvi.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Abuvi.API.Migrations
 {
     [DbContext(typeof(AbuviDbContext))]
-    partial class AbuviDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260226020729_AddAttendancePeriodToRegistrations")]
+    partial class AddAttendancePeriodToRegistrations
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -325,15 +328,6 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("price_per_child");
 
-                    b.Property<string>("ProposalNotes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("proposal_notes");
-
-                    b.Property<string>("ProposalReason")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("proposal_reason");
                     b.Property<decimal?>("PricePerChildWeek")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")

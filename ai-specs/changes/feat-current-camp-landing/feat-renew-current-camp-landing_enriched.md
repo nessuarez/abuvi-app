@@ -1,73 +1,205 @@
-# Enriched User Story: Renew Current Camp Landing Page
-
-**Source:** `ai-specs/changes/feat-current-camp-landing/feat-renew-current-camp-landing.md`
-**Date:** 2026-02-26
-**Scope:** Frontend-only — redesign and enrichment of `CampPage.vue` (the `/camp` route)
-
----
+# Renew Current Camp Landing Page — Enriched Spec
 
 ## Summary
 
-The current camp landing page (`/camp`, rendered by `frontend/src/views/CampPage.vue`) is minimal: it fetches only the "active" (Open-status) edition via `GET /api/camps/editions/active` and renders a basic `ActiveEditionCard`. It provides no rich information about the camp venue, no photos, no accommodation details, no location map, and no extras.
-
-This story replaces that minimal view with a rich, modern landing page that:
-1. Uses the existing `GET /api/camps/current` endpoint (which returns the best-available edition across statuses and includes camp coordinates) instead of `GET /api/camps/editions/active`.
-2. Fetches camp venue details (photos, contact info, accommodation capacity, map) from the existing `GET /api/camps/{campId}` endpoint.
-3. Fetches the edition's optional extras from `GET /api/camps/editions/{editionId}/extras`.
-4. Displays all information in a multi-section, visually rich layout using existing components where possible.
-
-No backend changes are required.
+Redesign `CampPage.vue` (`/camp`) into a rich, modern landing page that showcases the current camp edition with full detail: photos, description, map, accommodation, extras, pricing, and status-aware registration CTAs. Requires backend enrichment of the `GET /api/camps/current` endpoint to return camp photos, extras, accommodation capacity, and Google Places data that is currently excluded from that response.
 
 ---
 
-## Background: Current State vs Target State
+## Context & Current State
 
-### Current State
+| Item | Current |
+|---|---|
+| Route | `/camp` → `CampPage.vue` |
+| Data source | `GET /api/camps/editions/active` (Open status only) |
+| Composable | `useCampEditions().getActiveEdition()` |
+| Display | `ActiveEditionCard` — name, dates, pricing, capacity counter, notes |
+| Missing | Photos, description, map, accommodation, extras, contact info, modern layout |
 
-**File:** `frontend/src/views/CampPage.vue`
-
-- Calls `GET /api/camps/editions/active` (returns `ActiveCampEditionResponse` — minimal: no coordinates, no venue photos, no accommodation)
-- Renders only `ActiveEditionCard` (dates, prices, registration count)
-- Shows a single CTA button (register) or "no camp available" message
-- No photos, no map, no accommodation, no contact info, no extras
-
-### Target State
-
-A rich landing page with the following sections (in order):
-1. **Hero / Header** — camp name, edition year, status badge, key dates and prices
-2. **Photo Gallery** — camp venue photos (from `CampDetailResponse.photos` via `GET /api/camps/{campId}`)
-3. **Key Info Bar** — capacity/spots, age ranges, registration count
-4. **Accommodation** — existing `AccommodationCapacityDisplay` component
-5. **Location & Contact** — existing `CampLocationMap` and `CampContactInfo` components
-6. **Extras** — optional add-ons from `GET /api/camps/editions/{editionId}/extras`
-7. **Registration CTA** — register button (representative only, status-gated)
+The richer endpoint `GET /api/camps/current` (smart status-priority fallback) already exists and is accessible to all members, but `CampPage.vue` does not use it. Its response DTO (`CurrentCampEditionResponse`) is also missing several Camp-level fields.
 
 ---
 
-## Data Strategy
+## Objectives
 
-### Primary Data Sources
-
-| Data | Endpoint | Response Type (backend) | Current Frontend Type |
-|------|----------|-------------------------|-----------------------|
-| Current edition (status, dates, prices, coords) | `GET /api/camps/current` | `CurrentCampEditionResponse` | `CampEdition` (via `fetchCurrentCampEdition` in `useCampEditions`) |
-| Camp venue detail (photos, contact, accommodation) | `GET /api/camps/{campId}` | `CampDetailResponse` | `CampDetailResponse` (via `getCampById` in `useCamps`) |
-| Edition extras | `GET /api/camps/editions/{editionId}/extras` | `CampEditionExtraResponse[]` | `CampEditionExtra[]` |
-| Family unit (for representative check) | Already loaded by `useFamilyUnits` | — | — |
-
-### Type Alignment Note
-
-The composable `fetchCurrentCampEdition()` in `useCampEditions.ts` currently stores the result as `CampEdition` (line 19: `const currentCampEdition = ref<CampEdition | null>(null)`), but the backend `GET /api/camps/current` returns `CurrentCampEditionResponse` — which includes extra fields: `CampLatitude`, `CampLongitude`, `AvailableSpots`. A new type `CurrentCampEditionResponse` must be added to `frontend/src/types/camp-edition.ts`, and the ref type in the composable updated accordingly.
+1. Switch `CampPage.vue` to use `GET /api/camps/current` instead of the active-edition endpoint.
+2. Extend the `CurrentCampEditionResponse` DTO to include: camp photos (Google Places), camp description, contact info, accommodation capacity, and active extras.
+3. Redesign `CampPage.vue` into a rich, multi-section landing page reusing existing components where possible.
+4. Adapt status messaging appropriately (Open / Closed / Completed / no edition).
 
 ---
 
-## Detailed Changes
+## Backend Changes
 
-### 1. Add `CurrentCampEditionResponse` Type
+### 1. Extend `CurrentCampEditionResponse` DTO
+
+**File:** `src/Abuvi.API/Features/Camps/CampsModels.cs`
+
+Add the following fields to `CurrentCampEditionResponse`:
+
+```csharp
+public record CurrentCampEditionResponse(
+    // --- existing fields (unchanged) ---
+    Guid Id,
+    Guid CampId,
+    string CampName,
+    string? CampLocation,
+    string? CampFormattedAddress,
+    decimal? CampLatitude,
+    decimal? CampLongitude,
+    int Year,
+    DateTime StartDate,
+    DateTime EndDate,
+    decimal PricePerAdult,
+    decimal PricePerChild,
+    decimal PricePerBaby,
+    bool UseCustomAgeRanges,
+    int? CustomBabyMaxAge,
+    int? CustomChildMinAge,
+    int? CustomChildMaxAge,
+    int? CustomAdultMinAge,
+    CampEditionStatus Status,
+    int? MaxCapacity,
+    int RegistrationCount,
+    int? AvailableSpots,
+    string? Notes,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+
+    // --- NEW fields ---
+    string? CampDescription,           // Camp.Description
+    string? CampPhoneNumber,           // Camp.PhoneNumber (E.164)
+    string? CampNationalPhoneNumber,   // Camp.NationalPhoneNumber (formatted for display)
+    string? CampWebsiteUrl,            // Camp.WebsiteUrl
+    string? CampGoogleMapsUrl,         // Camp.GoogleMapsUrl
+    decimal? CampGoogleRating,         // Camp.GoogleRating
+    int? CampGoogleRatingCount,        // Camp.GoogleRatingCount
+    IReadOnlyList<CampPhotoResponse> CampPhotos, // Camp.Photos ordered by DisplayOrder (IsPrimary first)
+    AccommodationCapacity? AccommodationCapacity,        // Edition override ?? Camp fallback
+    int? CalculatedTotalBedCapacity,   // Computed from AccommodationCapacity
+    IReadOnlyList<CampEditionExtraResponse> Extras       // Active extras, sorted by SortOrder
+);
+```
+
+Add `CampEditionExtraResponse` record (if it doesn't already exist in a suitable form — check if `CampEditionExtra` entity already has a response DTO):
+
+```csharp
+public record CampEditionExtraResponse(
+    Guid Id,
+    string Name,
+    string? Description,
+    decimal Price,
+    string PricingType,     // "PerPerson" | "PerFamily"
+    string PricingPeriod,   // "OneTime" | "PerDay"
+    bool IsRequired,
+    int? MaxQuantity,
+    int CurrentQuantity,
+    int SortOrder
+);
+```
+
+### 2. Update Repository — `GetCurrentAsync`
+
+**File:** `src/Abuvi.API/Features/Camps/CampEditionsRepository.cs`
+
+In `GetCurrentAsync`, add `.ThenInclude(c => c.Photos)` and `.Include(e => e.Extras)` to both queries:
+
+```csharp
+public async Task<CampEdition?> GetCurrentAsync(int currentYear, CancellationToken cancellationToken = default)
+{
+    var currentYearEdition = await _context.CampEditions
+        .AsNoTracking()
+        .Include(e => e.Camp)
+            .ThenInclude(c => c.Photos.OrderBy(p => p.IsPrimary ? 0 : 1).ThenBy(p => p.DisplayOrder))
+        .Include(e => e.Extras.Where(x => x.IsActive).OrderBy(x => x.SortOrder))
+        .Where(e => e.Year == currentYear && !e.IsArchived
+            && (e.Status == CampEditionStatus.Open || e.Status == CampEditionStatus.Closed))
+        .OrderByDescending(e => e.Status == CampEditionStatus.Open ? 1 : 0)
+        .FirstOrDefaultAsync(cancellationToken);
+
+    if (currentYearEdition != null)
+        return currentYearEdition;
+
+    var previousYear = currentYear - 1;
+    return await _context.CampEditions
+        .AsNoTracking()
+        .Include(e => e.Camp)
+            .ThenInclude(c => c.Photos.OrderBy(p => p.IsPrimary ? 0 : 1).ThenBy(p => p.DisplayOrder))
+        .Include(e => e.Extras.Where(x => x.IsActive).OrderBy(x => x.SortOrder))
+        .Where(e => e.Year == previousYear && !e.IsArchived
+            && (e.Status == CampEditionStatus.Completed || e.Status == CampEditionStatus.Closed))
+        .OrderByDescending(e => e.Status == CampEditionStatus.Completed ? 1 : 0)
+        .FirstOrDefaultAsync(cancellationToken);
+}
+```
+
+> **Note:** EF Core 5+ supports filtered includes. Confirm the EF Core version supports `.Include(e => e.Extras.Where(...))`. If not, filter in the service layer after loading all extras.
+
+### 3. Update Service — `GetCurrentAsync`
+
+**File:** `src/Abuvi.API/Features/Camps/CampEditionsService.cs`
+
+Map the new fields in `GetCurrentAsync`. Accommodation priority: edition override first, then camp fallback.
+
+```csharp
+var accommodationCapacity = edition.GetAccommodationCapacity()
+    ?? edition.Camp.GetAccommodationCapacity();
+
+var calculatedBedCapacity = accommodationCapacity != null
+    ? CalculateTotalBedCapacity(accommodationCapacity)
+    : (int?)null;
+
+return new CurrentCampEditionResponse(
+    // ... existing fields ...
+    CampDescription: edition.Camp.Description,
+    CampPhoneNumber: edition.Camp.PhoneNumber,
+    CampNationalPhoneNumber: edition.Camp.NationalPhoneNumber,
+    CampWebsiteUrl: edition.Camp.WebsiteUrl,
+    CampGoogleMapsUrl: edition.Camp.GoogleMapsUrl,
+    CampGoogleRating: edition.Camp.GoogleRating,
+    CampGoogleRatingCount: edition.Camp.GoogleRatingCount,
+    CampPhotos: edition.Camp.Photos
+        .Select(p => new CampPhotoResponse(p.Id, p.PhotoReference, p.PhotoUrl,
+            p.Width, p.Height, p.AttributionName, p.AttributionUrl, p.Description, p.IsPrimary, p.DisplayOrder))
+        .ToList(),
+    AccommodationCapacity: accommodationCapacity,
+    CalculatedTotalBedCapacity: calculatedBedCapacity,
+    Extras: edition.Extras
+        .Select(x => new CampEditionExtraResponse(x.Id, x.Name, x.Description, x.Price,
+            x.PricingType.ToString(), x.PricingPeriod.ToString(), x.IsRequired,
+            x.MaxQuantity, x.CurrentQuantity, x.SortOrder))
+        .ToList()
+);
+```
+
+> Check if `CalculateTotalBedCapacity` already exists in the service (it does in `CampsService` for the camp detail endpoint). Extract to a shared static helper or reuse if accessible.
+
+### 4. Update API Documentation
+
+**File:** `ai-specs/specs/api-endpoints.md`
+
+Update the `GET /api/camps/current` response schema to reflect the new fields.
+
+### 5. Tests
+
+**File:** `src/Abuvi.Tests/Unit/Features/Camps/CampEditionsServiceTests.cs`
+
+Add unit tests covering:
+
+- `GetCurrentAsync` returns `CampPhotos` from `Camp.Photos` ordered (primary first, then by DisplayOrder)
+- `GetCurrentAsync` returns `Extras` only for `IsActive == true`, ordered by `SortOrder`
+- `AccommodationCapacity` uses edition override when present; falls back to camp capacity when edition has none
+- `CalculatedTotalBedCapacity` is populated correctly when accommodation capacity is present
+
+---
+
+## Frontend Changes
+
+### 1. Update TypeScript Types
 
 **File:** `frontend/src/types/camp-edition.ts`
 
-Add the following interface (mirrors backend `CurrentCampEditionResponse`):
+Add or extend `CurrentCampEditionResponse` to include the new backend fields:
 
 ```typescript
 export interface CurrentCampEditionResponse {
@@ -96,372 +228,214 @@ export interface CurrentCampEditionResponse {
   notes?: string
   createdAt: string
   updatedAt: string
+  // New fields
+  campDescription: string | null
+  campPhoneNumber: string | null
+  campNationalPhoneNumber: string | null
+  campWebsiteUrl: string | null
+  campGoogleMapsUrl: string | null
+  campGoogleRating: number | null
+  campGoogleRatingCount: number | null
+  campPhotos: CampPlacesPhoto[]     // reuse type from '@/types/camp'
+  accommodationCapacity: AccommodationCapacity | null  // reuse from '@/types/camp'
+  calculatedTotalBedCapacity: number | null
+  extras: CampEditionExtra[]
 }
 ```
 
-### 2. Update `useCampEditions` Composable
+> The `CampPlacesPhoto` and `AccommodationCapacity` types already exist in `frontend/src/types/camp.ts`.
+
+### 2. Update Composable
 
 **File:** `frontend/src/composables/useCampEditions.ts`
 
-- Import `CurrentCampEditionResponse` from `@/types/camp-edition`
-- Change the `currentCampEdition` ref type from `CampEdition | null` to `CurrentCampEditionResponse | null`
-- Update the return type annotation accordingly
-
-No logic changes — only the ref's generic type changes.
-
-### 3. Redesign `CampPage.vue` (main change)
-
-**File:** `frontend/src/views/CampPage.vue`
-
-**Replace the current implementation entirely** with the new multi-section layout described below.
-
-#### Data Loading
+`fetchCurrentCampEdition` already calls `/camps/current` but types the result as `CampEdition`. Update it to use `CurrentCampEditionResponse`:
 
 ```typescript
-// Composables to use
-const { currentCampEdition, loading: editionLoading, error: editionError, fetchCurrentCampEdition } = useCampEditions()
-const { loading: campLoading, getCampById } = useCamps()
-const { familyUnit, getCurrentUserFamilyUnit } = useFamilyUnits()
-const auth = useAuthStore()
-const router = useRouter()
+const currentCampEdition = ref<CurrentCampEditionResponse | null>(null)
 
-const camp = ref<CampDetailResponse | null>(null)
-const extras = ref<CampEditionExtra[]>([])
-const extrasLoading = ref(false)
-
-const loading = computed(() => editionLoading.value || campLoading.value)
-const isRepresentative = computed(
-  () => !!familyUnit.value && familyUnit.value.representativeUserId === auth.user?.id
-)
-const canRegister = computed(
-  () => currentCampEdition.value?.status === 'Open' && isRepresentative.value
-)
-```
-
-#### `onMounted` Flow
-
-```typescript
-onMounted(async () => {
-  await fetchCurrentCampEdition()
-  await getCurrentUserFamilyUnit()
-
-  if (currentCampEdition.value) {
-    // Load camp venue in parallel with extras
-    const [campResult] = await Promise.all([
-      getCampById(currentCampEdition.value.campId),
-      loadExtras(currentCampEdition.value.id)
-    ])
-    camp.value = campResult
-  }
-})
-
-const loadExtras = async (editionId: string): Promise<void> => {
-  extrasLoading.value = true
-  try {
-    const response = await api.get<ApiResponse<CampEditionExtra[]>>(
-      `/camps/editions/${editionId}/extras?activeOnly=true`
-    )
-    extras.value = response.data.success ? (response.data.data ?? []) : []
-  } catch {
-    extras.value = []
-  } finally {
-    extrasLoading.value = false
-  }
+const fetchCurrentCampEdition = async (): Promise<void> => {
+  // ... existing error handling ...
+  const response = await api.get<ApiResponse<CurrentCampEditionResponse>>('/camps/current')
+  // ...
 }
 ```
 
-#### Template Structure
+### 3. Redesign `CampPage.vue`
 
-```html
-<template>
-  <Container>
-    <div class="py-8">
+**File:** `frontend/src/views/CampPage.vue`
 
-      <!-- LOADING STATE -->
-      <div v-if="loading" class="flex justify-center py-16" role="status" data-testid="camp-loading">
-        <ProgressSpinner />
-      </div>
+Replace the current `getActiveEdition()` call with `fetchCurrentCampEdition()` and redesign the template.
 
-      <!-- ERROR STATE -->
-      <Message v-else-if="editionError" severity="error" :closable="false" class="mb-4">
-        {{ editionError }}
-      </Message>
+**Data fetching:**
 
-      <!-- NO CAMP AVAILABLE -->
-      <div v-else-if="!currentCampEdition"
-        class="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center"
-        data-testid="camp-empty">
-        <p class="text-gray-500">No hay ningún campamento disponible para este año.</p>
-        <p class="mt-1 text-sm text-gray-400">Cuando haya una edición disponible, aparecerá aquí.</p>
-      </div>
+- On mount: call `fetchCurrentCampEdition()` and `getCurrentUserFamilyUnit()`
+- Loading, error, and empty states remain (using PrimeVue `ProgressSpinner` and `Message`)
 
-      <!-- MAIN CONTENT -->
-      <div v-else class="space-y-8">
+**Page structure (top to bottom):**
 
-        <!-- SECTION 1: HERO HEADER -->
-        <CampHeroSection
-          :edition="currentCampEdition"
-          data-testid="camp-hero"
-        />
-
-        <!-- SECTION 2: PHOTO GALLERY (only if camp has photos) -->
-        <CampPlacesGallery
-          v-if="camp && camp.photos.length > 0"
-          :photos="camp.photos"
-          data-testid="camp-gallery"
-        />
-
-        <!-- SECTION 3: REGISTRATION CTA -->
-        <div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center"
-          data-testid="camp-cta">
-          <Button
-            v-if="currentCampEdition.status === 'Open' && isRepresentative"
-            label="Inscribirse al campamento"
-            icon="pi pi-user-plus"
-            size="large"
-            @click="goToRegister"
-            data-testid="register-button"
-          />
-          <Button
-            v-else-if="currentCampEdition.status === 'Open' && !isRepresentative"
-            label="Solo el representante puede inscribirse"
-            icon="pi pi-info-circle"
-            severity="secondary"
-            size="large"
-            disabled
-          />
-          <RouterLink
-            v-if="currentCampEdition.status === 'Open'"
-            :to="{ name: 'registrations' }"
-            class="text-sm text-blue-600 underline hover:text-blue-800"
-          >
-            Ver mis inscripciones
-          </RouterLink>
-        </div>
-
-        <p
-          v-if="currentCampEdition.status === 'Open' && !isRepresentative && familyUnit"
-          class="text-sm text-amber-600"
-        >
-          Solo el representante de la unidad familiar puede inscribir a la familia.
-        </p>
-
-        <!-- SECTION 4: ACCOMMODATION (from camp venue) -->
-        <AccommodationCapacityDisplay
-          v-if="camp?.accommodationCapacity"
-          :capacity="camp.accommodationCapacity"
-          :total-bed-capacity="camp.calculatedTotalBedCapacity"
-          data-testid="camp-accommodation"
-        />
-
-        <!-- SECTION 5: LOCATION & CONTACT (from camp venue) -->
-        <div v-if="camp" class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <CampContactInfo :camp="camp" data-testid="camp-contact" />
-
-          <div v-if="camp.latitude !== null && camp.longitude !== null"
-            class="rounded-lg border border-gray-200 bg-white p-6">
-            <h2 class="mb-4 text-lg font-semibold text-gray-900">Ubicación</h2>
-            <CampLocationMap
-              :locations="[{
-                latitude: camp.latitude,
-                longitude: camp.longitude,
-                name: camp.name
-              }]"
-            />
-          </div>
-        </div>
-
-        <!-- SECTION 6: EXTRAS (only if any active extras exist) -->
-        <CampExtrasSection
-          v-if="extras.length > 0"
-          :extras="extras"
-          :loading="extrasLoading"
-          data-testid="camp-extras"
-        />
-
-      </div>
-    </div>
-  </Container>
-</template>
+```
+┌─────────────────────────────────────────────────┐
+│  HERO SECTION                                   │
+│  Camp name · Location · Year · Status badge     │
+│  Date range + duration · Countdown (if Open)    │
+│  Primary photo background (if available)        │
+│  → CTA button (register / view registrations)   │
+├─────────────────────────────────────────────────┤
+│  CAPACITY BAR (if maxCapacity exists)           │
+│  Progress: registrationCount / maxCapacity      │
+├─────────────────────────────────────────────────┤
+│  PHOTO GALLERY (if campPhotos.length > 0)       │
+│  → Reuse <CampPlacesGallery :photos="...">      │
+├─────────────────────────────────────────────────┤
+│  ABOUT THE CAMP (if campDescription exists)     │
+│  Description text                               │
+├─────────────────────────────────────────────────┤
+│  MAP (if campLatitude && campLongitude)         │
+│  → Reuse <CampLocationMap :locations="...">     │
+├─────────────────────────────────────────────────┤
+│  ACCOMMODATION (if accommodationCapacity)       │
+│  → Reuse <AccommodationCapacityDisplay>         │
+├─────────────────────────────────────────────────┤
+│  PRICING                                        │
+│  → Reuse <PricingBreakdown>                     │
+├─────────────────────────────────────────────────┤
+│  OPTIONAL SERVICES / EXTRAS                     │
+│  (if extras.length > 0)                         │
+│  New component: <CampExtrasSection>             │
+├─────────────────────────────────────────────────┤
+│  CONTACT INFO                                   │
+│  Address · Phone · Website · Rating             │
+│  (if any contact field is present)              │
+├─────────────────────────────────────────────────┤
+│  BOTTOM CTA (repeated for UX)                   │
+└─────────────────────────────────────────────────┘
 ```
 
-### 4. Create `CampHeroSection.vue` (new component)
+**Status-aware CTA logic (same rules as current, extended for new statuses):**
 
-**File:** `frontend/src/components/camps/CampHeroSection.vue`
+| `edition.status` | User is representative | CTA shown |
+|---|---|---|
+| `Open` | Yes | "Inscribirse al campamento" button (primary) |
+| `Open` | No | Disabled button "Solo el representante puede inscribirse" |
+| `Closed` | — | "Inscripciones cerradas" message + "Ver mis inscripciones" link |
+| `Completed` | — | "Este campamento ha finalizado" + "Ver mis inscripciones" link |
+| `Closed`/`Completed` previous year | — | "Próximamente se abrirá la inscripción para el próximo campamento" |
 
-This component replaces the existing `ActiveEditionCard.vue` for the landing page context. It renders the top summary of the current edition with richer visual design.
+**Notes field:** Displayed in the hero or as a highlighted notice below the hero if present.
 
-**Props:**
-```typescript
-defineProps<{
-  edition: CurrentCampEditionResponse
-}>()
-```
-
-**Displayed Fields:**
-- `edition.campName` — main heading (h1)
-- `edition.campLocation` or `edition.campFormattedAddress` — subtitle
-- `edition.status` — `CampEditionStatusBadge` component
-- `edition.startDate` / `edition.endDate` — formatted date range
-- `edition.year` — year badge
-- `edition.pricePerAdult`, `edition.pricePerChild`, `edition.pricePerBaby` — price grid (3 columns)
-- `edition.maxCapacity` — if present, show capacity
-- `edition.registrationCount` — registration count
-- `edition.availableSpots` — if present, show available spots with visual indicator (green/amber/red based on fill rate)
-- `edition.notes` — if present, show in a highlighted info box
-
-**Styling:** Follow the existing `ActiveEditionCard.vue` design language (green header, gray body cards), but extend with availability indicator and richer date/info display.
-
-**`data-testid` attributes:**
-- `camp-hero-name`
-- `camp-hero-dates`
-- `camp-hero-prices`
-- `camp-hero-status`
-- `camp-hero-availability`
-
-### 5. Create `CampExtrasSection.vue` (new component)
+### 4. New Component: `CampExtrasSection.vue`
 
 **File:** `frontend/src/components/camps/CampExtrasSection.vue`
 
-Renders the list of optional add-ons available for the edition.
+Displays active extras as a card list with name, description, price and pricing labels.
 
 **Props:**
+
 ```typescript
 defineProps<{
   extras: CampEditionExtra[]
-  loading: boolean
 }>()
 ```
 
-**Displayed Fields per extra:**
-- `extra.name` — bold title
-- `extra.description` — optional subtitle
-- `extra.price` — formatted as currency
-- `extra.pricingType` — display as badge: "Por persona" / "Por familia"
-- `extra.pricingPeriod` — display as badge: "Precio único" / "Por día"
-- `extra.isRequired` — if true, show "Incluido" badge in amber
-- `extra.maxQuantity` / `extra.currentQuantity` — if `maxQuantity` is set, show availability bar
+**Pricing label logic:**
 
-**Layout:** Responsive grid `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`, each extra as a card with border.
+- `pricingType === 'PerPerson'` → "por persona"
+- `pricingType === 'PerFamily'` → "por familia"
+- `pricingPeriod === 'PerDay'` → "/ día"
+- `pricingPeriod === 'OneTime'` → "(pago único)"
+- Required extras: display a "Incluido" or "Obligatorio" badge
 
-**`data-testid` attributes:**
-- `extras-section`
-- `extra-card-{extra.id}`
+**Template structure:**
 
----
+```html
+<section>
+  <h2>Servicios adicionales</h2>
+  <ul>
+    <li v-for="extra in extras" :key="extra.id">
+      <div class="name">{{ extra.name }} <Badge v-if="extra.isRequired" value="Obligatorio" /></div>
+      <p v-if="extra.description">{{ extra.description }}</p>
+      <span class="price">{{ formatCurrency(extra.price) }} {{ pricingLabel(extra) }}</span>
+    </li>
+  </ul>
+</section>
+```
 
-## Files to Modify / Create
+### 5. Update Route Title (optional)
 
-| File | Action | Description |
-|------|--------|-------------|
-| `frontend/src/types/camp-edition.ts` | Modify | Add `CurrentCampEditionResponse` interface |
-| `frontend/src/composables/useCampEditions.ts` | Modify | Update `currentCampEdition` ref type to `CurrentCampEditionResponse` |
-| `frontend/src/views/CampPage.vue` | Modify | Full redesign — multi-section layout |
-| `frontend/src/components/camps/CampHeroSection.vue` | Create | New hero/header component for edition summary |
-| `frontend/src/components/camps/CampExtrasSection.vue` | Create | New extras listing component |
+**File:** `frontend/src/router/index.ts`
 
-**Existing components reused without modification:**
-- `frontend/src/components/camps/CampPlacesGallery.vue` — photo gallery
-- `frontend/src/components/camps/CampContactInfo.vue` — contact info
-- `frontend/src/components/camps/CampLocationMap.vue` — Leaflet map
-- `frontend/src/components/camps/AccommodationCapacityDisplay.vue` — accommodation breakdown
-- `frontend/src/components/camps/CampEditionStatusBadge.vue` — status chip
+No route changes needed. Keep `/camp` with `name: 'camp'`. Title can stay `"ABUVI | Campamento"`.
 
 ---
 
-## API Endpoints Used (No Changes Required)
+## API Documentation Update
 
-| Method | URL | Auth | Used For |
-|--------|-----|------|----------|
-| `GET` | `/api/camps/current` | Member+ | Best-available edition (status priority + coords) |
-| `GET` | `/api/camps/{campId}` | Admin/Board | Camp venue detail (photos, contact, accommodation) |
-| `GET` | `/api/camps/editions/{editionId}/extras?activeOnly=true` | Member+ | Active add-ons for the edition |
+**File:** `ai-specs/specs/api-endpoints.md`
 
-> Note: `GET /api/camps/{campId}` is currently restricted to `Admin/Board` only (see `CampsEndpoints.cs` line 22). If this page is intended for all authenticated Members, the route authorization must be relaxed to `Member+` or a new Member-accessible endpoint must be created. **This must be confirmed with the product owner before implementation.** As a safe default, the venue detail section (`camp`) should render gracefully if the fetch returns 403 (e.g., skip photos/contact/map sections silently).
+Update `GET /api/camps/current` section to document the new response fields:
+
+- `campDescription`, `campPhoneNumber`, `campNationalPhoneNumber`, `campWebsiteUrl`, `campGoogleMapsUrl`, `campGoogleRating`, `campGoogleRatingCount`
+- `campPhotos`: array of `CampPhotoResponse` (same shape as in `GET /api/camps/{id}`)
+- `accommodationCapacity`: same shape as in `GET /api/camps/{id}` (edition override takes priority over camp default)
+- `calculatedTotalBedCapacity`: integer, computed from accommodation capacity
+- `extras`: array of active `CampEditionExtraResponse`, sorted by `sortOrder`
+
+---
+
+## Files to Modify
+
+### Backend
+
+| File | Change |
+|---|---|
+| `src/Abuvi.API/Features/Camps/CampsModels.cs` | Add new fields to `CurrentCampEditionResponse`; add `CampEditionExtraResponse` if absent |
+| `src/Abuvi.API/Features/Camps/CampEditionsRepository.cs` | Add `ThenInclude(c => c.Photos)` and `Include(e => e.Extras.Where(x => x.IsActive))` in `GetCurrentAsync` |
+| `src/Abuvi.API/Features/Camps/CampEditionsService.cs` | Map new fields in `GetCurrentAsync` |
+| `src/Abuvi.Tests/Unit/Features/Camps/CampEditionsServiceTests.cs` | Add unit tests for new field mappings |
+
+### Frontend
+
+| File | Change |
+|---|---|
+| `frontend/src/types/camp-edition.ts` | Add/update `CurrentCampEditionResponse` interface |
+| `frontend/src/composables/useCampEditions.ts` | Update `currentCampEdition` ref type to `CurrentCampEditionResponse` |
+| `frontend/src/views/CampPage.vue` | Full redesign: switch to `fetchCurrentCampEdition`, multi-section layout |
+| `frontend/src/components/camps/CampExtrasSection.vue` | New component for extras display |
+| `ai-specs/specs/api-endpoints.md` | Document new fields on `GET /api/camps/current` |
+
+### Components to reuse (no changes needed)
+
+- `CampPlacesGallery.vue` — photo gallery
+- `CampLocationMap.vue` — embedded map
+- `AccommodationCapacityDisplay.vue` — accommodation breakdown
+- `PricingBreakdown.vue` — pricing table with age ranges
+- `CampEditionStatusBadge.vue` — status pill
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Navigating to `/camp` loads and displays the current best-available edition (not only Open status)
-- [ ] If no edition exists within the 1-year lookback window, the empty state message is shown
-- [ ] The hero section shows: camp name, location, status badge, date range, price grid, available spots, and notes
-- [ ] Camp venue photos (from Google Places) are displayed in a gallery when available
-- [ ] Accommodation capacity breakdown is visible when camp has accommodation data
-- [ ] Location map is rendered when camp has coordinates
-- [ ] Contact information (address, phone, website, Google rating) is displayed when available
-- [ ] Active extras are listed when the edition has them
-- [ ] The "Inscribirse" button appears only when status is `Open` AND the user is the family representative
-- [ ] The page renders correctly at mobile (sm), tablet (md), and desktop (lg) breakpoints
-- [ ] Loading spinner is shown while data is fetching
-- [ ] Error messages are shown if the API calls fail
+- [ ] `GET /api/camps/current` returns `campPhotos`, `extras` (active only, sorted), `accommodationCapacity`, `campDescription`, `campPhoneNumber`, `campWebsiteUrl`, `campGoogleMapsUrl`, `campGoogleRating`
+- [ ] Accommodation capacity uses the edition-level override if set, otherwise falls back to the camp-level value
+- [ ] `CampPage.vue` calls `/camps/current` (not `/camps/editions/active`)
+- [ ] Photo gallery section is visible when the camp has photos
+- [ ] Map section is visible when camp has coordinates
+- [ ] Accommodation section is visible when accommodation capacity is set
+- [ ] Extras section is visible when there are active extras
+- [ ] Contact section is visible when any contact field is present
+- [ ] CTA button is shown only to the family representative when status is Open
+- [ ] Status messages are appropriate for Open / Closed / Completed editions
+- [ ] Previous-year "completed" edition renders without register CTA but with informational message
+- [ ] Empty state shown when no qualifying edition exists
+- [ ] Page is responsive (mobile-first, single column; 2-column layout on lg+)
+- [ ] Unit tests pass for new service mapping logic
 
 ---
 
 ## Non-Functional Requirements
 
-### Performance
-- The three API calls (`/api/camps/current`, `/api/camps/{campId}`, `/api/camps/editions/{editionId}/extras`) should be executed with maximum parallelism: the camp and extras calls must be fired together using `Promise.all` only after the edition call resolves (since `campId` and `editionId` depend on it).
-- Photo images use `loading="lazy"` (already the case in `CampPlacesGallery`).
-- No polling or reactive watchers that trigger re-fetches.
-
-### Security
-- The page requires authentication (`requiresAuth: true` in router — already set for the `/camp` route).
-- Do not expose `campId` or `editionId` in the URL; they are internal IDs used only for API calls.
-- If `GET /api/camps/{campId}` returns 403 for non-Board users, degrade gracefully (hide venue sections, do not throw an unhandled error).
-
-### Accessibility
-- All images must have meaningful `alt` text.
-- Map container must have `aria-label="Mapa de ubicación del campamento"`.
-- Status badges must not rely solely on color (include text).
-- Loading state must have `role="status"`.
-
-### Testing
-- All new components must have Vitest unit tests with ≥90% branch coverage (per `frontend-standards.mdc`).
-
----
-
-## Testing Requirements
-
-### `CampHeroSection.vue` unit tests
-**File:** `frontend/src/components/camps/__tests__/CampHeroSection.test.ts`
-
-- Renders camp name, location, date range, and prices
-- Renders `CampEditionStatusBadge` with correct status
-- Shows available spots when `availableSpots` is defined
-- Does not render availability bar when `availableSpots` is null
-- Renders notes block when `notes` is present
-- Does not render notes block when `notes` is null/undefined
-
-### `CampExtrasSection.vue` unit tests
-**File:** `frontend/src/components/camps/__tests__/CampExtrasSection.test.ts`
-
-- Renders one card per extra
-- Displays price formatted as currency
-- Shows "Por persona" badge for `PerPerson` pricing type
-- Shows "Por familia" badge for `PerFamily` pricing type
-- Shows "Incluido" badge when `isRequired` is true
-- Does not render when `extras` is empty (component should guard with `v-if` in parent)
-
-### `CampPage.vue` unit tests
-**File:** `frontend/src/views/__tests__/CampPage.test.ts`
-
-- Shows loading spinner while fetching
-- Shows empty state when `currentCampEdition` is null
-- Renders `CampHeroSection` when edition is loaded
-- Does NOT render photo gallery when `camp.photos` is empty
-- Renders gallery when `camp.photos` has entries
-- Does NOT render extras section when `extras` is empty
-- Renders extras section when active extras exist
-- "Inscribirse" button is visible when status is `Open` and user is representative
-- "Inscribirse" button is disabled/hidden when user is NOT the representative
-- Clicking "Inscribirse" navigates to `{ name: 'registration-new', params: { editionId } }`
-
----
-
-## Implementation Order (Recommended)
-
-1. Add `CurrentCampEditionResponse` to `frontend/src/types/camp-edition.ts` and update the composable ref type — smallest, safest change, unblocks everything else.
-2. Create `CampHeroSection.vue` with unit tests — UI-only, no API dependency.
-3. Create `CampExtrasSection.vue` with unit tests — UI-only, no API dependency.
-4. Rewrite `CampPage.vue` — wires everything together; write view-level tests last.
+- **Performance**: The repository query must remain `AsNoTracking()`. Photos and extras are bounded collections; no N+1 risk with eager loading.
+- **Security**: `GET /api/camps/current` is already Member+. Photos served via `/places/photo?reference=...` proxy should also require authentication (verify the existing authorization on that endpoint).
+- **Accessibility**: Photo `<img>` elements must have descriptive `alt` attributes. Interactive elements (buttons, links) must have `aria-label` where needed.
+- **i18n-ready**: All user-facing strings use Spanish (consistent with the rest of the app). No hardcoded labels in logic.
