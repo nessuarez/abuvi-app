@@ -155,6 +155,14 @@ public class ProposeCampEditionRequestValidator : AbstractValidator<ProposeCampE
             .MaximumLength(2000).WithMessage("Notes must not exceed 2000 characters")
             .When(x => !string.IsNullOrWhiteSpace(x.Notes));
 
+        // Optional proposal metadata — no required constraint, only length guard
+        RuleFor(x => x.ProposalReason)
+            .MaximumLength(1000).WithMessage("Proposal reason must not exceed 1000 characters")
+            .When(x => !string.IsNullOrWhiteSpace(x.ProposalReason));
+
+        RuleFor(x => x.ProposalNotes)
+            .MaximumLength(2000).WithMessage("Proposal notes must not exceed 2000 characters")
+            .When(x => !string.IsNullOrWhiteSpace(x.ProposalNotes));
         // Week pricing: all three prices required together
         RuleFor(x => x)
             .Must(x => (x.PricePerAdultWeek.HasValue && x.PricePerChildWeek.HasValue && x.PricePerBabyWeek.HasValue)

@@ -101,6 +101,16 @@ public class CampEditionConfiguration : IEntityTypeConfiguration<CampEdition>
             .HasMaxLength(2000)
             .HasColumnName("notes");
 
+        // ProposalReason: optional, max 1000 (stored for board review)
+        builder.Property(e => e.ProposalReason)
+            .HasMaxLength(1000)
+            .HasColumnName("proposal_reason");
+
+        // ProposalNotes: optional, max 2000 (additional context at proposal time)
+        builder.Property(e => e.ProposalNotes)
+            .HasMaxLength(2000)
+            .HasColumnName("proposal_notes");
+
         // IsArchived: required, default false
         builder.Property(e => e.IsArchived)
             .IsRequired()

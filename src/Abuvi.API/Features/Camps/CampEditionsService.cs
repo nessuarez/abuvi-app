@@ -73,6 +73,8 @@ public class CampEditionsService
             Status = CampEditionStatus.Proposed,
             MaxCapacity = request.MaxCapacity,
             Notes = request.Notes,
+            ProposalReason = request.ProposalReason,
+            ProposalNotes  = request.ProposalNotes,
             IsArchived = false,
             HalfDate = request.HalfDate,
             PricePerAdultWeek = request.PricePerAdultWeek,
