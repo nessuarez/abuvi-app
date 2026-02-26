@@ -105,12 +105,12 @@ const handleViewDetail = (edition: CampEdition) => {
   router.push({ name: 'camp-edition-detail', params: { id: edition.id } })
 }
 
-const handleStatusConfirm = async (newStatus: CampEditionStatus) => {
+const handleStatusConfirm = async (newStatus: CampEditionStatus, force?: boolean) => {
   if (!selectedEdition.value) return
   statusLoading.value = true
   const result = selectedEdition.value.status === 'Proposed'
     ? await promoteEdition(selectedEdition.value.id)
-    : await changeStatus(selectedEdition.value.id, newStatus)
+    : await changeStatus(selectedEdition.value.id, newStatus, force)
   statusLoading.value = false
   showStatusDialog.value = false
 
