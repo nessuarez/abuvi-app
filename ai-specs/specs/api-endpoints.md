@@ -1672,8 +1672,8 @@ Proposes a new camp edition. The edition is created with `Proposed` status and r
 
 **Field Notes:**
 
-- `proposalReason`: Required, reason for proposing this edition
-- `proposalNotes`: Required, additional context for the board
+- `proposalReason`: **Optional** (`string | null`). Reason for proposing this edition. Previously documented as required; now optional. Maximum 1000 characters.
+- `proposalNotes`: **Optional** (`string | null`). Additional context for the board. Accepted by the API but no longer sent by the frontend after the UX improvement. Maximum 2000 characters.
 - `accommodationCapacity`: Optional; when provided, is also synced to the parent `Camp.accommodationCapacityJson` in the same transaction
 
 **Success Response (201 Created):** Returns the created `CampEditionResponse` (same shape as `GET /api/camps/editions/{id}`) with `status: "Proposed"`.
