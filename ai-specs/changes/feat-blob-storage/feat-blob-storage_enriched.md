@@ -8,7 +8,7 @@
 
 ## Summary
 
-Implement a Blob Storage service that enables the ABUVI backend to upload, retrieve, and manage binary files (photos, videos, documents) hosted on **Hetzner Object Storage** (S3-compatible). This service will be consumed internally by the `Photos`, `MediaItems`, and `CampLocations` features to store and serve user-uploaded content.
+Implement a Blob Storage service that enables the ABUVI backend to upload, retrieve, and manage binary files (photos, videos, audio, documents) hosted on **Hetzner Object Storage** (S3-compatible). This service will be consumed internally by the `Photos`, `MediaItems`, and `CampLocations` features to store and serve user-uploaded content.
 
 ---
 
@@ -90,9 +90,13 @@ Add to `appsettings.json` (values via environment variables in production):
     "MaxFileSizeBytes": 52428800,
     "AllowedImageExtensions": [".jpg", ".jpeg", ".png", ".webp", ".gif"],
     "AllowedVideoExtensions": [".mp4", ".mov", ".avi", ".webm"],
+    "AllowedAudioExtensions": [".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac"],
     "AllowedDocumentExtensions": [".pdf", ".doc", ".docx"],
     "ThumbnailWidthPx": 400,
-    "ThumbnailHeightPx": 400
+    "ThumbnailHeightPx": 400,
+    "StorageQuotaBytes": 53687091200,
+    "StorageWarningThresholdPct": 80,
+    "StorageCriticalThresholdPct": 95
   }
 }
 ```
@@ -122,11 +126,13 @@ Files are stored using a deterministic key pattern to support access control and
 abuvi-media/
 ├── photos/{photoAlbumId}/{guid}.{ext}            # Photo.fileUrl
 ├── photos/{photoAlbumId}/thumbs/{guid}.webp       # Photo.thumbnailUrl
-├── media-items/{guid}.{ext}                       # MediaItem.fileUrl
-├── media-items/thumbs/{guid}.webp                 # MediaItem.thumbnailUrl
+├── media-items/{guid}.{ext}                       # MediaItem.fileUrl (images, video, docs, audio)
+├── media-items/thumbs/{guid}.webp                 # MediaItem.thumbnailUrl (images/video only)
 ├── camp-locations/{campLocationId}/{guid}.{ext}   # CampLocation.coverPhotoUrl
 └── camp-photos/{campId}/{guid}.{ext}              # CampPhoto.photoUrl
 ```
+
+Audio files (`.mp3`, `.wav`, etc.) go into `media-items/` like any other `MediaItem`. No thumbnail is generated for audio.
 
 All GUIDs are generated server-side (`Guid.NewGuid()`). Extensions are normalized to lowercase.
 
@@ -147,7 +153,7 @@ Upload a file. Returns blob metadata. **Roles: Admin, Board** (for albums and me
 | `file` | `IFormFile` | Yes | The binary file |
 | `folder` | `string` | Yes | One of: `photos`, `media-items`, `camp-locations`, `camp-photos` |
 | `contextId` | `Guid` | No | e.g. `photoAlbumId` or `campId`; appended to the path |
-| `generateThumbnail` | `bool` | No | Default `false`; only applies to image files |
+| `generateThumbnail` | `bool` | No | Default `false`; only applies to image files (ignored for audio/video/documents) |
 
 **Response 200:**
 
@@ -247,7 +253,8 @@ public interface IBlobStorageService
     /// <summary>Deletes one or more blobs by key.</summary>
     Task DeleteManyAsync(IReadOnlyList<string> blobKeys, CancellationToken ct);
 
-    /// <summary>Returns storage statistics grouped by top-level folder.</summary>
+    /// <summary>Returns storage statistics grouped by top-level folder.
+    /// Result is cached via IMemoryCache for 5 minutes to avoid S3 enumeration on every health poll.</summary>
     Task<BlobStorageStats> GetStatsAsync(CancellationToken ct);
 
     /// <summary>Returns true when the bucket is reachable.</summary>
@@ -283,6 +290,9 @@ public record BlobStorageStats(
     int TotalObjects,
     long TotalSizeBytes,
     string TotalSizeHumanReadable,
+    long? QuotaBytes,
+    double? UsedPct,
+    long? FreeByes,
     IReadOnlyDictionary<string, FolderStats> ByFolder);
 
 public record FolderStats(int Objects, long SizeBytes);
@@ -325,6 +335,7 @@ public class UploadBlobRequestValidator : AbstractValidator<UploadBlobRequest>
         {
             "media-items" => cfg.AllowedImageExtensions.Contains(ext)
                              || cfg.AllowedVideoExtensions.Contains(ext)
+                             || cfg.AllowedAudioExtensions.Contains(ext)
                              || cfg.AllowedDocumentExtensions.Contains(ext),
             _ => cfg.AllowedImageExtensions.Contains(ext)
         };
@@ -340,7 +351,7 @@ public class UploadBlobRequestValidator : AbstractValidator<UploadBlobRequest>
 - Output format: always `.webp` (better compression, broad browser support).
 - Dimensions: constrained to `ThumbnailWidthPx × ThumbnailHeightPx` (default 400×400), maintaining aspect ratio.
 - Thumbnail key: same path as original file with `/thumbs/` sub-folder and `.webp` extension.
-- Videos/documents: no thumbnail generated server-side (thumbnail must be provided separately if needed).
+- **Videos, documents, and audio**: no thumbnail generated server-side. `thumbnailUrl` is always `null` for these types. The caller is responsible for providing a separate thumbnail file if needed (e.g. a waveform image for audio, or a cover frame for video).
 
 ---
 
@@ -369,9 +380,85 @@ builder.Services.AddHealthChecks()
     .AddCheck<BlobStorageHealthCheck>("blob-storage", HealthStatus.Degraded);
 ```
 
-`BlobStorageHealthCheck` calls `IBlobStorageService.IsHealthyAsync()`. Failure status is `Degraded` (not `Unhealthy`) because the app can still serve read-only content if blob storage is temporarily unavailable.
+### Free Space Monitoring
 
-Update `api-endpoints.md` health check table to include the new `blob-storage` check entry.
+Hetzner Object Storage does not expose a native "free space" API. Instead, the health check queries the current usage (`GetStatsAsync`) and compares it against a configurable quota (`StorageQuotaBytes`). To avoid an expensive S3 list-all-objects operation on every health poll, `GetStatsAsync` caches its result with `IMemoryCache` for 5 minutes.
+
+**Status thresholds:**
+
+| Used % | Health status | Description |
+| --- | --- | --- |
+| < `StorageWarningThresholdPct` (default 80%) | `Healthy` | Normal operation |
+| ≥ 80% and < `StorageCriticalThresholdPct` (default 95%) | `Degraded` | Storage warning: consider cleanup |
+| ≥ 95% | `Unhealthy` | Storage critical: uploads may fail |
+| Bucket unreachable | `Degraded` | Connectivity issue |
+
+**Health check output (included in `/health` response data):**
+
+```json
+{
+  "blob-storage": {
+    "status": "Degraded",
+    "description": "Storage warning: 82.4% used (41.2 GB / 50 GB)",
+    "duration": "00:00:00.1230000",
+    "data": {
+      "usedBytes": 44236742246,
+      "quotaBytes": 53687091200,
+      "freeBytes": 9450348954,
+      "usedPct": 82.4
+    }
+  }
+}
+```
+
+When `StorageQuotaBytes` is `0` (unconfigured), the health check only verifies bucket reachability and omits storage percentage data.
+
+**Implementation sketch:**
+
+```csharp
+public class BlobStorageHealthCheck(
+    IBlobStorageService blobService,
+    IOptions<BlobStorageOptions> options) : IHealthCheck
+{
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context, CancellationToken ct)
+    {
+        try
+        {
+            if (!await blobService.IsHealthyAsync(ct))
+                return HealthCheckResult.Degraded("El bucket no está disponible");
+
+            var quota = options.Value.StorageQuotaBytes;
+            if (quota <= 0)
+                return HealthCheckResult.Healthy("Bucket accesible");
+
+            var stats = await blobService.GetStatsAsync(ct); // cached 5 min
+            var usedPct = (double)stats.TotalSizeBytes / quota * 100;
+            var data = new Dictionary<string, object>
+            {
+                ["usedBytes"] = stats.TotalSizeBytes,
+                ["quotaBytes"] = quota,
+                ["freeBytes"] = quota - stats.TotalSizeBytes,
+                ["usedPct"] = Math.Round(usedPct, 1)
+            };
+            var desc = $"{usedPct:F1}% usado ({stats.TotalSizeHumanReadable} / {FormatBytes(quota)})";
+
+            if (usedPct >= options.Value.StorageCriticalThresholdPct)
+                return HealthCheckResult.Unhealthy($"Almacenamiento crítico: {desc}", data: data);
+            if (usedPct >= options.Value.StorageWarningThresholdPct)
+                return HealthCheckResult.Degraded($"Advertencia de almacenamiento: {desc}", data: data);
+
+            return HealthCheckResult.Healthy($"Bucket accesible. {desc}", data: data);
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Degraded("Error al verificar blob storage", ex);
+        }
+    }
+}
+```
+
+Update `api-endpoints.md` health check table to include the new `blob-storage` check entry (failure status: `Degraded` for connectivity, `Unhealthy` for critical storage usage).
 
 ---
 
@@ -415,11 +502,14 @@ Test naming convention: `MethodName_StateUnderTest_ExpectedBehavior`
 |---|---|
 | `UploadAsync_WithValidImageAndThumbnailRequested_UploadsOriginalAndThumbnail` | Both `fileUrl` and `thumbnailUrl` populated |
 | `UploadAsync_WithValidImageAndNoThumbnailRequested_UploadsOriginalOnly` | `thumbnailUrl` is null |
+| `UploadAsync_WithValidAudioFile_UploadsWithoutThumbnail` | `thumbnailUrl` is null; file uploaded to `media-items/` |
 | `UploadAsync_WithNonImageFile_DoesNotGenerateThumbnail` | `thumbnailUrl` is null regardless of flag |
 | `UploadAsync_WhenS3Throws_PropagatesException` | Exception propagates (no swallowing) |
 | `DeleteManyAsync_WithValidKeys_CallsS3DeleteObjects` | S3 repository called with correct keys |
 | `IsHealthyAsync_WhenBucketReachable_ReturnsTrue` | Returns `true` |
 | `IsHealthyAsync_WhenS3Unreachable_ReturnsFalse` | Returns `false` (no exception thrown) |
+| `GetStatsAsync_WithQuotaConfigured_ReturnsUsedPctAndFreeBytes` | Quota fields populated |
+| `GetStatsAsync_WhenCalledTwiceWithinCacheTtl_OnlyCallsS3Once` | S3 list called once (cache hit on second call) |
 
 ### Validator Tests (`BlobStorageValidatorTests.cs`)
 
@@ -430,6 +520,8 @@ Test naming convention: `MethodName_StateUnderTest_ExpectedBehavior`
 | Folder is not in allowed list | Validation fails |
 | Invalid extension for folder (e.g. `.pdf` to `photos`) | Validation fails |
 | Valid image in `photos` folder | Validation passes |
+| Valid audio (`.mp3`) in `media-items` folder | Validation passes |
+| Audio file (`.mp3`) in `photos` folder | Validation fails |
 | Valid document in `media-items` folder | Validation passes |
 
 ### Integration Tests (`BlobStorageEndpointsTests.cs`)
@@ -462,6 +554,7 @@ Use `WebApplicationFactory<Program>` with a mocked `IBlobStorageRepository` (NSu
 | **Object storage costs** | Use Hetzner Object Storage pricing (~€ 0.0059/GB/month) |
 | **Bucket lifecycle** | No automatic expiry; manual deletion via Admin API |
 | **Observability** | Log every upload/delete with file key, size, and user ID via structured logging |
+| **Stats caching** | `GetStatsAsync` caches result in `IMemoryCache` for 5 minutes to avoid expensive S3 list on every health poll |
 | **Configuration reload** | `BlobStorageOptions` bound via `IOptions<BlobStorageOptions>` (no reload needed for static keys) |
 
 ---
@@ -470,30 +563,32 @@ Use `WebApplicationFactory<Program>` with a mocked `IBlobStorageRepository` (NSu
 
 The following use cases are intentionally excluded from this ticket. The `IBlobStorageService` abstraction will support them without changes once the data model tickets are created:
 
-| Use case | Entities affected | Action required |
+| Use case | Spec file | Key entities |
 | --- | --- | --- |
-| Foto de perfil de `FamilyMember` | Add `profilePhotoUrl` field (max 2048, optional) | New ticket: **feat/family-member-profile-photo** |
-| Foto de familia de `FamilyUnit` | Add `profilePhotoUrl` field (max 2048, optional) | New ticket: **feat/family-unit-profile-photo** |
+| Media real en la página del 50 aniversario | [`follow-ups/feat-media-50-aniversary.md`](follow-ups/feat-media-50-aniversary.md) | `Memory`, `MediaItem` |
+| Galerías de fotos de ediciones de campamento | [`follow-ups/feat-media-camps.md`](follow-ups/feat-media-camps.md) | `PhotoAlbum`, `Photo` |
+| Archivo histórico multimedia | [`follow-ups/feat-media-memories-archive.md`](follow-ups/feat-media-memories-archive.md) | `Memory`, `MediaItem`, `CampLocation` |
+| Fotos de perfil de `FamilyMember` y `FamilyUnit` | [`follow-ups/feat-media-profile-photos.md`](follow-ups/feat-media-profile-photos.md) | `FamilyMember`, `FamilyUnit` |
 
-When those tickets are implemented, they will:
-
-1. Add a new folder `profile-photos/family-members/{familyMemberId}/` and `profile-photos/family-units/{familyUnitId}/` to the bucket key schema.
-2. Add `PUT /api/family-members/{id}/profile-photo` and `PUT /api/family-units/{id}/profile-photo` endpoints in their own feature slices.
-3. Reuse `IBlobStorageService.UploadAsync()` directly — no changes to the blob storage feature slice needed.
+All follow-up tickets reuse `IBlobStorageService.UploadAsync()` directly. No changes to the blob storage feature slice are needed when implementing them.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `POST /api/blobs/upload` accepts a file, uploads it to Hetzner Object Storage, and returns a public URL.
+- [ ] `POST /api/blobs/upload` accepts image, video, audio, and document files and returns a public URL.
+- [ ] Audio files (`.mp3`, `.wav`, `.ogg`, `.m4a`, `.flac`, `.aac`) are accepted in `media-items` and rejected in `photos`/`camp-photos`.
 - [ ] When `generateThumbnail=true` and the file is an image, a `.webp` thumbnail is uploaded and its URL returned.
+- [ ] Audio, video, and document uploads always return `thumbnailUrl: null`.
 - [ ] Files are rejected if extension is not in the allowed list for the target folder.
 - [ ] Files are rejected if they exceed `MaxFileSizeBytes`.
 - [ ] File storage keys are always generated server-side (no user input in keys).
 - [ ] `DELETE /api/blobs` is restricted to Admin role and successfully removes blobs from S3.
-- [ ] `GET /api/blobs/stats` is restricted to Admin role and returns real storage metrics.
-- [ ] `/health` endpoint includes a `blob-storage` check entry.
+- [ ] `GET /api/blobs/stats` is restricted to Admin role and returns usage metrics including quota, used %, and free bytes when `StorageQuotaBytes > 0`.
+- [ ] `/health` endpoint includes a `blob-storage` check entry with storage percentage data.
+- [ ] Health check returns `Degraded` when storage exceeds `StorageWarningThresholdPct` and `Unhealthy` when it exceeds `StorageCriticalThresholdPct`.
+- [ ] `GetStatsAsync` is cached for 5 minutes (verified by test: S3 list called once for two back-to-back calls).
 - [ ] All unit and integration tests pass with ≥ 90% coverage.
 - [ ] No secrets are committed to source control.
-- [ ] `api-endpoints.md` is updated to document the new endpoints.
+- [ ] `api-endpoints.md` is updated to document the new endpoints and health check entry.
 - [ ] Structured logs include file key, size, and `userId` for every upload and delete operation.
