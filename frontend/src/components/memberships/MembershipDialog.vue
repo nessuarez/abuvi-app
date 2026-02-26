@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
-import DatePicker from 'primevue/datepicker'
+import InputNumber from 'primevue/inputnumber'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import ConfirmDialog from 'primevue/confirmdialog'
@@ -34,7 +34,8 @@ const { membership, fees, loading, error, getMembership, createMembership, deact
 
 const showPayFeeDialog = ref(false)
 const selectedFee = ref<MembershipFeeResponse | null>(null)
-const createStartDate = ref<Date>(new Date())
+const currentYear = new Date().getFullYear()
+const createStartYear = ref<number>(currentYear)
 
 // Fetch membership data when dialog opens
 watch(
@@ -60,8 +61,7 @@ const formatCurrency = (amount: number): string => {
 }
 
 const handleCreate = async () => {
-  const dateStr = createStartDate.value.toISOString().split('T')[0]
-  const result = await createMembership(props.familyUnitId, props.memberId, { startDate: dateStr })
+  const result = await createMembership(props.familyUnitId, props.memberId, { year: createStartYear.value })
   if (result) {
     toast.add({ severity: 'success', summary: 'Éxito', detail: 'Membresía activada', life: 3000 })
   } else {
@@ -136,18 +136,18 @@ const handlePayFee = async (request: PayFeeRequest) => {
         </p>
 
         <div class="flex flex-col gap-2">
-          <label for="membership-start-date" class="font-medium text-sm">
-            Fecha de inicio <span class="text-red-500">*</span>
+          <label for="membership-start-year" class="font-medium text-sm">
+            Año de inicio <span class="text-red-500">*</span>
           </label>
-          <DatePicker
-            id="membership-start-date"
-            v-model="createStartDate"
-            dateFormat="dd/mm/yy"
-            :maxDate="new Date()"
-            showIcon
+          <InputNumber
+            id="membership-start-year"
+            v-model="createStartYear"
+            :min="2001"
+            :max="currentYear"
+            :use-grouping="false"
             class="w-full"
           />
-          <small class="text-gray-500">Debe ser la fecha actual o una fecha pasada.</small>
+          <small class="text-gray-500">Año en que el miembro se hizo socio. No puede ser futuro.</small>
         </div>
 
         <div class="flex justify-end">
