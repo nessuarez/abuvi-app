@@ -433,7 +433,8 @@ public record ProposeCampEditionRequest(
 /// Request to change the status of a camp edition
 /// </summary>
 public record ChangeEditionStatusRequest(
-    CampEditionStatus Status
+    CampEditionStatus Status,
+    bool Force = false   // Admin-only: bypasses startDate < today constraint when re-opening
 );
 
 /// <summary>

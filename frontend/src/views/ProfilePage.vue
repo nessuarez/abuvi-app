@@ -10,13 +10,14 @@ import Skeleton from 'primevue/skeleton'
 import Container from '@/components/ui/Container.vue'
 import PayFeeDialog from '@/components/memberships/PayFeeDialog.vue'
 import MembershipDialog from '@/components/memberships/MembershipDialog.vue'
+import BulkMembershipDialog from '@/components/memberships/BulkMembershipDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProfile } from '@/composables/useProfile'
 import { useFamilyUnits } from '@/composables/useFamilyUnits'
 import { useMemberships } from '@/composables/useMemberships'
 import { getRoleLabel } from '@/utils/user'
 import { FamilyRelationshipLabels, type FamilyMemberResponse } from '@/types/family-unit'
-import { FeeStatus, FeeStatusLabels, FeeStatusSeverity, type MembershipFeeResponse, type PayFeeRequest } from '@/types/membership'
+import { FeeStatus, FeeStatusLabels, FeeStatusSeverity, type MembershipFeeResponse, type PayFeeRequest, type MemberMembershipData } from '@/types/membership'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -32,13 +33,6 @@ const editErrors = ref({ firstName: '', lastName: '', phone: '' })
 const submitting = ref(false)
 
 // --- Members with membership/fee data ---
-interface MemberMembershipData {
-  member: FamilyMemberResponse
-  membershipId: string | null
-  isActiveMembership: boolean
-  currentFee: MembershipFeeResponse | null
-  feeLoading: boolean
-}
 const memberData = ref<MemberMembershipData[]>([])
 const memberDataLoading = ref(false)
 
@@ -50,6 +44,7 @@ const payFeeLoading = ref(false)
 // --- Membership dialog ---
 const showMembershipDialog = ref(false)
 const selectedMemberForMembership = ref<MemberMembershipData | null>(null)
+const showBulkMembershipDialog = ref(false)
 
 // Helpers
 const formatDate = (iso: string) =>
@@ -362,16 +357,28 @@ const displayPhone = computed(() => fullUser.value?.phone ?? auth.user?.phone ??
               <i class="pi pi-users" aria-hidden="true" />
               <span>Mi Unidad Familiar</span>
             </div>
-            <Button
-              v-if="familyUnit"
-              label="Gestionar"
-              icon="pi pi-arrow-right"
-              icon-pos="right"
-              outlined
-              size="small"
-              data-testid="manage-family-unit-btn"
-              @click="goToFamilyManagement"
-            />
+            <div class="flex gap-2">
+              <Button
+                v-if="auth.isBoard && familyUnit"
+                label="Activar membresía familiar"
+                icon="pi pi-users"
+                severity="secondary"
+                outlined
+                size="small"
+                data-testid="bulk-membership-btn"
+                @click="showBulkMembershipDialog = true"
+              />
+              <Button
+                v-if="familyUnit"
+                label="Gestionar"
+                icon="pi pi-arrow-right"
+                icon-pos="right"
+                outlined
+                size="small"
+                data-testid="manage-family-unit-btn"
+                @click="goToFamilyManagement"
+              />
+            </div>
           </div>
         </template>
 
@@ -520,5 +527,14 @@ const displayPhone = computed(() => fullUser.value?.phone ?? auth.user?.phone ??
     :member-id="selectedMemberForMembership.member.id"
     :member-name="`${selectedMemberForMembership.member.firstName} ${selectedMemberForMembership.member.lastName}`"
     @update:visible="(val) => { if (!val) handleMembershipDialogClose() }"
+  />
+
+  <BulkMembershipDialog
+    v-if="showBulkMembershipDialog"
+    v-model:visible="showBulkMembershipDialog"
+    :family-unit-id="familyUnit?.id ?? ''"
+    :members="familyMembers"
+    :member-data="memberData"
+    @done="loadMemberMembershipData"
   />
 </template>

@@ -223,14 +223,17 @@ export function useCampEditions() {
 
   const changeStatus = async (
     id: string,
-    newStatus: CampEditionStatus
+    newStatus: CampEditionStatus,
+    force?: boolean
   ): Promise<CampEdition | null> => {
     loading.value = true
     error.value = null
     try {
+      const body: ChangeEditionStatusRequest = { status: newStatus }
+      if (force) body.force = true
       const response = await api.patch<ApiResponse<CampEdition>>(
         `/camps/editions/${id}/status`,
-        { status: newStatus } satisfies ChangeEditionStatusRequest
+        body
       )
       if (response.data.success && response.data.data) {
         const updatedEdition = response.data.data

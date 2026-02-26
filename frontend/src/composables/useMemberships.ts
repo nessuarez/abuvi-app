@@ -7,6 +7,8 @@ import type {
   MembershipFeeResponse,
   CreateMembershipRequest,
   PayFeeRequest,
+  BulkActivateMembershipRequest,
+  BulkActivateMembershipResponse,
 } from '@/types/membership'
 
 export function useMemberships() {
@@ -94,6 +96,30 @@ export function useMemberships() {
   }
 
   /**
+   * Activate memberships for all family members without one (bulk operation).
+   * Board/Admin only.
+   */
+  const bulkActivateMemberships = async (
+    familyUnitId: string,
+    request: BulkActivateMembershipRequest,
+  ): Promise<BulkActivateMembershipResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post<ApiResponse<BulkActivateMembershipResponse>>(
+        `/family-units/${familyUnitId}/membership/bulk`,
+        request,
+      )
+      return response.data.data
+    } catch (err: any) {
+      error.value = err.response?.data?.error?.message || 'Error al activar las membresías'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * List all fees for a membership.
    */
   const getFees = async (membershipId: string): Promise<MembershipFeeResponse[]> => {
@@ -148,6 +174,7 @@ export function useMemberships() {
     getMembership,
     createMembership,
     deactivateMembership,
+    bulkActivateMemberships,
     getFees,
     payFee,
   }

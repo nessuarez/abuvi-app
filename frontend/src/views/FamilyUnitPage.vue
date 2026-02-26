@@ -8,6 +8,7 @@ import Dialog from 'primevue/dialog'
 import ConfirmDialog from 'primevue/confirmdialog'
 import { useFamilyUnits } from '@/composables/useFamilyUnits'
 import MembershipDialog from '@/components/memberships/MembershipDialog.vue'
+import BulkMembershipDialog from '@/components/memberships/BulkMembershipDialog.vue'
 import FamilyUnitForm from '@/components/family-units/FamilyUnitForm.vue'
 import FamilyMemberForm from '@/components/family-units/FamilyMemberForm.vue'
 import FamilyMemberList from '@/components/family-units/FamilyMemberList.vue'
@@ -48,6 +49,7 @@ const editingMember = ref<FamilyMemberResponse | null>(null)
 // Membership dialog state
 const showMembershipDialog = ref(false)
 const selectedMemberForMembership = ref<FamilyMemberResponse | null>(null)
+const showBulkMembershipDialog = ref(false)
 
 // Load family unit and members on mount
 onMounted(async () => {
@@ -295,11 +297,23 @@ const handleManageMembership = (member: FamilyMemberResponse) => {
         <template #title>
           <div class="flex justify-between items-center">
             <span>Miembros Familiares</span>
-            <Button
-              icon="pi pi-plus"
-              label="Añadir Miembro"
-              @click="openCreateMemberDialog"
-            />
+            <div class="flex gap-2">
+              <Button
+                v-if="auth.isBoard"
+                icon="pi pi-users"
+                label="Activar membresía familiar"
+                severity="secondary"
+                outlined
+                size="small"
+                data-testid="bulk-membership-btn"
+                @click="showBulkMembershipDialog = true"
+              />
+              <Button
+                icon="pi pi-plus"
+                label="Añadir Miembro"
+                @click="openCreateMemberDialog"
+              />
+            </div>
           </div>
         </template>
         <template #content>
@@ -362,6 +376,15 @@ const handleManageMembership = (member: FamilyMemberResponse) => {
       :family-unit-id="familyUnit?.id ?? ''"
       :member-id="selectedMemberForMembership.id"
       :member-name="`${selectedMemberForMembership.firstName} ${selectedMemberForMembership.lastName}`"
+    />
+
+    <BulkMembershipDialog
+      v-if="showBulkMembershipDialog"
+      v-model:visible="showBulkMembershipDialog"
+      :family-unit-id="familyUnit?.id ?? ''"
+      :members="familyMembers"
+      :member-data="[]"
+      @done="familyUnit && getFamilyMembers(familyUnit.id)"
     />
   </div>
 </template>

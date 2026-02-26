@@ -999,7 +999,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
-import Calendar from 'primevue/calendar'
+import DatePicker from 'primevue/datepicker'
 
 import { ref } from 'vue'
 import type { Camp } from '@/types/camp'
@@ -1049,6 +1049,21 @@ const openDetails = (camp: Camp) => {
 </template>
 ```
 
+#### Year Pickers
+
+When collecting a calendar year (e.g. membership start year), use `InputNumber` from `primevue/inputnumber` — **not** `DatePicker` or `Calendar`. Set `:use-grouping="false"` so the year displays as a plain integer (no thousands separator), and constrain the valid range with `:min` / `:max`.
+
+```vue
+<InputNumber
+  id="membership-start-year"
+  v-model="startYear"
+  :min="2001"
+  :max="currentYear"
+  :use-grouping="false"
+  class="w-full"
+/>
+```
+
 ### Tailwind CSS Usage
 
 - **Utility-first**: Use Tailwind utility classes for styling. Do not write custom `<style>` blocks unless absolutely necessary (complex animations).
@@ -1087,7 +1102,7 @@ const openDetails = (camp: Camp) => {
 
 ### Form Handling
 
-- Use **PrimeVue form components** (InputText, Dropdown, Calendar, etc.)
+- Use **PrimeVue form components** (InputText, Select, DatePicker, etc.)
 - Implement **real-time validation** where appropriate
 - **Disable submit buttons** during submission
 - Use **multi-step wizards** for complex registration flows
@@ -1112,7 +1127,7 @@ const openDetails = (camp: Camp) => {
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import InputText from 'primevue/inputtext'
-import Calendar from 'primevue/calendar'
+import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 
@@ -1160,7 +1175,7 @@ const handleSubmit = async () => {
 
     <div>
       <label for="startDate" class="mb-1 block text-sm font-medium">Start Date *</label>
-      <Calendar id="startDate" v-model="formData.startDate" date-format="dd/mm/yy" class="w-full" />
+      <DatePicker id="startDate" v-model="formData.startDate" date-format="dd/mm/yy" class="w-full" />
       <small v-if="errors.startDate" class="text-red-500">{{ errors.startDate }}</small>
     </div>
 

@@ -2,7 +2,7 @@
 import { reactive, computed, watch } from 'vue'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
-import InputSwitch from 'primevue/inputswitch'
+import ToggleSwitch from 'primevue/toggleswitch'
 import Button from 'primevue/button'
 import type { User, CreateUserRequest, UpdateUserRequest, UserRole } from '@/types/user'
 import { getRoleLabel } from '@/utils/user'
@@ -216,7 +216,7 @@ const isFormValid = computed(() => {
     <!-- Active status (edit mode only) -->
     <div v-if="mode === 'edit'" class="flex items-center gap-3">
       <label for="isActive" class="text-sm font-medium">Activo</label>
-      <InputSwitch id="isActive" v-model="formData.isActive" />
+      <ToggleSwitch id="isActive" v-model="formData.isActive" />
     </div>
 
     <!-- Action buttons -->

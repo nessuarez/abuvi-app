@@ -5,6 +5,7 @@
 This feature enriches the frontend camp experience with contact information and photo galleries sourced from Google Places. When a camp has a `googlePlaceId`, the backend auto-enriches it with address, phone, website, Google Maps link, rating, and photos. The frontend must display this data in dedicated components, handle graceful degradation when data is absent, and update TypeScript types to align with the new backend DTOs.
 
 **Architecture principles applied**:
+
 - Vue 3 Composition API (`<script setup lang="ts">`)
 - Composable-based API communication (`useCamps` updated to handle `CampDetailResponse`)
 - PrimeVue + Tailwind CSS for all UI (no `<style>` blocks)
@@ -24,10 +25,12 @@ This feature enriches the frontend camp experience with contact information and 
 ### Components Involved
 
 **New**:
+
 - `frontend/src/components/camps/CampContactInfo.vue` — displays address, phone, website, Google Maps link, rating
 - `frontend/src/components/camps/CampPhotoGallery.vue` — photo gallery with primary photo + thumbnail grid + Google attribution
 
 **Modified**:
+
 - `frontend/src/types/camp.ts` — add `CampDetailResponse`, `CampPhoto`, update `Camp` with new optional fields
 - `frontend/src/composables/useCamps.ts` — `getCampById` returns `CampDetailResponse`
 - `frontend/src/views/camps/CampLocationDetailPage.vue` — integrate new components, fix field name mismatches
@@ -96,7 +99,7 @@ This feature enriches the frontend camp experience with contact information and 
   }
   ```
 
-  2. **Add `CampPhoto` interface** (matches `CampPhotoResponse` DTO):
+  1. **Add `CampPhoto` interface** (matches `CampPhotoResponse` DTO):
 
   ```typescript
   export interface CampPhoto {
@@ -112,7 +115,7 @@ This feature enriches the frontend camp experience with contact information and 
   }
   ```
 
-  3. **Add `CampDetailResponse` interface** (extends `Camp` with all detail fields and photos):
+  1. **Add `CampDetailResponse` interface** (extends `Camp` with all detail fields and photos):
 
   ```typescript
   export interface CampDetailResponse extends Camp {
@@ -146,11 +149,13 @@ This feature enriches the frontend camp experience with contact information and 
 - **Implementation Steps**:
 
   1. Add `CampDetailResponse` to the import from `@/types/camp`:
+
   ```typescript
   import type { Camp, CampDetailResponse, CreateCampRequest, UpdateCampRequest, CampStatus } from '@/types/camp'
   ```
 
-  2. Update `getCampById` signature and response type:
+  1. Update `getCampById` signature and response type:
+
   ```typescript
   const getCampById = async (id: string): Promise<CampDetailResponse | null> => {
     loading.value = true
@@ -172,7 +177,8 @@ This feature enriches the frontend camp experience with contact information and 
   }
   ```
 
-  3. Update `createCamp` return type (backend POST now returns `CampDetailResponse`):
+  1. Update `createCamp` return type (backend POST now returns `CampDetailResponse`):
+
   ```typescript
   const createCamp = async (request: CreateCampRequest): Promise<CampDetailResponse | null> => {
     // ... existing try/catch/finally structure ...
@@ -185,7 +191,7 @@ This feature enriches the frontend camp experience with contact information and 
   }
   ```
 
-  4. Update the composable return statement to reflect the new types (the function signatures change, no structural change to the returned object)
+  1. Update the composable return statement to reflect the new types (the function signatures change, no structural change to the returned object)
 
 - **Notes**:
   - `fetchCamps` returns `Camp[]` (lightweight `CampResponse` from list endpoint) — no change needed
@@ -481,6 +487,7 @@ This feature enriches the frontend camp experience with contact information and 
 - **Implementation Steps**:
 
   1. **Update imports** in `<script setup>`:
+
   ```typescript
   import CampContactInfo from '@/components/camps/CampContactInfo.vue'
   import CampPhotoGallery from '@/components/camps/CampPhotoGallery.vue'
@@ -488,16 +495,18 @@ This feature enriches the frontend camp experience with contact information and 
   // Remove the existing: import type { Camp } from '@/types/camp'
   ```
 
-  2. **Update camp ref type**:
+  1. **Update camp ref type**:
+
   ```typescript
   const camp = ref<CampDetailResponse | null>(null)
   ```
 
-  3. **Fix field name mismatches** — the current template references fields that don't match the actual Camp type. Replace:
+  1. **Fix field name mismatches** — the current template references fields that don't match the actual Camp type. Replace:
      - `camp.basePriceAdult` → `camp.pricePerAdult`
      - `camp.basePriceChild` → `camp.pricePerChild`
      - `camp.basePriceBaby` → `camp.pricePerBaby`
      - `camp.status` — the `Camp` type has `isActive: boolean`, not a `status` string. Replace the status badge logic: show "Activo" / "Inactivo" based on `camp.isActive`. Remove the `statusLabel` function and replace the badge with:
+
      ```html
      <span
        :class="camp.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
@@ -506,21 +515,24 @@ This feature enriches the frontend camp experience with contact information and 
        {{ camp.isActive ? 'Activo' : 'Inactivo' }}
      </span>
      ```
+
      - Coordinates display `camp.latitude.toFixed(4), camp.longitude.toFixed(4)` — guard with `v-if="camp.latitude !== null && camp.longitude !== null"`
 
-  4. **Add `CampContactInfo`** in the template's left column (Info Panel), after the "Descripción" section:
+  2. **Add `CampContactInfo`** in the template's left column (Info Panel), after the "Descripción" section:
+
   ```html
   <!-- Contact Information (Google Places) -->
   <CampContactInfo :camp="camp" />
   ```
 
-  5. **Add `CampPhotoGallery`** in the template's right column (Map Panel), after the map section closing `</div>`:
+  1. **Add `CampPhotoGallery`** in the template's right column (Map Panel), after the map section closing `</div>`:
+
   ```html
   <!-- Photo Gallery (Google Places) -->
   <CampPhotoGallery v-if="camp.photos.length > 0" :photos="camp.photos" class="mt-6" />
   ```
 
-  6. Remove the `statusLabel` function from the script (it's replaced by inline `isActive` logic).
+  1. Remove the `statusLabel` function from the script (it's replaced by inline `isActive` logic).
 
 - **Notes**:
   - Both new components handle their own null/empty states — no additional conditional wrapping needed in the parent beyond what's shown
@@ -535,6 +547,7 @@ This feature enriches the frontend camp experience with contact information and 
 - **Implementation Steps**:
 
   1. In the card header area (the `div` containing the name and status badge), add after the status `<span>`:
+
   ```html
   <span
     v-if="camp.googleRating !== null"
@@ -546,7 +559,7 @@ This feature enriches the frontend camp experience with contact information and 
   </span>
   ```
 
-  2. No other changes to this file.
+  1. No other changes to this file.
 
 - **Notes**: `Camp` type already has `googleRating: number | null` after Step 1 — no import/type changes needed here.
 
@@ -825,7 +838,8 @@ This feature enriches the frontend camp experience with contact information and 
   })
   ```
 
-  3. Add `data-testid="view-camp-detail-btn"` to the "Ver detalle" Button in `CampLocationsPage.vue` DataTable column:
+  1. Add `data-testid="view-camp-detail-btn"` to the "Ver detalle" Button in `CampLocationsPage.vue` DataTable column:
+
   ```html
   <Button
     v-tooltip.top="'Ver detalle'"
@@ -851,6 +865,7 @@ This feature enriches the frontend camp experience with contact information and 
   1. Check if `ai-specs/specs/api-spec.yml` exists — if so, update `GET /api/camps/{id}` response schema to reference `CampDetailResponse` (including `photos` array and full address breakdown fields)
 
   2. Run TypeScript check to confirm zero errors:
+
      ```bash
      cd frontend && npx tsc --noEmit
      ```
@@ -934,6 +949,7 @@ This feature enriches the frontend camp experience with contact information and 
 ### npm Packages
 
 No new packages required. All already in the project:
+
 - `primevue` — `Image`, `Button` components
 - `@vue/test-utils` — component testing
 - `vitest` — test runner

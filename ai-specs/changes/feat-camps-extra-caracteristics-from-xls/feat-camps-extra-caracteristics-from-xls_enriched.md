@@ -28,7 +28,7 @@ Import 34 extra fields from the internal `CAMPAMENTOS.csv` spreadsheet into the 
 ## Objective
 
 1. Enrich `Camp` records with characteristics from `CAMPAMENTOS.csv`: contact info, pricing, facilities, capacity, and internal ABUVI tracking.
-2. Replace the flat `AbuViNotes*` CSV fields with a proper **`CampObservation`** entity — each note is append-only and records its author.
+2. Replace the flat `AbuviNotes*` CSV fields with a proper **`CampObservation`** entity — each note is append-only and records its author.
 3. Automatically track **who changed what** for a defined set of sensitive fields via a **`CampAuditLog`** entity.
 
 ---
@@ -46,10 +46,10 @@ Import 34 extra fields from the internal `CAMPAMENTOS.csv` spreadsheet into the 
 | # | CSV Column | Mapping Strategy | New/Existing |
 |---|-----------|-----------------|-------------|
 | 1 | `N°` | → `Camp.ExternalSourceId` | NEW |
-| 2 | `Gestión por` | → `Camp.AbuViManagedBy` | NEW |
-| 3 | `Contactado` | → `Camp.AbuViContactedAt` | NEW |
-| 4 | `Posibilidad` | → `Camp.AbuViPossibility` | NEW |
-| 5 | `Visitado ABUVI` | → `Camp.AbuViLastVisited` | NEW |
+| 2 | `Gestión por` | → stored as `CampObservation` during import (raw text; `AbuviManagedByUserId` assigned manually post-import) | NEW |
+| 3 | `Contactado` | → `Camp.AbuviContactedAt` | NEW |
+| 4 | `Posibilidad` | → `Camp.AbuviPossibility` | NEW |
+| 5 | `Visitado ABUVI` | → `Camp.AbuviLastVisited` | NEW |
 | 6 | `NOMBRE` | → `Camp.Name` (match key) | EXISTING |
 | 7 | `Comunidad Autónoma` | → `Camp.AdministrativeArea` | EXISTING |
 | 8 | `Provincia` | → `Camp.Province` | NEW |
@@ -78,7 +78,7 @@ Import 34 extra fields from the internal `CAMPAMENTOS.csv` spreadsheet into the 
 | 31 | `Observaciones campa 24` | → `CampObservation` (season 2024) | NEW ENTITY |
 | 32 | `Observaciones 23` | → `CampObservation` (season 2023) | NEW ENTITY |
 | 33 | `Observaciones 25` | → `CampObservation` (season 2025) | NEW ENTITY |
-| 34 | `Datos erroneos` | → `Camp.AbuViHasDataErrors` | NEW |
+| 34 | `Datos erroneos` | → `Camp.AbuviHasDataErrors` | NEW |
 
 ### Matching Strategy (CSV row → existing Camp)
 
@@ -174,21 +174,22 @@ public bool? VatIncluded { get; set; }         // IVA: true = "Si", false = "No"
 
 // ABUVI internal tracking (imported from spreadsheet, updated manually)
 public int? ExternalSourceId { get; set; }     // N° — original CSV row number
-public string? AbuViManagedBy { get; set; }    // "Gestión por"
-public string? AbuViContactedAt { get; set; }  // "Contactado" (raw text — date serial or flag)
-public string? AbuViPossibility { get; set; }  // "Posibilidad" (si/no/$/@ etc.)
-public string? AbuViLastVisited { get; set; }  // "Visitado ABUVI" (e.g., "si 2023", "si 2018?")
-public bool? AbuViHasDataErrors { get; set; }  // "Datos erroneos"
+public Guid? AbuviManagedByUserId { get; set; } // FK → ApplicationUser with Board role; the person responsible for contacting and updating this camp
+public string? AbuviContactedAt { get; set; }  // "Contactado" (raw text — date serial or flag)
+public string? AbuviPossibility { get; set; }  // "Posibilidad" (si/no/$/@ etc.)
+public string? AbuviLastVisited { get; set; }  // "Visitado ABUVI" (e.g., "si 2023", "si 2018?")
+public bool? AbuviHasDataErrors { get; set; }  // "Datos erroneos"
 
 // Audit: who last modified this camp
 public Guid? LastModifiedByUserId { get; set; }
 
 // Navigation properties (new)
+public ApplicationUser? AbuviManagedByUser { get; set; }  // the assigned Board member
 public ICollection<CampObservation> Observations { get; set; } = new List<CampObservation>();
 public ICollection<CampAuditLog> AuditLogs { get; set; } = new List<CampAuditLog>();
 ```
 
-> **Note:** The four flat notes fields (`AbuViNotes2023/2024/2025/20252026`) are **NOT** added to `Camp`. Instead they are stored as `CampObservation` records (see below).
+> **Note:** The four flat notes fields (`AbuviNotes2023/2024/2025/20252026`) are **NOT** added to `Camp`. Instead they are stored as `CampObservation` records (see below).
 
 ### 2. `CampObservation` Entity (NEW)
 
@@ -197,7 +198,7 @@ Each observation is **append-only** — it cannot be edited or deleted to preser
 ```csharp
 /// <summary>
 /// Append-only observation/note about a camp, created by a user.
-/// Replaces the flat AbuViNotes2023/2024/2025 fields from the CSV.
+/// Replaces the flat AbuviNotes2023/2024/2025 fields from the CSV.
 /// </summary>
 public class CampObservation
 {
@@ -218,6 +219,7 @@ public class CampObservation
 **DB table:** `camp_observations`
 
 **Business rules:**
+
 - No `UPDATE` or `DELETE` allowed on this table (enforced at service level + no update endpoint)
 - Observations from CSV import use `CreatedByUserId = null` and `CreatedAt = import timestamp`
 - A camp can have unlimited observations
@@ -256,10 +258,10 @@ public class CampAuditLog
 |-------|----------|
 | `BasePrice` | Price negotiation history |
 | `VatIncluded` | Pricing structure change |
-| `AbuViPossibility` | Feasibility decision |
-| `AbuViLastVisited` | Visit record |
-| `AbuViContactedAt` | Contact history |
-| `AbuViManagedBy` | Ownership change |
+| `AbuviPossibility` | Feasibility decision |
+| `AbuviLastVisited` | Visit record |
+| `AbuviContactedAt` | Contact history |
+| `AbuviManagedByUserId` | Responsibility assignment change (Board member) |
 | `IsActive` | Activation/deactivation |
 | `ContactPerson` | Key contact changed |
 | `ContactEmail` | Key contact changed |
@@ -301,11 +303,15 @@ builder.Property(c => c.BasePrice).HasPrecision(10, 2).HasColumnName("base_price
 builder.Property(c => c.VatIncluded).HasColumnName("vat_included");
 builder.Property(c => c.ExternalSourceId).HasColumnName("external_source_id");
 builder.HasIndex(c => c.ExternalSourceId).HasDatabaseName("ix_camps_external_source_id");
-builder.Property(c => c.AbuViManagedBy).HasMaxLength(100).HasColumnName("abuvi_managed_by");
-builder.Property(c => c.AbuViContactedAt).HasMaxLength(100).HasColumnName("abuvi_contacted_at");
-builder.Property(c => c.AbuViPossibility).HasMaxLength(100).HasColumnName("abuvi_possibility");
-builder.Property(c => c.AbuViLastVisited).HasMaxLength(200).HasColumnName("abuvi_last_visited");
-builder.Property(c => c.AbuViHasDataErrors).HasColumnName("abuvi_has_data_errors");
+builder.Property(c => c.AbuviManagedByUserId).HasColumnName("abuvi_managed_by_user_id");
+builder.HasOne(c => c.AbuviManagedByUser)
+    .WithMany()
+    .HasForeignKey(c => c.AbuviManagedByUserId)
+    .OnDelete(DeleteBehavior.SetNull);
+builder.Property(c => c.AbuviContactedAt).HasMaxLength(100).HasColumnName("abuvi_contacted_at");
+builder.Property(c => c.AbuviPossibility).HasMaxLength(100).HasColumnName("abuvi_possibility");
+builder.Property(c => c.AbuviLastVisited).HasMaxLength(200).HasColumnName("abuvi_last_visited");
+builder.Property(c => c.AbuviHasDataErrors).HasColumnName("abuvi_has_data_errors");
 builder.Property(c => c.LastModifiedByUserId).HasColumnName("last_modified_by_user_id");
 
 // Relationships
@@ -403,6 +409,7 @@ No `PUT` or `DELETE` — observations are immutable.
 ### `CampAuditLog` — Service Integration
 
 `CampsService.UpdateAsync` must:
+
 1. Accept `Guid updatedByUserId` as parameter (passed from endpoint via `ClaimsPrincipal`)
 2. Load the existing `Camp` from the repository **before** applying changes
 3. Compare old vs new values for each tracked field
@@ -454,10 +461,10 @@ private static List<CampAuditLog> BuildAuditEntries(
 
     Track("BasePrice", existing.BasePrice?.ToString(), request.BasePrice?.ToString());
     Track("VatIncluded", existing.VatIncluded?.ToString(), request.VatIncluded?.ToString());
-    Track("AbuViPossibility", existing.AbuViPossibility, request.AbuViPossibility);
-    Track("AbuViLastVisited", existing.AbuViLastVisited, request.AbuViLastVisited);
-    Track("AbuViContactedAt", existing.AbuViContactedAt, request.AbuViContactedAt);
-    Track("AbuViManagedBy", existing.AbuViManagedBy, request.AbuViManagedBy);
+    Track("AbuviPossibility", existing.AbuviPossibility, request.AbuviPossibility);
+    Track("AbuviLastVisited", existing.AbuviLastVisited, request.AbuviLastVisited);
+    Track("AbuviContactedAt", existing.AbuviContactedAt, request.AbuviContactedAt);
+    Track("AbuviManagedByUserId", existing.AbuviManagedByUserId?.ToString(), request.AbuviManagedByUserId?.ToString());
     Track("IsActive", existing.IsActive.ToString(), request.IsActive.ToString());
     Track("ContactPerson", existing.ContactPerson, request.ContactPerson);
     Track("ContactEmail", existing.ContactEmail, request.ContactEmail);
@@ -552,11 +559,11 @@ public record UpdateCampRequest(
     string? SecondaryWebsiteUrl = null,
     decimal? BasePrice = null,
     bool? VatIncluded = null,
-    string? AbuViManagedBy = null,
-    string? AbuViContactedAt = null,
-    string? AbuViPossibility = null,
-    string? AbuViLastVisited = null,
-    bool? AbuViHasDataErrors = null
+    Guid? AbuviManagedByUserId = null,
+    string? AbuviContactedAt = null,
+    string? AbuviPossibility = null,
+    string? AbuviLastVisited = null,
+    bool? AbuviHasDataErrors = null
 );
 ```
 
@@ -573,11 +580,12 @@ public record CampDetailResponse(
     decimal? BasePrice,
     bool? VatIncluded,
     int? ExternalSourceId,
-    string? AbuViManagedBy,
-    string? AbuViContactedAt,
-    string? AbuViPossibility,
-    string? AbuViLastVisited,
-    bool? AbuViHasDataErrors,
+    Guid? AbuviManagedByUserId,
+    string? AbuviManagedByUserName,       // Display name of the assigned Board member (null if unassigned)
+    string? AbuviContactedAt,
+    string? AbuviPossibility,
+    string? AbuviLastVisited,
+    bool? AbuviHasDataErrors,
     Guid? LastModifiedByUserId,
     IReadOnlyList<CampObservationResponse> Observations
     // Note: AuditLogs are fetched via a separate endpoint, not included here
@@ -596,16 +604,43 @@ public class CampCsvImportService(
 
     private async Task<CampImportRowResult> ProcessRowAsync(CampCsvRow row, CancellationToken ct)
     {
-        // 1. Map CSV row → Camp entity fields (excluding notes)
+        // 1. Map CSV row → Camp entity fields (excluding notes and Gestión por)
         // 2. Find or create Camp
         // 3. Import non-empty CSV notes as CampObservation records with CreatedByUserId = null
-        //    - row.Notes2023    → Season = "2023"
-        //    - row.Notes2024    → Season = "2024"
-        //    - row.Notes2025    → Season = "2025"
-        //    - row.Notes20252026 → Season = "2025/2026"
+        //    - row.Notes2023      → Season = "2023"
+        //    - row.Notes2024      → Season = "2024"
+        //    - row.Notes2025      → Season = "2025"
+        //    - row.Notes20252026  → Season = "2025/2026"
         // 4. Only create the observation if the text is non-empty and non-"0"
+        // 5. If row.GestionPor is non-empty, create an additional CampObservation with
+        //    Text = $"[CSV Import] Gestión por: {row.GestionPor}" and Season = null.
+        //    AbuviManagedByUserId is NOT set during import — it must be assigned manually
+        //    via PUT /api/camps/{id} once the admin identifies the correct user.
+        //    The import result (CampImportRowResult) also surfaces GestionPor as a
+        //    non-null field so the caller can see which camps need manual assignment.
     }
 }
+```
+
+### Validation — `AbuviManagedByUserId`
+
+When `AbuviManagedByUserId` is provided in `UpdateCampRequest`, `CampsService` must verify that the referenced user exists **and has the `Board` role** (or higher). If the user does not exist or is not a Board member, return a `400 Bad Request` with a descriptive error message. This prevents assigning a non-Board user as the camp's responsible contact.
+
+```csharp
+// In CampsService.UpdateAsync, before applying changes:
+if (request.AbuviManagedByUserId.HasValue)
+{
+    var isBoard = await usersRepository.IsUserInRoleAsync(
+        request.AbuviManagedByUserId.Value, "Board", ct);
+    if (!isBoard)
+        throw new ValidationException("AbuviManagedByUserId must reference a user with Board role.");
+}
+```
+
+Add a new method to `IUsersRepository`:
+
+```csharp
+Task<bool> IsUserInRoleAsync(Guid userId, string role, CancellationToken ct = default);
 ```
 
 ### Endpoints — Summary of New Additions
@@ -636,6 +671,7 @@ All unit tests go in `tests/Abuvi.Tests/Unit/Features/Camps/`.
 ### `CampCsvImportServiceTests.cs`
 
 #### Parsing
+
 ```
 ParseCsv_WhenValidCsvStream_ReturnsCorrectNumberOfRows
 ParseCsv_WhenFileIsWindowsEncoded_ReturnsCorrectSpecialCharacters
@@ -651,6 +687,7 @@ ParseCsv_WhenFacilityIsNo_ReturnsFalseFlag
 ```
 
 #### Matching
+
 ```
 FindMatchingCamp_WhenExternalSourceIdMatches_ReturnsThatCamp
 FindMatchingCamp_WhenNameMatchesCaseInsensitive_ReturnsThatCamp
@@ -661,6 +698,7 @@ FindMatchingCamp_WhenMultiplePossible_PrioritizesExternalSourceId
 ```
 
 #### Orchestration
+
 ```
 ImportFromStreamAsync_WhenCampNotFound_CreatesNewCampWithIsActiveFalse
 ImportFromStreamAsync_WhenCampFound_UpdatesExistingCamp
@@ -669,6 +707,9 @@ ImportFromStreamAsync_WhenRowHasEmptyNotes_SkipsObservationCreation
 ImportFromStreamAsync_WhenRowHasNoName_SkipsRow
 ImportFromStreamAsync_WhenAllRowsProcessed_ReturnsCorrectSummary
 ImportFromStreamAsync_WhenRepositoryThrows_ReturnsErrorForRow
+ImportFromStreamAsync_WhenGestionPorIsNonEmpty_CreatesObservationWithImportPrefix
+ImportFromStreamAsync_WhenGestionPorIsEmpty_SkipsGestionPorObservation
+ImportFromStreamAsync_DoesNotSetAbuviManagedByUserIdOnImport
 ```
 
 ### `CampsServiceTests.cs` — Audit log tests
@@ -680,6 +721,11 @@ UpdateAsync_WhenNoTrackedFieldChanges_DoesNotCreateAuditLog
 UpdateAsync_WhenMultipleTrackedFieldsChange_CreatesOneEntryPerField
 UpdateAsync_AlwaysSetsLastModifiedByUserId
 UpdateAsync_WhenCampNotFound_ReturnsNull
+UpdateAsync_WhenAbuviManagedByUserIdChanges_CreatesAuditLogEntry
+UpdateAsync_WhenAbuviManagedByUserIdIsValidBoardUser_Succeeds
+UpdateAsync_WhenAbuviManagedByUserIdIsNotBoardUser_ThrowsValidationException
+UpdateAsync_WhenAbuviManagedByUserIdDoesNotExist_ThrowsValidationException
+UpdateAsync_WhenAbuviManagedByUserIdIsNull_ClearsAssignment
 ```
 
 ### `CampObservationsServiceTests.cs`
@@ -723,6 +769,7 @@ Add `tests/Abuvi.Tests/Helpers/TestFiles/sample_campamentos.csv` — a minimal 3
 ## Migration and Deployment
 
 ### Step 1 — Data model (tests first)
+
 1. Add properties to `Camp`, `AccommodationCapacity`, new entities to `CampsModels.cs`
 2. Add EF configurations
 3. Add `DbSet`s to `AbuviDbContext`
@@ -730,21 +777,25 @@ Add `tests/Abuvi.Tests/Helpers/TestFiles/sample_campamentos.csv` — a minimal 3
 5. `dotnet ef database update --project src/Abuvi.API`
 
 ### Step 2 — Observations service (TDD)
+
 1. Write failing tests in `CampObservationsServiceTests.cs`
 2. Implement `CampObservationsService` + repository
 3. Add endpoints
 
 ### Step 3 — Audit log in CampsService (TDD)
+
 1. Write failing audit tests in `CampsServiceTests.cs`
 2. Update `CampsService.UpdateAsync` to accept `updatedByUserId` and write audit entries
 3. Update `CampsEndpoints.UpdateCamp` to pass userId
 
 ### Step 4 — CSV import service (TDD)
+
 1. Write failing import tests
 2. Implement `CampCsvImportService` (includes creating observations from notes columns)
 3. Add admin import endpoint
 
 ### Step 5 — Run the import
+
 1. Upload `CAMPAMENTOS.csv` via `POST /api/admin/camps/import-csv`
 2. Review `CampImportResult` summary
 3. Verify observations created: `GET /api/camps/{id}/observations`
@@ -754,16 +805,19 @@ Add `tests/Abuvi.Tests/Helpers/TestFiles/sample_campamentos.csv` — a minimal 3
 
 ## Acceptance Criteria
 
-- [ ] 15 new `Camp` columns in DB (contact info + ABUVI tracking + `LastModifiedByUserId`)
+- [ ] 15 new `Camp` columns in DB (contact info + ABUVI tracking + `LastModifiedByUserId` + `AbuviManagedByUserId` FK)
 - [ ] `camp_observations` table: append-only, `created_by_user_id` nullable (null = CSV import)
 - [ ] `camp_audit_logs` table: auto-written on update for the 9 tracked fields
 - [ ] `AccommodationCapacity` JSON holds 11 new fields
 - [ ] `PUT /api/camps/{id}` writes audit entries only for changed tracked fields
 - [ ] `PUT /api/camps/{id}` sets `LastModifiedByUserId` on every save
+- [ ] `PUT /api/camps/{id}` rejects `AbuviManagedByUserId` values that do not reference a Board-role user (400)
+- [ ] `CampDetailResponse` includes `AbuviManagedByUserId` and `AbuviManagedByUserName`
 - [ ] `POST /api/camps/{campId}/observations` creates an immutable observation
 - [ ] `GET /api/camps/{campId}/observations` returns observations ordered newest-first
 - [ ] `GET /api/camps/{campId}/audit-log` returns field-level change history (Admin only)
-- [ ] `POST /api/admin/camps/import-csv` creates `CampObservation` records from CSV notes columns
+- [ ] `POST /api/admin/camps/import-csv` creates `CampObservation` records from CSV notes columns and from non-empty `Gestión por` values
+- [ ] CSV import does NOT set `AbuviManagedByUserId`; the `Gestión por` raw text is preserved as a `CampObservation` for manual reference
 - [ ] Camps created by import have `IsActive = false`
 - [ ] Existing camps updated without losing Google Places data
 - [ ] Windows-1252 encoding handled correctly
