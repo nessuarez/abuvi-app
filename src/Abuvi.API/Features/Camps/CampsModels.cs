@@ -138,6 +138,26 @@ public class CampEdition
     public string? Notes { get; set; }
     public bool IsArchived { get; set; } = false;
 
+    // Period split point
+    public DateOnly? HalfDate { get; set; }           // null = computed midpoint
+
+    // Per-period pricing (one period = FirstWeek or SecondWeek)
+    public decimal? PricePerAdultWeek { get; set; }   // null = partial attendance not allowed
+    public decimal? PricePerChildWeek { get; set; }
+    public decimal? PricePerBabyWeek { get; set; }
+
+    // Weekend visit window (max 3 days)
+    public DateOnly? WeekendStartDate { get; set; }   // null = weekend visit not allowed
+    public DateOnly? WeekendEndDate { get; set; }
+
+    // Weekend visit pricing
+    public decimal? PricePerAdultWeekend { get; set; }  // null = weekend visit not allowed
+    public decimal? PricePerChildWeekend { get; set; }
+    public decimal? PricePerBabyWeekend { get; set; }
+
+    // Weekend visit capacity (optional separate cap; if null, uses MaxCapacity)
+    public int? MaxWeekendCapacity { get; set; }
+
     public string? AccommodationCapacityJson { get; set; }
 
     public AccommodationCapacity? GetAccommodationCapacity()
@@ -426,7 +446,19 @@ public record ProposeCampEditionRequest(
     int? CustomAdultMinAge,
     int? MaxCapacity,
     string? Notes,
-    AccommodationCapacity? AccommodationCapacity = null
+    AccommodationCapacity? AccommodationCapacity = null,
+    // Partial attendance (week pricing):
+    DateOnly? HalfDate = null,
+    decimal? PricePerAdultWeek = null,
+    decimal? PricePerChildWeek = null,
+    decimal? PricePerBabyWeek = null,
+    // Weekend visit:
+    DateOnly? WeekendStartDate = null,
+    DateOnly? WeekendEndDate = null,
+    decimal? PricePerAdultWeekend = null,
+    decimal? PricePerChildWeekend = null,
+    decimal? PricePerBabyWeekend = null,
+    int? MaxWeekendCapacity = null
 );
 
 /// <summary>
@@ -514,7 +546,19 @@ public record UpdateCampEditionRequest(
     int? CustomChildMaxAge,
     int? CustomAdultMinAge,
     int? MaxCapacity,
-    string? Notes
+    string? Notes,
+    // Partial attendance (week pricing):
+    DateOnly? HalfDate = null,
+    decimal? PricePerAdultWeek = null,
+    decimal? PricePerChildWeek = null,
+    decimal? PricePerBabyWeek = null,
+    // Weekend visit:
+    DateOnly? WeekendStartDate = null,
+    DateOnly? WeekendEndDate = null,
+    decimal? PricePerAdultWeekend = null,
+    decimal? PricePerChildWeekend = null,
+    decimal? PricePerBabyWeekend = null,
+    int? MaxWeekendCapacity = null
 );
 
 /// <summary>
@@ -542,7 +586,19 @@ public record CampEditionResponse(
     int? CalculatedTotalBedCapacity,
     bool IsArchived,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    // Partial attendance fields:
+    DateOnly? HalfDate,
+    decimal? PricePerAdultWeek,
+    decimal? PricePerChildWeek,
+    decimal? PricePerBabyWeek,
+    // Weekend visit fields:
+    DateOnly? WeekendStartDate,
+    DateOnly? WeekendEndDate,
+    decimal? PricePerAdultWeekend,
+    decimal? PricePerChildWeekend,
+    decimal? PricePerBabyWeekend,
+    int? MaxWeekendCapacity
 );
 
 /// <summary>

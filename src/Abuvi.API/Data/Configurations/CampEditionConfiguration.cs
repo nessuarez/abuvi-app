@@ -118,6 +118,50 @@ public class CampEditionConfiguration : IEntityTypeConfiguration<CampEdition>
             .HasColumnName("updated_at")
             .HasDefaultValueSql("NOW()");
 
+        // Period split point
+        builder.Property(e => e.HalfDate)
+            .HasColumnName("half_date")
+            .HasColumnType("date");
+
+        // Per-period (week) pricing
+        builder.Property(e => e.PricePerAdultWeek)
+            .HasPrecision(10, 2)
+            .HasColumnName("price_per_adult_week");
+
+        builder.Property(e => e.PricePerChildWeek)
+            .HasPrecision(10, 2)
+            .HasColumnName("price_per_child_week");
+
+        builder.Property(e => e.PricePerBabyWeek)
+            .HasPrecision(10, 2)
+            .HasColumnName("price_per_baby_week");
+
+        // Weekend visit window
+        builder.Property(e => e.WeekendStartDate)
+            .HasColumnName("weekend_start_date")
+            .HasColumnType("date");
+
+        builder.Property(e => e.WeekendEndDate)
+            .HasColumnName("weekend_end_date")
+            .HasColumnType("date");
+
+        // Weekend visit pricing
+        builder.Property(e => e.PricePerAdultWeekend)
+            .HasPrecision(10, 2)
+            .HasColumnName("price_per_adult_weekend");
+
+        builder.Property(e => e.PricePerChildWeekend)
+            .HasPrecision(10, 2)
+            .HasColumnName("price_per_child_weekend");
+
+        builder.Property(e => e.PricePerBabyWeekend)
+            .HasPrecision(10, 2)
+            .HasColumnName("price_per_baby_weekend");
+
+        // Weekend visit capacity
+        builder.Property(e => e.MaxWeekendCapacity)
+            .HasColumnName("max_weekend_capacity");
+
         // Accommodation capacity JSON (nullable text column)
         builder.Property(e => e.AccommodationCapacityJson)
             .HasColumnType("text")
