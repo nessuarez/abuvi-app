@@ -75,7 +75,17 @@ public class CampEditionsService
             Notes = request.Notes,
             ProposalReason = request.ProposalReason,
             ProposalNotes  = request.ProposalNotes,
-            IsArchived = false
+            IsArchived = false,
+            HalfDate = request.HalfDate,
+            PricePerAdultWeek = request.PricePerAdultWeek,
+            PricePerChildWeek = request.PricePerChildWeek,
+            PricePerBabyWeek = request.PricePerBabyWeek,
+            WeekendStartDate = request.WeekendStartDate,
+            WeekendEndDate = request.WeekendEndDate,
+            PricePerAdultWeekend = request.PricePerAdultWeekend,
+            PricePerChildWeekend = request.PricePerChildWeekend,
+            PricePerBabyWeekend = request.PricePerBabyWeekend,
+            MaxWeekendCapacity = request.MaxWeekendCapacity
         };
 
         edition.SetAccommodationCapacity(request.AccommodationCapacity);
@@ -212,7 +222,16 @@ public class CampEditionsService
                 request.EndDate != edition.EndDate ||
                 request.PricePerAdult != edition.PricePerAdult ||
                 request.PricePerChild != edition.PricePerChild ||
-                request.PricePerBaby != edition.PricePerBaby)
+                request.PricePerBaby != edition.PricePerBaby ||
+                request.HalfDate != edition.HalfDate ||
+                request.PricePerAdultWeek != edition.PricePerAdultWeek ||
+                request.PricePerChildWeek != edition.PricePerChildWeek ||
+                request.PricePerBabyWeek != edition.PricePerBabyWeek ||
+                request.WeekendStartDate != edition.WeekendStartDate ||
+                request.WeekendEndDate != edition.WeekendEndDate ||
+                request.PricePerAdultWeekend != edition.PricePerAdultWeekend ||
+                request.PricePerChildWeekend != edition.PricePerChildWeekend ||
+                request.PricePerBabyWeekend != edition.PricePerBabyWeekend)
             {
                 throw new InvalidOperationException(
                     "No se pueden modificar las fechas ni los precios de una edición abierta");
@@ -231,6 +250,16 @@ public class CampEditionsService
         edition.CustomAdultMinAge = request.CustomAdultMinAge;
         edition.MaxCapacity = request.MaxCapacity;
         edition.Notes = request.Notes;
+        edition.HalfDate = request.HalfDate;
+        edition.PricePerAdultWeek = request.PricePerAdultWeek;
+        edition.PricePerChildWeek = request.PricePerChildWeek;
+        edition.PricePerBabyWeek = request.PricePerBabyWeek;
+        edition.WeekendStartDate = request.WeekendStartDate;
+        edition.WeekendEndDate = request.WeekendEndDate;
+        edition.PricePerAdultWeekend = request.PricePerAdultWeekend;
+        edition.PricePerChildWeekend = request.PricePerChildWeekend;
+        edition.PricePerBabyWeekend = request.PricePerBabyWeekend;
+        edition.MaxWeekendCapacity = request.MaxWeekendCapacity;
 
         var updated = await _repository.UpdateAsync(edition, cancellationToken);
         return MapToCampEditionResponse(updated, updated.Camp.Name);
@@ -411,7 +440,17 @@ public class CampEditionsService
             CalculatedTotalBedCapacity: accommodation?.CalculateTotalBedCapacity(),
             IsArchived: edition.IsArchived,
             CreatedAt: edition.CreatedAt,
-            UpdatedAt: edition.UpdatedAt
+            UpdatedAt: edition.UpdatedAt,
+            HalfDate: edition.HalfDate,
+            PricePerAdultWeek: edition.PricePerAdultWeek,
+            PricePerChildWeek: edition.PricePerChildWeek,
+            PricePerBabyWeek: edition.PricePerBabyWeek,
+            WeekendStartDate: edition.WeekendStartDate,
+            WeekendEndDate: edition.WeekendEndDate,
+            PricePerAdultWeekend: edition.PricePerAdultWeekend,
+            PricePerChildWeekend: edition.PricePerChildWeekend,
+            PricePerBabyWeekend: edition.PricePerBabyWeekend,
+            MaxWeekendCapacity: edition.MaxWeekendCapacity
         );
     }
 }

@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { PricingBreakdown, AgeCategory } from '@/types/registration'
+import { ATTENDANCE_PERIOD_LABELS } from '@/utils/registration'
 
-defineProps<{
+const props = defineProps<{
   pricing: PricingBreakdown
 }>()
 
@@ -10,6 +12,10 @@ const AGE_CATEGORY_LABELS: Record<AgeCategory, string> = {
   Child: 'Niño/Niña',
   Adult: 'Adulto/Adulta'
 }
+
+const showPeriodColumn = computed(() =>
+  props.pricing.members.some((m) => m.attendancePeriod && m.attendancePeriod !== 'Complete')
+)
 
 const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
@@ -26,6 +32,9 @@ const formatCurrency = (amount: number): string =>
             <tr>
               <th class="px-4 py-2 text-left font-medium text-gray-600">Nombre</th>
               <th class="px-4 py-2 text-left font-medium text-gray-600">Categoría</th>
+              <th v-if="showPeriodColumn" class="px-4 py-2 text-left font-medium text-gray-600">
+                Periodo
+              </th>
               <th class="px-4 py-2 text-right font-medium text-gray-600">Importe</th>
             </tr>
           </thead>
@@ -40,12 +49,31 @@ const formatCurrency = (amount: number): string =>
                 {{ AGE_CATEGORY_LABELS[member.ageCategory] }}
                 <span class="text-xs text-gray-400">({{ member.ageAtCamp }} años)</span>
               </td>
+              <td
+                v-if="showPeriodColumn"
+                class="px-4 py-2 text-gray-500 text-sm"
+                :data-testid="`member-period-${member.familyMemberId}`"
+              >
+                {{ ATTENDANCE_PERIOD_LABELS[member.attendancePeriod] }}
+                <span class="text-xs text-gray-400">({{ member.attendanceDays }}d)</span>
+                <span
+                  v-if="member.attendancePeriod === 'WeekendVisit' && member.visitStartDate"
+                  class="block text-xs text-gray-400"
+                >
+                  {{ member.visitStartDate }} — {{ member.visitEndDate }}
+                </span>
+              </td>
               <td class="px-4 py-2 text-right text-gray-900">
                 {{ formatCurrency(member.individualAmount) }}
               </td>
             </tr>
             <tr class="border-t border-gray-200 bg-gray-50">
-              <td colspan="2" class="px-4 py-2 font-medium text-gray-700">Subtotal participantes</td>
+              <td
+                :colspan="showPeriodColumn ? 3 : 2"
+                class="px-4 py-2 font-medium text-gray-700"
+              >
+                Subtotal participantes
+              </td>
               <td class="px-4 py-2 text-right font-medium text-gray-900">
                 {{ formatCurrency(pricing.baseTotalAmount) }}
               </td>
@@ -91,7 +119,10 @@ const formatCurrency = (amount: number): string =>
     </div>
 
     <!-- No extras placeholder -->
-    <div v-else class="rounded-lg border border-dashed border-gray-200 px-4 py-3 text-sm text-gray-400">
+    <div
+      v-else
+      class="rounded-lg border border-dashed border-gray-200 px-4 py-3 text-sm text-gray-400"
+    >
       Sin extras seleccionados — importe de extras: {{ formatCurrency(0) }}
     </div>
 

@@ -87,7 +87,7 @@ const handleSubmit = async () => {
     pricePerAdult: form.value.pricePerAdult,
     pricePerChild: form.value.pricePerChild,
     pricePerBaby: form.value.pricePerBaby,
-    maxCapacity: form.value.maxCapacity,
+    maxCapacity: form.value.maxCapacity || null,
     proposalReason: form.value.proposalReason,
     proposalNotes: form.value.proposalNotes
   })

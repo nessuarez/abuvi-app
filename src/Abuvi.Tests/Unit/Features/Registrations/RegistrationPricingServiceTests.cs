@@ -180,7 +180,7 @@ public class RegistrationPricingServiceTests
     {
         var edition = CreateEditionWithGlobalRanges();
 
-        var price = _sut.GetPriceForCategory(AgeCategory.Baby, edition);
+        var price = _sut.GetPriceForCategory(AgeCategory.Baby, AttendancePeriod.Complete, edition);
 
         price.Should().Be(edition.PricePerBaby);
     }
@@ -190,7 +190,7 @@ public class RegistrationPricingServiceTests
     {
         var edition = CreateEditionWithGlobalRanges();
 
-        var price = _sut.GetPriceForCategory(AgeCategory.Child, edition);
+        var price = _sut.GetPriceForCategory(AgeCategory.Child, AttendancePeriod.Complete, edition);
 
         price.Should().Be(edition.PricePerChild);
     }
@@ -200,9 +200,210 @@ public class RegistrationPricingServiceTests
     {
         var edition = CreateEditionWithGlobalRanges();
 
-        var price = _sut.GetPriceForCategory(AgeCategory.Adult, edition);
+        var price = _sut.GetPriceForCategory(AgeCategory.Adult, AttendancePeriod.Complete, edition);
 
         price.Should().Be(edition.PricePerAdult);
+    }
+
+    [Fact]
+    public void GetPriceForCategory_FirstWeek_Adult_ReturnsWeekPrice()
+    {
+        var edition = CreateEditionWithGlobalRanges();
+        edition.PricePerAdultWeek = 110m;
+        edition.PricePerChildWeek = 55m;
+        edition.PricePerBabyWeek = 0m;
+
+        var price = _sut.GetPriceForCategory(AgeCategory.Adult, AttendancePeriod.FirstWeek, edition);
+
+        price.Should().Be(110m);
+    }
+
+    [Fact]
+    public void GetPriceForCategory_SecondWeek_Child_ReturnsWeekPrice()
+    {
+        var edition = CreateEditionWithGlobalRanges();
+        edition.PricePerAdultWeek = 110m;
+        edition.PricePerChildWeek = 55m;
+        edition.PricePerBabyWeek = 0m;
+
+        var price = _sut.GetPriceForCategory(AgeCategory.Child, AttendancePeriod.SecondWeek, edition);
+
+        price.Should().Be(55m);
+    }
+
+    [Fact]
+    public void GetPriceForCategory_FirstWeek_WhenNoWeekPriceSet_ThrowsBusinessRuleException()
+    {
+        var edition = CreateEditionWithGlobalRanges(); // PricePerAdultWeek = null
+
+        var act = () => _sut.GetPriceForCategory(AgeCategory.Adult, AttendancePeriod.FirstWeek, edition);
+
+        act.Should().Throw<BusinessRuleException>()
+           .WithMessage("Esta edición no permite inscripción parcial por semanas");
+    }
+
+    [Fact]
+    public void GetPriceForCategory_WeekendVisit_Adult_ReturnsWeekendPrice()
+    {
+        var edition = CreateEditionWithGlobalRanges();
+        edition.PricePerAdultWeekend = 40m;
+        edition.PricePerChildWeekend = 20m;
+        edition.PricePerBabyWeekend = 0m;
+
+        var price = _sut.GetPriceForCategory(AgeCategory.Adult, AttendancePeriod.WeekendVisit, edition);
+
+        price.Should().Be(40m);
+    }
+
+    [Fact]
+    public void GetPriceForCategory_WeekendVisit_WhenNoWeekendPriceSet_ThrowsBusinessRuleException()
+    {
+        var edition = CreateEditionWithGlobalRanges(); // PricePerAdultWeekend = null
+
+        var act = () => _sut.GetPriceForCategory(AgeCategory.Adult, AttendancePeriod.WeekendVisit, edition);
+
+        act.Should().Throw<BusinessRuleException>()
+           .WithMessage("Esta edición no permite visitas de fin de semana");
+    }
+
+    // ── GetPeriodDays ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void GetPeriodDays_Complete_ReturnsFullCampDuration()
+    {
+        var edition = CreateEditionWithGlobalRanges(); // 2025-07-01 to 2025-07-14 = 13 days
+
+        var result = RegistrationPricingService.GetPeriodDays(AttendancePeriod.Complete, edition);
+
+        result.Should().Be(13);
+    }
+
+    [Fact]
+    public void GetPeriodDays_FirstWeek_WithExplicitHalfDate_ReturnsCorrectDays()
+    {
+        var edition = CreateEditionWithGlobalRanges();
+        edition.HalfDate = new DateOnly(2025, 7, 8);
+
+        var result = RegistrationPricingService.GetPeriodDays(AttendancePeriod.FirstWeek, edition);
+
+        result.Should().Be(7); // July 1 → July 8 = 7 days
+    }
+
+    [Fact]
+    public void GetPeriodDays_SecondWeek_WithExplicitHalfDate_ReturnsCorrectDays()
+    {
+        var edition = CreateEditionWithGlobalRanges();
+        edition.HalfDate = new DateOnly(2025, 7, 8);
+
+        var result = RegistrationPricingService.GetPeriodDays(AttendancePeriod.SecondWeek, edition);
+
+        result.Should().Be(6); // July 8 → July 14 = 6 days
+    }
+
+    [Fact]
+    public void GetPeriodDays_FirstWeek_WithNullHalfDate_UsesComputedMidpoint()
+    {
+        // 13-day camp: totalDays=13, halfDate = startDate.AddDays(13/2 = 6) = July 7
+        // firstWeek = halfDate - start = 7 - 1 = 6 days
+        var edition = CreateEditionWithGlobalRanges();
+
+        var result = RegistrationPricingService.GetPeriodDays(AttendancePeriod.FirstWeek, edition);
+
+        result.Should().Be(6);
+    }
+
+    [Fact]
+    public void GetPeriodDays_SecondWeek_WithNullHalfDate_UsesComputedMidpoint()
+    {
+        // 13-day camp: halfDate = July 7, secondWeek = end - halfDate = 14 - 7 = 7 days
+        var edition = CreateEditionWithGlobalRanges();
+
+        var result = RegistrationPricingService.GetPeriodDays(AttendancePeriod.SecondWeek, edition);
+
+        result.Should().Be(7);
+    }
+
+    [Fact]
+    public void GetPeriodDays_FirstWeek_WithEvenTotalDays_SplitsEvenly()
+    {
+        // 14-day camp (July 1 → July 15): totalDays=14, halfDate = startDate.AddDays(7) = July 8
+        // firstWeek = 7, secondWeek = 7
+        var edition = CreateEditionWithGlobalRanges();
+        edition.StartDate = new DateTime(2025, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+        edition.EndDate = new DateTime(2025, 7, 15, 0, 0, 0, DateTimeKind.Utc);
+
+        var first = RegistrationPricingService.GetPeriodDays(AttendancePeriod.FirstWeek, edition);
+        var second = RegistrationPricingService.GetPeriodDays(AttendancePeriod.SecondWeek, edition);
+
+        first.Should().Be(7);
+        second.Should().Be(7);
+    }
+
+    [Fact]
+    public void GetPeriodDays_WeekendVisit_WithMemberSpecificDates_ReturnsCorrectDays()
+    {
+        var edition = CreateEditionWithGlobalRanges();
+
+        var result = RegistrationPricingService.GetPeriodDays(
+            AttendancePeriod.WeekendVisit, edition,
+            visitStart: new DateOnly(2025, 7, 4),
+            visitEnd: new DateOnly(2025, 7, 6));
+
+        result.Should().Be(2); // July 4 → July 6 = 2-day difference
+    }
+
+    [Fact]
+    public void GetPeriodDays_WeekendVisit_WithNullMemberDates_FallsBackToEditionDefaults()
+    {
+        var edition = CreateEditionWithGlobalRanges();
+        edition.WeekendStartDate = new DateOnly(2025, 7, 5);
+        edition.WeekendEndDate = new DateOnly(2025, 7, 7);
+
+        var result = RegistrationPricingService.GetPeriodDays(
+            AttendancePeriod.WeekendVisit, edition,
+            visitStart: null, visitEnd: null);
+
+        result.Should().Be(2);
+    }
+
+    [Fact]
+    public void GetPeriodDays_WeekendVisit_WhenDurationExceedsThreeDays_CapsAtThree()
+    {
+        var edition = CreateEditionWithGlobalRanges();
+
+        var result = RegistrationPricingService.GetPeriodDays(
+            AttendancePeriod.WeekendVisit, edition,
+            visitStart: new DateOnly(2025, 7, 4),
+            visitEnd: new DateOnly(2025, 7, 10)); // 6-day diff → capped at 3
+
+        result.Should().Be(3);
+    }
+
+    [Fact]
+    public void GetPeriodDays_WeekendVisit_WithNullWeekendEndDate_DefaultsTwoExtraDays()
+    {
+        // visitEnd = null and edition.WeekendEndDate = null → end = start + 2
+        var edition = CreateEditionWithGlobalRanges();
+        edition.WeekendStartDate = new DateOnly(2025, 7, 5);
+        edition.WeekendEndDate = null;
+
+        var result = RegistrationPricingService.GetPeriodDays(
+            AttendancePeriod.WeekendVisit, edition,
+            visitStart: null, visitEnd: null);
+
+        result.Should().Be(2);
+    }
+
+    [Fact]
+    public void GetPeriodDays_WeekendVisit_WithNoWeekendStartDate_ReturnsZero()
+    {
+        var edition = CreateEditionWithGlobalRanges(); // WeekendStartDate = null
+
+        var result = RegistrationPricingService.GetPeriodDays(
+            AttendancePeriod.WeekendVisit, edition,
+            visitStart: null, visitEnd: null);
+
+        result.Should().Be(0);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

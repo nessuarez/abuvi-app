@@ -4,6 +4,8 @@ import PrimeVue from 'primevue/config'
 import RegistrationMemberSelector from '@/components/registrations/RegistrationMemberSelector.vue'
 import type { FamilyMemberResponse } from '@/types/family-unit'
 import { FamilyRelationship } from '@/types/family-unit'
+import type { WizardMemberSelection } from '@/types/registration'
+import type { CampEdition } from '@/types/camp-edition'
 
 const mockMembers: FamilyMemberResponse[] = [
   {
@@ -40,9 +42,31 @@ const mockMembers: FamilyMemberResponse[] = [
   }
 ]
 
-const mountComponent = (modelValue: string[] = []) =>
+// Edition with only Complete period (no week pricing, no weekend)
+const mockEditionComplete = {
+  startDate: '2025-07-01',
+  endDate: '2025-07-14',
+  pricePerAdultWeek: null,
+  weekendStartDate: null,
+  weekendEndDate: null
+} as unknown as CampEdition
+
+// Edition with all periods enabled
+const mockEditionWithPeriods = {
+  startDate: '2025-07-01',
+  endDate: '2025-07-14',
+  pricePerAdultWeek: 110,
+  halfDate: null,
+  weekendStartDate: '2025-07-05',
+  weekendEndDate: '2025-07-07'
+} as unknown as CampEdition
+
+const mountComponent = (
+  modelValue: WizardMemberSelection[] = [],
+  edition: CampEdition = mockEditionComplete
+) =>
   mount(RegistrationMemberSelector, {
-    props: { members: mockMembers, modelValue },
+    props: { members: mockMembers, modelValue, edition },
     global: { plugins: [PrimeVue] }
   })
 
@@ -55,12 +79,32 @@ describe('RegistrationMemberSelector', () => {
     expect(wrapper.text()).toContain('Ana García')
   })
 
-  it('should emit update:modelValue when label is clicked', async () => {
+  it('should emit update:modelValue with WizardMemberSelection when member is checked', async () => {
     const wrapper = mountComponent([])
-    // Click the native input inside PrimeVue Checkbox
     const input = wrapper.find('input[type="checkbox"]')
     await input.trigger('change')
-    expect(wrapper.emitted('update:modelValue')).toBeTruthy()
+    const emitted = wrapper.emitted('update:modelValue') as WizardMemberSelection[][]
+    expect(emitted).toBeTruthy()
+    const emittedSelections = emitted[emitted.length - 1][0]
+    expect(Array.isArray(emittedSelections)).toBe(true)
+    expect(emittedSelections[0]).toMatchObject({
+      memberId: 'member-1',
+      attendancePeriod: 'Complete',
+      visitStartDate: null,
+      visitEndDate: null
+    })
+  })
+
+  it('should emit update:modelValue removing member when unchecked', async () => {
+    const preSelected: WizardMemberSelection[] = [
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null }
+    ]
+    const wrapper = mountComponent(preSelected)
+    const input = wrapper.find('input[type="checkbox"]')
+    await input.trigger('change')
+    const emitted = wrapper.emitted('update:modelValue') as WizardMemberSelection[][]
+    const emittedSelections = emitted[emitted.length - 1][0]
+    expect(emittedSelections).toHaveLength(0)
   })
 
   it('should show medical notes warning icon when hasMedicalNotes is true', () => {
@@ -73,10 +117,52 @@ describe('RegistrationMemberSelector', () => {
   it('should NOT expose actual medical note content in any rendered text', () => {
     const wrapper = mountComponent()
     const text = wrapper.text()
-    // Should not contain any indication of actual note content
     expect(text).not.toContain('medicalNotes')
     expect(text).not.toContain('allergies')
     expect(text).not.toContain('nota médica')
     expect(text).not.toContain('alergia a')
+  })
+
+  it('should not show period selector when edition has only Complete period', () => {
+    const selected: WizardMemberSelection[] = [
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null }
+    ]
+    const wrapper = mountComponent(selected, mockEditionComplete)
+    expect(wrapper.find('[data-testid="period-select-member-1"]').exists()).toBe(false)
+  })
+
+  it('should show period selector when member is selected and edition allows multiple periods', () => {
+    const selected: WizardMemberSelection[] = [
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null }
+    ]
+    const wrapper = mountComponent(selected, mockEditionWithPeriods)
+    expect(wrapper.find('[data-testid="period-select-member-1"]').exists()).toBe(true)
+  })
+
+  it('should not show period selector for unselected members', () => {
+    const wrapper = mountComponent([], mockEditionWithPeriods)
+    expect(wrapper.find('[data-testid="period-select-member-1"]').exists()).toBe(false)
+  })
+
+  it('should show WeekendVisit date pickers when WeekendVisit period is selected', () => {
+    const selected: WizardMemberSelection[] = [
+      {
+        memberId: 'member-1',
+        attendancePeriod: 'WeekendVisit',
+        visitStartDate: null,
+        visitEndDate: null
+      }
+    ]
+    const wrapper = mountComponent(selected, mockEditionWithPeriods)
+    expect(wrapper.find('[data-testid="visit-start-member-1"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="visit-end-member-1"]').exists()).toBe(true)
+  })
+
+  it('should not show WeekendVisit date pickers when period is Complete', () => {
+    const selected: WizardMemberSelection[] = [
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null }
+    ]
+    const wrapper = mountComponent(selected, mockEditionWithPeriods)
+    expect(wrapper.find('[data-testid="visit-start-member-1"]').exists()).toBe(false)
   })
 })

@@ -163,6 +163,31 @@ public class ProposeCampEditionRequestValidator : AbstractValidator<ProposeCampE
         RuleFor(x => x.ProposalNotes)
             .MaximumLength(2000).WithMessage("Proposal notes must not exceed 2000 characters")
             .When(x => !string.IsNullOrWhiteSpace(x.ProposalNotes));
+        // Week pricing: all three prices required together
+        RuleFor(x => x)
+            .Must(x => (x.PricePerAdultWeek.HasValue && x.PricePerChildWeek.HasValue && x.PricePerBabyWeek.HasValue)
+                    || (!x.PricePerAdultWeek.HasValue && !x.PricePerChildWeek.HasValue && !x.PricePerBabyWeek.HasValue))
+            .WithMessage("Si se configura precio semanal, los tres precios (adulto, niño, bebé) son obligatorios")
+            .WithName("PricePerAdultWeek")
+            .When(x => x.PricePerAdultWeek.HasValue || x.PricePerChildWeek.HasValue || x.PricePerBabyWeek.HasValue);
+
+        // Weekend visit: dates and prices required together
+        RuleFor(x => x)
+            .Must(x => x.WeekendStartDate.HasValue && x.WeekendEndDate.HasValue
+                    && x.PricePerAdultWeekend.HasValue && x.PricePerChildWeekend.HasValue && x.PricePerBabyWeekend.HasValue)
+            .WithMessage("Para visitas de fin de semana se deben especificar fechas (inicio y fin) y los tres precios")
+            .WithName("WeekendStartDate")
+            .When(x => x.WeekendStartDate.HasValue || x.WeekendEndDate.HasValue
+                    || x.PricePerAdultWeekend.HasValue || x.PricePerChildWeekend.HasValue || x.PricePerBabyWeekend.HasValue);
+
+        RuleFor(x => x.WeekendEndDate)
+            .GreaterThan(x => x.WeekendStartDate)
+            .WithMessage("La fecha de fin del fin de semana debe ser posterior a la fecha de inicio")
+            .When(x => x.WeekendStartDate.HasValue && x.WeekendEndDate.HasValue);
+
+        RuleFor(x => x.MaxWeekendCapacity)
+            .GreaterThan(0).WithMessage("La capacidad máxima de fin de semana debe ser mayor a 0")
+            .When(x => x.MaxWeekendCapacity.HasValue);
 
         // Custom age ranges validation - if UseCustomAgeRanges is true, all custom age fields are required
         When(x => x.UseCustomAgeRanges, () =>
@@ -254,6 +279,32 @@ public class UpdateCampEditionRequestValidator : AbstractValidator<UpdateCampEdi
                 .WithMessage("La edad máxima de niño debe ser menor a la edad mínima de adulto")
                 .WithName("CustomChildMaxAge");
         });
+
+        // Week pricing: all three prices required together
+        RuleFor(x => x)
+            .Must(x => (x.PricePerAdultWeek.HasValue && x.PricePerChildWeek.HasValue && x.PricePerBabyWeek.HasValue)
+                    || (!x.PricePerAdultWeek.HasValue && !x.PricePerChildWeek.HasValue && !x.PricePerBabyWeek.HasValue))
+            .WithMessage("Si se configura precio semanal, los tres precios (adulto, niño, bebé) son obligatorios")
+            .WithName("PricePerAdultWeek")
+            .When(x => x.PricePerAdultWeek.HasValue || x.PricePerChildWeek.HasValue || x.PricePerBabyWeek.HasValue);
+
+        // Weekend visit: dates and prices required together
+        RuleFor(x => x)
+            .Must(x => x.WeekendStartDate.HasValue && x.WeekendEndDate.HasValue
+                    && x.PricePerAdultWeekend.HasValue && x.PricePerChildWeekend.HasValue && x.PricePerBabyWeekend.HasValue)
+            .WithMessage("Para visitas de fin de semana se deben especificar fechas (inicio y fin) y los tres precios")
+            .WithName("WeekendStartDate")
+            .When(x => x.WeekendStartDate.HasValue || x.WeekendEndDate.HasValue
+                    || x.PricePerAdultWeekend.HasValue || x.PricePerChildWeekend.HasValue || x.PricePerBabyWeekend.HasValue);
+
+        RuleFor(x => x.WeekendEndDate)
+            .GreaterThan(x => x.WeekendStartDate)
+            .WithMessage("La fecha de fin del fin de semana debe ser posterior a la fecha de inicio")
+            .When(x => x.WeekendStartDate.HasValue && x.WeekendEndDate.HasValue);
+
+        RuleFor(x => x.MaxWeekendCapacity)
+            .GreaterThan(0).WithMessage("La capacidad máxima de fin de semana debe ser mayor a 0")
+            .When(x => x.MaxWeekendCapacity.HasValue);
     }
 }
 
