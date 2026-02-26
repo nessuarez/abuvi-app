@@ -66,7 +66,7 @@ export interface CreateCampEditionRequest {
   childMinAge?: number
   childMaxAge?: number
   adultMinAge?: number
-  maxCapacity: number
+  maxCapacity?: number | null
   contactEmail?: string
   contactPhone?: string
 }
