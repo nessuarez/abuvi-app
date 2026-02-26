@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Abuvi.API.Common.Models;
 using Abuvi.API.Common.Filters;
+using Abuvi.API.Common.Extensions;
 
 namespace Abuvi.API.Features.Memberships;
 
@@ -28,6 +30,19 @@ public static class MembershipsEndpoints
         group.MapDelete("/", DeactivateMembership)
             .WithName("DeactivateMembership")
             .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status404NotFound);
+
+        var bulkGroup = app.MapGroup("/api/family-units/{familyUnitId:guid}/membership")
+            .WithTags("Memberships")
+            .RequireAuthorization();
+
+        bulkGroup.MapPost("/bulk", BulkActivateMemberships)
+            .WithName("BulkActivateMemberships")
+            .WithSummary("Bulk activate memberships for all family members without one")
+            .AddEndpointFilter<ValidationFilter<BulkActivateMembershipRequest>>()
+            .Produces<ApiResponse<BulkActivateMembershipResponse>>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound);
     }
 
@@ -68,6 +83,22 @@ public static class MembershipsEndpoints
 
         await service.DeactivateAsync(memberId, ct);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> BulkActivateMemberships(
+        [FromRoute] Guid familyUnitId,
+        [FromBody] BulkActivateMembershipRequest request,
+        ClaimsPrincipal user,
+        MembershipsService service,
+        CancellationToken ct)
+    {
+        var userRole = user.GetUserRole();
+        var isAdminOrBoard = userRole == "Admin" || userRole == "Board";
+        if (!isAdminOrBoard)
+            return Results.Forbid();
+
+        var result = await service.BulkActivateAsync(familyUnitId, request, ct);
+        return Results.Ok(ApiResponse<BulkActivateMembershipResponse>.Ok(result));
     }
 
     public static void MapMembershipFeeEndpoints(this IEndpointRouteBuilder app)

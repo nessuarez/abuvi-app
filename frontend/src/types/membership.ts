@@ -1,3 +1,5 @@
+import type { FamilyMemberResponse } from '@/types/family-unit'
+
 export enum FeeStatus {
   Pending = 'Pending',
   Paid = 'Paid',
@@ -39,10 +41,37 @@ export interface MembershipResponse {
 }
 
 export interface CreateMembershipRequest {
-  startDate: string // ISO 8601 date string — must not be in the future
+  year: number // Calendar year — must not be in the future (≤ current year)
 }
 
 export interface PayFeeRequest {
   paidDate: string // ISO 8601 date string — must not be in the future
   paymentReference?: string | null
+}
+
+export type BulkMembershipResultStatus = 'Activated' | 'Skipped' | 'Failed'
+
+export interface BulkMembershipMemberResult {
+  memberId: string
+  memberName: string
+  status: BulkMembershipResultStatus
+  reason?: string | null
+}
+
+export interface BulkActivateMembershipResponse {
+  activated: number
+  skipped: number
+  results: BulkMembershipMemberResult[]
+}
+
+export interface BulkActivateMembershipRequest {
+  year: number
+}
+
+export interface MemberMembershipData {
+  member: FamilyMemberResponse
+  membershipId: string | null
+  isActiveMembership: boolean
+  currentFee: MembershipFeeResponse | null
+  feeLoading: boolean
 }

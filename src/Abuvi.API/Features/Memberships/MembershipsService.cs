@@ -27,7 +27,7 @@ public class MembershipsService(
         {
             Id = Guid.NewGuid(),
             FamilyMemberId = familyMemberId,
-            StartDate = request.StartDate,
+            StartDate = new DateTime(request.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -36,6 +36,58 @@ public class MembershipsService(
         await repository.AddAsync(membership, ct);
 
         return membership.ToResponse();
+    }
+
+    public async Task<BulkActivateMembershipResponse> BulkActivateAsync(
+        Guid familyUnitId,
+        BulkActivateMembershipRequest request,
+        CancellationToken ct)
+    {
+        var familyUnit = await familyUnitsRepository.GetFamilyUnitByIdAsync(familyUnitId, ct);
+        if (familyUnit is null)
+            throw new NotFoundException(nameof(FamilyUnit), familyUnitId);
+
+        var members = await familyUnitsRepository.GetFamilyMembersByFamilyUnitIdAsync(familyUnitId, ct);
+
+        var results = new List<BulkMembershipMemberResult>();
+        int activated = 0, skipped = 0;
+
+        var startDate = new DateTime(request.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        foreach (var member in members)
+        {
+            var memberName = $"{member.FirstName} {member.LastName}";
+
+            var existing = await repository.GetByFamilyMemberIdAsync(member.Id, ct);
+            if (existing is not null)
+            {
+                results.Add(new(member.Id, memberName, BulkMembershipResultStatus.Skipped, "Ya tiene membresía activa"));
+                skipped++;
+                continue;
+            }
+
+            try
+            {
+                var membership = new Membership
+                {
+                    Id = Guid.NewGuid(),
+                    FamilyMemberId = member.Id,
+                    StartDate = startDate,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await repository.AddAsync(membership, ct);
+                results.Add(new(member.Id, memberName, BulkMembershipResultStatus.Activated));
+                activated++;
+            }
+            catch (Exception ex)
+            {
+                results.Add(new(member.Id, memberName, BulkMembershipResultStatus.Failed, ex.Message));
+            }
+        }
+
+        return new BulkActivateMembershipResponse(activated, skipped, results);
     }
 
     public async Task<MembershipResponse> GetByFamilyMemberIdAsync(
