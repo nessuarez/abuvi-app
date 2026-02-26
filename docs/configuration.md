@@ -196,6 +196,68 @@ GooglePlaces__ApiKey=${GOOGLE_PLACES_API_KEY}
 
 ---
 
+### `BlobStorage`
+
+S3-compatible object storage used for media uploads (images, videos, audio, documents). The application uses the AWS SDK (`AWSSDK.S3`) with Hetzner Object Storage as the default provider, but any S3-compatible service works.
+
+```json
+"BlobStorage": {
+  "BucketName": "abuvi-media",
+  "Endpoint": "https://fsn1.your-objectstorage.com",
+  "Region": "fsn1",
+  "AccessKeyId": "",
+  "SecretAccessKey": "",
+  "PublicBaseUrl": "https://abuvi-media.fsn1.your-objectstorage.com",
+  "MaxFileSizeBytes": 52428800,
+  "AllowedImageExtensions": [".jpg", ".jpeg", ".png", ".webp", ".gif"],
+  "AllowedVideoExtensions": [".mp4", ".mov", ".avi", ".webm"],
+  "AllowedAudioExtensions": [".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac"],
+  "AllowedDocumentExtensions": [".pdf", ".doc", ".docx"],
+  "ThumbnailWidthPx": 400,
+  "ThumbnailHeightPx": 400,
+  "StorageQuotaBytes": 53687091200,
+  "StorageWarningThresholdPct": 80,
+  "StorageCriticalThresholdPct": 95
+}
+```
+
+| Field | Description |
+|---|---|
+| `BucketName` | S3 bucket name. **Required** — startup validation fails if empty. |
+| `Endpoint` | S3-compatible service URL. For Hetzner: `https://fsn1.your-objectstorage.com`. |
+| `Region` | Storage region identifier (e.g. `fsn1` for Hetzner Falkenstein). |
+| `AccessKeyId` | S3 access key. **Secret** — do not commit. |
+| `SecretAccessKey` | S3 secret key. **Secret** — do not commit. |
+| `PublicBaseUrl` | Public URL prefix for uploaded objects. **Required** — startup validation fails if empty. |
+| `MaxFileSizeBytes` | Maximum allowed upload size in bytes. Default: `52428800` (50 MB). |
+| `AllowedImageExtensions` | Permitted image file extensions. |
+| `AllowedVideoExtensions` | Permitted video file extensions. |
+| `AllowedAudioExtensions` | Permitted audio file extensions. |
+| `AllowedDocumentExtensions` | Permitted document file extensions. |
+| `ThumbnailWidthPx` | Maximum width in pixels for generated thumbnails. |
+| `ThumbnailHeightPx` | Maximum height in pixels for generated thumbnails. |
+| `StorageQuotaBytes` | Total storage quota in bytes. `0` disables threshold checks. Default in appsettings: ~50 GB. |
+| `StorageWarningThresholdPct` | Usage percentage at which the health check reports **Degraded**. |
+| `StorageCriticalThresholdPct` | Usage percentage at which the health check reports **Unhealthy**. |
+
+`BucketName`, `Endpoint`, `Region`, and `PublicBaseUrl` can stay in the file. The `AccessKeyId` and `SecretAccessKey` are secrets and must not be committed — supply them via user secrets in development or environment variables in production:
+
+```bash
+# Development (user secrets)
+dotnet user-secrets set "BlobStorage:AccessKeyId" "your-key" --project src/Abuvi.API
+dotnet user-secrets set "BlobStorage:SecretAccessKey" "your-secret" --project src/Abuvi.API
+```
+
+```
+# Production (environment variables)
+BlobStorage__AccessKeyId=${BLOB_ACCESS_KEY_ID}
+BlobStorage__SecretAccessKey=${BLOB_SECRET_ACCESS_KEY}
+```
+
+> **Note:** The Kestrel request body limit is set to 55 MB to accommodate file uploads. If you increase `MaxFileSizeBytes` beyond this value, update the Kestrel limit in `Program.cs` as well.
+
+---
+
 ### `FrontendUrl`
 
 ```json
@@ -233,6 +295,8 @@ services:
       - Encryption__Key=${ENCRYPTION_KEY}
       - Resend__ApiKey=${RESEND_API_KEY}
       - GooglePlaces__ApiKey=${GOOGLE_PLACES_API_KEY}
+      - BlobStorage__AccessKeyId=${BLOB_ACCESS_KEY_ID}
+      - BlobStorage__SecretAccessKey=${BLOB_SECRET_ACCESS_KEY}
 ```
 
 The `${...}` values should come from a `.env` file (not committed) or a secrets manager (e.g. Docker Secrets, AWS Secrets Manager, Doppler).
@@ -258,4 +322,14 @@ The `${...}` values should come from a `.env` file (not committed) or a secrets 
 | `Encryption:Key` | **Yes** | **Yes** | Never rotate once data exists |
 | `GooglePlaces:ApiKey` | **Yes** | **Yes** | Supply via env var |
 | `GooglePlaces:AutocompleteUrl` / `DetailsUrl` | No | No | Stable Google URLs |
+| `BlobStorage:BucketName` | No | No | Already set to production bucket |
+| `BlobStorage:Endpoint` / `Region` | No | No | Already set to Hetzner fsn1 |
+| `BlobStorage:AccessKeyId` | **Yes** | **Yes** | Supply via env var |
+| `BlobStorage:SecretAccessKey` | **Yes** | **Yes** | Supply via env var |
+| `BlobStorage:PublicBaseUrl` | No | No | Already set to production URL |
+| `BlobStorage:MaxFileSizeBytes` | No | No | Adjust to taste (default 50 MB) |
+| `BlobStorage:Allowed*Extensions` | No | No | Adjust to taste |
+| `BlobStorage:Thumbnail*Px` | No | No | Adjust to taste |
+| `BlobStorage:StorageQuotaBytes` | No | No | 0 disables threshold checks |
+| `BlobStorage:Storage*ThresholdPct` | No | No | Health check thresholds |
 | `FrontendUrl` | No | Yes | Real frontend URL |
