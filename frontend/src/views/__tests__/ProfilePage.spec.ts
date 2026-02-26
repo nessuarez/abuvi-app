@@ -46,6 +46,7 @@ vi.mock('@/composables/useMemberships', () => ({
   useMemberships: () => ({
     getMembership: vi.fn().mockResolvedValue(null),
     payFee: vi.fn(),
+    bulkActivateMemberships: vi.fn(),
   }),
 }))
 
@@ -69,10 +70,19 @@ const componentStubs = {
   Card: true,
   PayFeeDialog: true,
   MembershipDialog: { name: 'MembershipDialog', template: '<div />', props: ['visible', 'familyUnitId', 'memberId', 'memberName'] },
+  BulkMembershipDialog: { name: 'BulkMembershipDialog', template: '<div />', props: ['visible', 'familyUnitId', 'members', 'memberData'] },
   Skeleton: true,
   Button: true,
   Tag: true,
   InputText: true,
+}
+
+// Stubs with Card rendering only the title slot (for title slot button visibility tests)
+// NOTE: We deliberately omit #content to avoid renderig formatDate(undefined) errors
+// that occur because the mock returns { value: null } (a truthy plain object) for fullUser.
+const componentStubsWithCardSlots = {
+  ...componentStubs,
+  Card: { template: '<div><slot name="title" /></div>' },
 }
 
 describe('ProfilePage — membership management button', () => {
@@ -94,5 +104,23 @@ describe('ProfilePage — MembershipDialog mounting', () => {
     // MembershipDialog is v-if="selectedMemberForMembership" — must be absent initially
     const dialog = wrapper.findComponent({ name: 'MembershipDialog' })
     expect(dialog.exists()).toBe(false)
+  })
+})
+
+describe('ProfilePage — bulk membership button', () => {
+  it('shows bulk-membership-btn for board users when familyUnit exists', () => {
+    authMock.isBoard = true
+    const wrapper = mount(ProfilePage, {
+      global: { plugins: [createPinia()], stubs: componentStubsWithCardSlots },
+    })
+    expect(wrapper.find('[data-testid="bulk-membership-btn"]').exists()).toBe(true)
+  })
+
+  it('does not show bulk-membership-btn for non-board users', () => {
+    authMock.isBoard = false
+    const wrapper = mount(ProfilePage, {
+      global: { plugins: [createPinia()], stubs: componentStubsWithCardSlots },
+    })
+    expect(wrapper.find('[data-testid="bulk-membership-btn"]').exists()).toBe(false)
   })
 })
