@@ -53,7 +53,6 @@ public class RegistrationsServiceTests
         _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
         _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
         _repo.ExistsAsync(FamilyUnitId, CampEditionId, Arg.Any<CancellationToken>()).Returns(false);
-        _repo.CountActiveByEditionAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(0);
         _familyUnitsRepo.GetFamilyMemberByIdAsync(MemberId, Arg.Any<CancellationToken>()).Returns(member);
         _repo.AddAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
 
@@ -64,7 +63,7 @@ public class RegistrationsServiceTests
         var request = new CreateRegistrationRequest(
             CampEditionId: CampEditionId,
             FamilyUnitId: FamilyUnitId,
-            MemberIds: [MemberId],
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
             Notes: null);
 
         // Act
@@ -88,7 +87,7 @@ public class RegistrationsServiceTests
         var request = new CreateRegistrationRequest(
             CampEditionId: CampEditionId,
             FamilyUnitId: FamilyUnitId,
-            MemberIds: [MemberId],
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
             Notes: null);
 
         Func<Task> act = async () => await _sut.CreateAsync(UserId, request, CancellationToken.None);
@@ -110,7 +109,7 @@ public class RegistrationsServiceTests
         var request = new CreateRegistrationRequest(
             CampEditionId: CampEditionId,
             FamilyUnitId: FamilyUnitId,
-            MemberIds: [MemberId],
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
             Notes: null);
 
         Func<Task> act = async () => await _sut.CreateAsync(UserId, request, CancellationToken.None);
@@ -124,16 +123,19 @@ public class RegistrationsServiceTests
     {
         var familyUnit = CreateFamilyUnit(UserId);
         var edition = CreateOpenEdition(maxCapacity: 10);
+        var member = CreateFamilyMember(MemberId, FamilyUnitId, dateOfBirth: new DateOnly(2000, 1, 1));
 
+        SetupGlobalAgeRanges();
         _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
         _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
         _repo.ExistsAsync(FamilyUnitId, CampEditionId, Arg.Any<CancellationToken>()).Returns(false);
-        _repo.CountActiveByEditionAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(10);
+        _familyUnitsRepo.GetFamilyMemberByIdAsync(MemberId, Arg.Any<CancellationToken>()).Returns(member);
+        _repo.CountConcurrentAttendeesByPeriodAsync(CampEditionId, Arg.Any<AttendancePeriod>(), Arg.Any<CancellationToken>()).Returns(10);
 
         var request = new CreateRegistrationRequest(
             CampEditionId: CampEditionId,
             FamilyUnitId: FamilyUnitId,
-            MemberIds: [MemberId],
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
             Notes: null);
 
         Func<Task> act = async () => await _sut.CreateAsync(UserId, request, CancellationToken.None);
@@ -153,14 +155,13 @@ public class RegistrationsServiceTests
         _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
         _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
         _repo.ExistsAsync(FamilyUnitId, CampEditionId, Arg.Any<CancellationToken>()).Returns(false);
-        _repo.CountActiveByEditionAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(0);
         _familyUnitsRepo.GetFamilyMemberByIdAsync(MemberId, Arg.Any<CancellationToken>()).Returns(member);
         SetupGlobalAgeRanges();
 
         var request = new CreateRegistrationRequest(
             CampEditionId: CampEditionId,
             FamilyUnitId: FamilyUnitId,
-            MemberIds: [MemberId],
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
             Notes: null);
 
         Func<Task> act = async () => await _sut.CreateAsync(UserId, request, CancellationToken.None);
@@ -180,7 +181,7 @@ public class RegistrationsServiceTests
         var request = new CreateRegistrationRequest(
             CampEditionId: CampEditionId,
             FamilyUnitId: FamilyUnitId,
-            MemberIds: [MemberId],
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
             Notes: null);
 
         Func<Task> act = async () => await _sut.CreateAsync(UserId, request, CancellationToken.None);
@@ -212,7 +213,7 @@ public class RegistrationsServiceTests
         _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>())
             .Returns(BuildFullRegistration(registrationId, familyUnit, edition, [member], edition.PricePerAdult));
 
-        var request = new UpdateRegistrationMembersRequest([MemberId]);
+        var request = new UpdateRegistrationMembersRequest([new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)]);
 
         var result = await _sut.UpdateMembersAsync(registrationId, UserId, request, CancellationToken.None);
 
@@ -233,7 +234,7 @@ public class RegistrationsServiceTests
         _repo.GetByIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
         _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
 
-        var request = new UpdateRegistrationMembersRequest([MemberId]);
+        var request = new UpdateRegistrationMembersRequest([new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)]);
 
         Func<Task> act = async () =>
             await _sut.UpdateMembersAsync(registrationId, UserId, request, CancellationToken.None);
@@ -254,7 +255,7 @@ public class RegistrationsServiceTests
         _repo.GetByIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
         _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
 
-        var request = new UpdateRegistrationMembersRequest([MemberId]);
+        var request = new UpdateRegistrationMembersRequest([new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)]);
 
         Func<Task> act = async () =>
             await _sut.UpdateMembersAsync(registrationId, UserId, request, CancellationToken.None);

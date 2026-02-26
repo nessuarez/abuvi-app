@@ -36,38 +36,84 @@ public class RegistrationsService(
         if (await registrationsRepo.ExistsAsync(request.FamilyUnitId, request.CampEditionId, ct))
             throw new BusinessRuleException("Ya existe una inscripción para esta familia en este campamento");
 
-        // 6. Check capacity
-        if (edition.MaxCapacity.HasValue)
-        {
-            var activeCount = await registrationsRepo.CountActiveByEditionAsync(request.CampEditionId, ct);
-            if (activeCount >= edition.MaxCapacity.Value)
-                throw new BusinessRuleException("El campamento ha alcanzado su capacidad máxima");
-        }
-
-        // 7. Load and validate members
+        // 6. Load and validate members + calculate pricing
         var registrationMembers = new List<RegistrationMember>();
-        foreach (var memberId in request.MemberIds)
+        foreach (var m in request.Members)
         {
-            var member = await familyUnitsRepo.GetFamilyMemberByIdAsync(memberId, ct)
-                ?? throw new NotFoundException("Miembro Familiar", memberId);
+            var member = await familyUnitsRepo.GetFamilyMemberByIdAsync(m.MemberId, ct)
+                ?? throw new NotFoundException("Miembro Familiar", m.MemberId);
 
             if (member.FamilyUnitId != request.FamilyUnitId)
                 throw new BusinessRuleException(
                     $"El miembro {member.FirstName} {member.LastName} no pertenece a esta unidad familiar");
 
+            // Validate visit dates within camp bounds for WeekendVisit members
+            if (m.AttendancePeriod == AttendancePeriod.WeekendVisit)
+            {
+                var campStart = DateOnly.FromDateTime(edition.StartDate);
+                var campEnd   = DateOnly.FromDateTime(edition.EndDate);
+                if (m.VisitStartDate < campStart || m.VisitEndDate > campEnd)
+                    throw new BusinessRuleException(
+                        "Las fechas de la visita deben estar dentro del periodo del campamento");
+            }
+
             var age = pricingService.CalculateAge(member.DateOfBirth, edition.StartDate);
             var category = await pricingService.GetAgeCategoryAsync(age, edition, ct);
-            var price = pricingService.GetPriceForCategory(category, edition);
+            var price = pricingService.GetPriceForCategory(category, m.AttendancePeriod, edition);
 
             registrationMembers.Add(new RegistrationMember
             {
                 Id = Guid.NewGuid(),
-                FamilyMemberId = memberId,
+                FamilyMemberId = m.MemberId,
                 AgeAtCamp = age,
                 AgeCategory = category,
                 IndividualAmount = price,
+                AttendancePeriod = m.AttendancePeriod,
+                VisitStartDate = m.VisitStartDate,
+                VisitEndDate = m.VisitEndDate,
                 CreatedAt = DateTime.UtcNow
             });
+        }
+
+        // 7. Capacity check (per-period + weekend pool)
+        // TODO: wrap in REPEATABLE READ transaction for production correctness
+        if (edition.MaxCapacity.HasValue)
+        {
+            foreach (var rm in registrationMembers)
+            {
+                // Skip WeekendVisit — handled separately below
+                if (rm.AttendancePeriod == AttendancePeriod.WeekendVisit) continue;
+
+                var periodsToCheck = rm.AttendancePeriod == AttendancePeriod.Complete
+                    ? new[] { AttendancePeriod.FirstWeek, AttendancePeriod.SecondWeek }
+                    : new[] { rm.AttendancePeriod };
+
+                foreach (var p in periodsToCheck)
+                {
+                    var count = await registrationsRepo
+                        .CountConcurrentAttendeesByPeriodAsync(request.CampEditionId, p, ct);
+                    if (count + 1 > edition.MaxCapacity.Value)
+                        throw new BusinessRuleException(
+                            "El campamento ha alcanzado su capacidad máxima para ese periodo");
+                }
+            }
+        }
+
+        // Weekend capacity check (separate pool)
+        var weekendMembersCount = registrationMembers.Count(rm =>
+            rm.AttendancePeriod == AttendancePeriod.WeekendVisit);
+        if (weekendMembersCount > 0)
+        {
+            var weekendCap = edition.MaxWeekendCapacity ?? edition.MaxCapacity;
+            if (weekendCap.HasValue)
+            {
+                var weekendCount = await registrationsRepo
+                    .CountConcurrentAttendeesByPeriodAsync(
+                        request.CampEditionId, AttendancePeriod.WeekendVisit, ct);
+                if (weekendCount + weekendMembersCount > weekendCap.Value)
+                    throw new BusinessRuleException(
+                        "El campamento ha alcanzado su capacidad máxima para visitas de fin de semana");
+            }
         }
 
         // 8. Calculate totals
@@ -127,29 +173,80 @@ public class RegistrationsService(
 
         // 5. Validate and price new members
         var newMembers = new List<RegistrationMember>();
-        foreach (var memberId in request.MemberIds)
+        foreach (var m in request.Members)
         {
-            var member = await familyUnitsRepo.GetFamilyMemberByIdAsync(memberId, ct)
-                ?? throw new NotFoundException("Miembro Familiar", memberId);
+            var member = await familyUnitsRepo.GetFamilyMemberByIdAsync(m.MemberId, ct)
+                ?? throw new NotFoundException("Miembro Familiar", m.MemberId);
 
             if (member.FamilyUnitId != registration.FamilyUnitId)
                 throw new BusinessRuleException(
                     $"El miembro {member.FirstName} {member.LastName} no pertenece a esta unidad familiar");
 
+            // Validate visit dates within camp bounds for WeekendVisit members
+            if (m.AttendancePeriod == AttendancePeriod.WeekendVisit)
+            {
+                var campStart = DateOnly.FromDateTime(edition.StartDate);
+                var campEnd   = DateOnly.FromDateTime(edition.EndDate);
+                if (m.VisitStartDate < campStart || m.VisitEndDate > campEnd)
+                    throw new BusinessRuleException(
+                        "Las fechas de la visita deben estar dentro del periodo del campamento");
+            }
+
             var age = pricingService.CalculateAge(member.DateOfBirth, edition.StartDate);
             var category = await pricingService.GetAgeCategoryAsync(age, edition, ct);
-            var price = pricingService.GetPriceForCategory(category, edition);
+            var price = pricingService.GetPriceForCategory(category, m.AttendancePeriod, edition);
 
             newMembers.Add(new RegistrationMember
             {
                 Id = Guid.NewGuid(),
                 RegistrationId = registrationId,
-                FamilyMemberId = memberId,
+                FamilyMemberId = m.MemberId,
                 AgeAtCamp = age,
                 AgeCategory = category,
                 IndividualAmount = price,
+                AttendancePeriod = m.AttendancePeriod,
+                VisitStartDate = m.VisitStartDate,
+                VisitEndDate = m.VisitEndDate,
                 CreatedAt = DateTime.UtcNow
             });
+        }
+
+        // 5b. Capacity check for updated members
+        // TODO: wrap in REPEATABLE READ transaction for production correctness
+        if (edition.MaxCapacity.HasValue)
+        {
+            foreach (var rm in newMembers)
+            {
+                if (rm.AttendancePeriod == AttendancePeriod.WeekendVisit) continue;
+
+                var periodsToCheck = rm.AttendancePeriod == AttendancePeriod.Complete
+                    ? new[] { AttendancePeriod.FirstWeek, AttendancePeriod.SecondWeek }
+                    : new[] { rm.AttendancePeriod };
+
+                foreach (var p in periodsToCheck)
+                {
+                    var count = await registrationsRepo
+                        .CountConcurrentAttendeesByPeriodAsync(registration.CampEditionId, p, ct);
+                    if (count + 1 > edition.MaxCapacity.Value)
+                        throw new BusinessRuleException(
+                            "El campamento ha alcanzado su capacidad máxima para ese periodo");
+                }
+            }
+        }
+
+        var weekendCount2 = newMembers.Count(rm => rm.AttendancePeriod == AttendancePeriod.WeekendVisit);
+        if (weekendCount2 > 0)
+        {
+            var weekendCap = edition.MaxWeekendCapacity ?? edition.MaxCapacity;
+            if (weekendCap.HasValue)
+            {
+                var existingWeekendCount = await registrationsRepo
+                    .CountConcurrentAttendeesByPeriodAsync(
+                        registration.CampEditionId, AttendancePeriod.WeekendVisit, ct);
+                if (existingWeekendCount + weekendCount2 > weekendCap.Value)
+                    throw new BusinessRuleException(
+                        "El campamento ha alcanzado su capacidad máxima para visitas de fin de semana");
+            }
         }
 
         // 6. Delete existing members
@@ -286,10 +383,33 @@ public class RegistrationsService(
 
         foreach (var edition in editions)
         {
+            // Count current registrations for display (keep backward compatibility)
             var currentCount = await registrationsRepo.CountActiveByEditionAsync(edition.Id, ct);
-            int? spotsRemaining = edition.MaxCapacity.HasValue
-                ? Math.Max(0, edition.MaxCapacity.Value - currentCount)
-                : null;
+
+            // Per-period spotsRemaining (most constrained period)
+            int? spotsRemaining = null;
+            if (edition.MaxCapacity.HasValue)
+            {
+                var firstWeekCount = await registrationsRepo
+                    .CountConcurrentAttendeesByPeriodAsync(edition.Id, AttendancePeriod.FirstWeek, ct);
+                var secondWeekCount = await registrationsRepo
+                    .CountConcurrentAttendeesByPeriodAsync(edition.Id, AttendancePeriod.SecondWeek, ct);
+                spotsRemaining = Math.Max(0,
+                    edition.MaxCapacity.Value - Math.Max(firstWeekCount, secondWeekCount));
+            }
+
+            // Weekend spots remaining (separate pool)
+            int? weekendSpotsRemaining = null;
+            if (edition.WeekendStartDate.HasValue)
+            {
+                var weekendCap = edition.MaxWeekendCapacity ?? edition.MaxCapacity;
+                if (weekendCap.HasValue)
+                {
+                    var weekendCount = await registrationsRepo
+                        .CountConcurrentAttendeesByPeriodAsync(edition.Id, AttendancePeriod.WeekendVisit, ct);
+                    weekendSpotsRemaining = Math.Max(0, weekendCap.Value - weekendCount);
+                }
+            }
 
             var ageRangesInfo = edition.UseCustomAgeRanges
                 ? new AgeRangesInfo(
@@ -317,7 +437,23 @@ public class RegistrationsService(
                 CurrentRegistrations: currentCount,
                 SpotsRemaining: spotsRemaining,
                 Status: edition.Status.ToString(),
-                AgeRanges: ageRangesInfo));
+                AgeRanges: ageRangesInfo,
+                AllowsPartialAttendance: edition.PricePerAdultWeek is not null,
+                PricePerAdultWeek: edition.PricePerAdultWeek,
+                PricePerChildWeek: edition.PricePerChildWeek,
+                PricePerBabyWeek: edition.PricePerBabyWeek,
+                HalfDate: edition.HalfDate,
+                FirstWeekDays: RegistrationPricingService.GetPeriodDays(AttendancePeriod.FirstWeek, edition),
+                SecondWeekDays: RegistrationPricingService.GetPeriodDays(AttendancePeriod.SecondWeek, edition),
+                AllowsWeekendVisit: edition.WeekendStartDate.HasValue && edition.PricePerAdultWeekend.HasValue,
+                PricePerAdultWeekend: edition.PricePerAdultWeekend,
+                PricePerChildWeekend: edition.PricePerChildWeekend,
+                PricePerBabyWeekend: edition.PricePerBabyWeekend,
+                WeekendStartDate: edition.WeekendStartDate,
+                WeekendEndDate: edition.WeekendEndDate,
+                WeekendDays: RegistrationPricingService.GetPeriodDays(AttendancePeriod.WeekendVisit, edition),
+                MaxWeekendCapacity: edition.MaxWeekendCapacity,
+                WeekendSpotsRemaining: weekendSpotsRemaining));
         }
 
         return result;

@@ -18,6 +18,23 @@ public class RegistrationMemberConfiguration : IEntityTypeConfiguration<Registra
             .HasConversion<string>().IsRequired().HasMaxLength(10).HasColumnName("age_category");
         builder.Property(m => m.IndividualAmount)
             .HasPrecision(10, 2).IsRequired().HasColumnName("individual_amount");
+
+        builder.Property(m => m.AttendancePeriod)
+            .HasConversion<string>()
+            .IsRequired()
+            .HasMaxLength(15)
+            .HasColumnName("attendance_period")
+            .HasDefaultValue(AttendancePeriod.Complete);
+
+        // Only populated for WeekendVisit members
+        builder.Property(m => m.VisitStartDate)
+            .HasColumnName("visit_start_date")
+            .HasColumnType("date");
+
+        builder.Property(m => m.VisitEndDate)
+            .HasColumnName("visit_end_date")
+            .HasColumnType("date");
+
         builder.Property(m => m.CreatedAt).IsRequired().HasColumnName("created_at")
             .HasDefaultValueSql("NOW()");
 

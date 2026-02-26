@@ -12,6 +12,15 @@ public interface IRegistrationsRepository
     Task<bool> ExistsAsync(Guid familyUnitId, Guid campEditionId, CancellationToken ct);
     /// <summary>Counts non-Cancelled registrations for capacity check.</summary>
     Task<int> CountActiveByEditionAsync(Guid campEditionId, CancellationToken ct);
+    /// <summary>
+    /// Counts members (not registrations) on-site for a given period.
+    /// A Complete member counts toward both FirstWeek and SecondWeek.
+    /// </summary>
+    Task<int> CountConcurrentAttendeesByPeriodAsync(
+        Guid campEditionId,
+        AttendancePeriod period,
+        CancellationToken ct
+    );
     Task AddAsync(Registration registration, CancellationToken ct);
     Task UpdateAsync(Registration registration, CancellationToken ct);
     Task DeleteMembersByRegistrationIdAsync(Guid registrationId, CancellationToken ct);
@@ -52,6 +61,18 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
     public async Task<int> CountActiveByEditionAsync(Guid campEditionId, CancellationToken ct)
         => await db.Registrations
             .CountAsync(r => r.CampEditionId == campEditionId && r.Status != RegistrationStatus.Cancelled, ct);
+
+    public async Task<int> CountConcurrentAttendeesByPeriodAsync(
+        Guid campEditionId,
+        AttendancePeriod period,
+        CancellationToken ct)
+        => await db.RegistrationMembers
+            .Where(rm =>
+                rm.Registration.CampEditionId == campEditionId &&
+                rm.Registration.Status != RegistrationStatus.Cancelled &&
+                (rm.AttendancePeriod == AttendancePeriod.Complete ||
+                 rm.AttendancePeriod == period))
+            .CountAsync(ct);
 
     public async Task AddAsync(Registration registration, CancellationToken ct)
     {
