@@ -199,6 +199,108 @@ public class CampEditionsServiceTests
             .WithMessage("*End date must be after start date*");
     }
 
+    [Fact]
+    public async Task ProposeAsync_WithNullProposalReason_CreatesEditionSuccessfully()
+    {
+        // Arrange
+        var camp = new Camp
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Camp",
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            IsActive = true
+        };
+
+        _campsRepository.GetByIdAsync(camp.Id, Arg.Any<CancellationToken>()).Returns(camp);
+
+        _repository.CreateAsync(Arg.Any<CampEdition>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var e = (CampEdition)callInfo[0];
+                e.Camp = camp;
+                return Task.FromResult(e);
+            });
+
+        var request = new ProposeCampEditionRequest(
+            CampId: camp.Id,
+            Year: 2026,
+            StartDate: new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate: new DateTime(2026, 7, 10, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult: null,
+            PricePerChild: null,
+            PricePerBaby: null,
+            UseCustomAgeRanges: false,
+            CustomBabyMaxAge: null,
+            CustomChildMinAge: null,
+            CustomChildMaxAge: null,
+            CustomAdultMinAge: null,
+            MaxCapacity: null,
+            Notes: null,
+            ProposalReason: null   // explicitly null — must be accepted
+        );
+
+        // Act
+        var act = async () => await _sut.ProposeAsync(request);
+
+        // Assert
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task ProposeAsync_WithProposalReason_StoresReasonOnEdition()
+    {
+        // Arrange
+        var camp = new Camp
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Camp",
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            IsActive = true
+        };
+
+        _campsRepository.GetByIdAsync(camp.Id, Arg.Any<CancellationToken>()).Returns(camp);
+
+        CampEdition? capturedEdition = null;
+        _repository
+            .CreateAsync(Arg.Any<CampEdition>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var e = (CampEdition)callInfo[0];
+                e.Camp = camp;
+                capturedEdition = e;
+                return Task.FromResult(e);
+            });
+
+        var request = new ProposeCampEditionRequest(
+            CampId: camp.Id,
+            Year: 2026,
+            StartDate: new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate: new DateTime(2026, 7, 10, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult: null,
+            PricePerChild: null,
+            PricePerBaby: null,
+            UseCustomAgeRanges: false,
+            CustomBabyMaxAge: null,
+            CustomChildMinAge: null,
+            CustomChildMaxAge: null,
+            CustomAdultMinAge: null,
+            MaxCapacity: null,
+            Notes: null,
+            ProposalReason: "Annual summer camp proposal"
+        );
+
+        // Act
+        await _sut.ProposeAsync(request);
+
+        // Assert
+        capturedEdition.Should().NotBeNull();
+        capturedEdition!.ProposalReason.Should().Be("Annual summer camp proposal");
+    }
+
     #endregion
 
     #region GetProposedAsync Tests

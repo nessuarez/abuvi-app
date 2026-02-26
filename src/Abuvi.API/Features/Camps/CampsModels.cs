@@ -136,6 +136,17 @@ public class CampEdition
 
     public int? MaxCapacity { get; set; }
     public string? Notes { get; set; }
+
+    /// <summary>
+    /// Optional reason for proposing this edition (provided during proposal, stored for board review).
+    /// </summary>
+    public string? ProposalReason { get; set; }
+
+    /// <summary>
+    /// Optional additional notes provided at proposal time (stored for reference; not sent by frontend after UX improvement).
+    /// </summary>
+    public string? ProposalNotes { get; set; }
+
     public bool IsArchived { get; set; } = false;
 
     public string? AccommodationCapacityJson { get; set; }
@@ -426,7 +437,9 @@ public record ProposeCampEditionRequest(
     int? CustomAdultMinAge,
     int? MaxCapacity,
     string? Notes,
-    AccommodationCapacity? AccommodationCapacity = null
+    AccommodationCapacity? AccommodationCapacity = null,
+    string? ProposalReason = null,   // Optional: reason for proposing this edition
+    string? ProposalNotes = null     // Optional: additional context (frontend no longer sends this)
 );
 
 /// <summary>
