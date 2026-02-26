@@ -71,10 +71,13 @@ Returns the health status of the API and its external dependencies. Does not req
 
 **Checks included:**
 
-| Check name | Failure status | What it verifies                                      |
-| ---------- | -------------- | ----------------------------------------------------- |
-| `database` | `Unhealthy`    | PostgreSQL connectivity via `SELECT 1` (5s timeout)   |
-| `resend`   | `Degraded`     | Resend API key is configured in settings              |
+| Check name      | Failure status | What it verifies                                                 |
+| --------------- | -------------- | ---------------------------------------------------------------- |
+| `database`      | `Unhealthy`    | PostgreSQL connectivity via `SELECT 1` (5s timeout)              |
+| `resend`        | `Degraded`     | Resend API key is configured in settings                         |
+| `google-places` | `Degraded`     | Google Places API key is configured                              |
+| `seq`           | `Degraded`     | Seq logging server is reachable at configured URL                |
+| `blob-storage`  | `Degraded`     | S3-compatible bucket is reachable; quota thresholds are monitored |
 
 ## Response Format
 
@@ -2197,3 +2200,111 @@ Soft-deletes a guest (sets `isActive = false`). The record is retained in the da
 
 - **403 Forbidden**: User is not the representative
 - **404 Not Found**: Family unit or guest doesn't exist
+
+---
+
+## Blob Storage Endpoints
+
+Blob Storage endpoints manage file uploads to and deletions from the configured S3-compatible object store (Hetzner Object Storage). All upload operations are available to any authenticated user; delete and stats operations require Admin role.
+
+### POST /api/blobs/upload
+
+Uploads a file to object storage. Accepts `multipart/form-data`.
+
+**Authorization**: Any authenticated user (`Bearer` token required)
+
+**Request (multipart/form-data):**
+
+| Field               | Type    | Required | Description                                                                        |
+| ------------------- | ------- | -------- | ---------------------------------------------------------------------------------- |
+| `file`              | File    | Yes      | The file to upload (max 50 MB)                                                     |
+| `folder`            | string  | Yes      | Target folder — one of: `photos`, `media-items`, `camp-locations`, `camp-photos`  |
+| `contextId`         | GUID    | No       | Optional context entity ID scoped to the file path                                 |
+| `generateThumbnail` | boolean | No       | When `true` and the file is an image, a WebP thumbnail is generated (default: `false`) |
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "fileUrl": "https://abuvi-media.fsn1.your-objectstorage.com/photos/abc123/photo.jpg",
+    "thumbnailUrl": "https://abuvi-media.fsn1.your-objectstorage.com/photos/abc123/thumbs/photo.webp",
+    "fileName": "photo.jpg",
+    "contentType": "image/jpeg",
+    "sizeBytes": 204800
+  }
+}
+```
+
+`thumbnailUrl` is `null` when `generateThumbnail` is `false` or the file type does not support thumbnails (audio, video, documents).
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed — invalid folder, disallowed extension for the folder, or file exceeds maximum size.
+- **401 Unauthorized**: No valid Bearer token.
+- **413 Payload Too Large**: File exceeds the server-side body limit (55 MB including multipart headers).
+
+---
+
+### DELETE /api/blobs
+
+Deletes one or more objects from storage by their storage keys.
+
+**Authorization**: Admin role required
+
+**Request Body:**
+
+```json
+{
+  "blobKeys": [
+    "photos/abc123/photo.jpg",
+    "photos/abc123/thumbs/photo.webp"
+  ]
+}
+```
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **400 Bad Request**: `blobKeys` array is empty or null.
+- **401 Unauthorized**: No valid Bearer token.
+- **403 Forbidden**: Authenticated user does not have Admin role.
+
+---
+
+### GET /api/blobs/stats
+
+Returns storage usage statistics. Results are cached server-side for 5 minutes to avoid expensive bucket enumeration on every call.
+
+**Authorization**: Admin role required
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "totalObjects": 27,
+    "totalSizeBytes": 15728640,
+    "totalSizeHumanReadable": "15 MB",
+    "quotaBytes": 53687091200,
+    "usedPct": 0.029,
+    "freeBytes": 53671362560,
+    "byFolder": {
+      "photos": { "objects": 15, "sizeBytes": 8388608 },
+      "media-items": { "objects": 8, "sizeBytes": 5242880 },
+      "camp-locations": { "objects": 3, "sizeBytes": 1572864 },
+      "camp-photos": { "objects": 1, "sizeBytes": 524288 }
+    }
+  }
+}
+```
+
+`quotaBytes`, `usedPct`, and `freeBytes` are `null` when `StorageQuotaBytes` is not configured (set to 0).
+
+**Error Responses:**
+
+- **401 Unauthorized**: No valid Bearer token.
+- **403 Forbidden**: Authenticated user does not have Admin role.

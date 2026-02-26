@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "data": {
+    "totalObjects": 27,
+    "totalSizeBytes": 15728640,
+    "totalSizeHumanReadable": "15 MB",
+    "quotaBytes": 53687091200,
+    "usedPct": 0.029,
+    "freeBytes": 53671362560,
+    "byFolder": {
+      "photos": {
+        "objects": 15,
+        "sizeBytes": 8388608
+      },
+      "media-items": {
+        "objects": 8,
+        "sizeBytes": 5242880
+      },
+      "camp-locations": {
+        "objects": 3,
+        "sizeBytes": 1572864
+      },
+      "camp-photos": {
+        "objects": 1,
+        "sizeBytes": 524288
+      }
+    }
+  },
+  "error": null
+}
