@@ -1,22 +1,86 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import Checkbox from 'primevue/checkbox'
+import Select from 'primevue/select'
+import DatePicker from 'primevue/datepicker'
 import type { FamilyMemberResponse, FamilyRelationship } from '@/types/family-unit'
 import { FamilyRelationshipLabels } from '@/types/family-unit'
+import type { CampEdition } from '@/types/camp-edition'
+import type { WizardMemberSelection, AttendancePeriod } from '@/types/registration'
+import { ATTENDANCE_PERIOD_LABELS, getAllowedPeriods } from '@/utils/registration'
 
 const props = defineProps<{
   members: FamilyMemberResponse[]
-  modelValue: string[]
+  modelValue: WizardMemberSelection[]
+  edition: CampEdition
 }>()
 
 const emit = defineEmits<{
-  'update:modelValue': [ids: string[]]
+  'update:modelValue': [selections: WizardMemberSelection[]]
 }>()
 
-const selectedIds = computed({
-  get: () => props.modelValue,
-  set: (ids: string[]) => emit('update:modelValue', ids)
-})
+const allowedPeriods = computed(() => getAllowedPeriods(props.edition))
+
+const showPeriodSelector = computed(() => allowedPeriods.value.length > 1)
+
+const periodOptions = computed(() =>
+  allowedPeriods.value.map((p) => ({
+    label: ATTENDANCE_PERIOD_LABELS[p],
+    value: p
+  }))
+)
+
+const weekendMinDate = computed(() =>
+  props.edition.weekendStartDate ? new Date(props.edition.weekendStartDate) : undefined
+)
+const weekendMaxDate = computed(() =>
+  props.edition.weekendEndDate ? new Date(props.edition.weekendEndDate) : undefined
+)
+
+const isSelected = (memberId: string): boolean =>
+  props.modelValue.some((s) => s.memberId === memberId)
+
+const getSelection = (memberId: string): WizardMemberSelection | undefined =>
+  props.modelValue.find((s) => s.memberId === memberId)
+
+const toggleMember = (memberId: string) => {
+  if (isSelected(memberId)) {
+    emit(
+      'update:modelValue',
+      props.modelValue.filter((s) => s.memberId !== memberId)
+    )
+  } else {
+    emit('update:modelValue', [
+      ...props.modelValue,
+      { memberId, attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null }
+    ])
+  }
+}
+
+const updatePeriod = (memberId: string, period: AttendancePeriod) => {
+  emit(
+    'update:modelValue',
+    props.modelValue.map((s) =>
+      s.memberId === memberId
+        ? { ...s, attendancePeriod: period, visitStartDate: null, visitEndDate: null }
+        : s
+    )
+  )
+}
+
+const updateVisitDate = (
+  memberId: string,
+  field: 'visitStartDate' | 'visitEndDate',
+  value: Date | null
+) => {
+  const dateStr = value
+    ? `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`
+    : null
+  emit(
+    'update:modelValue',
+    props.modelValue.map((s) => (s.memberId === memberId ? { ...s, [field]: dateStr } : s))
+  )
+}
 
 const formatDate = (dateStr: string): string =>
   new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(
@@ -25,15 +89,6 @@ const formatDate = (dateStr: string): string =>
 
 const relationshipLabel = (rel: FamilyRelationship): string =>
   FamilyRelationshipLabels[rel] ?? rel
-
-const toggleMember = (id: string) => {
-  const current = props.modelValue
-  if (current.includes(id)) {
-    emit('update:modelValue', current.filter((i) => i !== id))
-  } else {
-    emit('update:modelValue', [...current, id])
-  }
-}
 </script>
 
 <template>
@@ -42,11 +97,11 @@ const toggleMember = (id: string) => {
       v-for="member in members"
       :key="member.id"
       class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 transition hover:border-blue-300 hover:bg-blue-50"
-      :class="{ 'border-blue-400 bg-blue-50': modelValue.includes(member.id) }"
+      :class="{ 'border-blue-400 bg-blue-50': isSelected(member.id) }"
       :data-testid="`member-label-${member.id}`"
     >
       <Checkbox
-        :model-value="modelValue.includes(member.id)"
+        :model-value="isSelected(member.id)"
         :binary="true"
         @update:model-value="toggleMember(member.id)"
         :input-id="`member-${member.id}`"
@@ -79,6 +134,75 @@ const toggleMember = (id: string) => {
         <p class="mt-0.5 text-xs text-gray-500">
           {{ relationshipLabel(member.relationship) }} · {{ formatDate(member.dateOfBirth) }}
         </p>
+
+        <!-- Period selector: only shown when member is selected and edition allows multiple periods -->
+        <div
+          v-if="isSelected(member.id) && showPeriodSelector"
+          class="mt-2 space-y-2"
+          @click.stop
+        >
+          <Select
+            :model-value="getSelection(member.id)?.attendancePeriod"
+            :options="periodOptions"
+            option-label="label"
+            option-value="value"
+            placeholder="Periodo"
+            class="w-full text-sm"
+            :data-testid="`period-select-${member.id}`"
+            @update:model-value="(p: AttendancePeriod) => updatePeriod(member.id, p)"
+          />
+
+          <!-- Weekend visit date pickers -->
+          <template v-if="getSelection(member.id)?.attendancePeriod === 'WeekendVisit'">
+            <div class="flex gap-2">
+              <div class="flex-1">
+                <label class="mb-1 block text-xs text-gray-500">Llegada</label>
+                <DatePicker
+                  :model-value="
+                    getSelection(member.id)?.visitStartDate
+                      ? new Date(getSelection(member.id)!.visitStartDate!)
+                      : null
+                  "
+                  :min-date="weekendMinDate"
+                  :max-date="weekendMaxDate"
+                  date-format="dd/mm/yy"
+                  show-icon
+                  class="w-full text-sm"
+                  :data-testid="`visit-start-${member.id}`"
+                  @update:model-value="(d: Date | null) => updateVisitDate(member.id, 'visitStartDate', d)"
+                />
+              </div>
+              <div class="flex-1">
+                <label class="mb-1 block text-xs text-gray-500">Salida</label>
+                <DatePicker
+                  :model-value="
+                    getSelection(member.id)?.visitEndDate
+                      ? new Date(getSelection(member.id)!.visitEndDate!)
+                      : null
+                  "
+                  :min-date="
+                    getSelection(member.id)?.visitStartDate
+                      ? new Date(getSelection(member.id)!.visitStartDate!)
+                      : weekendMinDate
+                  "
+                  :max-date="weekendMaxDate"
+                  date-format="dd/mm/yy"
+                  show-icon
+                  class="w-full text-sm"
+                  :data-testid="`visit-end-${member.id}`"
+                  @update:model-value="(d: Date | null) => updateVisitDate(member.id, 'visitEndDate', d)"
+                />
+              </div>
+            </div>
+            <p
+              v-if="edition.weekendStartDate && edition.weekendEndDate"
+              class="text-xs text-orange-600"
+            >
+              Máximo 3 días. Dentro del periodo {{ formatDate(edition.weekendStartDate) }} —
+              {{ formatDate(edition.weekendEndDate) }}
+            </p>
+          </template>
+        </div>
       </div>
     </label>
   </div>

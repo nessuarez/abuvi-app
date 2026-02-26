@@ -4,6 +4,25 @@ export type AgeCategory = 'Baby' | 'Child' | 'Adult'
 export type PaymentMethod = 'Card' | 'Transfer' | 'Cash'
 export type PaymentStatus = 'Pending' | 'Completed' | 'Failed' | 'Refunded'
 
+// Complete is first to match the backend enum CLR default (0)
+export type AttendancePeriod = 'Complete' | 'FirstWeek' | 'SecondWeek' | 'WeekendVisit'
+
+// API request shape per member (sent to backend)
+export interface MemberAttendanceRequest {
+  memberId: string
+  attendancePeriod: AttendancePeriod
+  visitStartDate?: string | null // YYYY-MM-DD, required when WeekendVisit
+  visitEndDate?: string | null // YYYY-MM-DD, required when WeekendVisit
+}
+
+// Wizard-local state: richer than MemberAttendanceRequest, not sent directly to API
+export interface WizardMemberSelection {
+  memberId: string
+  attendancePeriod: AttendancePeriod
+  visitStartDate: string | null // ISO date string YYYY-MM-DD
+  visitEndDate: string | null
+}
+
 // Embedded summaries in RegistrationResponse
 export interface RegistrationFamilyUnitSummary {
   id: string
@@ -26,6 +45,10 @@ export interface MemberPricingDetail {
   fullName: string
   ageAtCamp: number
   ageCategory: AgeCategory
+  attendancePeriod: AttendancePeriod
+  attendanceDays: number
+  visitStartDate: string | null // only populated for WeekendVisit
+  visitEndDate: string | null
   individualAmount: number
 }
 
@@ -95,18 +118,36 @@ export interface AvailableCampEditionResponse {
   spotsRemaining: number | null
   status: string
   ageRanges: AgeRangesInfo
+  // Partial attendance (week periods):
+  allowsPartialAttendance: boolean
+  pricePerAdultWeek: number | null
+  pricePerChildWeek: number | null
+  pricePerBabyWeek: number | null
+  halfDate: string | null // YYYY-MM-DD
+  firstWeekDays: number
+  secondWeekDays: number
+  // Weekend visit:
+  allowsWeekendVisit: boolean
+  pricePerAdultWeekend: number | null
+  pricePerChildWeekend: number | null
+  pricePerBabyWeekend: number | null
+  weekendStartDate: string | null // YYYY-MM-DD
+  weekendEndDate: string | null // YYYY-MM-DD
+  weekendDays: number
+  maxWeekendCapacity: number | null
+  weekendSpotsRemaining: number | null
 }
 
 // Request types
 export interface CreateRegistrationRequest {
   campEditionId: string
   familyUnitId: string
-  memberIds: string[]
+  members: MemberAttendanceRequest[]
   notes?: string | null
 }
 
 export interface UpdateRegistrationMembersRequest {
-  memberIds: string[]
+  members: MemberAttendanceRequest[]
 }
 
 export interface ExtraSelectionRequest {
