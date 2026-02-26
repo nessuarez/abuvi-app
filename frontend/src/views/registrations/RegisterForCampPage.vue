@@ -20,7 +20,8 @@ import { useFamilyUnits } from '@/composables/useFamilyUnits'
 import { useRegistrations } from '@/composables/useRegistrations'
 import { useAuthStore } from '@/stores/auth'
 import type { CampEdition } from '@/types/camp-edition'
-import type { WizardExtrasSelection } from '@/types/registration'
+import type { WizardMemberSelection, WizardExtrasSelection } from '@/types/registration'
+import { ATTENDANCE_PERIOD_LABELS, computePeriodDays } from '@/utils/registration'
 
 const route = useRoute()
 const router = useRouter()
@@ -35,7 +36,7 @@ const { extras: campExtras, fetchExtras } = useCampExtras(editionId.value)
 const { createRegistration, setExtras, loading, error } = useRegistrations()
 
 const currentStep = ref(1)
-const selectedMemberIds = ref<string[]>([])
+const selectedMembers = ref<WizardMemberSelection[]>([])
 const extrasSelections = ref<WizardExtrasSelection[]>([])
 const notes = ref<string>('')
 const edition = ref<CampEdition | null>(null)
@@ -45,12 +46,34 @@ const isRepresentative = computed(
   () => !!familyUnit.value && familyUnit.value.representativeUserId === auth.user?.id
 )
 
-const selectedMembers = computed(() =>
-  familyMembers.value.filter((m) => selectedMemberIds.value.includes(m.id))
+// FamilyMemberResponse objects for the selected wizard members
+const selectedMemberDetails = computed(() =>
+  familyMembers.value.filter((m) => selectedMembers.value.some((s) => s.memberId === m.id))
 )
 
-const hasExtrasSelected = computed(() =>
-  extrasSelections.value.some((e) => e.quantity > 0)
+const hasExtrasSelected = computed(() => extrasSelections.value.some((e) => e.quantity > 0))
+
+const allowsPartialAttendance = computed(() => !!edition.value?.pricePerAdultWeek)
+
+const allowsWeekendVisit = computed(() => !!edition.value?.weekendStartDate)
+
+const periodDays = computed(() => {
+  if (!edition.value) return { firstWeekDays: 0, secondWeekDays: 0, totalDays: 0 }
+  return computePeriodDays(
+    edition.value.startDate,
+    edition.value.endDate,
+    edition.value.halfDate ?? null
+  )
+})
+
+const weekendVisitIsValid = computed(() =>
+  selectedMembers.value
+    .filter((s) => s.attendancePeriod === 'WeekendVisit')
+    .every((s) => s.visitStartDate != null && s.visitEndDate != null)
+)
+
+const canProceedFromStep1 = computed(
+  () => selectedMembers.value.length > 0 && isRepresentative.value && weekendVisitIsValid.value
 )
 
 const formatCurrency = (amount: number): string =>
@@ -67,7 +90,12 @@ const handleConfirm = async () => {
   const created = await createRegistration({
     campEditionId: editionId.value,
     familyUnitId: familyUnit.value.id,
-    memberIds: selectedMemberIds.value,
+    members: selectedMembers.value.map((s) => ({
+      memberId: s.memberId,
+      attendancePeriod: s.attendancePeriod,
+      visitStartDate: s.visitStartDate ?? null,
+      visitEndDate: s.visitEndDate ?? null
+    })),
     notes: notes.value || null
   })
 
@@ -183,15 +211,21 @@ onMounted(async () => {
                       Elige qué miembros de tu unidad familiar se inscriben al campamento.
                     </p>
 
-                    <div v-if="familyMembers.length === 0" class="py-4 text-center text-sm text-gray-400">
+                    <div
+                      v-if="familyMembers.length === 0"
+                      class="py-4 text-center text-sm text-gray-400"
+                    >
                       No hay miembros en tu unidad familiar. Añádelos desde
-                      <RouterLink to="/family-unit" class="text-blue-600 underline">Mi Unidad Familiar</RouterLink>.
+                      <RouterLink to="/family-unit" class="text-blue-600 underline"
+                        >Mi Unidad Familiar</RouterLink
+                      >.
                     </div>
 
                     <RegistrationMemberSelector
                       v-else
-                      v-model="selectedMemberIds"
+                      v-model="selectedMembers"
                       :members="familyMembers"
+                      :edition="edition!"
                     />
                   </div>
 
@@ -200,7 +234,7 @@ onMounted(async () => {
                       label="Siguiente"
                       icon="pi pi-arrow-right"
                       icon-pos="right"
-                      :disabled="selectedMemberIds.length === 0 || !isRepresentative"
+                      :disabled="!canProceedFromStep1"
                       @click="currentStep = 2"
                       data-testid="next-step-btn"
                     />
@@ -263,30 +297,150 @@ onMounted(async () => {
                       Comprueba los datos antes de confirmar tu inscripción.
                     </p>
 
-                    <!-- Selected members -->
+                    <!-- Selected members with period -->
                     <div class="mb-4 rounded-lg border border-gray-200 p-4">
-                      <h3 class="mb-2 text-sm font-semibold text-gray-700">Participantes seleccionados</h3>
+                      <h3 class="mb-2 text-sm font-semibold text-gray-700">
+                        Participantes seleccionados
+                      </h3>
                       <ul class="space-y-1">
                         <li
-                          v-for="member in selectedMembers"
+                          v-for="member in selectedMemberDetails"
                           :key="member.id"
                           class="text-sm text-gray-800"
                         >
                           {{ member.firstName }} {{ member.lastName }}
+                          <span class="ml-1 text-xs text-gray-500">
+                            ·
+                            {{
+                              ATTENDANCE_PERIOD_LABELS[
+                                selectedMembers.find((s) => s.memberId === member.id)!
+                                  .attendancePeriod
+                              ]
+                            }}
+                          </span>
                         </li>
                       </ul>
                     </div>
 
                     <!-- Price reference -->
                     <div v-if="edition" class="mb-4 rounded-lg border border-blue-100 bg-blue-50 p-4">
-                      <h3 class="mb-2 text-sm font-semibold text-blue-800">Precios de referencia</h3>
-                      <ul class="space-y-1 text-sm text-blue-700">
-                        <li>Adulto: {{ formatCurrency(edition.pricePerAdult) }}</li>
-                        <li>Niño/Niña: {{ formatCurrency(edition.pricePerChild) }}</li>
-                        <li>Bebé: {{ formatCurrency(edition.pricePerBaby) }}</li>
-                      </ul>
+                      <h3 class="mb-2 text-sm font-semibold text-blue-800">
+                        Precios de referencia
+                      </h3>
+                      <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-blue-700">
+                          <thead>
+                            <tr>
+                              <th class="pb-1 text-left font-medium">Categoría</th>
+                              <th class="pb-1 text-right font-medium">Completo</th>
+                              <th
+                                v-if="allowsPartialAttendance"
+                                class="pb-1 text-right font-medium"
+                              >
+                                1ª sem. ({{ periodDays.firstWeekDays }}d)
+                              </th>
+                              <th
+                                v-if="allowsPartialAttendance"
+                                class="pb-1 text-right font-medium"
+                              >
+                                2ª sem. ({{ periodDays.secondWeekDays }}d)
+                              </th>
+                              <th
+                                v-if="allowsWeekendVisit"
+                                class="pb-1 text-right font-medium"
+                              >
+                                Fin de semana
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td class="py-0.5">Adulto/a</td>
+                              <td class="py-0.5 text-right">
+                                {{ formatCurrency(edition.pricePerAdult) }}
+                              </td>
+                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerAdultWeek
+                                    ? formatCurrency(edition.pricePerAdultWeek)
+                                    : '—'
+                                }}
+                              </td>
+                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerAdultWeek
+                                    ? formatCurrency(edition.pricePerAdultWeek)
+                                    : '—'
+                                }}
+                              </td>
+                              <td v-if="allowsWeekendVisit" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerAdultWeekend
+                                    ? formatCurrency(edition.pricePerAdultWeekend)
+                                    : '—'
+                                }}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td class="py-0.5">Niño/Niña</td>
+                              <td class="py-0.5 text-right">
+                                {{ formatCurrency(edition.pricePerChild) }}
+                              </td>
+                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerChildWeek
+                                    ? formatCurrency(edition.pricePerChildWeek)
+                                    : '—'
+                                }}
+                              </td>
+                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerChildWeek
+                                    ? formatCurrency(edition.pricePerChildWeek)
+                                    : '—'
+                                }}
+                              </td>
+                              <td v-if="allowsWeekendVisit" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerChildWeekend
+                                    ? formatCurrency(edition.pricePerChildWeekend)
+                                    : '—'
+                                }}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td class="py-0.5">Bebé</td>
+                              <td class="py-0.5 text-right">
+                                {{ formatCurrency(edition.pricePerBaby) }}
+                              </td>
+                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerBabyWeek
+                                    ? formatCurrency(edition.pricePerBabyWeek)
+                                    : '—'
+                                }}
+                              </td>
+                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerBabyWeek
+                                    ? formatCurrency(edition.pricePerBabyWeek)
+                                    : '—'
+                                }}
+                              </td>
+                              <td v-if="allowsWeekendVisit" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerBabyWeekend
+                                    ? formatCurrency(edition.pricePerBabyWeekend)
+                                    : '—'
+                                }}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
                       <p class="mt-2 text-xs text-blue-600">
-                        El precio final se calculará al confirmar según las categorías de edad de cada persona.
+                        El precio final se calculará al confirmar según las categorías de edad de
+                        cada persona.
                       </p>
                     </div>
 
@@ -295,7 +449,7 @@ onMounted(async () => {
                       <h3 class="mb-2 text-sm font-semibold text-gray-700">Extras seleccionados</h3>
                       <ul class="space-y-1">
                         <li
-                          v-for="extra in extrasSelections.filter(e => e.quantity > 0)"
+                          v-for="extra in extrasSelections.filter((e) => e.quantity > 0)"
                           :key="extra.campEditionExtraId"
                           class="text-sm text-gray-800"
                         >
@@ -331,7 +485,7 @@ onMounted(async () => {
                       label="Confirmar inscripción"
                       icon="pi pi-check"
                       :loading="loading"
-                      :disabled="selectedMemberIds.length === 0"
+                      :disabled="selectedMembers.length === 0"
                       @click="handleConfirm"
                       data-testid="confirm-registration-btn"
                     />

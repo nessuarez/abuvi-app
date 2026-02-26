@@ -34,6 +34,18 @@ export interface CampEdition {
   availableSpots?: number
   accommodationCapacity?: AccommodationCapacity | null
   calculatedTotalBedCapacity?: number | null
+  // Partial attendance (week pricing):
+  halfDate?: string | null // YYYY-MM-DD
+  pricePerAdultWeek?: number | null
+  pricePerChildWeek?: number | null
+  pricePerBabyWeek?: number | null
+  // Weekend visit:
+  weekendStartDate?: string | null // YYYY-MM-DD
+  weekendEndDate?: string | null // YYYY-MM-DD
+  pricePerAdultWeekend?: number | null
+  pricePerChildWeekend?: number | null
+  pricePerBabyWeekend?: number | null
+  maxWeekendCapacity?: number | null
 }
 
 export type CampEditionStatus = 'Proposed' | 'Draft' | 'Open' | 'Closed' | 'Completed'
@@ -63,6 +75,18 @@ export interface ProposeCampEditionRequest extends CreateCampEditionRequest {
   proposalReason: string
   proposalNotes: string
   accommodationCapacity?: AccommodationCapacity | null
+  // Partial attendance (week pricing):
+  halfDate?: string | null
+  pricePerAdultWeek?: number | null
+  pricePerChildWeek?: number | null
+  pricePerBabyWeek?: number | null
+  // Weekend visit:
+  weekendStartDate?: string | null
+  weekendEndDate?: string | null
+  pricePerAdultWeekend?: number | null
+  pricePerChildWeekend?: number | null
+  pricePerBabyWeekend?: number | null
+  maxWeekendCapacity?: number | null
 }
 
 export interface CampEditionExtra {
@@ -106,6 +130,18 @@ export interface UpdateCampEditionRequest {
   customAdultMinAge?: number
   maxCapacity?: number
   notes?: string
+  // Partial attendance (week pricing):
+  halfDate?: string | null
+  pricePerAdultWeek?: number | null
+  pricePerChildWeek?: number | null
+  pricePerBabyWeek?: number | null
+  // Weekend visit:
+  weekendStartDate?: string | null
+  weekendEndDate?: string | null
+  pricePerAdultWeekend?: number | null
+  pricePerChildWeekend?: number | null
+  pricePerBabyWeekend?: number | null
+  maxWeekendCapacity?: number | null
 }
 
 export interface ChangeEditionStatusRequest {
@@ -136,6 +172,18 @@ export interface ActiveCampEditionResponse {
   notes?: string
   createdAt: string
   updatedAt: string
+  // Partial attendance (week pricing):
+  halfDate?: string | null
+  pricePerAdultWeek?: number | null
+  pricePerChildWeek?: number | null
+  pricePerBabyWeek?: number | null
+  // Weekend visit:
+  weekendStartDate?: string | null
+  weekendEndDate?: string | null
+  pricePerAdultWeekend?: number | null
+  pricePerChildWeekend?: number | null
+  pricePerBabyWeekend?: number | null
+  maxWeekendCapacity?: number | null
 }
 
 export interface CampEditionFilters {
