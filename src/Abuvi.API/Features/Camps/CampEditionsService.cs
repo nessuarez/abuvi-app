@@ -168,6 +168,7 @@ public class CampEditionsService
     public async Task<CampEditionResponse> ChangeStatusAsync(
         Guid editionId,
         CampEditionStatus newStatus,
+        bool force,
         CancellationToken cancellationToken = default)
     {
         var edition = await _repository.GetByIdAsync(editionId, cancellationToken);
@@ -175,7 +176,9 @@ public class CampEditionsService
             throw new InvalidOperationException("La edición de campamento no fue encontrada");
 
         ValidateStatusTransition(edition.Status, newStatus);
-        ValidateDateConstraintsForTransition(edition, newStatus);
+
+        if (!force)
+            ValidateDateConstraintsForTransition(edition, newStatus);
 
         edition.Status = newStatus;
         var updated = await _repository.UpdateAsync(edition, cancellationToken);
@@ -358,7 +361,7 @@ public class CampEditionsService
         {
             [CampEditionStatus.Proposed]  = [CampEditionStatus.Draft],
             [CampEditionStatus.Draft]     = [CampEditionStatus.Open],
-            [CampEditionStatus.Open]      = [CampEditionStatus.Closed],
+            [CampEditionStatus.Open]      = [CampEditionStatus.Closed, CampEditionStatus.Draft],
             [CampEditionStatus.Closed]    = [CampEditionStatus.Completed],
             [CampEditionStatus.Completed] = []
         };
