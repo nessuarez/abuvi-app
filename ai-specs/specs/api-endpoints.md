@@ -1390,7 +1390,7 @@ Fetch detailed information for a specific place by its Google Place ID, includin
 
 ## Camp Edition Lifecycle Endpoints
 
-Manage the status lifecycle of camp editions. Status transitions follow a strict linear workflow: `Proposed → Draft → Open → Closed → Completed`. Rejection (archiving) is handled via `DELETE /api/camps/editions/{id}/reject`.
+Manage the status lifecycle of camp editions. Status transitions follow a strict linear workflow: `Proposed → Draft → Open → Closed → Completed`. Admins can additionally roll back `Open → Draft` to make corrections. Rejection (archiving) is handled via `DELETE /api/camps/editions/{id}/reject`.
 
 **Base Path:** `/api/camps/editions`
 
@@ -1605,25 +1605,32 @@ Changes the status of a camp edition following the allowed transition chain.
 
 **Valid Transitions:**
 
-| From | To |
-|------|----|
-| `Proposed` | `Draft` |
-| `Draft` | `Open` |
-| `Open` | `Closed` |
-| `Closed` | `Completed` |
+| From | To | Roles |
+|------|----|-------|
+| `Proposed` | `Draft` | Admin, Board |
+| `Draft` | `Open` | Admin, Board |
+| `Open` | `Closed` | Admin, Board |
+| `Closed` | `Completed` | Admin, Board |
+| `Open` | `Draft` | Admin only |
 
 Additional date constraints:
 
-- `Draft → Open`: Edition's `startDate` must not be in the past
+- `Draft → Open`: Edition's `startDate` must not be in the past (bypassed when `force: true`, Admin only)
 - `Closed → Completed`: Edition's `endDate` must be in the past
 
 **Request Body:**
 
 ```json
 {
-  "status": "Draft"
+  "status": "Draft",
+  "force": false
 }
 ```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `status` | `CampEditionStatus` | Yes | Target status |
+| `force` | `boolean` | No (default: `false`) | Admin-only. When `true`, bypasses the `startDate < today` constraint when transitioning `Draft → Open`. Returns 403 if sent by a non-Admin user. |
 
 **Success Response (200 OK):** Returns the updated `CampEditionResponse`.
 
@@ -1631,7 +1638,7 @@ Additional date constraints:
 
 - **400 Bad Request**: Invalid transition or date constraint violation (`VALIDATION_ERROR` / `OPERATION_ERROR`)
 - **401 Unauthorized**: User not authenticated
-- **403 Forbidden**: Insufficient role
+- **403 Forbidden**: Insufficient role (e.g. Board user attempting `Open → Draft` or using `force: true`)
 - **404 Not Found**: Edition not found (`NOT_FOUND`)
 
 ---
