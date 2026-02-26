@@ -1884,22 +1884,68 @@ Activates a membership for a family member.
 
 ```json
 {
-  "startDate": "2026-01-01"
+  "year": 2026
 }
 ```
 
 **Field Notes:**
 
-- `startDate`: Required, ISO 8601 date string (`YYYY-MM-DD`), must not be in the future
+- `year`: Required, calendar year integer. Must be > 2000 and ≤ current calendar year. Backend normalizes to `{year}-01-01T00:00:00Z` for storage.
 
-**Success Response (201 Created):** Same structure as GET response above
+**Success Response (201 Created):** Same structure as GET response above. The `startDate` field in the response will always be `{year}-01-01T00:00:00Z`.
 
 **Error Responses:**
 
-- **400 Bad Request**: Validation failed (startDate in future)
+- **400 Bad Request**: Validation failed (year in future or ≤ 2000)
 - **403 Forbidden**: User is not authorized
 - **404 Not Found**: Family unit or member doesn't exist
 - **409 Conflict**: Member already has an active membership (`MEMBERSHIP_EXISTS`)
+
+---
+
+### POST /api/family-units/{familyUnitId}/membership/bulk
+
+Activates memberships for all family members who do not yet have one, in a single request. Members who already have an active membership are skipped (not an error).
+
+**Authorization**: Admin/Board only
+
+**Request Body:**
+
+```json
+{
+  "year": 2026
+}
+```
+
+**Field Notes:**
+
+- `year`: Required, calendar year integer. Must be > 2000 and ≤ current calendar year.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "activated": 3,
+    "skipped": 1,
+    "results": [
+      { "memberId": "...", "memberName": "Ana García", "status": "Activated" },
+      { "memberId": "...", "memberName": "Pedro García", "status": "Activated" },
+      { "memberId": "...", "memberName": "Luis García", "status": "Activated" },
+      { "memberId": "...", "memberName": "María García", "status": "Skipped", "reason": "Ya tiene membresía activa" }
+    ]
+  }
+}
+```
+
+**Result status values:** `Activated` | `Skipped` | `Failed`
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed (year in future or ≤ 2000)
+- **403 Forbidden**: User is not Board/Admin
+- **404 Not Found**: Family unit doesn't exist
 
 ---
 
