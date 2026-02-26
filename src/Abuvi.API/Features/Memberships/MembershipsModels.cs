@@ -54,7 +54,7 @@ public enum FeeStatus
 }
 
 // Request DTOs
-public record CreateMembershipRequest(DateTime StartDate);
+public record CreateMembershipRequest(int Year);
 
 // Fee management DTOs
 public record PayFeeRequest(
@@ -83,4 +83,22 @@ public record MembershipFeeResponse(
     DateTime? PaidDate,
     string? PaymentReference,
     DateTime CreatedAt
+);
+
+// Bulk membership DTOs
+public record BulkActivateMembershipRequest(int Year);
+
+public enum BulkMembershipResultStatus { Activated, Skipped, Failed }
+
+public record BulkMembershipMemberResult(
+    Guid MemberId,
+    string MemberName,
+    BulkMembershipResultStatus Status,
+    string? Reason = null
+);
+
+public record BulkActivateMembershipResponse(
+    int Activated,
+    int Skipped,
+    IReadOnlyList<BulkMembershipMemberResult> Results
 );

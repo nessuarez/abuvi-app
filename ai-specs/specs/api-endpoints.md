@@ -1390,7 +1390,7 @@ Fetch detailed information for a specific place by its Google Place ID, includin
 
 ## Camp Edition Lifecycle Endpoints
 
-Manage the status lifecycle of camp editions. Status transitions follow a strict linear workflow: `Proposed → Draft → Open → Closed → Completed`. Rejection (archiving) is handled via `DELETE /api/camps/editions/{id}/reject`.
+Manage the status lifecycle of camp editions. Status transitions follow a strict linear workflow: `Proposed → Draft → Open → Closed → Completed`. Admins can additionally roll back `Open → Draft` to make corrections. Rejection (archiving) is handled via `DELETE /api/camps/editions/{id}/reject`.
 
 **Base Path:** `/api/camps/editions`
 
@@ -1605,25 +1605,32 @@ Changes the status of a camp edition following the allowed transition chain.
 
 **Valid Transitions:**
 
-| From | To |
-|------|----|
-| `Proposed` | `Draft` |
-| `Draft` | `Open` |
-| `Open` | `Closed` |
-| `Closed` | `Completed` |
+| From | To | Roles |
+|------|----|-------|
+| `Proposed` | `Draft` | Admin, Board |
+| `Draft` | `Open` | Admin, Board |
+| `Open` | `Closed` | Admin, Board |
+| `Closed` | `Completed` | Admin, Board |
+| `Open` | `Draft` | Admin only |
 
 Additional date constraints:
 
-- `Draft → Open`: Edition's `startDate` must not be in the past
+- `Draft → Open`: Edition's `startDate` must not be in the past (bypassed when `force: true`, Admin only)
 - `Closed → Completed`: Edition's `endDate` must be in the past
 
 **Request Body:**
 
 ```json
 {
-  "status": "Draft"
+  "status": "Draft",
+  "force": false
 }
 ```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `status` | `CampEditionStatus` | Yes | Target status |
+| `force` | `boolean` | No (default: `false`) | Admin-only. When `true`, bypasses the `startDate < today` constraint when transitioning `Draft → Open`. Returns 403 if sent by a non-Admin user. |
 
 **Success Response (200 OK):** Returns the updated `CampEditionResponse`.
 
@@ -1631,7 +1638,7 @@ Additional date constraints:
 
 - **400 Bad Request**: Invalid transition or date constraint violation (`VALIDATION_ERROR` / `OPERATION_ERROR`)
 - **401 Unauthorized**: User not authenticated
-- **403 Forbidden**: Insufficient role
+- **403 Forbidden**: Insufficient role (e.g. Board user attempting `Open → Draft` or using `force: true`)
 - **404 Not Found**: Edition not found (`NOT_FOUND`)
 
 ---
@@ -1884,22 +1891,68 @@ Activates a membership for a family member.
 
 ```json
 {
-  "startDate": "2026-01-01"
+  "year": 2026
 }
 ```
 
 **Field Notes:**
 
-- `startDate`: Required, ISO 8601 date string (`YYYY-MM-DD`), must not be in the future
+- `year`: Required, calendar year integer. Must be > 2000 and ≤ current calendar year. Backend normalizes to `{year}-01-01T00:00:00Z` for storage.
 
-**Success Response (201 Created):** Same structure as GET response above
+**Success Response (201 Created):** Same structure as GET response above. The `startDate` field in the response will always be `{year}-01-01T00:00:00Z`.
 
 **Error Responses:**
 
-- **400 Bad Request**: Validation failed (startDate in future)
+- **400 Bad Request**: Validation failed (year in future or ≤ 2000)
 - **403 Forbidden**: User is not authorized
 - **404 Not Found**: Family unit or member doesn't exist
 - **409 Conflict**: Member already has an active membership (`MEMBERSHIP_EXISTS`)
+
+---
+
+### POST /api/family-units/{familyUnitId}/membership/bulk
+
+Activates memberships for all family members who do not yet have one, in a single request. Members who already have an active membership are skipped (not an error).
+
+**Authorization**: Admin/Board only
+
+**Request Body:**
+
+```json
+{
+  "year": 2026
+}
+```
+
+**Field Notes:**
+
+- `year`: Required, calendar year integer. Must be > 2000 and ≤ current calendar year.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "activated": 3,
+    "skipped": 1,
+    "results": [
+      { "memberId": "...", "memberName": "Ana García", "status": "Activated" },
+      { "memberId": "...", "memberName": "Pedro García", "status": "Activated" },
+      { "memberId": "...", "memberName": "Luis García", "status": "Activated" },
+      { "memberId": "...", "memberName": "María García", "status": "Skipped", "reason": "Ya tiene membresía activa" }
+    ]
+  }
+}
+```
+
+**Result status values:** `Activated` | `Skipped` | `Failed`
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed (year in future or ≤ 2000)
+- **403 Forbidden**: User is not Board/Admin
+- **404 Not Found**: Family unit doesn't exist
 
 ---
 

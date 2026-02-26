@@ -595,11 +595,26 @@ public static class CampsEndpoints
         [FromServices] CampEditionsService service,
         Guid id,
         ChangeEditionStatusRequest request,
+        ClaimsPrincipal user,
         CancellationToken cancellationToken = default)
     {
+        var isAdmin = user.IsInRole("Admin");
+
+        // Open → Draft is Admin-only: fetch current status to verify the role guard
+        if (request.Status == CampEditionStatus.Draft)
+        {
+            var current = await service.GetByIdAsync(id, cancellationToken);
+            if (current?.Status == CampEditionStatus.Open && !isAdmin)
+                return Results.Forbid();
+        }
+
+        // force flag is Admin-only
+        if (request.Force && !isAdmin)
+            return Results.Forbid();
+
         try
         {
-            var edition = await service.ChangeStatusAsync(id, request.Status, cancellationToken);
+            var edition = await service.ChangeStatusAsync(id, request.Status, request.Force, cancellationToken);
             return Results.Ok(ApiResponse<CampEditionResponse>.Ok(edition));
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("no fue encontrada"))

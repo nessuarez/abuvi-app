@@ -462,18 +462,24 @@ public class CampEditionsServiceTests
     [InlineData(CampEditionStatus.Draft, CampEditionStatus.Open)]
     [InlineData(CampEditionStatus.Open, CampEditionStatus.Closed)]
     [InlineData(CampEditionStatus.Closed, CampEditionStatus.Completed)]
+    [InlineData(CampEditionStatus.Open, CampEditionStatus.Draft)]
     public async Task ChangeStatusAsync_WithValidTransition_UpdatesStatus(
         CampEditionStatus from, CampEditionStatus to)
     {
         // Arrange
         var editionId = Guid.NewGuid();
         // Use a future start date for Draft→Open, and a past end date for Closed→Completed
+        // For Open→Draft, use a past start date (no date constraint applies on →Draft)
         var startDate = to == CampEditionStatus.Open
             ? DateTime.UtcNow.AddDays(1)
-            : DateTime.UtcNow.AddDays(-30);
+            : to == CampEditionStatus.Draft
+                ? DateTime.UtcNow.AddDays(-30)
+                : DateTime.UtcNow.AddDays(-30);
         var endDate = to == CampEditionStatus.Completed
             ? DateTime.UtcNow.AddDays(-1)
-            : DateTime.UtcNow.AddDays(10);
+            : to == CampEditionStatus.Draft
+                ? DateTime.UtcNow.AddDays(10)
+                : DateTime.UtcNow.AddDays(10);
 
         var edition = new CampEdition
         {
@@ -496,7 +502,7 @@ public class CampEditionsServiceTests
             .Returns(args => args.Arg<CampEdition>());
 
         // Act
-        var result = await _sut.ChangeStatusAsync(editionId, to);
+        var result = await _sut.ChangeStatusAsync(editionId, to, force: false);
 
         // Assert
         result.Status.Should().Be(to);
@@ -531,7 +537,7 @@ public class CampEditionsServiceTests
             .Returns(edition);
 
         // Act & Assert
-        var act = async () => await _sut.ChangeStatusAsync(editionId, to);
+        var act = async () => await _sut.ChangeStatusAsync(editionId, to, force: false);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage($"*La transición de '{from}' a '{to}' no es válida*");
     }
@@ -558,7 +564,7 @@ public class CampEditionsServiceTests
             .Returns(edition);
 
         // Act & Assert
-        var act = async () => await _sut.ChangeStatusAsync(editionId, CampEditionStatus.Open);
+        var act = async () => await _sut.ChangeStatusAsync(editionId, CampEditionStatus.Open, force: false);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*No se puede abrir el registro*");
     }
@@ -585,7 +591,7 @@ public class CampEditionsServiceTests
             .Returns(edition);
 
         // Act & Assert
-        var act = async () => await _sut.ChangeStatusAsync(editionId, CampEditionStatus.Completed);
+        var act = async () => await _sut.ChangeStatusAsync(editionId, CampEditionStatus.Completed, force: false);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*No se puede marcar como completada*");
     }
@@ -599,9 +605,131 @@ public class CampEditionsServiceTests
             .Returns((CampEdition?)null);
 
         // Act & Assert
-        var act = async () => await _sut.ChangeStatusAsync(editionId, CampEditionStatus.Draft);
+        var act = async () => await _sut.ChangeStatusAsync(editionId, CampEditionStatus.Draft, force: false);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*La edición de campamento no fue encontrada*");
+    }
+
+    [Fact]
+    public async Task ChangeStatusAsync_WhenOpenToDraft_WithForceFalse_SetsStatusToDraft()
+    {
+        // Arrange
+        var editionId = Guid.NewGuid();
+        var edition = new CampEdition
+        {
+            Id = editionId,
+            CampId = Guid.NewGuid(),
+            Year = 2026,
+            Status = CampEditionStatus.Open,
+            StartDate = DateTime.UtcNow.AddDays(-5), // Camp already started — still allowed for Open→Draft
+            EndDate = DateTime.UtcNow.AddDays(5),
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            Camp = new Camp { Name = "Test Camp", PricePerAdult = 180m, PricePerChild = 120m, PricePerBaby = 60m }
+        };
+
+        _repository.GetByIdAsync(editionId, Arg.Any<CancellationToken>())
+            .Returns(edition);
+        _repository.UpdateAsync(Arg.Any<CampEdition>(), Arg.Any<CancellationToken>())
+            .Returns(args => args.Arg<CampEdition>());
+
+        // Act
+        var result = await _sut.ChangeStatusAsync(editionId, CampEditionStatus.Draft, force: false);
+
+        // Assert
+        result.Status.Should().Be(CampEditionStatus.Draft);
+        await _repository.Received(1).UpdateAsync(
+            Arg.Is<CampEdition>(e => e.Status == CampEditionStatus.Draft),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ChangeStatusAsync_WhenDraftToOpen_WithForceTrue_AndStartDateInPast_UpdatesStatus()
+    {
+        // Arrange
+        var editionId = Guid.NewGuid();
+        var edition = new CampEdition
+        {
+            Id = editionId,
+            CampId = Guid.NewGuid(),
+            Year = 2026,
+            Status = CampEditionStatus.Draft,
+            StartDate = DateTime.UtcNow.AddDays(-3), // Past start date
+            EndDate = DateTime.UtcNow.AddDays(5),
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            Camp = new Camp { Name = "Test Camp", PricePerAdult = 180m, PricePerChild = 120m, PricePerBaby = 60m }
+        };
+
+        _repository.GetByIdAsync(editionId, Arg.Any<CancellationToken>())
+            .Returns(edition);
+        _repository.UpdateAsync(Arg.Any<CampEdition>(), Arg.Any<CancellationToken>())
+            .Returns(args => args.Arg<CampEdition>());
+
+        // Act — force=true bypasses the startDate < today constraint
+        var result = await _sut.ChangeStatusAsync(editionId, CampEditionStatus.Open, force: true);
+
+        // Assert
+        result.Status.Should().Be(CampEditionStatus.Open);
+        await _repository.Received(1).UpdateAsync(
+            Arg.Is<CampEdition>(e => e.Status == CampEditionStatus.Open),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ChangeStatusAsync_WhenDraftToOpen_WithForceFalse_AndStartDateInPast_ThrowsException()
+    {
+        // Arrange
+        var editionId = Guid.NewGuid();
+        var edition = new CampEdition
+        {
+            Id = editionId,
+            CampId = Guid.NewGuid(),
+            Year = 2026,
+            Status = CampEditionStatus.Draft,
+            StartDate = DateTime.UtcNow.AddDays(-3), // Past start date
+            EndDate = DateTime.UtcNow.AddDays(5),
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m
+        };
+
+        _repository.GetByIdAsync(editionId, Arg.Any<CancellationToken>())
+            .Returns(edition);
+
+        // Act & Assert — force=false keeps the date constraint active
+        var act = async () => await _sut.ChangeStatusAsync(editionId, CampEditionStatus.Open, force: false);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*No se puede abrir el registro*");
+    }
+
+    [Fact]
+    public async Task ChangeStatusAsync_WhenClosedToDraft_ThrowsInvalidTransitionException()
+    {
+        // Arrange
+        var editionId = Guid.NewGuid();
+        var edition = new CampEdition
+        {
+            Id = editionId,
+            CampId = Guid.NewGuid(),
+            Year = 2026,
+            Status = CampEditionStatus.Closed,
+            StartDate = DateTime.UtcNow.AddDays(-10),
+            EndDate = DateTime.UtcNow.AddDays(-1),
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m
+        };
+
+        _repository.GetByIdAsync(editionId, Arg.Any<CancellationToken>())
+            .Returns(edition);
+
+        // Act & Assert — Closed → Draft is never valid (only Open → Draft is the new backward transition)
+        var act = async () => await _sut.ChangeStatusAsync(editionId, CampEditionStatus.Draft, force: false);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*La transición de 'Closed' a 'Draft' no es válida*");
     }
 
     #endregion

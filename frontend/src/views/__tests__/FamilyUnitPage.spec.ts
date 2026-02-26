@@ -54,6 +54,7 @@ vi.mock('primevue/usetoast', () => ({
 const componentStubs = {
   FamilyMemberList: { name: 'FamilyMemberList', template: '<div />', props: ['members', 'loading', 'canManageMemberships'] },
   MembershipDialog: { name: 'MembershipDialog', template: '<div />', props: ['visible', 'familyUnitId', 'memberId', 'memberName'] },
+  BulkMembershipDialog: { name: 'BulkMembershipDialog', template: '<div />', props: ['visible', 'familyUnitId', 'members', 'memberData'] },
   ConfirmDialog: true,
   Dialog: true,
   // Card must render its named slots so FamilyMemberList (inside #content) is visible to tests
@@ -120,5 +121,23 @@ describe('FamilyUnitPage — membership dialog', () => {
     expect(dialog.exists()).toBe(true)
     expect(dialog.props('visible')).toBe(true)
     expect(dialog.props('memberId')).toBe('member-1')
+  })
+
+  it('shows bulk-membership-btn for board users', async () => {
+    authMock.isBoard = true
+    const wrapper = mount(FamilyUnitPage, {
+      global: { plugins: [createPinia()], stubs: componentStubs },
+    })
+    await nextTick()
+    expect(wrapper.find('[data-testid="bulk-membership-btn"]').exists()).toBe(true)
+  })
+
+  it('does not show bulk-membership-btn for non-board users', async () => {
+    authMock.isBoard = false
+    const wrapper = mount(FamilyUnitPage, {
+      global: { plugins: [createPinia()], stubs: componentStubs },
+    })
+    await nextTick()
+    expect(wrapper.find('[data-testid="bulk-membership-btn"]').exists()).toBe(false)
   })
 })

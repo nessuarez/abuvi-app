@@ -2,9 +2,9 @@ using FluentValidation;
 
 namespace Abuvi.API.Features.Memberships;
 
-public class CreateMembershipValidator : AbstractValidator<CreateMembershipRequest>
+public class BulkActivateMembershipValidator : AbstractValidator<BulkActivateMembershipRequest>
 {
-    public CreateMembershipValidator()
+    public BulkActivateMembershipValidator()
     {
         RuleFor(x => x.Year)
             .GreaterThan(2000).WithMessage("El año de inicio no es válido")
