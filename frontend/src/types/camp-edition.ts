@@ -110,6 +110,7 @@ export interface UpdateCampEditionRequest {
 
 export interface ChangeEditionStatusRequest {
   status: CampEditionStatus
+  force?: boolean // Admin-only: bypasses startDate < today when re-opening Draft → Open
 }
 
 export interface ActiveCampEditionResponse {

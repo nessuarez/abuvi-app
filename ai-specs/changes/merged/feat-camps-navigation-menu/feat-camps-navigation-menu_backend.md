@@ -24,9 +24,11 @@ This plan covers the backend work for the `feat-camps-navigation-menu` feature. 
 | Tests | `CampEditionsServiceTests.cs` | `CampEditionsServiceTests_GetCurrent.cs`, `FamilyUnitsServiceTests_GetAll.cs` |
 
 ### No schema changes needed (no migration required)
+
 The existing `CampEditions` and `FamilyUnits` tables already have all the columns needed.
 
 ### Cross-cutting concerns
+
 - Authorization: `RequireRole("Admin", "Board", "Member")` for `/api/camps/current`; `RequireRole("Admin", "Board")` for `GET /api/family-units`
 - Response envelope: existing `ApiResponse<T>` wrapper used throughout
 
@@ -39,13 +41,17 @@ The existing `CampEditions` and `FamilyUnits` tables already have all the column
 - **Action**: Create and switch to a feature branch dedicated to backend work
 - **Implementation Steps**:
   1. Ensure you are on `main` and up to date:
+
      ```bash
      git checkout main && git pull origin main
      ```
+
   2. Create the backend branch:
+
      ```bash
      git checkout -b feature/feat-camps-navigation-menu-backend
      ```
+
   3. Verify: `git branch`
 - **Notes**: This branch is separate from the frontend branch to keep concerns isolated.
 
@@ -141,6 +147,7 @@ Task<CampEdition?> GetCurrentAsync(int currentYear, CancellationToken cancellati
 - **Action**: Implement `GetCurrentAsync` using EF Core with proper ordering and status priority
 
 **Implementation logic**:
+
 ```csharp
 public async Task<CampEdition?> GetCurrentAsync(int currentYear, CancellationToken cancellationToken = default)
 {
@@ -169,6 +176,7 @@ public async Task<CampEdition?> GetCurrentAsync(int currentYear, CancellationTok
 ```
 
 **Notes**:
+
 - Uses two separate DB queries to keep the logic explicit and easy to maintain.
 - Looks back only 1 year (matches spec clarification Q4: "only current year and previous year").
 - Archived editions are always excluded.
@@ -351,6 +359,7 @@ Task<(List<FamilyUnitAdminProjection> Items, int TotalCount)> GetAllPagedAsync(
 ```
 
 Add the projection record (in `FamilyUnitsModels.cs` - see Step 7 for details):
+
 ```csharp
 public record FamilyUnitAdminProjection(
     Guid Id,
@@ -667,9 +676,11 @@ HTTP Status Code Mapping:
 ## Dependencies
 
 ### NuGet Packages
+
 No new packages needed. All dependencies (`EF Core`, `xUnit`, `NSubstitute`, `FluentAssertions`) are already installed.
 
 ### EF Core Migration
+
 **No migration needed.** Both endpoints query existing tables with no schema changes.
 
 ---
@@ -696,10 +707,12 @@ No new packages needed. All dependencies (`EF Core`, `xUnit`, `NSubstitute`, `Fl
 6. **No sensitive data in admin list**: `FamilyUnitListItemResponse` does not include member details, medical notes, or allergies. Those remain protected under the existing `/{id}/members` endpoints with representative-only access.
 
 ### Language Requirements
+
 - All error messages in Spanish (e.g., `"No hay ninguna edición de campamento disponible"`)
 - Documentation updates in English
 
 ### GDPR Considerations
+
 - The admin list endpoint exposes representative names. This is acceptable for Board/Admin users managing the association.
 - Medical notes and allergies remain encrypted and are not returned by any new endpoint.
 

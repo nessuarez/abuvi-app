@@ -21,3 +21,7 @@ Guest users can also register for camps and make payments, but they will need to
 - The system must provide users with a confirmation of their payment and registration for the camp.
 - The system must allow administrators to view and manage payments made by users for the camps.
 - The system must handle any errors that may occur during the payment process and show an appropriate error message to the user.
+
+## Example flow
+
+Payments use to be divided into two parts: One fixed payment of half registration by family members and after that second part is payed later with all extra costs included. Normally, in that second part use to be the problems matching what users are paying.
