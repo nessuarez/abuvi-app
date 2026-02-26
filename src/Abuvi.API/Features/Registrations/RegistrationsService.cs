@@ -71,6 +71,8 @@ public class RegistrationsService(
                 AttendancePeriod = m.AttendancePeriod,
                 VisitStartDate = m.VisitStartDate,
                 VisitEndDate = m.VisitEndDate,
+                GuardianName = m.GuardianName,
+                GuardianDocumentNumber = m.GuardianDocumentNumber,
                 CreatedAt = DateTime.UtcNow
             });
         }
@@ -131,6 +133,8 @@ public class RegistrationsService(
             TotalAmount = baseTotalAmount,
             Status = RegistrationStatus.Pending,
             Notes = request.Notes,
+            SpecialNeeds = request.SpecialNeeds,
+            CampatesPreference = request.CampatesPreference,
             Members = registrationMembers
         };
 
@@ -207,6 +211,8 @@ public class RegistrationsService(
                 AttendancePeriod = m.AttendancePeriod,
                 VisitStartDate = m.VisitStartDate,
                 VisitEndDate = m.VisitEndDate,
+                GuardianName = m.GuardianName,
+                GuardianDocumentNumber = m.GuardianDocumentNumber,
                 CreatedAt = DateTime.UtcNow
             });
         }

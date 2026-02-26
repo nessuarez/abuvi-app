@@ -27,6 +27,10 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
         builder.Property(r => r.Status)
             .HasConversion<string>().IsRequired().HasMaxLength(20).HasColumnName("status");
         builder.Property(r => r.Notes).HasMaxLength(1000).HasColumnName("notes");
+        builder.Property(r => r.SpecialNeeds)
+            .HasMaxLength(2000).HasColumnName("special_needs");
+        builder.Property(r => r.CampatesPreference)
+            .HasMaxLength(500).HasColumnName("campates_preference");
 
         builder.Property(r => r.CreatedAt).IsRequired().HasColumnName("created_at")
             .HasDefaultValueSql("NOW()");

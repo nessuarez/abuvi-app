@@ -13,6 +13,8 @@ public class RegistrationBuilder
     private decimal _baseTotalAmount = 300m;
     private decimal _extrasAmount = 0m;
     private RegistrationStatus _status = RegistrationStatus.Pending;
+    private string? _specialNeeds;
+    private string? _campatesPreference;
 
     // Week pricing
     private decimal? _pricePerAdultWeek;
@@ -33,6 +35,8 @@ public class RegistrationBuilder
     public RegistrationBuilder WithCampEditionId(Guid id) { _campEditionId = id; return this; }
     public RegistrationBuilder WithRegisteredByUserId(Guid id) { _registeredByUserId = id; return this; }
     public RegistrationBuilder WithStatus(RegistrationStatus status) { _status = status; return this; }
+    public RegistrationBuilder WithSpecialNeeds(string? value) { _specialNeeds = value; return this; }
+    public RegistrationBuilder WithCampatesPreference(string? value) { _campatesPreference = value; return this; }
     public RegistrationBuilder WithBaseTotalAmount(decimal amount) { _baseTotalAmount = amount; return this; }
     public RegistrationBuilder WithExtrasAmount(decimal amount) { _extrasAmount = amount; return this; }
 
@@ -81,6 +85,8 @@ public class RegistrationBuilder
         ExtrasAmount = _extrasAmount,
         TotalAmount = _baseTotalAmount + _extrasAmount,
         Status = _status,
+        SpecialNeeds = _specialNeeds,
+        CampatesPreference = _campatesPreference,
         CreatedAt = DateTime.UtcNow,
         UpdatedAt = DateTime.UtcNow,
         FamilyUnit = new FamilyUnit
