@@ -38,7 +38,7 @@ public class CreateRegistrationValidatorTests
         var request = new CreateRegistrationRequest(
             CampEditionId: editionId,
             FamilyUnitId: Guid.NewGuid(),
-            MemberIds: [Guid.NewGuid()],
+            Members: [new MemberAttendanceRequest(Guid.NewGuid(), AttendancePeriod.Complete)],
             Notes: null);
 
         var result = await _sut.TestValidateAsync(request);
@@ -67,7 +67,7 @@ public class CreateRegistrationValidatorTests
         var request = new CreateRegistrationRequest(
             CampEditionId: editionId,
             FamilyUnitId: Guid.NewGuid(),
-            MemberIds: [Guid.NewGuid()],
+            Members: [new MemberAttendanceRequest(Guid.NewGuid(), AttendancePeriod.Complete)],
             Notes: null);
 
         var result = await _sut.TestValidateAsync(request);
@@ -92,12 +92,12 @@ public class CreateRegistrationValidatorTests
         var request = new CreateRegistrationRequest(
             CampEditionId: editionId,
             FamilyUnitId: Guid.NewGuid(),
-            MemberIds: [],
+            Members: [],
             Notes: null);
 
         var result = await _sut.TestValidateAsync(request);
 
-        result.ShouldHaveValidationErrorFor(x => x.MemberIds)
+        result.ShouldHaveValidationErrorFor(x => x.Members)
             .WithErrorMessage("Debe seleccionar al menos un miembro de la familia");
     }
 
@@ -118,12 +118,12 @@ public class CreateRegistrationValidatorTests
         var request = new CreateRegistrationRequest(
             CampEditionId: editionId,
             FamilyUnitId: Guid.NewGuid(),
-            MemberIds: [memberId, memberId],
+            Members: [new MemberAttendanceRequest(memberId, AttendancePeriod.Complete), new MemberAttendanceRequest(memberId, AttendancePeriod.Complete)],
             Notes: null);
 
         var result = await _sut.TestValidateAsync(request);
 
-        result.ShouldHaveValidationErrorFor(x => x.MemberIds)
+        result.ShouldHaveValidationErrorFor(x => x.Members)
             .WithErrorMessage("No se puede incluir el mismo miembro dos veces");
     }
 
@@ -143,7 +143,7 @@ public class CreateRegistrationValidatorTests
         var request = new CreateRegistrationRequest(
             CampEditionId: editionId,
             FamilyUnitId: Guid.NewGuid(),
-            MemberIds: [Guid.NewGuid()],
+            Members: [new MemberAttendanceRequest(Guid.NewGuid(), AttendancePeriod.Complete)],
             Notes: new string('A', 1001));
 
         var result = await _sut.TestValidateAsync(request);
@@ -160,7 +160,7 @@ public class CreateRegistrationValidatorTests
         var request = new CreateRegistrationRequest(
             CampEditionId: Guid.Empty,
             FamilyUnitId: Guid.NewGuid(),
-            MemberIds: [Guid.NewGuid()],
+            Members: [new MemberAttendanceRequest(Guid.NewGuid(), AttendancePeriod.Complete)],
             Notes: null);
 
         var result = await _sut.TestValidateAsync(request);
@@ -184,7 +184,7 @@ public class CreateRegistrationValidatorTests
         var request = new CreateRegistrationRequest(
             CampEditionId: editionId,
             FamilyUnitId: Guid.Empty,
-            MemberIds: [Guid.NewGuid()],
+            Members: [new MemberAttendanceRequest(Guid.NewGuid(), AttendancePeriod.Complete)],
             Notes: null);
 
         var result = await _sut.TestValidateAsync(request);
