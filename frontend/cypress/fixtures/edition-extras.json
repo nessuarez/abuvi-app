@@ -1,0 +1,36 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": "extra-1",
+      "campEditionId": "edition-2026",
+      "name": "Camiseta del campamento",
+      "description": "Camiseta oficial con logo",
+      "price": 15,
+      "pricingType": "PerPerson",
+      "pricingPeriod": "OneTime",
+      "isRequired": false,
+      "maxQuantity": 100,
+      "currentQuantitySold": 5,
+      "isActive": true,
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-01-01T00:00:00Z"
+    },
+    {
+      "id": "extra-2",
+      "campEditionId": "edition-2026",
+      "name": "Menú vegetariano",
+      "description": null,
+      "price": 0,
+      "pricingType": "PerPerson",
+      "pricingPeriod": "OneTime",
+      "isRequired": true,
+      "maxQuantity": null,
+      "currentQuantitySold": 12,
+      "isActive": true,
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "error": null
+}

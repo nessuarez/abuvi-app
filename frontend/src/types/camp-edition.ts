@@ -98,8 +98,7 @@ export interface CampEditionExtra {
   pricingPeriod: 'OneTime' | 'PerDay'
   isRequired: boolean
   maxQuantity?: number
-  currentQuantity: number
-  sortOrder: number
+  currentQuantitySold: number | null
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -113,7 +112,15 @@ export interface CreateCampExtraRequest {
   pricingPeriod: 'OneTime' | 'PerDay'
   isRequired: boolean
   maxQuantity?: number
-  sortOrder: number
+}
+
+export interface UpdateCampExtraRequest {
+  name: string
+  description?: string
+  price: number
+  isRequired: boolean
+  isActive: boolean
+  maxQuantity?: number
 }
 
 // === Accommodation Types ===
