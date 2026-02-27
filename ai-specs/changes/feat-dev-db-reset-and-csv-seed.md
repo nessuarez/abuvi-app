@@ -1,13 +1,20 @@
-# Backend Implementation Plan: feat-dev-db-reset-and-csv-seed — Dev Database Reset & CSV Seed Setup
+# Implementation Plan: feat-db-setup-tool — Console App for DB Reset & CSV Setup
 
 ## 2. Overview
 
-Provide a **development-only** mechanism to:
+A **standalone .NET console application** (`Abuvi.Setup`) that serves as the **single setup tool** for both development and production environments:
 
-1. **Reset the database** — wipe all non-schema data in FK-safe order and re-seed the default admin user.
-2. **Import initial data from CSV files** — one endpoint per entity type, processed in dependency order.
+1. **Reset the database** — wipes all data in FK-safe order, re-seeds the default admin user.
+2. **Import initial data from CSV files** — reads from a configurable directory, processes in dependency order.
 
-The feature is gated behind an `IsDevelopment()` guard so the endpoints are never registered in production. No migration is created — the existing schema is preserved; only data is affected.
+The tool operates in two modes controlled by `--env`:
+
+| Mode | `reset` | `import` on non-empty tables | Confirmation required |
+|------|---------|------------------------------|----------------------|
+| `dev` (default) | Allowed freely | Allowed (skips duplicates) | No |
+| `production` | Requires `--confirm` | Only on empty tables (aborts otherwise) | Yes, for destructive ops |
+
+The console app references the API project to reuse `AbuviDbContext` and entity models directly — no HTTP, no auth tokens, no API overhead. CSV columns are aligned with database columns (user provides files matching the schema).
 
 **Import dependency order (strict):**
 
@@ -19,42 +26,59 @@ Users → FamilyUnits → FamilyMembers → Camps → CampEditions
 
 ## 3. Architecture Context
 
-**Feature slice:** `src/Abuvi.API/Features/DevSeed/`
+**New project:** `src/Abuvi.Setup/`
+
+### Project structure
+
+```
+src/Abuvi.Setup/
+├── Abuvi.Setup.csproj             # Console app, references Abuvi.API
+├── Program.cs                      # CLI entry point
+├── SetupConfig.cs                  # Parsed CLI options (env, dir, connection, confirm)
+├── SeedRunner.cs                   # Orchestrates reset + imports
+├── SafetyGuard.cs                  # Production safety checks
+├── Importers/
+│   ├── UserImporter.cs
+│   ├── FamilyUnitImporter.cs
+│   ├── FamilyMemberImporter.cs
+│   ├── CampImporter.cs
+│   └── CampEditionImporter.cs
+├── CsvHelper.cs                    # Generic CSV parsing utility
+├── Models.cs                       # SeedResult, SeedRowResult records
+└── seed/                           # Default CSV directory (user-provided files)
+    ├── users.csv
+    ├── family-units.csv
+    ├── family-members.csv
+    ├── camps.csv
+    └── camp-editions.csv
+```
 
 ### Files to create
 
 | File | Purpose |
 |------|---------|
-| `Features/DevSeed/DevSeedEndpoints.cs` | Minimal API endpoint registration (dev-only) |
-| `Features/DevSeed/DevSeedService.cs` | Orchestrates reset and CSV parsing logic |
-| `Features/DevSeed/IDevSeedService.cs` | Interface |
-| `Features/DevSeed/DevSeedModels.cs` | DTOs: `SeedResult`, `SeedRowResult`, `SeedSummaryResponse` |
-| `Features/DevSeed/Parsers/UserCsvParser.cs` | Parses `users.csv` → `CreateUserRequest` list |
-| `Features/DevSeed/Parsers/FamilyUnitCsvParser.cs` | Parses `family-units.csv` → import rows |
-| `Features/DevSeed/Parsers/FamilyMemberCsvParser.cs` | Parses `family-members.csv` → import rows |
-| `Features/DevSeed/Parsers/CampCsvParser.cs` | Parses `camps.csv` → import rows |
-| `Features/DevSeed/Parsers/CampEditionCsvParser.cs` | Parses `camp-editions.csv` → import rows |
-| `src/Abuvi.Tests/Unit/Features/DevSeed/DevSeedServiceTests.cs` | Unit tests |
-| `src/Abuvi.Tests/Unit/Features/DevSeed/Parsers/UserCsvParserTests.cs` | Parser unit tests |
-| `src/Abuvi.Tests/Helpers/TestFiles/seed/users.csv` | Fixture CSV |
-| `src/Abuvi.Tests/Helpers/TestFiles/seed/family-units.csv` | Fixture CSV |
-| `src/Abuvi.Tests/Helpers/TestFiles/seed/family-members.csv` | Fixture CSV |
-| `src/Abuvi.Tests/Helpers/TestFiles/seed/camps.csv` | Fixture CSV |
-| `src/Abuvi.Tests/Helpers/TestFiles/seed/camp-editions.csv` | Fixture CSV |
+| `src/Abuvi.Setup/Abuvi.Setup.csproj` | Console app project file |
+| `src/Abuvi.Setup/Program.cs` | CLI entry point with argument parsing |
+| `src/Abuvi.Setup/SetupConfig.cs` | Strongly-typed CLI configuration |
+| `src/Abuvi.Setup/SeedRunner.cs` | Orchestrates reset and CSV import pipeline |
+| `src/Abuvi.Setup/SafetyGuard.cs` | Production safety checks (empty table verification, confirmation) |
+| `src/Abuvi.Setup/Models.cs` | `SeedResult`, `SeedRowResult` records |
+| `src/Abuvi.Setup/CsvHelper.cs` | Generic CSV line parser (comma-separated, UTF-8) |
+| `src/Abuvi.Setup/Importers/UserImporter.cs` | Reads `users.csv`, inserts into `users` table |
+| `src/Abuvi.Setup/Importers/FamilyUnitImporter.cs` | Reads `family-units.csv`, resolves representative by email |
+| `src/Abuvi.Setup/Importers/FamilyMemberImporter.cs` | Reads `family-members.csv`, resolves family unit by name |
+| `src/Abuvi.Setup/Importers/CampImporter.cs` | Reads `camps.csv`, inserts into `camps` table |
+| `src/Abuvi.Setup/Importers/CampEditionImporter.cs` | Reads `camp-editions.csv`, resolves camp by name |
+| `src/Abuvi.Tests/Unit/Setup/SeedRunnerTests.cs` | Unit tests for orchestration |
+| `src/Abuvi.Tests/Unit/Setup/SafetyGuardTests.cs` | Unit tests for safety checks |
+| `src/Abuvi.Tests/Unit/Setup/CsvHelperTests.cs` | Unit tests for CSV parsing |
+| `src/Abuvi.Tests/Unit/Setup/Importers/UserImporterTests.cs` | Importer unit tests |
 
 ### Files to modify
 
 | File | Change |
 |------|--------|
-| `Program.cs` | Register `IDevSeedService` and map `DevSeedEndpoints` only when `app.Environment.IsDevelopment()` |
-| `Features/Users/IUsersRepository.cs` | Add `DeleteAllExceptAdminAsync` |
-| `Features/Users/UsersRepository.cs` | Implement `DeleteAllExceptAdminAsync` |
-| `Features/FamilyUnits/IFamilyUnitsRepository.cs` | Add `DeleteAllAsync` |
-| `Features/FamilyUnits/FamilyUnitsRepository.cs` | Implement `DeleteAllAsync` |
-| `Features/Camps/ICampsRepository.cs` | Add `DeleteAllAsync` |
-| `Features/Camps/CampsRepository.cs` | Implement `DeleteAllAsync` |
-| `Features/Camps/ICampEditionsRepository.cs` | Add `DeleteAllAsync` |
-| `Features/Camps/CampEditionsRepository.cs` | Implement `DeleteAllAsync` |
+| `Abuvi.sln` | Add `Abuvi.Setup` project reference |
 
 ---
 
@@ -62,66 +86,253 @@ Users → FamilyUnits → FamilyMembers → Camps → CampEditions
 
 ### Step 0: Create Feature Branch
 
-- `git checkout main && git pull origin main`
-- `git checkout -b feature/feat-dev-db-reset-and-csv-seed`
-
----
-
-### Step 1 (TDD — RED): Write failing tests for `DevSeedService`
-
-**File:** `src/Abuvi.Tests/Unit/Features/DevSeed/DevSeedServiceTests.cs`
-
-Write all test cases first. They must fail before any implementation exists.
-
-**Test cases:**
-
-```csharp
-// ResetAsync
-ResetAsync_WhenCalled_DeletesAllEntitiesInFkSafeOrder
-ResetAsync_WhenCalled_ReseedsAdminUser
-
-// ImportUsersAsync
-ImportUsersAsync_WithValidCsv_CreatesUsers
-ImportUsersAsync_WithDuplicateEmail_SkipsAndReports
-ImportUsersAsync_WithMissingRequiredField_ReturnsRowError
-
-// ImportFamilyUnitsAsync
-ImportFamilyUnitsAsync_WithValidCsv_CreatesFamilyUnits
-ImportFamilyUnitsAsync_WhenRepresentativeEmailNotFound_SkipsAndReports
-
-// ImportFamilyMembersAsync
-ImportFamilyMembersAsync_WithValidCsv_CreatesMembersLinkedToUnit
-ImportFamilyMembersAsync_WhenFamilyUnitNotFound_SkipsAndReports
-
-// ImportCampsAsync
-ImportCampsAsync_WithValidCsv_CreatesCamps
-ImportCampsAsync_WithDuplicateName_SkipsAndReports
-
-// ImportCampEditionsAsync
-ImportCampEditionsAsync_WithValidCsv_CreatesEditions
-ImportCampEditionsAsync_WhenCampNotFound_SkipsAndReports
-ImportCampEditionsAsync_WithDuplicateYearForSameCamp_SkipsAndReports
+```bash
+git checkout main && git pull origin main
+git checkout -b feature/feat-db-setup-tool
 ```
 
 ---
 
-### Step 2 (TDD — RED): Write failing parser tests
+### Step 1: Create console project and wire EF Core
 
-**File:** `src/Abuvi.Tests/Unit/Features/DevSeed/Parsers/UserCsvParserTests.cs`
-(repeat pattern for each parser)
+**File:** `src/Abuvi.Setup/Abuvi.Setup.csproj`
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Abuvi.API\Abuvi.API.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.*" />
+  </ItemGroup>
+</Project>
+```
+
+> **Key:** Reuses `AbuviDbContext`, all entity models, and EF configurations from the API project.
+
+---
+
+### Step 2: Implement `SetupConfig.cs`
 
 ```csharp
-Parse_WithValidCsv_ReturnsRows
-Parse_WithEmptyFile_ReturnsEmptyList
-Parse_WithMissingHeader_ThrowsCsvFormatException
-Parse_WithExtraWhitespace_TrimsFields
+namespace Abuvi.Setup;
+
+public enum SetupEnv { Dev, Production }
+
+public class SetupConfig
+{
+    public SetupEnv Env { get; init; } = SetupEnv.Dev;
+    public string ConnectionString { get; init; } = null!;
+    public string SeedDir { get; init; } = null!;
+    public bool Confirm { get; init; }
+
+    public bool IsProduction => Env == SetupEnv.Production;
+
+    public static SetupConfig Parse(string[] args)
+    {
+        var env = args.FirstOrDefault(a => a.StartsWith("--env="))
+            ?.Replace("--env=", "");
+
+        var connection = args.FirstOrDefault(a => a.StartsWith("--connection="))
+            ?.Replace("--connection=", "")
+            ?? Environment.GetEnvironmentVariable("DATABASE_URL")
+            ?? "Host=localhost;Database=abuvi;Username=postgres;Password=postgres";
+
+        var dir = args.FirstOrDefault(a => a.StartsWith("--dir="))
+            ?.Replace("--dir=", "")
+            ?? Path.Combine(AppContext.BaseDirectory, "seed");
+
+        var confirm = args.Contains("--confirm");
+
+        return new SetupConfig
+        {
+            Env = env?.ToLowerInvariant() == "production"
+                ? SetupEnv.Production
+                : SetupEnv.Dev,
+            ConnectionString = connection,
+            SeedDir = dir,
+            Confirm = confirm
+        };
+    }
+}
 ```
 
 ---
 
-### Step 3: Implement `DevSeedModels.cs`
+### Step 3: Implement `SafetyGuard.cs`
 
 ```csharp
+namespace Abuvi.Setup;
+
+using Abuvi.API.Data;
+using Microsoft.EntityFrameworkCore;
+
+public class SafetyGuard(AbuviDbContext db, SetupConfig config)
+{
+    /// <summary>
+    /// In production, reset requires --confirm flag.
+    /// </summary>
+    public void EnsureResetAllowed()
+    {
+        if (!config.IsProduction) return;
+
+        if (!config.Confirm)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.Error.WriteLine(
+                "PRODUCTION RESET BLOCKED: this will DELETE ALL DATA.");
+            Console.Error.WriteLine(
+                "Add --confirm flag to proceed: dotnet run reset --env=production --confirm");
+            Console.ResetColor();
+            Environment.Exit(1);
+        }
+
+        // Double-check: interactive confirmation
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.Write("You are about to RESET a PRODUCTION database. Type 'YES' to confirm: ");
+        Console.ResetColor();
+        var input = Console.ReadLine()?.Trim();
+        if (input != "YES")
+        {
+            Console.Error.WriteLine("Aborted.");
+            Environment.Exit(1);
+        }
+    }
+
+    /// <summary>
+    /// In production, import is only allowed on empty tables (initial setup).
+    /// Returns true if import can proceed.
+    /// </summary>
+    public async Task<bool> EnsureImportAllowed(string entity, CancellationToken ct = default)
+    {
+        if (!config.IsProduction) return true;
+
+        var hasData = entity.ToLowerInvariant() switch
+        {
+            "users" => await db.Users.CountAsync(ct) > 1, // >1 because admin is always seeded
+            "familyunits" => await db.FamilyUnits.AnyAsync(ct),
+            "familymembers" => await db.FamilyMembers.AnyAsync(ct),
+            "camps" => await db.Camps.AnyAsync(ct),
+            "campeditions" => await db.CampEditions.AnyAsync(ct),
+            _ => false
+        };
+
+        if (hasData)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.Error.WriteLine(
+                $"  {entity}: BLOCKED — table already has data (production mode).");
+            Console.Error.WriteLine(
+                "  Use 'reset' first or switch to --env=dev for incremental imports.");
+            Console.ResetColor();
+            return false;
+        }
+
+        return true;
+    }
+}
+```
+
+---
+
+### Step 4: Implement `Program.cs` — CLI entry point
+
+```csharp
+using Abuvi.API.Data;
+using Abuvi.Setup;
+using Microsoft.EntityFrameworkCore;
+
+var config = SetupConfig.Parse(args);
+
+// Show environment banner
+Console.ForegroundColor = config.IsProduction ? ConsoleColor.Red : ConsoleColor.Cyan;
+Console.WriteLine($"=== Abuvi Setup Tool [{config.Env}] ===\n");
+Console.ResetColor();
+
+var options = new DbContextOptionsBuilder<AbuviDbContext>()
+    .UseNpgsql(config.ConnectionString)
+    .Options;
+
+await using var db = new AbuviDbContext(options);
+
+// Verify DB connection
+try
+{
+    await db.Database.CanConnectAsync();
+    Console.WriteLine($"Connected to database.\n");
+}
+catch (Exception ex)
+{
+    Console.ForegroundColor = ConsoleColor.Red;
+    Console.Error.WriteLine($"Cannot connect to database: {ex.Message}");
+    Console.ResetColor();
+    return 1;
+}
+
+var guard = new SafetyGuard(db, config);
+var runner = new SeedRunner(db, guard, config);
+
+// Parse command (first positional arg that is not a flag)
+var command = args.FirstOrDefault(a => !a.StartsWith("--")) ?? "run-all";
+
+switch (command)
+{
+    case "reset":
+        guard.EnsureResetAllowed();
+        await runner.ResetAsync();
+        break;
+
+    case "run-all":
+        if (config.IsProduction) guard.EnsureResetAllowed();
+        await runner.ResetAsync();
+        await runner.ImportAllAsync(config.SeedDir);
+        break;
+
+    case "setup":
+        // Production-friendly: import only, no reset, only on empty tables
+        await runner.ImportAllAsync(config.SeedDir);
+        break;
+
+    case "import":
+        var entity = args.Skip(1).FirstOrDefault(a => !a.StartsWith("--"));
+        if (entity is null)
+        {
+            Console.Error.WriteLine("Usage: import <entity>");
+            return 1;
+        }
+        await runner.ImportSingleAsync(config.SeedDir, entity);
+        break;
+
+    default:
+        Console.Error.WriteLine(
+            "Usage: dotnet run [reset|run-all|setup|import <entity>] [options]\n\n" +
+            "Commands:\n" +
+            "  run-all              Reset + import all CSVs (default)\n" +
+            "  setup                Import only (no reset, production-safe)\n" +
+            "  reset                Wipe all data, re-seed admin\n" +
+            "  import <entity>      Import a single entity CSV\n\n" +
+            "Options:\n" +
+            "  --env=dev|production Environment mode (default: dev)\n" +
+            "  --dir=<path>         CSV files directory (default: ./seed/)\n" +
+            "  --connection=<str>   PostgreSQL connection string\n" +
+            "  --confirm            Required for production destructive ops\n");
+        return 1;
+}
+
+return 0;
+```
+
+---
+
+### Step 5: Implement `Models.cs`
+
+```csharp
+namespace Abuvi.Setup;
+
 public record SeedRowResult(int Row, bool Success, string? Error);
 
 public record SeedResult(
@@ -129,446 +340,563 @@ public record SeedResult(
     int TotalRows,
     int Imported,
     int Skipped,
-    IReadOnlyList<SeedRowResult> Rows);
-
-public record SeedSummaryResponse(
-    bool Success,
-    IReadOnlyList<SeedResult> Results,
-    string? Error = null);
-```
-
----
-
-### Step 4 (TDD — GREEN): Implement CSV parsers
-
-**Pattern for all parsers:**
-
-```csharp
-public static class UserCsvParser
+    IReadOnlyList<SeedRowResult> Rows)
 {
-    // Separator: comma (,). UTF-8 encoding.
-    public static IReadOnlyList<UserCsvRow> Parse(string csvContent)
+    public void Print()
     {
-        var lines = csvContent.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        // Skip header row
-        // Parse each line, trim whitespace
-        // Return list of UserCsvRow
+        var color = Skipped > 0 ? ConsoleColor.Yellow : ConsoleColor.Green;
+        Console.ForegroundColor = color;
+        Console.WriteLine($"  {Entity}: {Imported}/{TotalRows} imported, {Skipped} skipped");
+        Console.ResetColor();
+        foreach (var row in Rows.Where(r => !r.Success))
+            Console.WriteLine($"    Row {row.Row}: {row.Error}");
     }
 }
-
-public record UserCsvRow(
-    string Email,
-    string Password,
-    string FirstName,
-    string LastName,
-    string? Phone,
-    string Role,            // "Admin" | "Board" | "Member"
-    string? DocumentNumber);
 ```
-
-Apply same pattern for `FamilyUnitCsvRow`, `FamilyMemberCsvRow`, `CampCsvRow`, `CampEditionCsvRow`.
 
 ---
 
-### Step 5 (TDD — GREEN): Implement `DevSeedService`
-
-**File:** `Features/DevSeed/DevSeedService.cs`
+### Step 6: Implement `CsvHelper.cs`
 
 ```csharp
-public class DevSeedService(
-    AbuviDbContext db,
-    IUsersRepository usersRepo,
-    IFamilyUnitsRepository familyUnitsRepo,
-    ICampsRepository campsRepo,
-    ICampEditionsRepository campEditionsRepo,
-    IPasswordHasher passwordHasher,
-    ILogger<DevSeedService> logger) : IDevSeedService
+namespace Abuvi.Setup;
+
+public static class CsvHelper
+{
+    /// <summary>
+    /// Reads a CSV file and returns rows as dictionaries (header -> value).
+    /// Comma-separated, UTF-8, first row is header.
+    /// </summary>
+    public static IReadOnlyList<Dictionary<string, string>> Parse(string filePath)
+    {
+        var lines = File.ReadAllLines(filePath, System.Text.Encoding.UTF8)
+            .Where(l => !string.IsNullOrWhiteSpace(l))
+            .ToList();
+
+        if (lines.Count < 1)
+            return [];
+
+        var headers = lines[0].Split(',').Select(h => h.Trim()).ToArray();
+        var rows = new List<Dictionary<string, string>>();
+
+        for (var i = 1; i < lines.Count; i++)
+        {
+            var values = lines[i].Split(',').Select(v => v.Trim()).ToArray();
+            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            for (var j = 0; j < headers.Length && j < values.Length; j++)
+                dict[headers[j]] = values[j];
+            rows.Add(dict);
+        }
+
+        return rows;
+    }
+
+    public static string Require(Dictionary<string, string> row, string key)
+    {
+        if (row.TryGetValue(key, out var val) && !string.IsNullOrWhiteSpace(val))
+            return val;
+        throw new InvalidOperationException($"Missing required field: {key}");
+    }
+
+    public static string? Optional(Dictionary<string, string> row, string key)
+    {
+        return row.TryGetValue(key, out var val) && !string.IsNullOrWhiteSpace(val)
+            ? val : null;
+    }
+
+    public static decimal RequireDecimal(Dictionary<string, string> row, string key)
+    {
+        var val = Require(row, key);
+        return decimal.Parse(val, System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    public static int? OptionalInt(Dictionary<string, string> row, string key)
+    {
+        var val = Optional(row, key);
+        return val is not null ? int.Parse(val) : null;
+    }
+}
+```
+
+---
+
+### Step 7: Implement `SeedRunner.cs`
+
+```csharp
+namespace Abuvi.Setup;
+
+using Abuvi.API.Data;
+using Abuvi.Setup.Importers;
+using Microsoft.EntityFrameworkCore;
+
+public class SeedRunner(AbuviDbContext db, SafetyGuard guard, SetupConfig config)
 {
     private static readonly Guid AdminId = new("00000000-0000-0000-0000-000000000001");
 
-    public async Task ResetAsync(CancellationToken ct)
+    public async Task ResetAsync()
     {
+        Console.WriteLine("Resetting database...");
+
         // Delete in FK-safe order (children before parents)
-        await db.Payments.ExecuteDeleteAsync(ct);
-        await db.RegistrationExtras.ExecuteDeleteAsync(ct);
-        await db.RegistrationMembers.ExecuteDeleteAsync(ct);
-        await db.Registrations.ExecuteDeleteAsync(ct);
-        await db.CampEditionExtras.ExecuteDeleteAsync(ct);
-        await db.CampEditions.ExecuteDeleteAsync(ct);
-        await db.CampPhotos.ExecuteDeleteAsync(ct);
-        await db.Camps.ExecuteDeleteAsync(ct);
-        await db.MembershipFees.ExecuteDeleteAsync(ct);
-        await db.Memberships.ExecuteDeleteAsync(ct);
-        await db.Guests.ExecuteDeleteAsync(ct);
-        await db.FamilyMembers.ExecuteDeleteAsync(ct);
-        await db.FamilyUnits.ExecuteDeleteAsync(ct);
-        await db.UserRoleChangeLogs.ExecuteDeleteAsync(ct);
-        // Delete all users EXCEPT the seeded admin
-        await db.Users.Where(u => u.Id != AdminId).ExecuteDeleteAsync(ct);
+        await db.Payments.ExecuteDeleteAsync();
+        await db.RegistrationExtras.ExecuteDeleteAsync();
+        await db.RegistrationMembers.ExecuteDeleteAsync();
+        await db.Registrations.ExecuteDeleteAsync();
+        await db.CampEditionExtras.ExecuteDeleteAsync();
+        await db.CampEditions.ExecuteDeleteAsync();
+        await db.CampPhotos.ExecuteDeleteAsync();
+        await db.Camps.ExecuteDeleteAsync();
+        await db.MembershipFees.ExecuteDeleteAsync();
+        await db.Memberships.ExecuteDeleteAsync();
+        await db.Guests.ExecuteDeleteAsync();
+        await db.FamilyMembers.ExecuteDeleteAsync();
+        await db.FamilyUnits.ExecuteDeleteAsync();
+        await db.UserRoleChangeLogs.ExecuteDeleteAsync();
+        await db.Users.Where(u => u.Id != AdminId).ExecuteDeleteAsync();
 
-        // Ensure admin user exists (re-seed if it was removed)
-        if (!await db.Users.AnyAsync(u => u.Id == AdminId, ct))
-            await SeedAdminAsync(ct);
+        // Re-seed admin if missing
+        if (!await db.Users.AnyAsync(u => u.Id == AdminId))
+        {
+            db.Users.Add(new Abuvi.API.Features.Users.User
+            {
+                Id = AdminId,
+                Email = "admin@abuvi.local",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123456", workFactor: 12),
+                FirstName = "System",
+                LastName = "Administrator",
+                Role = Abuvi.API.Features.Users.UserRole.Admin,
+                IsActive = true,
+                EmailVerified = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
 
-        logger.LogInformation("Database reset completed");
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("Database reset completed.\n");
+        Console.ResetColor();
     }
 
-    public async Task<SeedResult> ImportUsersAsync(string csvContent, CancellationToken ct) { ... }
-    public async Task<SeedResult> ImportFamilyUnitsAsync(string csvContent, CancellationToken ct) { ... }
-    public async Task<SeedResult> ImportFamilyMembersAsync(string csvContent, CancellationToken ct) { ... }
-    public async Task<SeedResult> ImportCampsAsync(string csvContent, CancellationToken ct) { ... }
-    public async Task<SeedResult> ImportCampEditionsAsync(string csvContent, CancellationToken ct) { ... }
+    public async Task ImportAllAsync(string seedDir)
+    {
+        Console.WriteLine($"Importing from: {seedDir}\n");
 
-    private async Task SeedAdminAsync(CancellationToken ct) { ... }
+        // Strict dependency order
+        var importers = new (string file, string entity, string guardKey,
+            Func<string, Task<SeedResult>> import)[]
+        {
+            ("users.csv",          "Users",         "users",
+                f => new UserImporter(db).ImportAsync(f)),
+            ("family-units.csv",   "FamilyUnits",   "familyunits",
+                f => new FamilyUnitImporter(db).ImportAsync(f)),
+            ("family-members.csv", "FamilyMembers", "familymembers",
+                f => new FamilyMemberImporter(db).ImportAsync(f)),
+            ("camps.csv",          "Camps",          "camps",
+                f => new CampImporter(db).ImportAsync(f)),
+            ("camp-editions.csv",  "CampEditions",   "campeditions",
+                f => new CampEditionImporter(db).ImportAsync(f)),
+        };
+
+        foreach (var (file, entity, guardKey, import) in importers)
+        {
+            var path = Path.Combine(seedDir, file);
+            if (!File.Exists(path))
+            {
+                Console.WriteLine($"  {entity}: skipped (file not found: {file})");
+                continue;
+            }
+
+            // Production safety: block import if table already has data
+            if (!await guard.EnsureImportAllowed(guardKey))
+                continue;
+
+            var result = await import(path);
+            result.Print();
+        }
+
+        Console.WriteLine("\nSetup complete.");
+    }
+
+    public async Task ImportSingleAsync(string seedDir, string entity)
+    {
+        var (file, guardKey) = entity.ToLowerInvariant() switch
+        {
+            "users"          => ("users.csv", "users"),
+            "family-units"   => ("family-units.csv", "familyunits"),
+            "family-members" => ("family-members.csv", "familymembers"),
+            "camps"          => ("camps.csv", "camps"),
+            "camp-editions"  => ("camp-editions.csv", "campeditions"),
+            _ => throw new ArgumentException($"Unknown entity: {entity}")
+        };
+
+        var path = Path.Combine(seedDir, file);
+        if (!File.Exists(path))
+        {
+            Console.Error.WriteLine($"File not found: {path}");
+            return;
+        }
+
+        // Production safety check
+        if (!await guard.EnsureImportAllowed(guardKey))
+            return;
+
+        var result = entity.ToLowerInvariant() switch
+        {
+            "users"          => await new UserImporter(db).ImportAsync(path),
+            "family-units"   => await new FamilyUnitImporter(db).ImportAsync(path),
+            "family-members" => await new FamilyMemberImporter(db).ImportAsync(path),
+            "camps"          => await new CampImporter(db).ImportAsync(path),
+            "camp-editions"  => await new CampEditionImporter(db).ImportAsync(path),
+            _ => throw new ArgumentException($"Unknown entity: {entity}")
+        };
+
+        result.Print();
+    }
 }
 ```
 
-**Per-import method pattern:**
-
-1. Parse CSV → rows
-2. For each row:
-   a. Validate required fields (skip + log if invalid)
-   b. Check for duplicates (skip + log if found)
-   c. Create entity and persist
-   d. Record `SeedRowResult`
-3. Return `SeedResult` with summary
-
-**Duplicate detection strategy:**
-
-| Entity | Uniqueness key |
-|--------|---------------|
-| User | `email` |
-| FamilyUnit | `name` (case-insensitive) |
-| FamilyMember | `familyUnitId + firstName + lastName + dateOfBirth` |
-| Camp | `name` (case-insensitive) |
-| CampEdition | `campId + year` |
-
 ---
 
-### Step 6: Implement `DevSeedEndpoints.cs`
+### Step 8: Implement importers
+
+Each importer follows the same pattern:
+
+1. Parse CSV via `CsvHelper.Parse(filePath)`
+2. For each row: validate required fields, check duplicates in DB, create entity, `db.Add()`
+3. `db.SaveChangesAsync()` per row (so partial imports survive errors)
+4. Return `SeedResult` with per-row details
+
+#### `UserImporter.cs` (representative example)
 
 ```csharp
-public static class DevSeedEndpoints
+namespace Abuvi.Setup.Importers;
+
+using Abuvi.API.Data;
+using Abuvi.API.Features.Users;
+using Microsoft.EntityFrameworkCore;
+
+public class UserImporter(AbuviDbContext db)
 {
-    public static void MapDevSeedEndpoints(this IEndpointRouteBuilder app)
+    public async Task<SeedResult> ImportAsync(string filePath)
     {
-        var group = app.MapGroup("/api/dev")
-            .RequireAuthorization("AdminOnly")
-            .WithTags("Dev");
+        var rows = CsvHelper.Parse(filePath);
+        var results = new List<SeedRowResult>();
+        var imported = 0;
 
-        group.MapPost("/reset", async (IDevSeedService svc, CancellationToken ct) =>
+        for (var i = 0; i < rows.Count; i++)
         {
-            await svc.ResetAsync(ct);
-            return Results.Ok(new { message = "Database reset successfully" });
-        });
+            try
+            {
+                var r = rows[i];
+                var email = CsvHelper.Require(r, "email").ToLowerInvariant();
 
-        group.MapPost("/seed/users", async (
-            IFormFile file, IDevSeedService svc, CancellationToken ct) =>
-        {
-            var csv = await ReadFileAsync(file);
-            var result = await svc.ImportUsersAsync(csv, ct);
-            return Results.Ok(result);
-        }).DisableAntiforgery();
+                // Duplicate check
+                if (await db.Users.AnyAsync(u => u.Email == email))
+                {
+                    results.Add(new(i + 1, false, $"Duplicate email: {email}"));
+                    continue;
+                }
 
-        // Same pattern for /seed/family-units, /seed/family-members,
-        // /seed/camps, /seed/camp-editions
+                var user = new User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(
+                        CsvHelper.Require(r, "password"), workFactor: 12),
+                    FirstName = CsvHelper.Require(r, "firstName"),
+                    LastName = CsvHelper.Require(r, "lastName"),
+                    Phone = CsvHelper.Optional(r, "phone"),
+                    DocumentNumber = CsvHelper.Optional(r, "documentNumber"),
+                    Role = Enum.Parse<UserRole>(
+                        CsvHelper.Require(r, "role"), ignoreCase: true),
+                    IsActive = true,
+                    EmailVerified = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
 
-        group.MapPost("/seed/run-all", async (
-            IFormFileCollection files, IDevSeedService svc, CancellationToken ct) =>
-        {
-            // Accepts multipart form with named files:
-            // users, familyUnits, familyMembers, camps, campEditions
-            // Runs reset first, then imports in dependency order
-            await svc.ResetAsync(ct);
-            var results = new List<SeedResult>();
-            if (files["users"] is { } u)
-                results.Add(await svc.ImportUsersAsync(await ReadFileAsync(u), ct));
-            if (files["familyUnits"] is { } fu)
-                results.Add(await svc.ImportFamilyUnitsAsync(await ReadFileAsync(fu), ct));
-            if (files["familyMembers"] is { } fm)
-                results.Add(await svc.ImportFamilyMembersAsync(await ReadFileAsync(fm), ct));
-            if (files["camps"] is { } c)
-                results.Add(await svc.ImportCampsAsync(await ReadFileAsync(c), ct));
-            if (files["campEditions"] is { } ce)
-                results.Add(await svc.ImportCampEditionsAsync(await ReadFileAsync(ce), ct));
+                db.Users.Add(user);
+                await db.SaveChangesAsync();
+                imported++;
+                results.Add(new(i + 1, true, null));
+            }
+            catch (Exception ex)
+            {
+                results.Add(new(i + 1, false, ex.Message));
+            }
+        }
 
-            return Results.Ok(new SeedSummaryResponse(true, results));
-        }).DisableAntiforgery();
-    }
-
-    private static async Task<string> ReadFileAsync(IFormFile file)
-    {
-        using var reader = new StreamReader(file.OpenReadStream());
-        return await reader.ReadToEndAsync();
+        return new("Users", rows.Count, imported, rows.Count - imported, results);
     }
 }
 ```
 
----
-
-### Step 7: Register in `Program.cs`
+#### `FamilyUnitImporter.cs` — resolves representative by email lookup
 
 ```csharp
-// Register dev-only services
-if (builder.Environment.IsDevelopment())
-{
-    builder.Services.AddScoped<IDevSeedService, DevSeedService>();
-}
+// Key logic: resolve representativeEmail -> User.Id
+var email = CsvHelper.Require(r, "representativeEmail").ToLowerInvariant();
+var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
+if (user is null) { /* skip row with error */ }
 
-// ... after app.Build() ...
-
-if (app.Environment.IsDevelopment())
+var unit = new FamilyUnit
 {
-    app.MapDevSeedEndpoints();
-}
+    Id = Guid.NewGuid(),
+    Name = CsvHelper.Require(r, "name"),
+    RepresentativeUserId = user.Id,
+    CreatedAt = DateTime.UtcNow,
+    UpdatedAt = DateTime.UtcNow
+};
+
+// Also update user.FamilyUnitId to link back
+user.FamilyUnitId = unit.Id;
 ```
+
+#### `FamilyMemberImporter.cs` — resolves family unit by name
+
+```csharp
+// Key logic: resolve familyUnitName -> FamilyUnit.Id
+var unitName = CsvHelper.Require(r, "familyUnitName");
+var unit = await db.FamilyUnits.FirstOrDefaultAsync(
+    u => u.Name.ToLower() == unitName.ToLower());
+if (unit is null) { /* skip row with error */ }
+
+var member = new FamilyMember
+{
+    Id = Guid.NewGuid(),
+    FamilyUnitId = unit.Id,
+    FirstName = CsvHelper.Require(r, "firstName"),
+    LastName = CsvHelper.Require(r, "lastName"),
+    DateOfBirth = DateOnly.Parse(CsvHelper.Require(r, "dateOfBirth")),
+    Relationship = Enum.Parse<FamilyRelationship>(
+        CsvHelper.Require(r, "relationship"), ignoreCase: true),
+    DocumentNumber = CsvHelper.Optional(r, "documentNumber"),
+    Email = CsvHelper.Optional(r, "email"),
+    Phone = CsvHelper.Optional(r, "phone"),
+    CreatedAt = DateTime.UtcNow,
+    UpdatedAt = DateTime.UtcNow
+};
+```
+
+#### `CampImporter.cs` — direct insert
+
+```csharp
+var camp = new Camp
+{
+    Id = Guid.NewGuid(),
+    Name = CsvHelper.Require(r, "name"),
+    Description = CsvHelper.Optional(r, "description"),
+    Location = CsvHelper.Optional(r, "location"),
+    PricePerAdult = CsvHelper.RequireDecimal(r, "pricePerAdult"),
+    PricePerChild = CsvHelper.RequireDecimal(r, "pricePerChild"),
+    PricePerBaby = CsvHelper.RequireDecimal(r, "pricePerBaby"),
+    IsActive = true,
+    CreatedAt = DateTime.UtcNow,
+    UpdatedAt = DateTime.UtcNow
+};
+```
+
+#### `CampEditionImporter.cs` — resolves camp by name, sets status directly
+
+```csharp
+// Key logic: resolve campName -> Camp.Id, set status directly (bypass workflow)
+var campName = CsvHelper.Require(r, "campName");
+var camp = await db.Camps.FirstOrDefaultAsync(
+    c => c.Name.ToLower() == campName.ToLower());
+if (camp is null) { /* skip row with error */ }
+
+var edition = new CampEdition
+{
+    Id = Guid.NewGuid(),
+    CampId = camp.Id,
+    Year = int.Parse(CsvHelper.Require(r, "year")),
+    StartDate = DateTime.Parse(CsvHelper.Require(r, "startDate")),
+    EndDate = DateTime.Parse(CsvHelper.Require(r, "endDate")),
+    PricePerAdult = CsvHelper.RequireDecimal(r, "pricePerAdult"),
+    PricePerChild = CsvHelper.RequireDecimal(r, "pricePerChild"),
+    PricePerBaby = CsvHelper.RequireDecimal(r, "pricePerBaby"),
+    MaxCapacity = CsvHelper.OptionalInt(r, "maxCapacity"),
+    Status = Enum.Parse<CampEditionStatus>(
+        CsvHelper.Require(r, "status"), ignoreCase: true),
+    Notes = CsvHelper.Optional(r, "notes"),
+    CreatedAt = DateTime.UtcNow,
+    UpdatedAt = DateTime.UtcNow
+};
+```
+
+> **Note:** Status is set directly on the entity — no workflow validation. This is a setup tool, not a business operation.
 
 ---
 
-### Step 8 (TDD — REFACTOR): Ensure 90%+ coverage, clean up edge cases
+### Step 9 (TDD): Write unit tests
 
-Review test coverage, add missing edge-case tests (empty CSV, malformed rows, all-skipped imports), ensure all tests are green.
+Tests mock `AbuviDbContext` using InMemory provider (acceptable here since the console app only does simple CRUD — no Npgsql-specific features).
+
+**Test files:**
+
+| File | Key test cases |
+|------|---------------|
+| `SeedRunnerTests.cs` | `ResetAsync_DeletesInCorrectOrder`, `ImportAllAsync_SkipsMissingFiles` |
+| `SafetyGuardTests.cs` | `EnsureResetAllowed_InProduction_WithoutConfirm_Exits`, `EnsureImportAllowed_InProduction_WithData_ReturnsFalse`, `EnsureImportAllowed_InDev_AlwaysReturnsTrue` |
+| `CsvHelperTests.cs` | `Parse_ValidFile_ReturnsRows`, `Parse_EmptyFile_ReturnsEmpty`, `Require_MissingField_Throws` |
+| `UserImporterTests.cs` | `ImportAsync_ValidCsv_CreatesUsers`, `ImportAsync_DuplicateEmail_Skips` |
 
 ---
 
 ## 5. CSV File Formats
 
-All files use **comma separator**, **UTF-8 encoding**, **first row is header**.
-Dates use `YYYY-MM-DD` (ISO 8601).
-Optional fields: leave column empty (consecutive commas).
-
----
+All files: **comma separator**, **UTF-8**, **first row = header**, **ISO 8601 dates** (`YYYY-MM-DD`).
+Leave column empty for optional fields.
 
 ### `users.csv`
 
 ```csv
 email,password,firstName,lastName,phone,role,documentNumber
-admin@abuvi.local,Admin@123456,System,Administrator,,Admin,
-board@abuvi.local,Board@123456,Ana,López,+34612345678,Board,12345678A
-member1@abuvi.local,Member@123456,Carlos,García,+34698765432,Member,87654321B
+board@abuvi.local,Board@123456,Ana,Lopez,+34612345678,Board,12345678A
+member1@abuvi.local,Member@123456,Carlos,Garcia,+34698765432,Member,87654321B
+member2@abuvi.local,Member@123456,Laura,Martin,,Member,
 ```
-
-| Column | Required | Notes |
-|--------|----------|-------|
-| `email` | Yes | Unique, valid email |
-| `password` | Yes | Min 8 chars, will be BCrypt-hashed on import |
-| `firstName` | Yes | Max 100 chars |
-| `lastName` | Yes | Max 100 chars |
-| `phone` | No | E.164 format: `+34612345678` |
-| `role` | Yes | `Admin` \| `Board` \| `Member` |
-| `documentNumber` | No | Uppercase alphanumeric |
-
----
 
 ### `family-units.csv`
 
 ```csv
 name,representativeEmail
-García Family,member1@abuvi.local
-López Family,board@abuvi.local
+Garcia Family,member1@abuvi.local
+Lopez Family,board@abuvi.local
+Martin Family,member2@abuvi.local
 ```
-
-| Column | Required | Notes |
-|--------|----------|-------|
-| `name` | Yes | Unique (case-insensitive), max 200 chars |
-| `representativeEmail` | Yes | Must match an existing user email after users import |
-
----
 
 ### `family-members.csv`
 
 ```csv
 familyUnitName,firstName,lastName,dateOfBirth,relationship,documentNumber,email,phone
-García Family,Carlos,García,1982-03-15,Parent,87654321B,member1@abuvi.local,+34698765432
-García Family,Laura,García,1985-07-22,Spouse,,laura@example.com,
-García Family,Pablo,García,2010-11-05,Child,,,
-García Family,Sofía,García,2014-04-18,Child,,,
-López Family,Ana,López,1979-01-30,Parent,12345678A,board@abuvi.local,+34612345678
+Garcia Family,Carlos,Garcia,1982-03-15,Parent,87654321B,member1@abuvi.local,+34698765432
+Garcia Family,Laura,Garcia,1985-07-22,Spouse,,laura@example.com,
+Garcia Family,Pablo,Garcia,2010-11-05,Child,,,
+Garcia Family,Sofia,Garcia,2014-04-18,Child,,,
+Lopez Family,Ana,Lopez,1979-01-30,Parent,12345678A,board@abuvi.local,+34612345678
 ```
-
-| Column | Required | Notes |
-|--------|----------|-------|
-| `familyUnitName` | Yes | Must match an existing family unit name |
-| `firstName` | Yes | Max 100 chars |
-| `lastName` | Yes | Max 100 chars |
-| `dateOfBirth` | Yes | `YYYY-MM-DD`, must be past date |
-| `relationship` | Yes | `Parent` \| `Child` \| `Sibling` \| `Spouse` \| `Other` |
-| `documentNumber` | No | Uppercase alphanumeric |
-| `email` | No | Valid email format |
-| `phone` | No | E.164 format |
-
----
 
 ### `camps.csv`
 
 ```csv
 name,description,location,pricePerAdult,pricePerChild,pricePerBaby
-Camp Abuvi 2027,Main annual camp,Sierra de Guadarrama, Madrid,150.00,100.00,0.00
-Camp Coastal,Summer coastal camp,Costa Brava, Girona,180.00,120.00,0.00
+Camp Sierra,Annual camp in the mountains,Sierra de Guadarrama,150.00,100.00,0.00
+Camp Costa,Summer coastal camp,Costa Brava,180.00,120.00,0.00
 ```
-
-| Column | Required | Notes |
-|--------|----------|-------|
-| `name` | Yes | Unique (case-insensitive), max 200 chars |
-| `description` | No | Max 2000 chars |
-| `location` | No | Free text location description |
-| `pricePerAdult` | Yes | Decimal >= 0 |
-| `pricePerChild` | Yes | Decimal >= 0 |
-| `pricePerBaby` | Yes | Decimal >= 0 |
-
----
 
 ### `camp-editions.csv`
 
 ```csv
 campName,year,startDate,endDate,pricePerAdult,pricePerChild,pricePerBaby,maxCapacity,status,notes
-Camp Abuvi 2027,2027,2027-07-01,2027-07-15,150.00,100.00,0.00,100,Draft,First edition for testing
-Camp Coastal,2027,2027-08-01,2027-08-10,180.00,120.00,0.00,,Proposed,
+Camp Sierra,2027,2027-07-01,2027-07-15,150.00,100.00,0.00,100,Draft,Test edition
+Camp Costa,2027,2027-08-01,2027-08-10,180.00,120.00,0.00,,Open,Summer edition
 ```
-
-| Column | Required | Notes |
-|--------|----------|-------|
-| `campName` | Yes | Must match an existing camp name |
-| `year` | Yes | Integer, e.g. `2027` |
-| `startDate` | Yes | `YYYY-MM-DD` |
-| `endDate` | Yes | `YYYY-MM-DD`, must be after startDate |
-| `pricePerAdult` | Yes | Decimal >= 0 |
-| `pricePerChild` | Yes | Decimal >= 0 |
-| `pricePerBaby` | Yes | Decimal >= 0 |
-| `maxCapacity` | No | Integer > 0, leave empty for unlimited |
-| `status` | Yes | `Proposed` \| `Draft` \| `Open` \| `Closed` \| `Completed` |
-| `notes` | No | Free text |
-
-> **Note:** Importing a `CampEdition` with `status = Open` bypasses the usual date constraint because this is a dev-only seed operation.
 
 ---
 
-## 6. API Endpoints
+## 6. Usage Guide
 
-All endpoints require `Admin` role JWT. Only available in `Development` environment.
-
-| Method | Path | Body | Description |
-|--------|------|------|-------------|
-| `POST` | `/api/dev/reset` | — | Wipe all data, re-seed admin user |
-| `POST` | `/api/dev/seed/users` | `multipart/form-data` file | Import `users.csv` |
-| `POST` | `/api/dev/seed/family-units` | `multipart/form-data` file | Import `family-units.csv` |
-| `POST` | `/api/dev/seed/family-members` | `multipart/form-data` file | Import `family-members.csv` |
-| `POST` | `/api/dev/seed/camps` | `multipart/form-data` file | Import `camps.csv` |
-| `POST` | `/api/dev/seed/camp-editions` | `multipart/form-data` file | Import `camp-editions.csv` |
-| `POST` | `/api/dev/seed/run-all` | `multipart/form-data` (named files) | Reset + full import in order |
-
-### Response shape (all seed endpoints)
-
-```json
-{
-  "entity": "Users",
-  "totalRows": 3,
-  "imported": 2,
-  "skipped": 1,
-  "rows": [
-    { "row": 1, "success": true, "error": null },
-    { "row": 2, "success": true, "error": null },
-    { "row": 3, "success": false, "error": "Duplicate email: member1@abuvi.local" }
-  ]
-}
-```
-
-### `run-all` multipart field names
-
-```
-users          → users.csv
-familyUnits    → family-units.csv
-familyMembers  → family-members.csv
-camps          → camps.csv
-campEditions   → camp-editions.csv
-```
-
-All files are optional. Missing files are skipped. Import runs in dependency order regardless of submission order.
-
----
-
-## 7. Testing Plan
-
-### Unit Tests — `DevSeedServiceTests.cs`
-
-Mock dependencies: `AbuviDbContext` (using InMemory EF provider for service-level tests), `ILogger<DevSeedService>`, `IPasswordHasher`.
-
-| Test | Scenario |
-|------|---------|
-| `ResetAsync_WhenCalled_DeletesAllEntitiesInFkSafeOrder` | Verify each `ExecuteDeleteAsync` call is made |
-| `ResetAsync_WhenAdminMissing_ReseedsAdminUser` | Admin is recreated if absent |
-| `ImportUsersAsync_WithValidCsv_CreatesAllUsers` | 3 rows → 3 users created |
-| `ImportUsersAsync_WithDuplicateEmail_SkipsRow` | Row 2 duplicate → `imported=1, skipped=1` |
-| `ImportUsersAsync_WithMissingEmail_ReturnsRowError` | Empty email → row error message |
-| `ImportFamilyUnitsAsync_WhenRepresentativeNotFound_SkipsRow` | Unknown email → skip + error |
-| `ImportFamilyMembersAsync_WhenFamilyUnitNotFound_SkipsRow` | Unknown unit → skip + error |
-| `ImportCampEditionsAsync_WithDuplicateYearForSameCamp_SkipsRow` | Same camp+year → skip |
-| `ImportCampEditionsAsync_WithOpenStatus_BypassesDateConstraint` | `status=Open`, past date → still imports |
-
-### Unit Tests — Parsers
-
-| Test | Scenario |
-|------|---------|
-| `Parse_WithValidCsv_ReturnsCorrectRowCount` | 3 data rows → 3 records |
-| `Parse_WithEmptyBody_ReturnsEmptyList` | Header only → empty list |
-| `Parse_WithExtraWhitespace_TrimsAllFields` | ` email ` → `email` |
-| `Parse_WithMissingHeader_ThrowsCsvFormatException` | No header row → exception |
-| `Parse_WithWrongColumnCount_SkipsRowAndLogs` | Malformed row → skip |
-
----
-
-## 8. Usage Guide (Dev Workflow)
-
-### Option A — Full reset + seed from scratch
+### Development — quick iteration
 
 ```bash
-# 1. Get an admin JWT
-TOKEN=$(curl -s -X POST http://localhost:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@abuvi.local","password":"Admin@123456"}' | jq -r '.token')
+# Full reset + seed (default: --env=dev)
+dotnet run --project src/Abuvi.Setup
 
-# 2. Reset + seed all at once
-curl -X POST http://localhost:5000/api/dev/seed/run-all \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "users=@./seed/users.csv" \
-  -F "familyUnits=@./seed/family-units.csv" \
-  -F "familyMembers=@./seed/family-members.csv" \
-  -F "camps=@./seed/camps.csv" \
-  -F "campEditions=@./seed/camp-editions.csv"
+# Reset only
+dotnet run --project src/Abuvi.Setup reset
+
+# Import a single entity (no reset)
+dotnet run --project src/Abuvi.Setup import users
+
+# Custom CSV directory
+dotnet run --project src/Abuvi.Setup run-all --dir=./my-test-data/
 ```
 
-### Option B — Reset only (keep schema, wipe data)
+### Production — initial setup (run once)
 
 ```bash
-curl -X POST http://localhost:5000/api/dev/reset \
-  -H "Authorization: Bearer $TOKEN"
+# Safe import: only inserts on empty tables, no reset
+dotnet run --project src/Abuvi.Setup setup \
+  --env=production \
+  --connection="Host=prod-host;Database=abuvi;..." \
+  --dir=./production-data/
+
+# Full reset + re-seed (requires double confirmation)
+dotnet run --project src/Abuvi.Setup run-all \
+  --env=production \
+  --confirm \
+  --connection="Host=prod-host;Database=abuvi;..."
 ```
 
-### Option C — Import incrementally (without reset)
+### Expected output
 
-```bash
-curl -X POST http://localhost:5000/api/dev/seed/camps \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@./seed/camps.csv"
+```
+=== Abuvi Setup Tool [Dev] ===
+
+Connected to database.
+
+Resetting database...
+Database reset completed.
+
+Importing from: ./seed/
+
+  Users: 3/3 imported, 0 skipped
+  FamilyUnits: 3/3 imported, 0 skipped
+  FamilyMembers: 5/5 imported, 0 skipped
+  Camps: 2/2 imported, 0 skipped
+  CampEditions: 2/2 imported, 0 skipped
+
+Setup complete.
+```
+
+### Production blocked output (tables not empty)
+
+```
+=== Abuvi Setup Tool [Production] ===
+
+Connected to database.
+
+Importing from: ./production-data/
+
+  Users: BLOCKED — table already has data (production mode).
+  Use 'reset' first or switch to --env=dev for incremental imports.
 ```
 
 ---
 
-## 9. Security & Constraints
+## 7. Commands Summary
 
-- Endpoints are **only registered** when `app.Environment.IsDevelopment()` is `true`. They do not exist at all in staging/production — no auth bypass needed.
-- Passwords in CSV are plain text for convenience; they are BCrypt-hashed (cost 12) before storage.
-- `medicalNotes` and `allergies` in `family-members.csv` are **intentionally excluded** — sensitive fields must be entered manually through the normal API after import.
-- The `run-all` endpoint performs `reset` first, so it is a **destructive, idempotent** operation.
+| Command | Description | Dev | Production |
+|---------|-------------|-----|------------|
+| `run-all` | Reset + import all CSVs (default) | Free | Requires `--confirm` + interactive "YES" |
+| `setup` | Import only (no reset) | Skips duplicates | Only on empty tables |
+| `reset` | Wipe all data, re-seed admin | Free | Requires `--confirm` + interactive "YES" |
+| `import <entity>` | Import a single CSV | Skips duplicates | Only on empty table |
 
 ---
 
-## 10. Pre-submission Checklist
+## 8. Security & Constraints
 
-- [ ] All unit tests pass (`dotnet test`)
-- [ ] Coverage ≥ 90% for `DevSeedService` and all parsers
-- [ ] Endpoints return 404 when called in non-Development environment
-- [ ] `users.csv` fixture includes at least one user per role (`Admin`, `Board`, `Member`)
-- [ ] `camp-editions.csv` fixture includes entries with both future and past dates
-- [ ] `run-all` tested end-to-end manually in dev environment
-- [ ] No sensitive data committed to test fixtures (use fake data only)
+- The console app is a **separate project** — it is never deployed as part of the API.
+- Production mode requires **`--confirm` flag + interactive "YES" confirmation** for destructive operations.
+- Production `setup` command **refuses to import into tables that already have data** — prevents accidental duplicates.
+- Passwords in CSV are plain text; BCrypt-hashed (cost 12) before insertion.
+- `medicalNotes` and `allergies` are **excluded** — sensitive fields must be entered through the API.
+- `CampEdition.Status` is set directly (no workflow transitions) since this is a setup tool.
+- Default connection string targets `localhost` — production requires explicit `--connection` or `DATABASE_URL`.
+
+---
+
+## 9. Pre-submission Checklist
+
+- [ ] Console app compiles: `dotnet build src/Abuvi.Setup`
+- [ ] Unit tests pass: `dotnet test`
+- [ ] `run-all` works end-to-end with sample CSVs in dev mode
+- [ ] `setup` correctly blocks on non-empty tables in production mode
+- [ ] `reset` in production requires `--confirm` + interactive "YES"
+- [ ] `reset` properly wipes all data and preserves admin user
+- [ ] Individual `import` commands work without resetting
+- [ ] Skipped rows display clear error messages
+- [ ] No sensitive/real data committed to `seed/` directory (fake data only)
