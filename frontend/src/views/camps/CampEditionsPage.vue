@@ -187,7 +187,12 @@ const handleEditionSaved = (_edition: CampEdition) => {
         <DataTable :value="allEditions" striped-rows paginator :rows="10" :loading="loading">
           <Column header="Ubicación" sortable sort-field="camp.name">
             <template #body="{ data }">
-              <span class="font-medium">{{ data.camp?.name ?? '—' }}</span>
+              <router-link
+                :to="{ name: 'camp-edition-detail', params: { id: data.id } }"
+                class="font-medium text-primary hover:underline"
+              >
+                {{ data.camp?.name ?? '—' }}
+              </router-link>
             </template>
           </Column>
 
