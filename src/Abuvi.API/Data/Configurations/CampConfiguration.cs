@@ -159,10 +159,47 @@ public class CampConfiguration : IEntityTypeConfiguration<Camp>
             .HasColumnType("text")
             .HasColumnName("accommodation_capacity_json");
 
+        // New contact info columns
+        builder.Property(c => c.Province).HasMaxLength(100).HasColumnName("province");
+        builder.Property(c => c.ContactEmail).HasMaxLength(200).HasColumnName("contact_email");
+        builder.Property(c => c.ContactPerson).HasMaxLength(200).HasColumnName("contact_person");
+        builder.Property(c => c.ContactCompany).HasMaxLength(200).HasColumnName("contact_company");
+        builder.Property(c => c.SecondaryWebsiteUrl).HasMaxLength(500).HasColumnName("secondary_website_url");
+
+        // Pricing
+        builder.Property(c => c.BasePrice).HasPrecision(10, 2).HasColumnName("base_price");
+        builder.Property(c => c.VatIncluded).HasColumnName("vat_included");
+
+        // ABUVI internal tracking
+        builder.Property(c => c.ExternalSourceId).HasColumnName("external_source_id");
+        builder.HasIndex(c => c.ExternalSourceId).HasDatabaseName("ix_camps_external_source_id");
+        builder.Property(c => c.AbuviManagedByUserId).HasColumnName("abuvi_managed_by_user_id");
+        builder.HasOne(c => c.AbuviManagedByUser)
+            .WithMany()
+            .HasForeignKey(c => c.AbuviManagedByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder.Property(c => c.AbuviContactedAt).HasMaxLength(100).HasColumnName("abuvi_contacted_at");
+        builder.Property(c => c.AbuviPossibility).HasMaxLength(100).HasColumnName("abuvi_possibility");
+        builder.Property(c => c.AbuviLastVisited).HasMaxLength(200).HasColumnName("abuvi_last_visited");
+        builder.Property(c => c.AbuviHasDataErrors).HasColumnName("abuvi_has_data_errors");
+
+        // Audit
+        builder.Property(c => c.LastModifiedByUserId).HasColumnName("last_modified_by_user_id");
+
         // Relationships
         builder.HasMany(c => c.Editions)
             .WithOne(e => e.Camp)
             .HasForeignKey(e => e.CampId)
             .OnDelete(DeleteBehavior.Restrict); // Cannot delete camp if editions exist
+
+        builder.HasMany(c => c.Observations)
+            .WithOne(o => o.Camp)
+            .HasForeignKey(o => o.CampId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(c => c.AuditLogs)
+            .WithOne(a => a.Camp)
+            .HasForeignKey(a => a.CampId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

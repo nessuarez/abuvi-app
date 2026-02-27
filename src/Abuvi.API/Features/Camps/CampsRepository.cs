@@ -178,4 +178,17 @@ public class CampsRepository : ICampsRepository
         if (primaries.Count > 0)
             await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task AddAuditLogsAsync(IEnumerable<CampAuditLog> entries, CancellationToken cancellationToken = default)
+    {
+        _context.CampAuditLogs.AddRange(entries);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<List<CampAuditLog>> GetAuditLogAsync(Guid campId, CancellationToken cancellationToken = default)
+        => await _context.CampAuditLogs
+            .AsNoTracking()
+            .Where(a => a.CampId == campId)
+            .OrderByDescending(a => a.ChangedAt)
+            .ToListAsync(cancellationToken);
 }

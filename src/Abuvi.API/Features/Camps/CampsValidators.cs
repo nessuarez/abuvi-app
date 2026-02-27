@@ -439,6 +439,23 @@ public class UpdateCampEditionAccommodationRequestValidator
 }
 
 /// <summary>
+/// Validator for AddCampObservationRequest
+/// </summary>
+public class AddCampObservationRequestValidator : AbstractValidator<AddCampObservationRequest>
+{
+    public AddCampObservationRequestValidator()
+    {
+        RuleFor(x => x.Text)
+            .NotEmpty().WithMessage("El texto de la observación es obligatorio")
+            .MaximumLength(4000).WithMessage("El texto no puede exceder 4000 caracteres");
+
+        RuleFor(x => x.Season)
+            .MaximumLength(20).When(x => x.Season != null)
+            .WithMessage("La temporada no puede exceder 20 caracteres");
+    }
+}
+
+/// <summary>
 /// Validator for UpdateRegistrationAccommodationPreferencesRequest
 /// </summary>
 public class UpdateRegistrationAccommodationPreferencesRequestValidator

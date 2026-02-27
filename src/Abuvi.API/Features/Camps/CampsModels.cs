@@ -18,6 +18,21 @@ public class AccommodationCapacity
     public int? MotorhomeSpots { get; set; }
     public string? Notes { get; set; }
 
+    // Capacity descriptions (raw text from spreadsheet)
+    public int? TotalCapacity { get; set; }
+    public string? RoomsDescription { get; set; }
+    public string? BungalowsDescription { get; set; }
+    public string? TentsDescription { get; set; }
+    public string? TentAreaDescription { get; set; }
+    public int? ParkingSpots { get; set; }
+
+    // Facility flags
+    public bool? HasAdaptedMenu { get; set; }
+    public bool? HasEnclosedDiningRoom { get; set; }
+    public bool? HasSwimmingPool { get; set; }
+    public bool? HasSportsCourt { get; set; }
+    public bool? HasForestArea { get; set; }
+
     public int CalculateTotalBedCapacity()
     {
         var total = 0;
@@ -81,6 +96,28 @@ public class Camp
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
+    // Contact info
+    public string? Province { get; set; }
+    public string? ContactEmail { get; set; }
+    public string? ContactPerson { get; set; }
+    public string? ContactCompany { get; set; }
+    public string? SecondaryWebsiteUrl { get; set; }
+
+    // Pricing
+    public decimal? BasePrice { get; set; }
+    public bool? VatIncluded { get; set; }
+
+    // ABUVI internal tracking
+    public int? ExternalSourceId { get; set; }
+    public Guid? AbuviManagedByUserId { get; set; }
+    public string? AbuviContactedAt { get; set; }
+    public string? AbuviPossibility { get; set; }
+    public string? AbuviLastVisited { get; set; }
+    public bool? AbuviHasDataErrors { get; set; }
+
+    // Audit
+    public Guid? LastModifiedByUserId { get; set; }
+
     public string? AccommodationCapacityJson { get; set; }
 
     public AccommodationCapacity? GetAccommodationCapacity()
@@ -106,6 +143,38 @@ public class Camp
     // Navigation properties
     public ICollection<CampEdition> Editions { get; set; } = new List<CampEdition>();
     public ICollection<CampPhoto> Photos { get; set; } = new List<CampPhoto>();
+    public Users.User? AbuviManagedByUser { get; set; }
+    public ICollection<CampObservation> Observations { get; set; } = new List<CampObservation>();
+    public ICollection<CampAuditLog> AuditLogs { get; set; } = new List<CampAuditLog>();
+}
+
+/// <summary>
+/// Append-only observation/note for a camp with authorship tracking
+/// </summary>
+public class CampObservation
+{
+    public Guid Id { get; set; }
+    public Guid CampId { get; set; }
+    public string Text { get; set; } = string.Empty;
+    public string? Season { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public Camp Camp { get; set; } = null!;
+}
+
+/// <summary>
+/// Immutable field-level change tracking entry for a camp
+/// </summary>
+public class CampAuditLog
+{
+    public Guid Id { get; set; }
+    public Guid CampId { get; set; }
+    public string FieldName { get; set; } = string.Empty;
+    public string? OldValue { get; set; }
+    public string? NewValue { get; set; }
+    public Guid ChangedByUserId { get; set; }
+    public DateTime ChangedAt { get; set; }
+    public Camp Camp { get; set; } = null!;
 }
 
 /// <summary>
@@ -404,7 +473,19 @@ public record UpdateCampRequest(
     decimal PricePerChild,
     decimal PricePerBaby,
     bool IsActive,
-    AccommodationCapacity? AccommodationCapacity = null
+    AccommodationCapacity? AccommodationCapacity = null,
+    string? Province = null,
+    string? ContactEmail = null,
+    string? ContactPerson = null,
+    string? ContactCompany = null,
+    string? SecondaryWebsiteUrl = null,
+    decimal? BasePrice = null,
+    bool? VatIncluded = null,
+    Guid? AbuviManagedByUserId = null,
+    string? AbuviContactedAt = null,
+    string? AbuviPossibility = null,
+    string? AbuviLastVisited = null,
+    bool? AbuviHasDataErrors = null
 );
 
 /// <summary>
@@ -468,7 +549,23 @@ public record CampDetailResponse(
     int? CalculatedTotalBedCapacity,
     IReadOnlyList<CampPhotoResponse> Photos,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    string? Province,
+    string? ContactEmail,
+    string? ContactPerson,
+    string? ContactCompany,
+    string? SecondaryWebsiteUrl,
+    decimal? BasePrice,
+    bool? VatIncluded,
+    int? ExternalSourceId,
+    Guid? AbuviManagedByUserId,
+    string? AbuviManagedByUserName,
+    string? AbuviContactedAt,
+    string? AbuviPossibility,
+    string? AbuviLastVisited,
+    bool? AbuviHasDataErrors,
+    Guid? LastModifiedByUserId,
+    IReadOnlyList<CampObservationResponse> Observations
 );
 
 /// <summary>
@@ -747,3 +844,14 @@ public record PhotoOrderItem(
     Guid Id,
     int DisplayOrder
 );
+
+// ── Camp Observations & Audit DTOs ──────────────────────────────────────────
+
+public record AddCampObservationRequest(string Text, string? Season);
+
+public record CampObservationResponse(
+    Guid Id, string Text, string? Season, Guid? CreatedByUserId, DateTime CreatedAt);
+
+public record CampAuditLogResponse(
+    Guid Id, string FieldName, string? OldValue, string? NewValue,
+    Guid ChangedByUserId, DateTime ChangedAt);
