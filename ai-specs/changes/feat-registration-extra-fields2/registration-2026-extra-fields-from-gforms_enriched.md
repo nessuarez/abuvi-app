@@ -4,6 +4,19 @@
 
 The current Google Forms registration form for camp "El Clar del Bosc 2026" collects several fields that are not yet captured in the web application's registration flow. This feature maps those Google Forms fields to the existing data model, extends the model where necessary, and surfaces the new fields in both the registration wizard (`RegisterForCampPage.vue`) and the registration detail page.
 
+### ⚠️ Scope Reduction (2026-02-26)
+
+This ticket was scoped down to only implement **SpecialNeeds**, **CampatesPreference**, **GuardianName**, and **GuardianDocumentNumber**. The following fields were extracted to separate tickets that require richer domain models:
+
+| Field | New Ticket | Reason |
+| ----- | ---------- | ------ |
+| `AccommodationPreferences` | [`feat-registration-accommodations`](../feat-registration-accommodations/feat-registration-accommodations.md) | Structured model needed for family placement within camp facilities |
+| `VegetarianCount` | [`feat-camp-edition-extras-registration`](../feat-camp-edition-extras-registration/feat-camp-edition-extras-registration.md) | Generic extras system — may have costs in some years |
+| `NeedsTruck` | [`feat-camp-edition-extras-registration`](../feat-camp-edition-extras-registration/feat-camp-edition-extras-registration.md) | Generic extras system — may have costs in some years |
+| `Activities` | [`feat-registration-activities`](../feat-registration-activities/feat-registration-activities.md) | Structured model with per-edition conditions and participation tracking |
+
+See the updated backend and frontend implementation plans for the reduced scope.
+
 **Depends on**:
 
 - `feat-camps-registration` (backend registration entities — implemented and merged)
