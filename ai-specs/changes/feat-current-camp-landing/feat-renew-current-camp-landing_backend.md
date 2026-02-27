@@ -132,12 +132,14 @@ public record CurrentCampEditionResponse(
 - **Action**: Add `ThenInclude(c => c.Photos)` and a filtered `Include(e => e.Extras)` to both queries inside `GetCurrentAsync`.
 
 **Current code (both queries look like this):**
+
 ```csharp
 .Include(e => e.Camp)
 .Where(...)
 ```
 
 **Replace with (for both the current-year and previous-year queries):**
+
 ```csharp
 .Include(e => e.Camp)
     .ThenInclude(c => c.Photos.OrderBy(p => p.IsPrimary ? 0 : 1)
@@ -317,6 +319,7 @@ private static CampEdition CreateEditionWithCamp(
 **Test cases to implement:**
 
 #### Test 1: Returns null when no qualifying edition exists
+
 ```csharp
 [Fact]
 public async Task GetCurrentAsync_WhenNoEditionExists_ReturnsNull()
@@ -334,6 +337,7 @@ public async Task GetCurrentAsync_WhenNoEditionExists_ReturnsNull()
 ```
 
 #### Test 2: Maps all camp-level contact fields
+
 ```csharp
 [Fact]
 public async Task GetCurrentAsync_WithCampContactData_MapsCampFields()
@@ -359,6 +363,7 @@ public async Task GetCurrentAsync_WithCampContactData_MapsCampFields()
 ```
 
 #### Test 3: Maps camp photos ordered (primary first, then by DisplayOrder)
+
 ```csharp
 [Fact]
 public async Task GetCurrentAsync_WithCampPhotos_MapsPhotosOrderedPrimaryFirst()
@@ -389,6 +394,7 @@ public async Task GetCurrentAsync_WithCampPhotos_MapsPhotosOrderedPrimaryFirst()
 > **Note for this test**: Since ordering happens in the EF Core query (repository level), the unit test verifies the service maps the photos it receives — not that it re-sorts them. The integration test (if added later) would verify the sort order from DB.
 
 #### Test 4: Returns empty CampPhotos list when camp has no photos
+
 ```csharp
 [Fact]
 public async Task GetCurrentAsync_WithNoCampPhotos_ReturnsEmptyPhotosList()
@@ -408,6 +414,7 @@ public async Task GetCurrentAsync_WithNoCampPhotos_ReturnsEmptyPhotosList()
 ```
 
 #### Test 5: AccommodationCapacity uses edition override when present
+
 ```csharp
 [Fact]
 public async Task GetCurrentAsync_WithEditionAccommodation_UsesEditionOverCamp()
@@ -431,6 +438,7 @@ public async Task GetCurrentAsync_WithEditionAccommodation_UsesEditionOverCamp()
 ```
 
 #### Test 6: AccommodationCapacity falls back to camp when edition has none
+
 ```csharp
 [Fact]
 public async Task GetCurrentAsync_WithoutEditionAccommodation_UsesCampAccommodation()
@@ -452,6 +460,7 @@ public async Task GetCurrentAsync_WithoutEditionAccommodation_UsesCampAccommodat
 ```
 
 #### Test 7: AccommodationCapacity is null when neither edition nor camp have it
+
 ```csharp
 [Fact]
 public async Task GetCurrentAsync_WithNoAccommodation_ReturnsNullAccommodation()
@@ -473,6 +482,7 @@ public async Task GetCurrentAsync_WithNoAccommodation_ReturnsNullAccommodation()
 ```
 
 #### Test 8: CalculatedTotalBedCapacity is computed from AccommodationCapacity
+
 ```csharp
 [Fact]
 public async Task GetCurrentAsync_WithAccommodation_ComputesBedCapacity()
@@ -493,6 +503,7 @@ public async Task GetCurrentAsync_WithAccommodation_ComputesBedCapacity()
 ```
 
 #### Test 9: Returns only active extras in Extras list
+
 ```csharp
 [Fact]
 public async Task GetCurrentAsync_WithMixedExtras_ReturnsOnlyActiveExtras()
@@ -526,6 +537,7 @@ public async Task GetCurrentAsync_WithMixedExtras_ReturnsOnlyActiveExtras()
 > **Design note**: The `Include(e => e.Extras.Where(x => x.IsActive))` filter is a EF Core concern. In unit tests, we mock the repository which returns the entity with pre-populated collections. The service test should verify that it maps whatever the repository returns without filtering. If you want to test the filtering, write an integration/repository test.
 
 #### Test 10: Returns empty Extras list when no active extras
+
 ```csharp
 [Fact]
 public async Task GetCurrentAsync_WithNoActiveExtras_ReturnsEmptyExtrasList()
@@ -545,6 +557,7 @@ public async Task GetCurrentAsync_WithNoActiveExtras_ReturnsEmptyExtrasList()
 ```
 
 #### Test 11: Extras have CurrentQuantitySold = 0
+
 ```csharp
 [Fact]
 public async Task GetCurrentAsync_WithExtras_SetsCurrentQuantitySoldToZero()
@@ -575,11 +588,13 @@ public async Task GetCurrentAsync_WithExtras_SetsCurrentQuantitySoldToZero()
 
 - **Action**: Build the project and run all tests.
 - **Commands**:
+
   ```bash
   cd /d/Repos/abuvi-app
   dotnet build src/Abuvi.API/Abuvi.API.csproj
   dotnet test src/Abuvi.Tests/Abuvi.Tests.csproj --filter "FullyQualifiedName~CampEditionsServiceTests"
   ```
+
 - **Expected**: All new tests GREEN. Existing tests remain GREEN (no regressions).
 - **If build fails**: Check that `CampEditionExtraExtensions.ToResponse` is accessible from `CampEditionsService.cs`. Both are in the `Abuvi.API.Features.Camps` namespace but `ToResponse` is declared `internal static` in `CampEditionExtrasService.cs`. Since they share the same assembly and namespace, this is valid.
 
@@ -646,7 +661,7 @@ public async Task GetCurrentAsync_WithExtras_SetsCurrentQuantitySoldToZero()
 ]
 ```
 
-  3. Add notes below the response:
+  1. Add notes below the response:
      - `campPhotos` is ordered: primary photo first, then by `displayOrder` ascending. Empty array when no photos.
      - `accommodationCapacity`: edition-level value takes priority over camp-level value. `null` when neither is set.
      - `calculatedTotalBedCapacity`: computed from private rooms only (2 beds/room). `null` when no accommodation capacity.
