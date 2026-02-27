@@ -473,7 +473,8 @@ A specific annual edition of a camp (e.g., Camp 2026). Defines dates, pricing, c
 - `customAdultMinAge`: Custom minimum age (inclusive) to be priced as adult (optional, integer)
 - `status`: Current lifecycle status (required, enum: `Proposed` | `Draft` | `Open` | `Closed` | `Completed`, default: `Proposed`)
 - `maxCapacity`: Maximum number of participants for this edition (required, integer > 0)
-- `notes`: Free-text notes for internal use (optional)
+- `notes`: Free-text notes for internal use (optional, max 2000 characters)
+- `description`: Long-form public-facing description for the edition — activities overview, highlights, marketing copy, etc. (optional, PostgreSQL `text`, unlimited length)
 - `isArchived`: Whether the edition has been rejected/archived (required, boolean, default: false)
 - `accommodationCapacityJson`: JSON-serialized `AccommodationCapacity` for this specific edition (optional, stored as `text`). When set, auto-syncs to parent `Camp.accommodationCapacityJson`.
 - `proposalReason`: Reason provided when proposing the edition (optional, used in Proposed → Draft flow)
@@ -496,7 +497,7 @@ A specific annual edition of a camp (e.g., Camp 2026). Defines dates, pricing, c
 - Status transitions follow a strict chain: `Proposed → Draft → Open → Closed → Completed`; rejection sets `isArchived = true` (soft delete)
 - `Draft → Open`: `startDate` must not be in the past
 - `Closed → Completed`: `endDate` must be in the past
-- `Open` and `Closed` editions cannot have their dates or prices changed; only `notes` and `maxCapacity` are editable
+- `Open` and `Closed` editions cannot have their dates or prices changed; only `notes`, `description`, and `maxCapacity` are editable
 
 **Relationships:**
 

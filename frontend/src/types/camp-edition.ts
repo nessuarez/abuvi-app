@@ -172,6 +172,7 @@ export interface UpdateCampEditionRequest {
   customAdultMinAge?: number
   maxCapacity?: number
   notes?: string
+  description?: string
   // Partial attendance (week pricing):
   halfDate?: string | null
   pricePerAdultWeek?: number | null
@@ -212,6 +213,7 @@ export interface ActiveCampEditionResponse {
   maxCapacity?: number
   registrationCount: number
   notes?: string
+  description?: string
   createdAt: string
   updatedAt: string
   // Partial attendance (week pricing):

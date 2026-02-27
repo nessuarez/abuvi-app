@@ -101,6 +101,11 @@ public class CampEditionConfiguration : IEntityTypeConfiguration<CampEdition>
             .HasMaxLength(2000)
             .HasColumnName("notes");
 
+        // Description: optional, long text (no max length → PostgreSQL text)
+        builder.Property(e => e.Description)
+            .HasColumnType("text")
+            .HasColumnName("description");
+
         // ProposalReason: optional, max 1000 (stored for board review)
         builder.Property(e => e.ProposalReason)
             .HasMaxLength(1000)

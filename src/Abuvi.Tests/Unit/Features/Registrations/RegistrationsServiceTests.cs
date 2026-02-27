@@ -15,10 +15,8 @@ public class RegistrationsServiceTests
     private readonly IRegistrationsRepository _repo;
     private readonly IRegistrationExtrasRepository _extrasRepo;
     private readonly IRegistrationAccommodationPreferencesRepository _accommodationPrefsRepo;
-    private readonly IRegistrationAccommodationPreferencesRepository _accommodationPrefsRepo;
     private readonly IFamilyUnitsRepository _familyUnitsRepo;
     private readonly ICampEditionsRepository _editionsRepo;
-    private readonly ICampEditionAccommodationsRepository _accommodationsRepo;
     private readonly ICampEditionAccommodationsRepository _accommodationsRepo;
     private readonly IAssociationSettingsRepository _settingsRepo;
     private readonly ILogger<RegistrationsService> _logger;

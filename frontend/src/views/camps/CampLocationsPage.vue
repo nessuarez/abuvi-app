@@ -71,6 +71,7 @@ const campLocations = computed(() => {
       longitude: camp.longitude as number,
       name: camp.name,
       rawAddress: camp.rawAddress ?? undefined
+      rawAddress: camp.rawAddress ?? undefined
     }))
 })
 
@@ -208,14 +209,6 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
         <Button :icon="viewMode === 'table' ? 'pi pi-table' : 'pi pi-th-large'" :outlined="viewMode !== 'table'"
           @click="viewMode = viewMode === 'table' ? 'cards' : 'table'" />
         <Button icon="pi pi-map" :outlined="viewMode !== 'map'" @click="viewMode = 'map'" />
-        <Button
-          v-if="auth.isAdmin"
-          label="Importar CSV"
-          icon="pi pi-upload"
-          severity="secondary"
-          size="small"
-          @click="showImportDialog = true"
-        />
         <Button label="Nuevo Campamento" icon="pi pi-plus" @click="handleCreate" />
       </div>
     </div>
@@ -324,11 +317,5 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
         @cancel="showEditDialog = false" />
     </Dialog>
 
-    <!-- CSV Import Dialog (Admin only) -->
-    <CampCsvImportDialog
-      v-if="auth.isAdmin"
-      v-model:visible="showImportDialog"
-      @imported="fetchCamps()"
-    />
   </div>
 </template>

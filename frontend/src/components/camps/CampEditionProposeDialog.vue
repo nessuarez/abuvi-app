@@ -35,7 +35,8 @@ const form = ref({
   pricePerChild: 0,
   pricePerBaby: 0,
   maxCapacity: 0,
-  proposalReason: ''
+  proposalReason: '',
+  description: ''
 })
 
 const errors = ref<Record<string, string>>({})
@@ -69,7 +70,8 @@ watch(() => props.visible, (val) => {
       pricePerChild: props.camp?.pricePerChild ?? 0,
       pricePerBaby: props.camp?.pricePerBaby ?? 0,
       maxCapacity: 0,
-      proposalReason: ''
+      proposalReason: '',
+      description: ''
     }
     prefillDatesFromPreviousYear(targetYear)
   }
@@ -109,7 +111,8 @@ const handleSubmit = async () => {
     pricePerChild: form.value.pricePerChild,
     pricePerBaby: form.value.pricePerBaby,
     maxCapacity: form.value.maxCapacity || null,
-    proposalReason: form.value.proposalReason || undefined
+    proposalReason: form.value.proposalReason || undefined,
+    description: form.value.description || undefined
   })
   if (result) {
     emit('saved', result)
@@ -187,6 +190,15 @@ const handleSubmit = async () => {
           v-model="form.proposalReason"
           rows="3"
           placeholder="Explica por qué se propone esta edición (opcional)..."
+        />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium">Descripción</label>
+        <Textarea
+          v-model="form.description"
+          rows="4"
+          placeholder="Descripción de la edición (actividades, novedades, información pública...)"
         />
       </div>
     </div>
