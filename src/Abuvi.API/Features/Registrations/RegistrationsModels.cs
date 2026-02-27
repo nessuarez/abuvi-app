@@ -29,6 +29,7 @@ public class Registration
     public User RegisteredByUser { get; set; } = null!;
     public ICollection<RegistrationMember> Members { get; set; } = [];
     public ICollection<RegistrationExtra> Extras { get; set; } = [];
+    public ICollection<RegistrationAccommodationPreference> AccommodationPreferences { get; set; } = [];
     public ICollection<Payment> Payments { get; set; } = [];
 }
 
@@ -64,6 +65,19 @@ public class RegistrationExtra
     public DateTime CreatedAt { get; set; }
     public Registration Registration { get; set; } = null!;
     public CampEditionExtra CampEditionExtra { get; set; } = null!;
+}
+
+public class RegistrationAccommodationPreference
+{
+    public Guid Id { get; set; }
+    public Guid RegistrationId { get; set; }
+    public Guid CampEditionAccommodationId { get; set; }
+    public int PreferenceOrder { get; set; }
+    public DateTime CreatedAt { get; set; }
+
+    // Navigation
+    public Registration Registration { get; set; } = null!;
+    public CampEditionAccommodation CampEditionAccommodation { get; set; } = null!;
 }
 
 public class Payment
@@ -120,6 +134,12 @@ public record UpdateRegistrationMembersRequest(List<MemberAttendanceRequest> Mem
 public record UpdateRegistrationExtrasRequest(List<ExtraSelectionRequest> Extras);
 
 public record ExtraSelectionRequest(Guid CampEditionExtraId, int Quantity);
+
+public record AccommodationPreferenceRequest(Guid CampEditionAccommodationId, int PreferenceOrder);
+
+public record UpdateRegistrationAccommodationPreferencesRequest(
+    List<AccommodationPreferenceRequest> Preferences
+);
 
 // ── Response DTOs ─────────────────────────────────────────────────────────────
 
@@ -213,6 +233,13 @@ public record RegistrationListResponse(
 );
 
 public record CancelRegistrationResponse(string Message);
+
+public record AccommodationPreferenceResponse(
+    Guid CampEditionAccommodationId,
+    string AccommodationName,
+    AccommodationType AccommodationType,
+    int PreferenceOrder
+);
 
 // ── Mapping Extensions ────────────────────────────────────────────────────────
 

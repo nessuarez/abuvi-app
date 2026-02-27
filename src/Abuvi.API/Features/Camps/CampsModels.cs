@@ -197,6 +197,7 @@ public class CampEdition
     // Navigation properties
     public Camp Camp { get; set; } = null!;
     public ICollection<CampEditionExtra> Extras { get; set; } = new List<CampEditionExtra>();
+    public ICollection<CampEditionAccommodation> Accommodations { get; set; } = [];
 }
 
 /// <summary>
@@ -254,6 +255,75 @@ public enum PricingPeriod
     OneTime,    // One-time charge
     PerDay      // Charged per day of camp
 }
+
+// ── Accommodation Types ──────────────────────────────────────────────────────
+
+/// <summary>
+/// Type of accommodation offered at a camp edition
+/// </summary>
+public enum AccommodationType
+{
+    Lodge,       // Refugio / cabaña
+    Caravan,     // Caravana
+    Tent,        // Tienda de campaña
+    Bungalow,    // Bungalow
+    Motorhome    // Autocaravana
+}
+
+/// <summary>
+/// Accommodation option available for a camp edition.
+/// Families rank their preferences during registration (no pricing — preference only).
+/// </summary>
+public class CampEditionAccommodation
+{
+    public Guid Id { get; set; }
+    public Guid CampEditionId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public AccommodationType AccommodationType { get; set; }
+    public string? Description { get; set; }
+    public int? Capacity { get; set; }
+    public bool IsActive { get; set; } = true;
+    public int SortOrder { get; set; } = 0;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Navigation
+    public CampEdition CampEdition { get; set; } = null!;
+}
+
+// ── Camp Edition Accommodations DTOs ────────────────────────────────────────
+
+public record CampEditionAccommodationResponse(
+    Guid Id,
+    Guid CampEditionId,
+    string Name,
+    AccommodationType AccommodationType,
+    string? Description,
+    int? Capacity,
+    bool IsActive,
+    int SortOrder,
+    int CurrentPreferenceCount,
+    int FirstChoiceCount,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
+);
+
+public record CreateCampEditionAccommodationRequest(
+    string Name,
+    AccommodationType AccommodationType,
+    string? Description,
+    int? Capacity,
+    int SortOrder = 0
+);
+
+public record UpdateCampEditionAccommodationRequest(
+    string Name,
+    AccommodationType AccommodationType,
+    string? Description,
+    int? Capacity,
+    bool IsActive,
+    int SortOrder
+);
 
 // ── Camp Edition Extras DTOs ──────────────────────────────────────────────────
 
