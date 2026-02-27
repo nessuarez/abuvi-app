@@ -14,8 +14,10 @@ public class RegistrationsServiceTests
 {
     private readonly IRegistrationsRepository _repo;
     private readonly IRegistrationExtrasRepository _extrasRepo;
+    private readonly IRegistrationAccommodationPreferencesRepository _accommodationPrefsRepo;
     private readonly IFamilyUnitsRepository _familyUnitsRepo;
     private readonly ICampEditionsRepository _editionsRepo;
+    private readonly ICampEditionAccommodationsRepository _accommodationsRepo;
     private readonly IAssociationSettingsRepository _settingsRepo;
     private readonly ILogger<RegistrationsService> _logger;
     private readonly RegistrationPricingService _pricingService;
@@ -30,13 +32,16 @@ public class RegistrationsServiceTests
     {
         _repo = Substitute.For<IRegistrationsRepository>();
         _extrasRepo = Substitute.For<IRegistrationExtrasRepository>();
+        _accommodationPrefsRepo = Substitute.For<IRegistrationAccommodationPreferencesRepository>();
         _familyUnitsRepo = Substitute.For<IFamilyUnitsRepository>();
         _editionsRepo = Substitute.For<ICampEditionsRepository>();
+        _accommodationsRepo = Substitute.For<ICampEditionAccommodationsRepository>();
         _settingsRepo = Substitute.For<IAssociationSettingsRepository>();
         _logger = Substitute.For<ILogger<RegistrationsService>>();
         _pricingService = new RegistrationPricingService(_settingsRepo);
         _sut = new RegistrationsService(
-            _repo, _extrasRepo, _familyUnitsRepo, _editionsRepo, _pricingService, _logger);
+            _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo, _editionsRepo,
+            _accommodationsRepo, _pricingService, _logger);
     }
 
     // ── CreateAsync ───────────────────────────────────────────────────────────

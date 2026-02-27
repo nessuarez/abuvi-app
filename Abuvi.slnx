@@ -2,5 +2,6 @@
   <Folder Name="/src/">
     <Project Path="src/Abuvi.API/Abuvi.API.csproj" />
     <Project Path="src/Abuvi.Tests/Abuvi.Tests.csproj" />
+    <Project Path="src/Abuvi.Setup/Abuvi.Setup.csproj" />
   </Folder>
 </Solution>
