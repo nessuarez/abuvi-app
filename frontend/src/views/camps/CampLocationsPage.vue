@@ -16,16 +16,21 @@ import Select from 'primevue/select'
 import CampLocationCard from '@/components/camps/CampLocationCard.vue'
 import CampLocationForm from '@/components/camps/CampLocationForm.vue'
 import CampLocationMap from '@/components/camps/CampLocationMap.vue'
+import CampCsvImportDialog from '@/components/camps/CampCsvImportDialog.vue'
 import { useCamps } from '@/composables/useCamps'
+import { useAuthStore } from '@/stores/auth'
 import type { Camp, CreateCampRequest } from '@/types/camp'
 
 const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
+const auth = useAuthStore()
+
 const { camps, loading, error, fetchCamps, createCamp, updateCamp, deleteCamp } = useCamps()
 
 const showCreateDialog = ref(false)
 const showEditDialog = ref(false)
+const showImportDialog = ref(false)
 const selectedCamp = ref<Camp | null>(null)
 const searchQuery = ref('')
 const selectedStatus = ref<boolean | null>(null)
@@ -65,6 +70,7 @@ const campLocations = computed(() => {
       latitude: camp.latitude as number,
       longitude: camp.longitude as number,
       name: camp.name,
+      rawAddress: camp.rawAddress ?? undefined
       rawAddress: camp.rawAddress ?? undefined
     }))
 })
