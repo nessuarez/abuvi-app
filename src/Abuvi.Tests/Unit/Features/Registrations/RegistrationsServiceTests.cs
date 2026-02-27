@@ -15,8 +15,10 @@ public class RegistrationsServiceTests
     private readonly IRegistrationsRepository _repo;
     private readonly IRegistrationExtrasRepository _extrasRepo;
     private readonly IRegistrationAccommodationPreferencesRepository _accommodationPrefsRepo;
+    private readonly IRegistrationAccommodationPreferencesRepository _accommodationPrefsRepo;
     private readonly IFamilyUnitsRepository _familyUnitsRepo;
     private readonly ICampEditionsRepository _editionsRepo;
+    private readonly ICampEditionAccommodationsRepository _accommodationsRepo;
     private readonly ICampEditionAccommodationsRepository _accommodationsRepo;
     private readonly IAssociationSettingsRepository _settingsRepo;
     private readonly ILogger<RegistrationsService> _logger;
@@ -33,8 +35,10 @@ public class RegistrationsServiceTests
         _repo = Substitute.For<IRegistrationsRepository>();
         _extrasRepo = Substitute.For<IRegistrationExtrasRepository>();
         _accommodationPrefsRepo = Substitute.For<IRegistrationAccommodationPreferencesRepository>();
+        _accommodationPrefsRepo = Substitute.For<IRegistrationAccommodationPreferencesRepository>();
         _familyUnitsRepo = Substitute.For<IFamilyUnitsRepository>();
         _editionsRepo = Substitute.For<ICampEditionsRepository>();
+        _accommodationsRepo = Substitute.For<ICampEditionAccommodationsRepository>();
         _accommodationsRepo = Substitute.For<ICampEditionAccommodationsRepository>();
         _settingsRepo = Substitute.For<IAssociationSettingsRepository>();
         _logger = Substitute.For<ILogger<RegistrationsService>>();
@@ -497,81 +501,81 @@ public class RegistrationsServiceTests
 
     private static FamilyMember CreateFamilyMember(Guid id, Guid familyUnitId,
         DateOnly? dateOfBirth = null) => new()
-    {
-        Id = id,
-        FamilyUnitId = familyUnitId,
-        FirstName = "Ana",
-        LastName = "García",
-        DateOfBirth = dateOfBirth ?? new DateOnly(2000, 1, 1),
-        Relationship = FamilyRelationship.Parent,
-        CreatedAt = DateTime.UtcNow,
-        UpdatedAt = DateTime.UtcNow
-    };
+        {
+            Id = id,
+            FamilyUnitId = familyUnitId,
+            FirstName = "Ana",
+            LastName = "García",
+            DateOfBirth = dateOfBirth ?? new DateOnly(2000, 1, 1),
+            Relationship = FamilyRelationship.Parent,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
 
     private static Registration CreateRegistrationWithFamilyUnit(
         Guid id, FamilyUnit familyUnit, CampEdition edition) => new()
-    {
-        Id = id,
-        FamilyUnitId = familyUnit.Id,
-        CampEditionId = edition.Id,
-        RegisteredByUserId = familyUnit.RepresentativeUserId,
-        BaseTotalAmount = 500m,
-        ExtrasAmount = 0m,
-        TotalAmount = 500m,
-        Status = RegistrationStatus.Pending,
-        CreatedAt = DateTime.UtcNow,
-        UpdatedAt = DateTime.UtcNow,
-        FamilyUnit = familyUnit,
-        CampEdition = edition,
-        Members = [],
-        Extras = [],
-        Payments = []
-    };
+        {
+            Id = id,
+            FamilyUnitId = familyUnit.Id,
+            CampEditionId = edition.Id,
+            RegisteredByUserId = familyUnit.RepresentativeUserId,
+            BaseTotalAmount = 500m,
+            ExtrasAmount = 0m,
+            TotalAmount = 500m,
+            Status = RegistrationStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            FamilyUnit = familyUnit,
+            CampEdition = edition,
+            Members = [],
+            Extras = [],
+            Payments = []
+        };
 
     /// <summary>Builds a full Registration entity with navigation properties — used for GetByIdWithDetailsAsync mocks.</summary>
     private static Registration BuildFullRegistration(
         Guid id, FamilyUnit familyUnit, CampEdition edition,
         List<FamilyMember> members, decimal pricePerMember) => new()
-    {
-        Id = id,
-        FamilyUnitId = familyUnit.Id,
-        CampEditionId = edition.Id,
-        RegisteredByUserId = familyUnit.RepresentativeUserId,
-        BaseTotalAmount = members.Count * pricePerMember,
-        ExtrasAmount = 0m,
-        TotalAmount = members.Count * pricePerMember,
-        Status = RegistrationStatus.Pending,
-        CreatedAt = DateTime.UtcNow,
-        UpdatedAt = DateTime.UtcNow,
-        FamilyUnit = familyUnit,
-        CampEdition = edition,
-        Members = members.Select(m => new RegistrationMember
         {
-            Id = Guid.NewGuid(),
-            RegistrationId = id,
-            FamilyMemberId = m.Id,
-            FamilyMember = m,
-            AgeAtCamp = 25,
-            AgeCategory = AgeCategory.Adult,
-            IndividualAmount = pricePerMember,
-            CreatedAt = DateTime.UtcNow
-        }).ToList(),
-        Extras = [],
-        Payments = []
-    };
+            Id = id,
+            FamilyUnitId = familyUnit.Id,
+            CampEditionId = edition.Id,
+            RegisteredByUserId = familyUnit.RepresentativeUserId,
+            BaseTotalAmount = members.Count * pricePerMember,
+            ExtrasAmount = 0m,
+            TotalAmount = members.Count * pricePerMember,
+            Status = RegistrationStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            FamilyUnit = familyUnit,
+            CampEdition = edition,
+            Members = members.Select(m => new RegistrationMember
+            {
+                Id = Guid.NewGuid(),
+                RegistrationId = id,
+                FamilyMemberId = m.Id,
+                FamilyMember = m,
+                AgeAtCamp = 25,
+                AgeCategory = AgeCategory.Adult,
+                IndividualAmount = pricePerMember,
+                CreatedAt = DateTime.UtcNow
+            }).ToList(),
+            Extras = [],
+            Payments = []
+        };
 
     private static CampEditionExtra CreateCampEditionExtra(
         Guid id, Guid campEditionId, decimal price, int? maxQuantity = null) => new()
-    {
-        Id = id,
-        CampEditionId = campEditionId,
-        Name = "Test Extra",
-        Price = price,
-        PricingType = PricingType.PerPerson,
-        PricingPeriod = PricingPeriod.OneTime,
-        IsActive = true,
-        MaxQuantity = maxQuantity
-    };
+        {
+            Id = id,
+            CampEditionId = campEditionId,
+            Name = "Test Extra",
+            Price = price,
+            PricingType = PricingType.PerPerson,
+            PricingPeriod = PricingPeriod.OneTime,
+            IsActive = true,
+            MaxQuantity = maxQuantity
+        };
 
     private void SetupGlobalAgeRanges()
     {

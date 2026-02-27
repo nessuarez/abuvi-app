@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import Container from '@/components/ui/Container.vue'
 import CampEditionStatusBadge from '@/components/camps/CampEditionStatusBadge.vue'
 import CampEditionAccommodationsPanel from '@/components/camps/CampEditionAccommodationsPanel.vue'
+import CampEditionExtrasList from '@/components/camps/CampEditionExtrasList.vue'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
@@ -117,6 +118,14 @@ onMounted(async () => {
           :edition-id="edition.id"
           class="mt-6"
         />
+
+        <!-- Camp Edition Extras -->
+        <div class="mt-6 rounded-lg border border-gray-200 bg-white p-6" data-testid="edition-extras-section">
+          <CampEditionExtrasList
+            :edition-id="edition.id"
+            :edition-status="edition.status"
+          />
+        </div>
       </div>
     </div>
   </Container>

@@ -1,0 +1,6 @@
+familyUnitName,firstName,lastName,dateOfBirth,relationship,documentNumber,email,phone
+Garcia Family,Carlos,Garcia,1982-03-15,Parent,87654321B,member1@abuvi.local,+34698765432
+Garcia Family,Laura,Garcia,1985-07-22,Spouse,,laura@example.com,
+Garcia Family,Pablo,Garcia,2010-11-05,Child,,,
+Garcia Family,Sofia,Garcia,2014-04-18,Child,,,
+Lopez Family,Ana,Lopez,1979-01-30,Parent,12345678A,board@abuvi.local,+34612345678
