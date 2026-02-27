@@ -1033,6 +1033,206 @@ public class CampEditionsServiceTests
 
     #endregion
 
+    #region Description Field Tests
+
+    [Fact]
+    public async Task ProposeAsync_WithDescription_SetsDescriptionOnEdition()
+    {
+        // Arrange
+        var camp = new Camp
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Camp",
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            IsActive = true
+        };
+
+        _campsRepository.GetByIdAsync(camp.Id, Arg.Any<CancellationToken>())
+            .Returns(camp);
+
+        _repository.ExistsAsync(camp.Id, 2026, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        _repository.CreateAsync(Arg.Any<CampEdition>(), Arg.Any<CancellationToken>())
+            .Returns(args => args.Arg<CampEdition>());
+
+        var request = new ProposeCampEditionRequest(
+            CampId: camp.Id,
+            Year: 2026,
+            StartDate: new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate: new DateTime(2026, 7, 10, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult: null,
+            PricePerChild: null,
+            PricePerBaby: null,
+            UseCustomAgeRanges: false,
+            CustomBabyMaxAge: null,
+            CustomChildMinAge: null,
+            CustomChildMaxAge: null,
+            CustomAdultMinAge: null,
+            MaxCapacity: 100,
+            Notes: null,
+            Description: "A wonderful summer camp edition with outdoor activities and team building"
+        );
+
+        // Act
+        var result = await _sut.ProposeAsync(request);
+
+        // Assert
+        result.Description.Should().Be("A wonderful summer camp edition with outdoor activities and team building");
+    }
+
+    [Fact]
+    public async Task ProposeAsync_WithoutDescription_DescriptionIsNull()
+    {
+        // Arrange
+        var camp = new Camp
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Camp",
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            IsActive = true
+        };
+
+        _campsRepository.GetByIdAsync(camp.Id, Arg.Any<CancellationToken>())
+            .Returns(camp);
+
+        _repository.ExistsAsync(camp.Id, 2026, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        _repository.CreateAsync(Arg.Any<CampEdition>(), Arg.Any<CancellationToken>())
+            .Returns(args => args.Arg<CampEdition>());
+
+        var request = new ProposeCampEditionRequest(
+            CampId: camp.Id,
+            Year: 2026,
+            StartDate: new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate: new DateTime(2026, 7, 10, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult: null,
+            PricePerChild: null,
+            PricePerBaby: null,
+            UseCustomAgeRanges: false,
+            CustomBabyMaxAge: null,
+            CustomChildMinAge: null,
+            CustomChildMaxAge: null,
+            CustomAdultMinAge: null,
+            MaxCapacity: 100,
+            Notes: null
+        );
+
+        // Act
+        var result = await _sut.ProposeAsync(request);
+
+        // Assert
+        result.Description.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithDescription_UpdatesDescription()
+    {
+        // Arrange
+        var editionId = Guid.NewGuid();
+        var edition = new CampEdition
+        {
+            Id = editionId,
+            CampId = Guid.NewGuid(),
+            Year = 2026,
+            Status = CampEditionStatus.Draft,
+            StartDate = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 7, 10, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            Description = "Old description",
+            Camp = new Camp { Name = "Test Camp", PricePerAdult = 180m, PricePerChild = 120m, PricePerBaby = 60m }
+        };
+
+        _repository.GetByIdAsync(editionId, Arg.Any<CancellationToken>())
+            .Returns(edition);
+
+        _repository.UpdateAsync(Arg.Any<CampEdition>(), Arg.Any<CancellationToken>())
+            .Returns(args => args.Arg<CampEdition>());
+
+        var request = new UpdateCampEditionRequest(
+            StartDate: new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate: new DateTime(2026, 7, 10, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult: 180m,
+            PricePerChild: 120m,
+            PricePerBaby: 60m,
+            UseCustomAgeRanges: false,
+            CustomBabyMaxAge: null,
+            CustomChildMinAge: null,
+            CustomChildMaxAge: null,
+            CustomAdultMinAge: null,
+            MaxCapacity: null,
+            Notes: null,
+            Description: "Updated description with new activities"
+        );
+
+        // Act
+        var result = await _sut.UpdateAsync(editionId, request);
+
+        // Assert
+        result.Description.Should().Be("Updated description with new activities");
+    }
+
+    [Fact]
+    public async Task UpdateAsync_OpenEdition_CanUpdateDescription()
+    {
+        // Arrange
+        var editionId = Guid.NewGuid();
+        var startDate = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+        var endDate = new DateTime(2026, 7, 10, 0, 0, 0, DateTimeKind.Utc);
+        var edition = new CampEdition
+        {
+            Id = editionId,
+            CampId = Guid.NewGuid(),
+            Year = 2026,
+            Status = CampEditionStatus.Open,
+            StartDate = startDate,
+            EndDate = endDate,
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            Description = null,
+            Camp = new Camp { Name = "Test Camp", PricePerAdult = 180m, PricePerChild = 120m, PricePerBaby = 60m }
+        };
+
+        _repository.GetByIdAsync(editionId, Arg.Any<CancellationToken>())
+            .Returns(edition);
+
+        _repository.UpdateAsync(Arg.Any<CampEdition>(), Arg.Any<CancellationToken>())
+            .Returns(args => args.Arg<CampEdition>());
+
+        // Same dates and prices, only description changes
+        var request = new UpdateCampEditionRequest(
+            StartDate: startDate,
+            EndDate: endDate,
+            PricePerAdult: 180m,
+            PricePerChild: 120m,
+            PricePerBaby: 60m,
+            UseCustomAgeRanges: false,
+            CustomBabyMaxAge: null,
+            CustomChildMinAge: null,
+            CustomChildMaxAge: null,
+            CustomAdultMinAge: null,
+            MaxCapacity: null,
+            Notes: null,
+            Description: "New description added to open edition"
+        );
+
+        // Act
+        var result = await _sut.UpdateAsync(editionId, request);
+
+        // Assert
+        result.Description.Should().Be("New description added to open edition");
+    }
+
+    #endregion
+
     #region GetByIdAsync Tests
 
     [Fact]
