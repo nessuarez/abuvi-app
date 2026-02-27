@@ -149,6 +149,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 // Camps
 builder.Services.AddScoped<ICampsRepository, CampsRepository>();
 builder.Services.AddScoped<CampsService>();
+builder.Services.AddScoped<ICampObservationsRepository, CampObservationsRepository>();
+builder.Services.AddScoped<ICampObservationsService, CampObservationsService>();
 builder.Services.AddScoped<IAssociationSettingsRepository, AssociationSettingsRepository>();
 builder.Services.AddScoped<AssociationSettingsService>();
 builder.Services.AddScoped<ICampEditionsRepository, CampEditionsRepository>();

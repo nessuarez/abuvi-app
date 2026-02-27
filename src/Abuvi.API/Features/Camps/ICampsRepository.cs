@@ -78,4 +78,8 @@ public interface ICampsRepository
     /// Ensures only one photo is marked as primary for a camp (clears all others)
     /// </summary>
     Task ClearPrimaryPhotoAsync(Guid campId, CancellationToken cancellationToken = default);
+
+    Task AddAuditLogsAsync(IEnumerable<CampAuditLog> entries, CancellationToken cancellationToken = default);
+
+    Task<List<CampAuditLog>> GetAuditLogAsync(Guid campId, CancellationToken cancellationToken = default);
 }

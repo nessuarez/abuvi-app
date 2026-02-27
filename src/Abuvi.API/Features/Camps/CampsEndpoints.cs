@@ -1,3 +1,4 @@
+using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Common.Extensions;
 using Abuvi.API.Common.Filters;
 using Abuvi.API.Common.Models;
@@ -448,6 +449,45 @@ public static class CampsEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
 
+        // ── Camp Observations (Board+ only) ─────────────────────────────────────
+        var observationsGroup = app.MapGroup("/api/camps/{campId:guid}/observations")
+            .WithTags("Camp Observations")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"));
+
+        // POST /api/camps/{campId}/observations - Add observation
+        observationsGroup.MapPost("/", AddCampObservation)
+            .WithName("AddCampObservation")
+            .WithSummary("Add an observation to a camp")
+            .AddEndpointFilter<ValidationFilter<AddCampObservationRequest>>()
+            .Produces<ApiResponse<CampObservationResponse>>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
+
+        // GET /api/camps/{campId}/observations - List observations
+        observationsGroup.MapGet("/", GetCampObservations)
+            .WithName("GetCampObservations")
+            .WithSummary("Get all observations for a camp")
+            .Produces<ApiResponse<List<CampObservationResponse>>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
+        // ── Camp Audit Log (Admin only) ─────────────────────────────────────────
+        var auditLogGroup = app.MapGroup("/api/camps/{campId:guid}/audit-log")
+            .WithTags("Camp Audit Log")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin"));
+
+        // GET /api/camps/{campId}/audit-log - Get audit log
+        auditLogGroup.MapGet("/", GetCampAuditLog)
+            .WithName("GetCampAuditLog")
+            .WithSummary("Get the audit log for a camp (admin only)")
+            .Produces<ApiResponse<List<CampAuditLogResponse>>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
         return app;
     }
 
@@ -507,13 +547,20 @@ public static class CampsEndpoints
     /// </summary>
     private static async Task<IResult> UpdateCamp(
         [FromServices] CampsService service,
+        ClaimsPrincipal user,
         Guid id,
         UpdateCampRequest request,
         CancellationToken cancellationToken = default)
     {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Results.Unauthorized();
+        }
+
         try
         {
-            var camp = await service.UpdateAsync(id, request, cancellationToken);
+            var camp = await service.UpdateAsync(id, request, userId, cancellationToken);
 
             if (camp == null)
             {
@@ -521,6 +568,10 @@ public static class CampsEndpoints
             }
 
             return Results.Ok(ApiResponse<CampDetailResponse>.Ok(camp));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return Results.BadRequest(ApiResponse<CampDetailResponse>.Fail(ex.Message, "BUSINESS_RULE_ERROR"));
         }
         catch (ArgumentException ex)
         {
@@ -1118,5 +1169,53 @@ public static class CampsEndpoints
         {
             return Results.NotFound(ApiResponse<object>.NotFound(ex.Message));
         }
+    }
+
+    // ── Camp Observations handlers ────────────────────────────────────────────
+
+    private static async Task<IResult> AddCampObservation(
+        Guid campId,
+        AddCampObservationRequest request,
+        ClaimsPrincipal user,
+        [FromServices] ICampObservationsService service,
+        CancellationToken ct)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Results.Unauthorized();
+        }
+
+        try
+        {
+            var observation = await service.AddAsync(campId, request, userId, ct);
+            return Results.Created(
+                $"/api/camps/{campId}/observations",
+                ApiResponse<CampObservationResponse>.Ok(observation));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<CampObservationResponse>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> GetCampObservations(
+        Guid campId,
+        [FromServices] ICampObservationsService service,
+        CancellationToken ct)
+    {
+        var observations = await service.GetByCampIdAsync(campId, ct);
+        return Results.Ok(ApiResponse<List<CampObservationResponse>>.Ok(observations));
+    }
+
+    // ── Camp Audit Log handler ────────────────────────────────────────────────
+
+    private static async Task<IResult> GetCampAuditLog(
+        Guid campId,
+        [FromServices] CampsService service,
+        CancellationToken ct)
+    {
+        var logs = await service.GetAuditLogAsync(campId, ct);
+        return Results.Ok(ApiResponse<List<CampAuditLogResponse>>.Ok(logs));
     }
 }
