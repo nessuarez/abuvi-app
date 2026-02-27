@@ -239,6 +239,73 @@ The `${...}` values should come from a `.env` file (not committed) or a secrets 
 
 ---
 
+## Database Setup Tool (`Abuvi.Setup`)
+
+A standalone console application for resetting the database and importing seed data from CSV files. It lives at `src/Abuvi.Setup/` and references the API project to reuse `AbuviDbContext` and all entity models directly — no HTTP, no auth tokens.
+
+> Full usage documentation: [`ai-specs/specs/development_guide.md` — Database Setup Tool section](../ai-specs/specs/development_guide.md#database-setup-tool-abuvisetup)
+
+### Connection String
+
+The tool does **not** read `appsettings.json`. It resolves the connection string in this order:
+
+1. `--connection=<string>` CLI flag (highest priority)
+2. `DATABASE_URL` environment variable
+3. Default: `Host=localhost;Database=abuvi;Username=postgres;Password=postgres`
+
+For production, always pass the connection string explicitly:
+
+```bash
+dotnet run --project src/Abuvi.Setup setup \
+  --env=production \
+  --connection="Host=db;Port=5432;Database=abuvi;Username=abuvi_user;Password=${DB_PASSWORD}" \
+  --dir=./production-data/
+```
+
+### Commands
+
+| Command | Description | Dev | Production |
+| --- | --- | --- | --- |
+| `run-all` | Reset + import all CSVs (default) | Free | `--confirm` + interactive "YES" |
+| `setup` | Import only (no reset) | Skips duplicates | Only on empty tables |
+| `reset` | Wipe all data, re-seed admin | Free | `--confirm` + interactive "YES" |
+| `import <entity>` | Import a single CSV | Skips duplicates | Only on empty table |
+
+### Options
+
+| Flag | Description | Default |
+| --- | --- | --- |
+| `--env=dev\|production` | Environment mode | `dev` |
+| `--connection=<str>` | PostgreSQL connection string | localhost default |
+| `--dir=<path>` | CSV files directory | `./seed/` (next to executable) |
+| `--confirm` | Required for production destructive ops | — |
+
+### CSV Files
+
+Default sample files are included at `src/Abuvi.Setup/seed/`. Import order is strict due to foreign key dependencies:
+
+```
+Users → FamilyUnits → FamilyMembers → Camps → CampEditions
+```
+
+| File | Required Columns |
+| --- | --- |
+| `users.csv` | email, password, firstName, lastName, role |
+| `family-units.csv` | name, representativeEmail |
+| `family-members.csv` | familyUnitName, firstName, lastName, dateOfBirth, relationship |
+| `camps.csv` | name, pricePerAdult, pricePerChild, pricePerBaby |
+| `camp-editions.csv` | campName, year, startDate, endDate, pricePerAdult, pricePerChild, pricePerBaby, status |
+
+### Security Notes
+
+- **Production mode** requires `--confirm` flag plus interactive "YES" confirmation for destructive operations (reset).
+- **Production import** is blocked if the target table already contains data — prevents accidental duplicates.
+- Passwords in CSV are plain text; they are **BCrypt-hashed (cost 12)** before insertion.
+- Sensitive health fields (`medicalNotes`, `allergies`) are **excluded** from CSV import — they must be entered through the API with proper encryption.
+- The admin user (`admin@abuvi.local` / `Admin@123456`) is always re-seeded after a reset. **Change the admin password immediately in production.**
+
+---
+
 ## Quick Reference
 
 | Setting | Secret? | Must change for prod? | Notes |
