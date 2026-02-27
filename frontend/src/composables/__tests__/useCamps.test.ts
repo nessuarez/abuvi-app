@@ -17,7 +17,7 @@ const makeCamp = (overrides: Partial<Camp> = {}): Camp => ({
   id: '1',
   name: 'Mountain Camp',
   description: 'Beautiful mountain location',
-  location: 'Pyrenees, Spain',
+  rawAddress: 'Pyrenees, Spain',
   latitude: 46.5833,
   longitude: 7.9833,
   googlePlaceId: null,
@@ -27,6 +27,27 @@ const makeCamp = (overrides: Partial<Camp> = {}): Camp => ({
   isActive: true,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
+  formattedAddress: null,
+  phoneNumber: null,
+  websiteUrl: null,
+  googleMapsUrl: null,
+  googleRating: null,
+  googleRatingCount: null,
+  businessStatus: null,
+  province: null,
+  contactEmail: null,
+  contactPerson: null,
+  contactCompany: null,
+  secondaryWebsiteUrl: null,
+  basePrice: null,
+  vatIncluded: null,
+  externalSourceId: null,
+  abuviManagedByUserId: null,
+  abuviContactedAt: null,
+  abuviPossibility: null,
+  abuviLastVisited: null,
+  abuviHasDataErrors: null,
+  lastModifiedByUserId: null,
   ...overrides
 })
 
@@ -119,7 +140,7 @@ describe('useCamps', () => {
       const result = await createCamp({
         name: 'New Camp',
         description: null,
-        location: null,
+        rawAddress: null,
         latitude: null,
         longitude: null,
         googlePlaceId: null,
@@ -141,7 +162,7 @@ describe('useCamps', () => {
       const result = await createCamp({
         name: 'New Camp',
         description: null,
-        location: null,
+        rawAddress: null,
         latitude: null,
         longitude: null,
         googlePlaceId: null,
@@ -203,6 +224,123 @@ describe('useCamps', () => {
       expect(result).toBe(false)
       expect(camps.value).toHaveLength(1)
       expect(error.value).toBe('Error al eliminar campamento')
+    })
+  })
+
+  describe('fetchCampObservations', () => {
+    it('should set campObservations on success', async () => {
+      const mockData = [
+        { id: '1', campId: 'camp-1', text: 'Test observation', season: '2024', createdByUserId: 'user-1', createdAt: '2024-01-01' }
+      ]
+      vi.mocked(api.get).mockResolvedValue({ data: { success: true, data: mockData } })
+
+      const { fetchCampObservations, campObservations } = useCamps()
+      await fetchCampObservations('camp-1')
+
+      expect(campObservations.value).toEqual(mockData)
+      expect(api.get).toHaveBeenCalledWith('/camps/camp-1/observations')
+    })
+
+    it('should set observationsError on failure', async () => {
+      vi.mocked(api.get).mockRejectedValue({
+        response: { data: { error: { message: 'Not found' } } }
+      })
+
+      const { fetchCampObservations, observationsError } = useCamps()
+      await fetchCampObservations('camp-1')
+
+      expect(observationsError.value).toBe('Not found')
+    })
+  })
+
+  describe('addCampObservation', () => {
+    it('should return observation on success and prepend to list', async () => {
+      const newObs = {
+        id: '2', campId: 'camp-1', text: 'New observation', season: '2025',
+        createdByUserId: 'user-1', createdAt: '2025-01-01'
+      }
+      vi.mocked(api.post).mockResolvedValue({ data: { success: true, data: newObs } })
+
+      const { addCampObservation, campObservations } = useCamps()
+      const result = await addCampObservation('camp-1', { text: 'New observation', season: '2025' })
+
+      expect(result).toEqual(newObs)
+      expect(campObservations.value[0]).toEqual(newObs)
+      expect(api.post).toHaveBeenCalledWith('/camps/camp-1/observations', {
+        text: 'New observation', season: '2025'
+      })
+    })
+
+    it('should return null and set error on failure', async () => {
+      vi.mocked(api.post).mockRejectedValue({
+        response: { data: { error: { message: 'Validation error' } } }
+      })
+
+      const { addCampObservation, observationsError } = useCamps()
+      const result = await addCampObservation('camp-1', { text: '', season: null })
+
+      expect(result).toBeNull()
+      expect(observationsError.value).toBe('Validation error')
+    })
+  })
+
+  describe('fetchCampAuditLog', () => {
+    it('should set campAuditLog on success', async () => {
+      const mockData = [
+        { id: '1', fieldName: 'BasePrice', oldValue: '100', newValue: '200', changedByUserId: 'user-1', changedAt: '2025-01-01' }
+      ]
+      vi.mocked(api.get).mockResolvedValue({ data: { success: true, data: mockData } })
+
+      const { fetchCampAuditLog, campAuditLog } = useCamps()
+      await fetchCampAuditLog('camp-1')
+
+      expect(campAuditLog.value).toEqual(mockData)
+      expect(api.get).toHaveBeenCalledWith('/camps/camp-1/audit-log')
+    })
+
+    it('should set auditLogError on failure', async () => {
+      vi.mocked(api.get).mockRejectedValue({
+        response: { data: { error: { message: 'Forbidden' } } }
+      })
+
+      const { fetchCampAuditLog, auditLogError } = useCamps()
+      await fetchCampAuditLog('camp-1')
+
+      expect(auditLogError.value).toBe('Forbidden')
+    })
+  })
+
+  describe('importCampsCsv', () => {
+    it('should send multipart form data and return result', async () => {
+      const mockResult = {
+        created: 5, updated: 3, skipped: 2,
+        rows: [{ rowNumber: 1, campName: 'Camp A', status: 'Created' as const, message: null, gestionPor: null }]
+      }
+      vi.mocked(api.post).mockResolvedValue({ data: { success: true, data: mockResult } })
+
+      const { importCampsCsv } = useCamps()
+      const file = new File(['test'], 'camps.csv', { type: 'text/csv' })
+      const result = await importCampsCsv(file)
+
+      expect(result).toEqual(mockResult)
+      expect(api.post).toHaveBeenCalledWith(
+        '/admin/camps/import-csv',
+        expect.any(FormData),
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      )
+    })
+
+    it('should set importError on failure', async () => {
+      vi.mocked(api.post).mockRejectedValue({
+        response: { data: { error: { message: 'Invalid CSV' } } }
+      })
+
+      const { importCampsCsv, importError } = useCamps()
+      const file = new File(['test'], 'camps.csv', { type: 'text/csv' })
+      const result = await importCampsCsv(file)
+
+      expect(result).toBeNull()
+      expect(importError.value).toBe('Invalid CSV')
     })
   })
 })
