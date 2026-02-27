@@ -12,6 +12,8 @@ This specification covers the implementation of the Camp Edition Extras feature,
 
 **Status:** ❌ NOT STARTED - Database table exists, business logic needed
 
+**Includes:** Registration-side integration (merged from `feat-camp-edition-extras-registration`)
+
 ---
 
 ## Feature Description
@@ -639,10 +641,12 @@ public class CampEditionExtrasEndpointsTests : IClassFixture<WebApplicationFacto
 
 When a family registers for a camp, extras are handled as follows:
 
-1. **Required Extras**: Automatically added to registration
-2. **Optional Extras**: Selected by user during registration
-3. **Pricing**: Calculated using `ExtraPriceCalculator`
-4. **Quantity**: Validated against `max_quantity`
+1. **Required Extras**: Automatically added to registration — pre-selected and cannot be deselected
+2. **Optional Extras**: Selected by the family during the wizard
+3. **Pricing**: Calculated using `ExtraPriceCalculator`, shown as separate line items in the pricing breakdown
+4. **Quantity**: Validated against `max_quantity` (capacity limits)
+5. **Price Snapshot**: `unit_price` is captured at registration time to protect against later price changes
+6. **Payment**: Extra costs are paid in a second payment period (shown as additional line items in the final budget)
 
 **Registration Extras Table** (already exists):
 
@@ -656,6 +660,68 @@ CREATE TABLE registration_extras (
     total_price DECIMAL(10,2) NOT NULL
 );
 ```
+
+### Registration API Changes
+
+#### Request: `CreateRegistrationRequest` extension
+
+```typescript
+interface RegistrationExtraSelection {
+  campEditionExtraId: string
+  quantity: number       // 1 for boolean, N for quantity
+}
+
+interface CreateRegistrationRequest {
+  // ...existing fields...
+  extras?: RegistrationExtraSelection[]
+}
+```
+
+#### Response: `RegistrationResponse` extension
+
+```typescript
+interface RegistrationExtraDetail {
+  campEditionExtraId: string
+  name: string
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+}
+
+interface RegistrationResponse {
+  // ...existing fields...
+  extras: RegistrationExtraDetail[]
+}
+```
+
+### Registration Scope
+
+The registration-side integration includes:
+
+1. **Registration wizard**: Show available extras for the edition, allow family to select/configure them
+2. **Registration service**: Save selected extras to `registration_extras` table
+3. **Registration response**: Include selected extras with costs in the response
+4. **Pricing integration**: Add extra costs to the `PricingBreakdown`
+
+### Google Forms Fields Becoming Extras
+
+These fields from the Google Forms registration are modeled as `CampEditionExtra` seed data for 2026:
+
+| Google Forms Field | Extra Configuration | InputType |
+| ------------------ | ------------------- | --------- |
+| Vegetarian menu count | `Name: "Menú vegetariano"`, `Price: 0`, `PricingType: PerPerson`, `PricingPeriod: OneTime` | Quantity |
+| Truck usage | `Name: "Transporte furgoneta"`, `Price: 0`, `PricingType: PerFamily`, `PricingPeriod: OneTime` | Boolean |
+
+These are seeded with `Price = 0`. In future years, the admin can set a price via the extras CRUD.
+
+### Frontend Considerations
+
+- Show extras in the wizard Step 2 (Extras) — which currently exists but may be empty
+- Boolean extras: toggle switch
+- Quantity extras: number input with min/max
+- Show unit price and calculated total per extra
+- Show "Gratuito" or "0 €" for free extras
+- Required extras are pre-selected and cannot be deselected
 
 ---
 
@@ -701,8 +767,9 @@ CREATE TABLE registration_extras (
 
 ## Document Control
 
-- **Version**: 1.0
+- **Version**: 1.1
 - **Created**: 2026-02-16
+- **Updated**: 2026-02-26 — Merged registration integration from `feat-camp-edition-extras-registration`
 - **Status**: ❌ Not Started
-- **Dependencies**: Camp Editions Management must be completed first
+- **Dependencies**: Camp Editions Management must be completed first; `feat-registration-extra-fields2` (guardian + preference fields) should be merged first
 - **Parent Spec**: [camp-crud-enriched.md](../feat-camps-definition/camp-crud-enriched.md)
