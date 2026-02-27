@@ -12,6 +12,8 @@ import CampPhotoGallery from '@/components/camps/CampPhotoGallery.vue'
 import CampContactInfo from '@/components/camps/CampContactInfo.vue'
 import CampPlacesGallery from '@/components/camps/CampPlacesGallery.vue'
 import CampEditionProposeDialog from '@/components/camps/CampEditionProposeDialog.vue'
+import CampObservationsSection from '@/components/camps/CampObservationsSection.vue'
+import CampAuditLogSection from '@/components/camps/CampAuditLogSection.vue'
 import { useCamps } from '@/composables/useCamps'
 import { useAuthStore } from '@/stores/auth'
 import type { CampDetailResponse } from '@/types/camp'
@@ -51,6 +53,12 @@ const formatCurrency = (amount: number): string => {
     currency: 'EUR',
     minimumFractionDigits: 0
   }).format(amount)
+}
+
+const vatLabel = (val: boolean | null): string => {
+  if (val === true) return 'IVA incluido'
+  if (val === false) return '+ IVA'
+  return ''
 }
 
 onMounted(async () => {
@@ -111,12 +119,20 @@ const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
               {{ camp.latitude.toFixed(4) }}, {{ camp.longitude.toFixed(4) }}
             </p>
           </div>
-          <span
-            :class="camp.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
-            class="rounded-full px-3 py-1 text-sm font-medium"
-          >
-            {{ camp.isActive ? 'Activo' : 'Inactivo' }}
-          </span>
+          <div class="flex items-center gap-2">
+            <span
+              v-if="camp.abuviHasDataErrors"
+              class="rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-800"
+            >
+              Datos erróneos
+            </span>
+            <span
+              :class="camp.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
+              class="rounded-full px-3 py-1 text-sm font-medium"
+            >
+              {{ camp.isActive ? 'Activo' : 'Inactivo' }}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -132,13 +148,52 @@ const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
           <!-- Contact Information (Google Places) -->
           <CampContactInfo :camp="camp" />
 
+          <!-- Extra Contact Information -->
+          <div
+            v-if="camp.contactPerson || camp.contactCompany || camp.contactEmail || camp.secondaryWebsiteUrl || camp.province"
+            class="rounded-lg border border-gray-200 bg-white p-6"
+          >
+            <h2 class="mb-4 text-lg font-semibold text-gray-900">Contacto adicional</h2>
+            <div class="space-y-2 text-sm">
+              <div v-if="camp.province" class="flex justify-between">
+                <span class="text-gray-600">Provincia:</span>
+                <span class="font-medium">{{ camp.province }}</span>
+              </div>
+              <div v-if="camp.contactPerson" class="flex justify-between">
+                <span class="text-gray-600">Persona de contacto:</span>
+                <span class="font-medium">{{ camp.contactPerson }}</span>
+              </div>
+              <div v-if="camp.contactCompany" class="flex justify-between">
+                <span class="text-gray-600">Empresa:</span>
+                <span class="font-medium">{{ camp.contactCompany }}</span>
+              </div>
+              <div v-if="camp.contactEmail" class="flex justify-between">
+                <span class="text-gray-600">Email:</span>
+                <a :href="`mailto:${camp.contactEmail}`" class="font-medium text-blue-600 hover:underline">
+                  {{ camp.contactEmail }}
+                </a>
+              </div>
+              <div v-if="camp.secondaryWebsiteUrl" class="flex justify-between">
+                <span class="text-gray-600">Web secundaria:</span>
+                <a :href="camp.secondaryWebsiteUrl" target="_blank" class="font-medium text-blue-600 hover:underline">
+                  {{ camp.secondaryWebsiteUrl }}
+                </a>
+              </div>
+            </div>
+          </div>
+
           <!-- Pricing -->
           <div class="rounded-lg border border-gray-200 bg-white p-6">
             <h2 class="mb-4 text-lg font-semibold text-gray-900">Precios Base</h2>
             <div class="space-y-3">
               <div class="flex justify-between">
                 <span class="text-gray-600">Precio adulto:</span>
-                <span class="font-semibold">{{ formatCurrency(camp.pricePerAdult) }}</span>
+                <span class="font-semibold">
+                  {{ formatCurrency(camp.pricePerAdult) }}
+                  <span v-if="camp.vatIncluded !== null" class="text-xs font-normal text-gray-500">
+                    ({{ vatLabel(camp.vatIncluded) }})
+                  </span>
+                </span>
               </div>
               <div class="flex justify-between">
                 <span class="text-gray-600">Precio niño:</span>
@@ -147,6 +202,10 @@ const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
               <div class="flex justify-between">
                 <span class="text-gray-600">Precio bebé:</span>
                 <span class="font-semibold">{{ formatCurrency(camp.pricePerBaby) }}</span>
+              </div>
+              <div v-if="camp.basePrice != null" class="flex justify-between">
+                <span class="text-gray-600">Precio base:</span>
+                <span class="font-semibold">{{ formatCurrency(camp.basePrice) }}</span>
               </div>
             </div>
           </div>
@@ -208,7 +267,7 @@ const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
                   latitude: camp.latitude,
                   longitude: camp.longitude,
                   name: camp.name,
-                  location: camp.location ?? undefined
+                  rawAddress: camp.rawAddress ?? undefined
                 }
               ]"
             />
@@ -232,6 +291,36 @@ const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
         />
       </div>
 
+      <!-- ABUVI Tracking Section (Board+ only) -->
+      <div
+        v-if="auth.isBoard && (camp.externalSourceId != null || camp.abuviContactedAt || camp.abuviPossibility || camp.abuviLastVisited || camp.abuviManagedByUserId)"
+        class="mt-6 rounded-lg border border-gray-200 bg-white p-6"
+      >
+        <h2 class="mb-4 text-lg font-semibold text-gray-900">Seguimiento ABUVI</h2>
+        <div class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+          <div v-if="camp.externalSourceId != null" class="flex justify-between">
+            <span class="text-gray-600">ID externo:</span>
+            <span class="font-medium">{{ camp.externalSourceId }}</span>
+          </div>
+          <div v-if="camp.abuviContactedAt" class="flex justify-between">
+            <span class="text-gray-600">Contactado:</span>
+            <span class="font-medium">{{ camp.abuviContactedAt }}</span>
+          </div>
+          <div v-if="camp.abuviPossibility" class="flex justify-between">
+            <span class="text-gray-600">Posibilidad:</span>
+            <span class="font-medium">{{ camp.abuviPossibility }}</span>
+          </div>
+          <div v-if="camp.abuviLastVisited" class="flex justify-between">
+            <span class="text-gray-600">Última visita:</span>
+            <span class="font-medium">{{ camp.abuviLastVisited }}</span>
+          </div>
+          <div v-if="camp.abuviManagedByUserId" class="flex justify-between">
+            <span class="text-gray-600">Responsable ABUVI:</span>
+            <span class="font-medium">{{ camp.abuviManagedByUserId }}</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Photo Gallery Section (Board+ only) -->
       <div v-if="auth.isBoard" class="mt-6">
         <div class="rounded-lg border border-gray-200 bg-white p-6">
@@ -241,6 +330,16 @@ const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
             @photos-changed="handlePhotosChanged"
           />
         </div>
+      </div>
+
+      <!-- Observations Section (Board+ only) -->
+      <div v-if="auth.isBoard" class="mt-6 rounded-lg border border-gray-200 bg-white p-6">
+        <CampObservationsSection :camp-id="camp.id" />
+      </div>
+
+      <!-- Audit Log Section (Admin only) -->
+      <div v-if="auth.isAdmin" class="mt-6 rounded-lg border border-gray-200 bg-white p-6">
+        <CampAuditLogSection :camp-id="camp.id" />
       </div>
     </div>
   </div>

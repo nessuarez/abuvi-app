@@ -7,6 +7,7 @@ import Checkbox from 'primevue/checkbox'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Divider from 'primevue/divider'
+import ToggleSwitch from 'primevue/toggleswitch'
 import type { AccommodationCapacity, SharedRoomInfo } from '@/types/camp'
 
 interface Props {
@@ -30,7 +31,19 @@ const localValue = reactive<AccommodationCapacity>(
         memberTentAreaSquareMeters: null,
         memberTentCapacityEstimate: null,
         motorhomeSpots: null,
-        notes: null
+        notes: null,
+        // New fields
+        totalCapacity: null,
+        roomsDescription: null,
+        bungalowsDescription: null,
+        tentsDescription: null,
+        tentAreaDescription: null,
+        parkingSpots: null,
+        hasAdaptedMenu: null,
+        hasEnclosedDiningRoom: null,
+        hasSwimmingPool: null,
+        hasSportsCourt: null,
+        hasForestArea: null
       }
 )
 
@@ -46,7 +59,18 @@ watch(
       val.memberTentAreaSquareMeters != null ||
       val.memberTentCapacityEstimate != null ||
       val.motorhomeSpots != null ||
-      (val.notes && val.notes.trim().length > 0)
+      (val.notes && val.notes.trim().length > 0) ||
+      val.totalCapacity != null ||
+      val.roomsDescription != null ||
+      val.bungalowsDescription != null ||
+      val.tentsDescription != null ||
+      val.tentAreaDescription != null ||
+      val.parkingSpots != null ||
+      val.hasAdaptedMenu != null ||
+      val.hasEnclosedDiningRoom != null ||
+      val.hasSwimmingPool != null ||
+      val.hasSportsCourt != null ||
+      val.hasForestArea != null
 
     emit('update:modelValue', hasData ? { ...val, sharedRooms: val.sharedRooms ? [...val.sharedRooms] : null } : null)
   },
@@ -78,6 +102,17 @@ const clearCapacity = () => {
   localValue.memberTentCapacityEstimate = null
   localValue.motorhomeSpots = null
   localValue.notes = null
+  localValue.totalCapacity = null
+  localValue.roomsDescription = null
+  localValue.bungalowsDescription = null
+  localValue.tentsDescription = null
+  localValue.tentAreaDescription = null
+  localValue.parkingSpots = null
+  localValue.hasAdaptedMenu = null
+  localValue.hasEnclosedDiningRoom = null
+  localValue.hasSwimmingPool = null
+  localValue.hasSportsCourt = null
+  localValue.hasForestArea = null
   emit('update:modelValue', null)
 }
 </script>
@@ -237,6 +272,62 @@ const clearCapacity = () => {
           class="mt-2"
           @click="addSharedRoom"
         />
+      </div>
+
+      <!-- CSV Reference Capacity -->
+      <Divider />
+      <h4 class="text-sm font-semibold text-gray-700">Capacidad (referencia CSV)</h4>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-gray-700">Total plazas</label>
+          <InputNumber v-model="localValue.totalCapacity" :min="0" class="w-full" placeholder="0" show-buttons />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-gray-700">Plazas de aparcamiento</label>
+          <InputNumber v-model="localValue.parkingSpots" :min="0" class="w-full" placeholder="0" show-buttons />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-gray-700">Habitaciones (descripción)</label>
+          <InputText v-model="localValue.roomsDescription" class="w-full" placeholder="Ej: 10 dobles + 5 triples" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-gray-700">Cabañas (descripción)</label>
+          <InputText v-model="localValue.bungalowsDescription" class="w-full" placeholder="Ej: 4 cabañas de madera" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-gray-700">Tiendas (descripción)</label>
+          <InputText v-model="localValue.tentsDescription" class="w-full" placeholder="Ej: 20 tiendas de 4 plazas" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-gray-700">Campa para tiendas</label>
+          <InputText v-model="localValue.tentAreaDescription" class="w-full" placeholder="Ej: Zona de acampada libre" />
+        </div>
+      </div>
+
+      <!-- Facilities -->
+      <Divider />
+      <h4 class="text-sm font-semibold text-gray-700">Instalaciones</h4>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div class="flex items-center gap-3">
+          <ToggleSwitch v-model="localValue.hasAdaptedMenu" />
+          <label class="text-sm text-gray-700">Menú adaptado</label>
+        </div>
+        <div class="flex items-center gap-3">
+          <ToggleSwitch v-model="localValue.hasEnclosedDiningRoom" />
+          <label class="text-sm text-gray-700">Comedor cerrado</label>
+        </div>
+        <div class="flex items-center gap-3">
+          <ToggleSwitch v-model="localValue.hasSwimmingPool" />
+          <label class="text-sm text-gray-700">Piscina</label>
+        </div>
+        <div class="flex items-center gap-3">
+          <ToggleSwitch v-model="localValue.hasSportsCourt" />
+          <label class="text-sm text-gray-700">Pista polideportiva</label>
+        </div>
+        <div class="flex items-center gap-3">
+          <ToggleSwitch v-model="localValue.hasForestArea" />
+          <label class="text-sm text-gray-700">Pinar / zona natural</label>
+        </div>
       </div>
 
       <!-- Clear all -->

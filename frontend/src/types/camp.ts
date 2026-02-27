@@ -18,13 +18,26 @@ export interface AccommodationCapacity {
   memberTentCapacityEstimate?: number | null
   motorhomeSpots?: number | null
   notes?: string | null
+
+  // CSV-imported fields
+  totalCapacity?: number | null
+  roomsDescription?: string | null
+  bungalowsDescription?: string | null
+  tentsDescription?: string | null
+  tentAreaDescription?: string | null
+  parkingSpots?: number | null
+  hasAdaptedMenu?: boolean | null
+  hasEnclosedDiningRoom?: boolean | null
+  hasSwimmingPool?: boolean | null
+  hasSportsCourt?: boolean | null
+  hasForestArea?: boolean | null
 }
 
 export interface Camp {
   id: string
   name: string
   description: string | null
-  location: string | null
+  rawAddress: string | null
   latitude: number | null
   longitude: number | null
   googlePlaceId: string | null
@@ -45,6 +58,22 @@ export interface Camp {
   editionCount?: number // For display in list view
   accommodationCapacity?: AccommodationCapacity | null
   calculatedTotalBedCapacity?: number | null
+
+  // Extra fields
+  province: string | null
+  contactEmail: string | null
+  contactPerson: string | null
+  contactCompany: string | null
+  secondaryWebsiteUrl: string | null
+  basePrice: number | null
+  vatIncluded: boolean | null
+  externalSourceId: number | null
+  abuviManagedByUserId: string | null
+  abuviContactedAt: string | null
+  abuviPossibility: string | null
+  abuviLastVisited: string | null
+  abuviHasDataErrors: boolean | null
+  lastModifiedByUserId: string | null
 }
 
 export interface CampPlacesPhoto {
@@ -77,7 +106,7 @@ export interface CampDetailResponse extends Camp {
 export interface CreateCampRequest {
   name: string
   description: string | null
-  location: string | null
+  rawAddress: string | null
   latitude: number | null
   longitude: number | null
   googlePlaceId: string | null
@@ -85,6 +114,20 @@ export interface CreateCampRequest {
   pricePerChild: number
   pricePerBaby: number
   accommodationCapacity?: AccommodationCapacity | null
+
+  // Extra writable fields
+  province?: string | null
+  contactEmail?: string | null
+  contactPerson?: string | null
+  contactCompany?: string | null
+  secondaryWebsiteUrl?: string | null
+  basePrice?: number | null
+  vatIncluded?: boolean | null
+  abuviManagedByUserId?: string | null
+  abuviContactedAt?: string | null
+  abuviPossibility?: string | null
+  abuviLastVisited?: string | null
+  abuviHasDataErrors?: boolean | null
 }
 
 export interface UpdateCampRequest extends CreateCampRequest {
@@ -96,6 +139,44 @@ export interface CampLocation {
   longitude: number
   name: string
   year?: number
-  location?: string
+  rawAddress?: string
   lastEditionYear?: number
+}
+
+export interface CampObservation {
+  id: string
+  campId: string
+  text: string
+  season: string | null
+  createdByUserId: string | null
+  createdAt: string
+}
+
+export interface CampAuditLogEntry {
+  id: string
+  fieldName: string
+  oldValue: string | null
+  newValue: string | null
+  changedByUserId: string
+  changedAt: string
+}
+
+export interface AddCampObservationRequest {
+  text: string
+  season: string | null
+}
+
+export interface CampImportResult {
+  created: number
+  updated: number
+  skipped: number
+  rows: CampImportRowResult[]
+}
+
+export interface CampImportRowResult {
+  rowNumber: number
+  campName: string | null
+  status: 'Created' | 'Updated' | 'Skipped' | 'Error'
+  message: string | null
+  gestionPor: string | null
 }

@@ -8,6 +8,14 @@ interface Props {
 }
 
 defineProps<Props>()
+
+const facilityLabels: { key: keyof AccommodationCapacity; label: string }[] = [
+  { key: 'hasAdaptedMenu', label: 'Menú adaptado' },
+  { key: 'hasEnclosedDiningRoom', label: 'Comedor cerrado' },
+  { key: 'hasSwimmingPool', label: 'Piscina' },
+  { key: 'hasSportsCourt', label: 'Pista polideportiva' },
+  { key: 'hasForestArea', label: 'Pinar / zona natural' }
+]
 </script>
 
 <template>
@@ -61,7 +69,33 @@ defineProps<Props>()
           <dt class="text-gray-500">Plazas autocaravanas:</dt>
           <dd class="font-medium">{{ capacity.motorhomeSpots }}</dd>
         </template>
+
+        <template v-if="capacity.totalCapacity">
+          <dt class="text-gray-500">Total plazas (referencia):</dt>
+          <dd class="font-medium">{{ capacity.totalCapacity }}</dd>
+        </template>
+
+        <template v-if="capacity.parkingSpots">
+          <dt class="text-gray-500">Plazas de aparcamiento:</dt>
+          <dd class="font-medium">{{ capacity.parkingSpots }}</dd>
+        </template>
       </dl>
+
+      <!-- CSV description fields -->
+      <div v-if="capacity.roomsDescription || capacity.bungalowsDescription || capacity.tentsDescription || capacity.tentAreaDescription" class="mt-3 space-y-1 text-sm">
+        <p v-if="capacity.roomsDescription" class="text-gray-600">
+          <span class="font-medium text-gray-500">Habitaciones:</span> {{ capacity.roomsDescription }}
+        </p>
+        <p v-if="capacity.bungalowsDescription" class="text-gray-600">
+          <span class="font-medium text-gray-500">Cabañas:</span> {{ capacity.bungalowsDescription }}
+        </p>
+        <p v-if="capacity.tentsDescription" class="text-gray-600">
+          <span class="font-medium text-gray-500">Tiendas:</span> {{ capacity.tentsDescription }}
+        </p>
+        <p v-if="capacity.tentAreaDescription" class="text-gray-600">
+          <span class="font-medium text-gray-500">Campa:</span> {{ capacity.tentAreaDescription }}
+        </p>
+      </div>
 
       <!-- Shared rooms breakdown -->
       <div v-if="capacity.sharedRooms?.length" class="mt-4">
@@ -78,6 +112,21 @@ defineProps<Props>()
             <span v-if="room.notes" class="text-xs italic text-gray-400">— {{ room.notes }}</span>
           </li>
         </ul>
+      </div>
+
+      <!-- Facilities -->
+      <div v-if="facilityLabels.some(f => capacity![f.key])" class="mt-4">
+        <p class="mb-2 text-sm font-medium text-gray-700">Instalaciones:</p>
+        <div class="flex flex-wrap gap-2">
+          <template v-for="f in facilityLabels" :key="f.key">
+            <span
+              v-if="capacity![f.key]"
+              class="rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700"
+            >
+              {{ f.label }}
+            </span>
+          </template>
+        </div>
       </div>
 
       <p v-if="capacity.notes" class="mt-3 text-sm italic text-gray-500">

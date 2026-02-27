@@ -1,12 +1,42 @@
 import { ref } from 'vue'
 import { api } from '@/utils/api'
-import type { Camp, CampDetailResponse, CreateCampRequest, UpdateCampRequest } from '@/types/camp'
+import type {
+  Camp,
+  CampDetailResponse,
+  CreateCampRequest,
+  UpdateCampRequest,
+  CampObservation,
+  CampAuditLogEntry,
+  AddCampObservationRequest,
+  CampImportResult
+} from '@/types/camp'
 import type { ApiResponse } from '@/types/api'
 
 export function useCamps() {
   const camps = ref<Camp[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+
+  // Observations state
+  const campObservations = ref<CampObservation[]>([])
+  const observationsLoading = ref(false)
+  const observationsError = ref<string | null>(null)
+
+  // Audit log state
+  const campAuditLog = ref<CampAuditLogEntry[]>([])
+  const auditLogLoading = ref(false)
+  const auditLogError = ref<string | null>(null)
+
+  // Import state
+  const importLoading = ref(false)
+  const importError = ref<string | null>(null)
+
+  const extractError = (err: unknown, fallback: string): string => {
+    return (
+      (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
+        ?.message || fallback
+    )
+  }
 
   const fetchCamps = async (params?: {
     isActive?: boolean
@@ -30,8 +60,7 @@ export function useCamps() {
         camps.value = []
       }
     } catch (err: unknown) {
-      error.value = (err as { response?: { data?: { error?: { message?: string } } } })
-        ?.response?.data?.error?.message || 'Error al cargar campamentos'
+      error.value = extractError(err, 'Error al cargar campamentos')
       console.error('Failed to fetch camps:', err)
       camps.value = []
     } finally {
@@ -49,8 +78,7 @@ export function useCamps() {
       }
       return null
     } catch (err: unknown) {
-      error.value = (err as { response?: { data?: { error?: { message?: string } } } })
-        ?.response?.data?.error?.message || 'Error al cargar campamento'
+      error.value = extractError(err, 'Error al cargar campamento')
       console.error('Failed to fetch camp:', err)
       return null
     } finally {
@@ -69,8 +97,7 @@ export function useCamps() {
       }
       return null
     } catch (err: unknown) {
-      error.value = (err as { response?: { data?: { error?: { message?: string } } } })
-        ?.response?.data?.error?.message || 'Error al crear campamento'
+      error.value = extractError(err, 'Error al crear campamento')
       console.error('Failed to create camp:', err)
       return null
     } finally {
@@ -91,8 +118,7 @@ export function useCamps() {
       }
       return null
     } catch (err: unknown) {
-      error.value = (err as { response?: { data?: { error?: { message?: string } } } })
-        ?.response?.data?.error?.message || 'Error al actualizar campamento'
+      error.value = extractError(err, 'Error al actualizar campamento')
       console.error('Failed to update camp:', err)
       return null
     } finally {
@@ -108,12 +134,92 @@ export function useCamps() {
       camps.value = (camps.value || []).filter((c) => c.id !== id)
       return true
     } catch (err: unknown) {
-      error.value = (err as { response?: { data?: { error?: { message?: string } } } })
-        ?.response?.data?.error?.message || 'Error al eliminar campamento'
+      error.value = extractError(err, 'Error al eliminar campamento')
       console.error('Failed to delete camp:', err)
       return false
     } finally {
       loading.value = false
+    }
+  }
+
+  const fetchCampObservations = async (campId: string) => {
+    observationsLoading.value = true
+    observationsError.value = null
+    try {
+      const res = await api.get<ApiResponse<CampObservation[]>>(
+        `/camps/${campId}/observations`
+      )
+      if (res.data.success && res.data.data) {
+        campObservations.value = res.data.data
+      }
+    } catch (err: unknown) {
+      observationsError.value = extractError(err, 'Error al cargar las observaciones')
+    } finally {
+      observationsLoading.value = false
+    }
+  }
+
+  const addCampObservation = async (
+    campId: string,
+    request: AddCampObservationRequest
+  ): Promise<CampObservation | null> => {
+    observationsLoading.value = true
+    observationsError.value = null
+    try {
+      const res = await api.post<ApiResponse<CampObservation>>(
+        `/camps/${campId}/observations`,
+        request
+      )
+      if (res.data.success && res.data.data) {
+        campObservations.value.unshift(res.data.data)
+        return res.data.data
+      }
+      return null
+    } catch (err: unknown) {
+      observationsError.value = extractError(err, 'Error al añadir la observación')
+      return null
+    } finally {
+      observationsLoading.value = false
+    }
+  }
+
+  const fetchCampAuditLog = async (campId: string) => {
+    auditLogLoading.value = true
+    auditLogError.value = null
+    try {
+      const res = await api.get<ApiResponse<CampAuditLogEntry[]>>(
+        `/camps/${campId}/audit-log`
+      )
+      if (res.data.success && res.data.data) {
+        campAuditLog.value = res.data.data
+      }
+    } catch (err: unknown) {
+      auditLogError.value = extractError(err, 'Error al cargar el registro de auditoría')
+    } finally {
+      auditLogLoading.value = false
+    }
+  }
+
+  const importCampsCsv = async (file: File): Promise<CampImportResult | null> => {
+    importLoading.value = true
+    importError.value = null
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await api.post<ApiResponse<CampImportResult>>(
+        '/admin/camps/import-csv',
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      )
+      if (res.data.success && res.data.data) {
+        return res.data.data
+      }
+      return null
+    } catch (err: unknown) {
+      importError.value = extractError(err, 'Error al importar el fichero CSV')
+      return null
+    } finally {
+      importLoading.value = false
     }
   }
 
@@ -125,6 +231,21 @@ export function useCamps() {
     getCampById,
     createCamp,
     updateCamp,
-    deleteCamp
+    deleteCamp,
+    // Observations
+    campObservations,
+    observationsLoading,
+    observationsError,
+    fetchCampObservations,
+    addCampObservation,
+    // Audit log
+    campAuditLog,
+    auditLogLoading,
+    auditLogError,
+    fetchCampAuditLog,
+    // Import
+    importLoading,
+    importError,
+    importCampsCsv
   }
 }
