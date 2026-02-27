@@ -128,6 +128,24 @@ onMounted(() => getRegistrationById(registrationId.value))
           <p class="text-sm text-gray-600">{{ registration.notes }}</p>
         </div>
 
+        <!-- Preference fields -->
+        <div
+          v-if="registration.specialNeeds || registration.campatesPreference"
+          class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4"
+        >
+          <h2 class="mb-3 text-sm font-semibold text-gray-700">Informacion adicional</h2>
+          <dl class="space-y-2 text-sm">
+            <div v-if="registration.specialNeeds" class="flex flex-col gap-0.5">
+              <dt class="font-medium text-gray-600">Necesidades especiales</dt>
+              <dd class="whitespace-pre-line text-gray-800">{{ registration.specialNeeds }}</dd>
+            </div>
+            <div v-if="registration.campatesPreference" class="flex flex-col gap-0.5">
+              <dt class="font-medium text-gray-600">Preferencia de acampantes</dt>
+              <dd class="text-gray-800">{{ registration.campatesPreference }}</dd>
+            </div>
+          </dl>
+        </div>
+
         <!-- Pricing breakdown -->
         <div class="mb-6">
           <h2 class="mb-3 text-base font-semibold text-gray-900">Desglose de precio</h2>

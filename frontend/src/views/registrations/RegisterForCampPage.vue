@@ -39,6 +39,8 @@ const currentStep = ref(1)
 const selectedMembers = ref<WizardMemberSelection[]>([])
 const extrasSelections = ref<WizardExtrasSelection[]>([])
 const notes = ref<string>('')
+const specialNeeds = ref<string>('')
+const campatesPreference = ref<string>('')
 const edition = ref<CampEdition | null>(null)
 const pageLoading = ref(true)
 
@@ -94,9 +96,13 @@ const handleConfirm = async () => {
       memberId: s.memberId,
       attendancePeriod: s.attendancePeriod,
       visitStartDate: s.visitStartDate ?? null,
-      visitEndDate: s.visitEndDate ?? null
+      visitEndDate: s.visitEndDate ?? null,
+      guardianName: s.guardianName || null,
+      guardianDocumentNumber: s.guardianDocumentNumber || null
     })),
-    notes: notes.value || null
+    notes: notes.value || null,
+    specialNeeds: specialNeeds.value || null,
+    campatesPreference: campatesPreference.value || null
   })
 
   if (!created) {
@@ -256,6 +262,36 @@ onMounted(async () => {
                     <RegistrationExtrasSelector
                       v-model="extrasSelections"
                       :extras="campExtras"
+                    />
+                  </div>
+
+                  <!-- Special needs -->
+                  <div class="mb-5">
+                    <label class="mb-1 block text-sm font-medium text-gray-700">
+                      Necesidades especiales
+                    </label>
+                    <Textarea
+                      v-model="specialNeeds"
+                      :rows="2"
+                      :maxlength="2000"
+                      placeholder="Dietas especiales, necesidades de movilidad, etc."
+                      class="w-full"
+                      data-testid="special-needs"
+                    />
+                  </div>
+
+                  <!-- Campmates preference -->
+                  <div class="mb-5">
+                    <label class="mb-1 block text-sm font-medium text-gray-700">
+                      Preferencia de acampantes
+                    </label>
+                    <Textarea
+                      v-model="campatesPreference"
+                      :rows="2"
+                      :maxlength="500"
+                      placeholder="Con quien te gustaria acampar cerca..."
+                      class="w-full"
+                      data-testid="campates-preference"
                     />
                   </div>
 
@@ -471,6 +507,24 @@ onMounted(async () => {
                         class="w-full"
                         data-testid="notes-textarea"
                       />
+                    </div>
+
+                    <!-- Preference fields summary -->
+                    <div
+                      v-if="specialNeeds || campatesPreference"
+                      class="mb-4 rounded-lg border border-gray-200 p-4"
+                    >
+                      <h3 class="mb-2 text-sm font-semibold text-gray-700">Informacion adicional</h3>
+                      <dl class="space-y-1 text-sm">
+                        <div v-if="specialNeeds" class="flex gap-2">
+                          <dt class="text-gray-500">Necesidades:</dt>
+                          <dd class="text-gray-800">{{ specialNeeds }}</dd>
+                        </div>
+                        <div v-if="campatesPreference" class="flex gap-2">
+                          <dt class="text-gray-500">Acampantes:</dt>
+                          <dd class="text-gray-800">{{ campatesPreference }}</dd>
+                        </div>
+                      </dl>
                     </div>
                   </div>
 

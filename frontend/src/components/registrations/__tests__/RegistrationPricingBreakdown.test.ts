@@ -13,7 +13,9 @@ const baseMember: MemberPricingDetail = {
   attendanceDays: 14,
   visitStartDate: null,
   visitEndDate: null,
-  individualAmount: 450
+  individualAmount: 450,
+  guardianName: null,
+  guardianDocumentNumber: null
 }
 
 const basePricing: PricingBreakdown = {
@@ -28,7 +30,9 @@ const basePricing: PricingBreakdown = {
       attendanceDays: 14,
       visitStartDate: null,
       visitEndDate: null,
-      individualAmount: 300
+      individualAmount: 300,
+      guardianName: null,
+      guardianDocumentNumber: null
     },
     {
       familyMemberId: 'member-3',
@@ -39,7 +43,9 @@ const basePricing: PricingBreakdown = {
       attendanceDays: 14,
       visitStartDate: null,
       visitEndDate: null,
-      individualAmount: 0
+      individualAmount: 0,
+      guardianName: null,
+      guardianDocumentNumber: null
     }
   ],
   baseTotalAmount: 750,
@@ -124,7 +130,9 @@ describe('RegistrationPricingBreakdown', () => {
           attendanceDays: 14,
           visitStartDate: null,
           visitEndDate: null,
-          individualAmount: 300
+          individualAmount: 300,
+          guardianName: null,
+          guardianDocumentNumber: null
         }
       ]
     }
@@ -150,5 +158,34 @@ describe('RegistrationPricingBreakdown', () => {
     expect(wrapper.find('[data-testid="member-period-member-1"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Visita de fin de semana')
     expect(wrapper.text()).toContain('2025-07-05')
+  })
+
+  it('should show guardian info for members with guardianName set', () => {
+    const pricingWithGuardian: PricingBreakdown = {
+      ...basePricing,
+      members: [
+        {
+          ...baseMember,
+          familyMemberId: 'child-1',
+          fullName: 'Pau Garcia',
+          ageAtCamp: 8,
+          ageCategory: 'Child',
+          individualAmount: 300,
+          guardianName: 'Ana Garcia',
+          guardianDocumentNumber: '12345678A'
+        }
+      ],
+      baseTotalAmount: 300,
+      totalAmount: 300
+    }
+    const wrapper = mountComponent({ pricing: pricingWithGuardian })
+    expect(wrapper.find('[data-testid="guardian-info-child-1"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Tutor/a: Ana Garcia')
+    expect(wrapper.text()).toContain('12345678A')
+  })
+
+  it('should NOT show guardian info when guardianName is null', () => {
+    const wrapper = mountComponent({ pricing: basePricing })
+    expect(wrapper.find('[data-testid="guardian-info-member-1"]').exists()).toBe(false)
   })
 })

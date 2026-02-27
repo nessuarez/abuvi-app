@@ -72,8 +72,7 @@ export interface CreateCampEditionRequest {
 }
 
 export interface ProposeCampEditionRequest extends CreateCampEditionRequest {
-  proposalReason: string
-  proposalNotes: string
+  proposalReason?: string
   accommodationCapacity?: AccommodationCapacity | null
   // Partial attendance (week pricing):
   halfDate?: string | null

@@ -96,4 +96,6 @@ export interface CampLocation {
   longitude: number
   name: string
   year?: number
+  location?: string
+  lastEditionYear?: number
 }
