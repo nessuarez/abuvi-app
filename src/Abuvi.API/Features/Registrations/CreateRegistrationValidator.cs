@@ -68,6 +68,16 @@ public class CreateRegistrationValidator : AbstractValidator<CreateRegistrationR
                 .WithName("VisitEndDate")
                 .When(m => m.AttendancePeriod == AttendancePeriod.WeekendVisit
                            && m.VisitStartDate.HasValue && m.VisitEndDate.HasValue);
+
+            member.RuleFor(m => m.GuardianName)
+                .MaximumLength(200)
+                .WithMessage("El nombre del tutor no puede superar los 200 caracteres")
+                .When(m => m.GuardianName is not null);
+
+            member.RuleFor(m => m.GuardianDocumentNumber)
+                .MaximumLength(50)
+                .WithMessage("El documento del tutor no puede superar los 50 caracteres")
+                .When(m => m.GuardianDocumentNumber is not null);
         });
 
         // Visit dates within camp bounds: validated in RegistrationsService.CreateAsync (cross-entity constraint)
@@ -75,5 +85,15 @@ public class CreateRegistrationValidator : AbstractValidator<CreateRegistrationR
         RuleFor(x => x.Notes)
             .MaximumLength(1000)
             .WithMessage("Las notas no pueden superar los 1000 caracteres");
+
+        RuleFor(x => x.SpecialNeeds)
+            .MaximumLength(2000)
+            .WithMessage("Las necesidades especiales no pueden superar los 2000 caracteres")
+            .When(x => x.SpecialNeeds is not null);
+
+        RuleFor(x => x.CampatesPreference)
+            .MaximumLength(500)
+            .WithMessage("La preferencia de acampantes no puede superar los 500 caracteres")
+            .When(x => x.CampatesPreference is not null);
     }
 }
