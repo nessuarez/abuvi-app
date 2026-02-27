@@ -7,8 +7,7 @@ import type {
   UpdateCampRequest,
   CampObservation,
   CampAuditLogEntry,
-  AddCampObservationRequest,
-  CampImportResult
+  AddCampObservationRequest
 } from '@/types/camp'
 import type { ApiResponse } from '@/types/api'
 
@@ -26,10 +25,6 @@ export function useCamps() {
   const campAuditLog = ref<CampAuditLogEntry[]>([])
   const auditLogLoading = ref(false)
   const auditLogError = ref<string | null>(null)
-
-  // Import state
-  const importLoading = ref(false)
-  const importError = ref<string | null>(null)
 
   const extractError = (err: unknown, fallback: string): string => {
     return (
@@ -200,29 +195,6 @@ export function useCamps() {
     }
   }
 
-  const importCampsCsv = async (file: File): Promise<CampImportResult | null> => {
-    importLoading.value = true
-    importError.value = null
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const res = await api.post<ApiResponse<CampImportResult>>(
-        '/admin/camps/import-csv',
-        formData,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
-      )
-      if (res.data.success && res.data.data) {
-        return res.data.data
-      }
-      return null
-    } catch (err: unknown) {
-      importError.value = extractError(err, 'Error al importar el fichero CSV')
-      return null
-    } finally {
-      importLoading.value = false
-    }
-  }
-
   return {
     camps,
     loading,
@@ -242,10 +214,6 @@ export function useCamps() {
     campAuditLog,
     auditLogLoading,
     auditLogError,
-    fetchCampAuditLog,
-    // Import
-    importLoading,
-    importError,
-    importCampsCsv
+    fetchCampAuditLog
   }
 }

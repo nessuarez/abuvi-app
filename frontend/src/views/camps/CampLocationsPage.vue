@@ -16,21 +16,16 @@ import Select from 'primevue/select'
 import CampLocationCard from '@/components/camps/CampLocationCard.vue'
 import CampLocationForm from '@/components/camps/CampLocationForm.vue'
 import CampLocationMap from '@/components/camps/CampLocationMap.vue'
-import CampCsvImportDialog from '@/components/camps/CampCsvImportDialog.vue'
 import { useCamps } from '@/composables/useCamps'
-import { useAuthStore } from '@/stores/auth'
 import type { Camp, CreateCampRequest } from '@/types/camp'
 
 const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
-const auth = useAuthStore()
-
 const { camps, loading, error, fetchCamps, createCamp, updateCamp, deleteCamp } = useCamps()
 
 const showCreateDialog = ref(false)
 const showEditDialog = ref(false)
-const showImportDialog = ref(false)
 const selectedCamp = ref<Camp | null>(null)
 const searchQuery = ref('')
 const selectedStatus = ref<boolean | null>(null)
@@ -208,14 +203,6 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
         <Button :icon="viewMode === 'table' ? 'pi pi-table' : 'pi pi-th-large'" :outlined="viewMode !== 'table'"
           @click="viewMode = viewMode === 'table' ? 'cards' : 'table'" />
         <Button icon="pi pi-map" :outlined="viewMode !== 'map'" @click="viewMode = 'map'" />
-        <Button
-          v-if="auth.isAdmin"
-          label="Importar CSV"
-          icon="pi pi-upload"
-          severity="secondary"
-          size="small"
-          @click="showImportDialog = true"
-        />
         <Button label="Nuevo Campamento" icon="pi pi-plus" @click="handleCreate" />
       </div>
     </div>
@@ -324,11 +311,5 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
         @cancel="showEditDialog = false" />
     </Dialog>
 
-    <!-- CSV Import Dialog (Admin only) -->
-    <CampCsvImportDialog
-      v-if="auth.isAdmin"
-      v-model:visible="showImportDialog"
-      @imported="fetchCamps()"
-    />
   </div>
 </template>

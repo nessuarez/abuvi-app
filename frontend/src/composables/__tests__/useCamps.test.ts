@@ -310,37 +310,4 @@ describe('useCamps', () => {
     })
   })
 
-  describe('importCampsCsv', () => {
-    it('should send multipart form data and return result', async () => {
-      const mockResult = {
-        created: 5, updated: 3, skipped: 2,
-        rows: [{ rowNumber: 1, campName: 'Camp A', status: 'Created' as const, message: null, gestionPor: null }]
-      }
-      vi.mocked(api.post).mockResolvedValue({ data: { success: true, data: mockResult } })
-
-      const { importCampsCsv } = useCamps()
-      const file = new File(['test'], 'camps.csv', { type: 'text/csv' })
-      const result = await importCampsCsv(file)
-
-      expect(result).toEqual(mockResult)
-      expect(api.post).toHaveBeenCalledWith(
-        '/admin/camps/import-csv',
-        expect.any(FormData),
-        { headers: { 'Content-Type': 'multipart/form-data' } }
-      )
-    })
-
-    it('should set importError on failure', async () => {
-      vi.mocked(api.post).mockRejectedValue({
-        response: { data: { error: { message: 'Invalid CSV' } } }
-      })
-
-      const { importCampsCsv, importError } = useCamps()
-      const file = new File(['test'], 'camps.csv', { type: 'text/csv' })
-      const result = await importCampsCsv(file)
-
-      expect(result).toBeNull()
-      expect(importError.value).toBe('Invalid CSV')
-    })
-  })
 })

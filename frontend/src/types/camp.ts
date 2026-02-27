@@ -165,18 +165,3 @@ export interface AddCampObservationRequest {
   text: string
   season: string | null
 }
-
-export interface CampImportResult {
-  created: number
-  updated: number
-  skipped: number
-  rows: CampImportRowResult[]
-}
-
-export interface CampImportRowResult {
-  rowNumber: number
-  campName: string | null
-  status: 'Created' | 'Updated' | 'Skipped' | 'Error'
-  message: string | null
-  gestionPor: string | null
-}
