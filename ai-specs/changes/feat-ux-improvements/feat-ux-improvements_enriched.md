@@ -60,11 +60,11 @@ Body changes:
 
 ### Acceptance Criteria
 
-- [ ] User can submit the propose form without filling in `Motivo de la propuesta`
-- [ ] `Notas adicionales` field does not appear in the propose form
-- [ ] When proposing a new edition for year Y, `startDate` and `endDate` are pre-populated from year Y-1's edition dates, adjusted to year Y
-- [ ] If no previous edition exists, dates default to mid-August of year Y
-- [ ] Pre-filled dates are fully editable by the user
+- [x] User can submit the propose form without filling in `Motivo de la propuesta`
+- [x] `Notas adicionales` field does not appear in the propose form
+- [x] When proposing a new edition for year Y, `startDate` and `endDate` are pre-populated from year Y-1's edition dates, adjusted to year Y
+- [x] If no previous edition exists, dates default to mid-August of year Y
+- [x] Pre-filled dates are fully editable by the user
 - [ ] Backend accepts requests with null/empty `proposalReason` without returning 400
 
 ### Non-Functional Requirements
@@ -105,10 +105,10 @@ The `CampEditionsPage.vue` DataTable lists camp editions. Users cannot directly 
 
 ### Acceptance Criteria
 
-- [ ] Clicking the edition name/year in the DataTable navigates to `/camps/editions/{id}`
-- [ ] The link is visually distinct (underlined, primary color)
-- [ ] Navigation works via router (no full page reload)
-- [ ] Route is protected with `Admin` and `Board` roles
+- [x] Clicking the edition name/year in the DataTable navigates to `/camps/editions/{id}`
+- [x] The link is visually distinct (underlined, primary color)
+- [x] Navigation works via router (no full page reload)
+- [x] Route is protected with `Admin` and `Board` roles
 
 ### Non-Functional Requirements
 
@@ -157,10 +157,10 @@ The `CampEditionsPage.vue` DataTable lists camp editions. Users cannot directly 
 
 ### Acceptance Criteria
 
-- [ ] Map is at least 500px tall
-- [ ] Each marker popup displays: camp name, location/address, last edition year
-- [ ] Map still auto-fits bounds to show all markers
-- [ ] Map remains responsive (full width of its container)
+- [x] Map is at least 500px tall
+- [x] Each marker popup displays: camp name, location/address, last edition year
+- [x] Map still auto-fits bounds to show all markers
+- [x] Map remains responsive (full width of its container)
 
 ### Non-Functional Requirements
 
@@ -229,12 +229,12 @@ interface CampPhoto {
 
 ### Acceptance Criteria
 
-- [ ] Camp location cards show a Galleria/carousel when multiple photos exist
-- [ ] Photos are ordered by `displayOrder` ascending
-- [ ] Captions display the photo `description` when present
-- [ ] Navigation arrows only appear when there are 2+ photos
-- [ ] Single photo renders without navigation controls (no arrows, no indicators)
-- [ ] Missing photos show a placeholder
+- [x] Camp location cards show a Galleria/carousel when multiple photos exist
+- [x] Photos are ordered by `displayOrder` ascending
+- [x] Captions display the photo `description` when present
+- [x] Navigation arrows only appear when there are 2+ photos
+- [x] Single photo renders without navigation controls (no arrows, no indicators)
+- [x] Missing photos show a placeholder
 
 ### Non-Functional Requirements
 
@@ -281,10 +281,10 @@ The decision between Option A and B should be validated against the actual rende
 
 ### Acceptance Criteria
 
-- [ ] On desktop (`lg` breakpoint and above), the profile page uses available horizontal space (at least `max-w-5xl`)
-- [ ] On mobile, layout remains single-column and functional
-- [ ] All existing sections are accessible (no content removed)
-- [ ] No layout shifts or overflow issues at any breakpoint
+- [x] On desktop (`lg` breakpoint and above), the profile page uses available horizontal space (at least `max-w-5xl`)
+- [x] On mobile, layout remains single-column and functional
+- [x] All existing sections are accessible (no content removed)
+- [x] No layout shifts or overflow issues at any breakpoint
 
 ### Non-Functional Requirements
 

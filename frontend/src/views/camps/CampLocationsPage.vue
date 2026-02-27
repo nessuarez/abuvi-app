@@ -66,7 +66,7 @@ const campLocations = computed(() => {
       latitude: camp.latitude as number,
       longitude: camp.longitude as number,
       name: camp.name,
-      year: undefined
+      location: camp.location ?? undefined
     }))
 })
 

@@ -207,7 +207,8 @@ const handlePhotosChanged = (updatedPhotos: CampPhoto[]) => {
                 {
                   latitude: camp.latitude,
                   longitude: camp.longitude,
-                  name: camp.name
+                  name: camp.name,
+                  location: camp.location ?? undefined
                 }
               ]"
             />
