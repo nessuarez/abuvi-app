@@ -17,6 +17,9 @@ public class Registration
     public decimal TotalAmount { get; set; }
     public RegistrationStatus Status { get; set; } = RegistrationStatus.Pending;
     public string? Notes { get; set; }
+    // Extra fields from Google Forms 2026
+    public string? SpecialNeeds { get; set; }
+    public string? CampatesPreference { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
@@ -41,6 +44,9 @@ public class RegistrationMember
     // Only populated when AttendancePeriod = WeekendVisit
     public DateOnly? VisitStartDate { get; set; }
     public DateOnly? VisitEndDate { get; set; }
+    // Guardian info (only meaningful for minors: AgeCategory Baby or Child)
+    public string? GuardianName { get; set; }
+    public string? GuardianDocumentNumber { get; set; }
     public DateTime CreatedAt { get; set; }
     public Registration Registration { get; set; } = null!;
     public FamilyMember FamilyMember { get; set; } = null!;
@@ -95,14 +101,18 @@ public record MemberAttendanceRequest(
     Guid MemberId,
     AttendancePeriod AttendancePeriod,
     DateOnly? VisitStartDate = null,   // Required when AttendancePeriod = WeekendVisit
-    DateOnly? VisitEndDate = null      // Required when AttendancePeriod = WeekendVisit
+    DateOnly? VisitEndDate = null,     // Required when AttendancePeriod = WeekendVisit
+    string? GuardianName = null,
+    string? GuardianDocumentNumber = null
 );
 
 public record CreateRegistrationRequest(
     Guid CampEditionId,
     Guid FamilyUnitId,
     List<MemberAttendanceRequest> Members,
-    string? Notes
+    string? Notes,
+    string? SpecialNeeds,
+    string? CampatesPreference
 );
 
 public record UpdateRegistrationMembersRequest(List<MemberAttendanceRequest> Members);
@@ -161,7 +171,9 @@ public record RegistrationResponse(
     decimal AmountPaid,
     decimal AmountRemaining,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    string? SpecialNeeds,
+    string? CampatesPreference
 );
 
 public record RegistrationFamilyUnitSummary(Guid Id, string Name);
@@ -182,7 +194,9 @@ public record MemberPricingDetail(
     int AttendanceDays,
     DateOnly? VisitStartDate,
     DateOnly? VisitEndDate,
-    decimal IndividualAmount
+    decimal IndividualAmount,
+    string? GuardianName,
+    string? GuardianDocumentNumber
 );
 public record ExtraPricingDetail(Guid CampEditionExtraId, string Name, decimal UnitPrice, string PricingType, string PricingPeriod, int Quantity, int? CampDurationDays, string Calculation, decimal TotalAmount);
 public record PaymentSummary(Guid Id, decimal Amount, DateTime PaymentDate, string Method, string Status);
@@ -225,7 +239,9 @@ public static class RegistrationMappingExtensions
                     m.AttendancePeriod, r.CampEdition, m.VisitStartDate, m.VisitEndDate),
                 m.VisitStartDate,
                 m.VisitEndDate,
-                m.IndividualAmount)).ToList(),
+                m.IndividualAmount,
+                m.GuardianName,
+                m.GuardianDocumentNumber)).ToList(),
             r.BaseTotalAmount,
             r.Extras.Select(e => new ExtraPricingDetail(
                 e.CampEditionExtraId, e.CampEditionExtra.Name, e.UnitPrice,
@@ -240,7 +256,9 @@ public static class RegistrationMappingExtensions
         amountPaid,
         r.TotalAmount - amountPaid,
         r.CreatedAt,
-        r.UpdatedAt
+        r.UpdatedAt,
+        r.SpecialNeeds,
+        r.CampatesPreference
     );
 
     private static string BuildCalculation(RegistrationExtra e)
