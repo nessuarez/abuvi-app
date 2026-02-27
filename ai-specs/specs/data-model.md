@@ -399,6 +399,39 @@ A specific annual edition of a camp (e.g., Camp 2026). Defines dates, pricing, c
 **Relationships:**
 
 - Each CampEdition belongs to one Camp (via `campId`)
+- One CampEdition can have many CampEditionAccommodations
+
+---
+
+### CampEditionAccommodation
+
+An accommodation option available for a specific camp edition (lodge, caravan, tent, etc.). Families rank up to 3 preferences during registration. This is a preference-only system — accommodations have no price; capacity is informational only.
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID)
+- `campEditionId`: The camp edition this accommodation belongs to (required, FK -> CampEdition)
+- `name`: Display name (required, max 200 characters, e.g. "Refugio Norte", "Parcela Caravanas A")
+- `accommodationType`: Type of accommodation (required, enum: `Lodge` | `Caravan` | `Tent` | `Bungalow` | `Motorhome`)
+- `description`: Optional description (max 1000 characters)
+- `capacity`: Maximum capacity in persons/units (optional, integer > 0 when set; informational only)
+- `isActive`: Whether the option is available for selection (required, default: true)
+- `sortOrder`: Display order (required, integer >= 0, default: 0)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- Name is required, max 200 characters
+- AccommodationType must be a valid enum value
+- Capacity must be > 0 when provided
+- SortOrder must be >= 0
+- Cannot delete if any RegistrationAccommodationPreference references this accommodation (deactivate instead)
+
+**Relationships:**
+
+- Each CampEditionAccommodation belongs to one CampEdition (via `campEditionId`, CASCADE delete)
+- One CampEditionAccommodation can be referenced by many RegistrationAccommodationPreferences
 
 ---
 
@@ -487,6 +520,34 @@ A partial or full payment for a registration. Supports multiple payments per reg
 **Relationships:**
 
 - Each Payment belongs to one Registration (via `registrationId`)
+
+---
+
+### RegistrationAccommodationPreference
+
+A family's ranked accommodation preference for a registration (1st, 2nd, or 3rd choice). Up to 3 preferences per registration, each pointing to a different CampEditionAccommodation.
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID, default: `gen_random_uuid()`)
+- `registrationId`: The registration this preference belongs to (required, FK -> Registration)
+- `campEditionAccommodationId`: The accommodation option being ranked (required, FK -> CampEditionAccommodation)
+- `preferenceOrder`: Rank position (required, integer, 1-3)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+
+**Validation rules:**
+
+- PreferenceOrder must be between 1 and 3 (inclusive)
+- A registration can have at most 3 preferences
+- No duplicate CampEditionAccommodationId per registration (unique index)
+- No duplicate PreferenceOrder per registration (unique index)
+- Each referenced accommodation must belong to the same camp edition as the registration
+- Each referenced accommodation must be active
+
+**Relationships:**
+
+- Each RegistrationAccommodationPreference belongs to one Registration (via `registrationId`, CASCADE delete)
+- Each RegistrationAccommodationPreference references one CampEditionAccommodation (via `campEditionAccommodationId`, RESTRICT delete)
 
 ---
 

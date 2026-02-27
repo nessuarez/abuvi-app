@@ -17,6 +17,7 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     public DbSet<Camp> Camps => Set<Camp>();
     public DbSet<CampEdition> CampEditions => Set<CampEdition>();
     public DbSet<CampEditionExtra> CampEditionExtras => Set<CampEditionExtra>();
+    public DbSet<CampEditionAccommodation> CampEditionAccommodations => Set<CampEditionAccommodation>();
     public DbSet<AssociationSettings> AssociationSettings => Set<AssociationSettings>();
     public DbSet<CampPhoto> CampPhotos => Set<CampPhoto>();
     public DbSet<FamilyUnit> FamilyUnits => Set<FamilyUnit>();
@@ -27,6 +28,7 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     public DbSet<Registration> Registrations => Set<Registration>();
     public DbSet<RegistrationMember> RegistrationMembers => Set<RegistrationMember>();
     public DbSet<RegistrationExtra> RegistrationExtras => Set<RegistrationExtra>();
+    public DbSet<RegistrationAccommodationPreference> RegistrationAccommodationPreferences => Set<RegistrationAccommodationPreference>();
     public DbSet<Payment> Payments => Set<Payment>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)

@@ -360,6 +360,94 @@ public static class CampsEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
 
+        // ── Camp Edition Accommodations (Board+ write — edition-scoped) ──────────
+        var accommodationsWriteGroup = app.MapGroup("/api/camps/editions/{editionId:guid}/accommodations")
+            .WithTags("Camp Edition Accommodations")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"));
+
+        // POST /api/camps/editions/{editionId}/accommodations - Create accommodation
+        accommodationsWriteGroup.MapPost("/", CreateAccommodation)
+            .WithName("CreateCampEditionAccommodation")
+            .WithSummary("Create a new accommodation option for a camp edition")
+            .AddEndpointFilter<ValidationFilter<CreateCampEditionAccommodationRequest>>()
+            .Produces<ApiResponse<CampEditionAccommodationResponse>>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
+        // ── Camp Edition Accommodations (Member+ read — edition-scoped) ──────────
+        var accommodationsReadGroup = app.MapGroup("/api/camps/editions/{editionId:guid}/accommodations")
+            .WithTags("Camp Edition Accommodations")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board", "Member"));
+
+        // GET /api/camps/editions/{editionId}/accommodations - List accommodations
+        accommodationsReadGroup.MapGet("/", GetAccommodationsByEdition)
+            .WithName("GetCampEditionAccommodations")
+            .WithSummary("List all accommodations for a camp edition")
+            .Produces<ApiResponse<List<CampEditionAccommodationResponse>>>()
+            .Produces(StatusCodes.Status401Unauthorized);
+
+        // ── Camp Edition Accommodations by ID (Board+ write) ────────────────────
+        var accommodationsByIdWriteGroup = app.MapGroup("/api/camps/editions/accommodations")
+            .WithTags("Camp Edition Accommodations")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"));
+
+        // PUT /api/camps/editions/accommodations/{id} - Update accommodation
+        accommodationsByIdWriteGroup.MapPut("/{id:guid}", UpdateAccommodation)
+            .WithName("UpdateCampEditionAccommodation")
+            .WithSummary("Update a camp edition accommodation")
+            .AddEndpointFilter<ValidationFilter<UpdateCampEditionAccommodationRequest>>()
+            .Produces<ApiResponse<CampEditionAccommodationResponse>>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
+
+        // DELETE /api/camps/editions/accommodations/{id} - Delete accommodation
+        accommodationsByIdWriteGroup.MapDelete("/{id:guid}", DeleteAccommodation)
+            .WithName("DeleteCampEditionAccommodation")
+            .WithSummary("Delete a camp edition accommodation (only if no preferences exist)")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
+
+        // PATCH /api/camps/editions/accommodations/{id}/activate
+        accommodationsByIdWriteGroup.MapPatch("/{id:guid}/activate", ActivateAccommodation)
+            .WithName("ActivateCampEditionAccommodation")
+            .WithSummary("Activate a camp edition accommodation")
+            .Produces<ApiResponse<CampEditionAccommodationResponse>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
+
+        // PATCH /api/camps/editions/accommodations/{id}/deactivate
+        accommodationsByIdWriteGroup.MapPatch("/{id:guid}/deactivate", DeactivateAccommodation)
+            .WithName("DeactivateCampEditionAccommodation")
+            .WithSummary("Deactivate a camp edition accommodation")
+            .Produces<ApiResponse<CampEditionAccommodationResponse>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
+
+        // ── Camp Edition Accommodations by ID (Member+ read) ────────────────────
+        var accommodationsByIdReadGroup = app.MapGroup("/api/camps/editions/accommodations")
+            .WithTags("Camp Edition Accommodations")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board", "Member"));
+
+        // GET /api/camps/editions/accommodations/{id} - Get accommodation by ID
+        accommodationsByIdReadGroup.MapGet("/{id:guid}", GetAccommodationById)
+            .WithName("GetCampEditionAccommodationById")
+            .WithSummary("Get a specific camp edition accommodation by ID")
+            .Produces<ApiResponse<CampEditionAccommodationResponse>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound);
+
         return app;
     }
 
@@ -912,6 +1000,119 @@ public static class CampsEndpoints
         {
             var extra = await service.DeactivateAsync(id, ct);
             return Results.Ok(ApiResponse<CampEditionExtraResponse>.Ok(extra));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    // ── Camp Edition Accommodations handlers ─────────────────────────────────
+
+    private static async Task<IResult> GetAccommodationsByEdition(
+        Guid editionId,
+        [FromQuery] bool? activeOnly,
+        [FromServices] CampEditionAccommodationsService service,
+        CancellationToken ct)
+    {
+        var accommodations = await service.GetByEditionAsync(editionId, activeOnly, ct);
+        return Results.Ok(ApiResponse<List<CampEditionAccommodationResponse>>.Ok(accommodations));
+    }
+
+    private static async Task<IResult> GetAccommodationById(
+        Guid id,
+        [FromServices] CampEditionAccommodationsService service,
+        CancellationToken ct)
+    {
+        var accommodation = await service.GetByIdAsync(id, ct);
+        return accommodation is not null
+            ? Results.Ok(ApiResponse<CampEditionAccommodationResponse>.Ok(accommodation))
+            : Results.NotFound(ApiResponse<CampEditionAccommodationResponse>.NotFound(
+                $"Alojamiento con ID '{id}' no encontrado"));
+    }
+
+    private static async Task<IResult> CreateAccommodation(
+        Guid editionId,
+        CreateCampEditionAccommodationRequest request,
+        [FromServices] CampEditionAccommodationsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var accommodation = await service.CreateAsync(editionId, request, ct);
+            return Results.Created(
+                $"/api/camps/editions/accommodations/{accommodation.Id}",
+                ApiResponse<CampEditionAccommodationResponse>.Ok(accommodation));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(
+                ApiResponse<CampEditionAccommodationResponse>.Fail(ex.Message, "OPERATION_ERROR"));
+        }
+    }
+
+    private static async Task<IResult> UpdateAccommodation(
+        Guid id,
+        UpdateCampEditionAccommodationRequest request,
+        [FromServices] CampEditionAccommodationsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var accommodation = await service.UpdateAsync(id, request, ct);
+            return Results.Ok(ApiResponse<CampEditionAccommodationResponse>.Ok(accommodation));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(
+                ApiResponse<CampEditionAccommodationResponse>.Fail(ex.Message, "OPERATION_ERROR"));
+        }
+    }
+
+    private static async Task<IResult> DeleteAccommodation(
+        Guid id,
+        [FromServices] CampEditionAccommodationsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var deleted = await service.DeleteAsync(id, ct);
+            return deleted
+                ? Results.NoContent()
+                : Results.NotFound(ApiResponse<object>.NotFound(
+                    $"Alojamiento con ID '{id}' no encontrado"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(ApiResponse<object>.Fail(ex.Message, "OPERATION_ERROR"));
+        }
+    }
+
+    private static async Task<IResult> ActivateAccommodation(
+        Guid id,
+        [FromServices] CampEditionAccommodationsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var accommodation = await service.ActivateAsync(id, ct);
+            return Results.Ok(ApiResponse<CampEditionAccommodationResponse>.Ok(accommodation));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> DeactivateAccommodation(
+        Guid id,
+        [FromServices] CampEditionAccommodationsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var accommodation = await service.DeactivateAsync(id, ct);
+            return Results.Ok(ApiResponse<CampEditionAccommodationResponse>.Ok(accommodation));
         }
         catch (InvalidOperationException ex)
         {
