@@ -116,6 +116,42 @@ export interface CreateCampExtraRequest {
   sortOrder: number
 }
 
+// === Accommodation Types ===
+
+export type AccommodationType = 'Lodge' | 'Caravan' | 'Tent' | 'Bungalow' | 'Motorhome'
+
+export interface CampEditionAccommodation {
+  id: string
+  campEditionId: string
+  name: string
+  accommodationType: AccommodationType
+  description?: string
+  capacity?: number
+  isActive: boolean
+  sortOrder: number
+  currentPreferenceCount: number
+  firstChoiceCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateCampEditionAccommodationRequest {
+  name: string
+  accommodationType: AccommodationType
+  description?: string
+  capacity?: number
+  sortOrder?: number
+}
+
+export interface UpdateCampEditionAccommodationRequest {
+  name: string
+  accommodationType: AccommodationType
+  description?: string
+  capacity?: number
+  isActive: boolean
+  sortOrder: number
+}
+
 export interface UpdateCampEditionRequest {
   startDate: string
   endDate: string

@@ -14,13 +14,15 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Container from '@/components/ui/Container.vue'
 import RegistrationMemberSelector from '@/components/registrations/RegistrationMemberSelector.vue'
 import RegistrationExtrasSelector from '@/components/registrations/RegistrationExtrasSelector.vue'
+import RegistrationAccommodationSelector from '@/components/registrations/RegistrationAccommodationSelector.vue'
 import { useCampEditions } from '@/composables/useCampEditions'
 import { useCampExtras } from '@/composables/useCampExtras'
+import { useCampAccommodations } from '@/composables/useCampAccommodations'
 import { useFamilyUnits } from '@/composables/useFamilyUnits'
 import { useRegistrations } from '@/composables/useRegistrations'
 import { useAuthStore } from '@/stores/auth'
 import type { CampEdition } from '@/types/camp-edition'
-import type { WizardMemberSelection, WizardExtrasSelection } from '@/types/registration'
+import type { WizardMemberSelection, WizardExtrasSelection, WizardAccommodationPreference } from '@/types/registration'
 import { ATTENDANCE_PERIOD_LABELS, computePeriodDays } from '@/utils/registration'
 
 const route = useRoute()
@@ -33,11 +35,13 @@ const editionId = computed(() => route.params.editionId as string)
 const { getEditionById } = useCampEditions()
 const { familyUnit, familyMembers, getCurrentUserFamilyUnit, getFamilyMembers } = useFamilyUnits()
 const { extras: campExtras, fetchExtras } = useCampExtras(editionId.value)
-const { createRegistration, setExtras, loading, error } = useRegistrations()
+const { accommodations: campAccommodations, fetchAccommodations } = useCampAccommodations(editionId.value)
+const { createRegistration, setExtras, setAccommodationPreferences, loading, error } = useRegistrations()
 
 const currentStep = ref(1)
 const selectedMembers = ref<WizardMemberSelection[]>([])
 const extrasSelections = ref<WizardExtrasSelection[]>([])
+const accommodationPreferences = ref<WizardAccommodationPreference[]>([])
 const notes = ref<string>('')
 const specialNeeds = ref<string>('')
 const campatesPreference = ref<string>('')
@@ -54,6 +58,13 @@ const selectedMemberDetails = computed(() =>
 )
 
 const hasExtrasSelected = computed(() => extrasSelections.value.some((e) => e.quantity > 0))
+
+const hasActiveAccommodations = computed(() =>
+  campAccommodations.value.some((a) => a.isActive)
+)
+const accommodationStepValue = 3
+const confirmStepValue = computed(() => (hasActiveAccommodations.value ? 4 : 3))
+const stepAfterExtras = computed(() => (hasActiveAccommodations.value ? accommodationStepValue : confirmStepValue.value))
 
 const allowsPartialAttendance = computed(() => !!edition.value?.pricePerAdultWeek)
 
@@ -128,6 +139,25 @@ const handleConfirm = async () => {
     }
   }
 
+  if (accommodationPreferences.value.length > 0) {
+    const prefsResult = await setAccommodationPreferences(created.id, {
+      preferences: accommodationPreferences.value.map((p) => ({
+        campEditionAccommodationId: p.campEditionAccommodationId,
+        preferenceOrder: p.preferenceOrder
+      }))
+    })
+    if (!prefsResult) {
+      toast.add({
+        severity: 'warn',
+        summary: 'Inscripción creada',
+        detail: 'No se pudieron guardar las preferencias de alojamiento.',
+        life: 6000
+      })
+      router.push({ name: 'registration-detail', params: { id: created.id } })
+      return
+    }
+  }
+
   toast.add({
     severity: 'success',
     summary: '¡Inscripción realizada!',
@@ -156,7 +186,7 @@ onMounted(async () => {
   if (familyUnit.value) {
     await getFamilyMembers(familyUnit.value.id)
   }
-  await fetchExtras()
+  await Promise.all([fetchExtras(), fetchAccommodations()])
   pageLoading.value = false
 })
 </script>
@@ -202,7 +232,8 @@ onMounted(async () => {
             <StepList>
               <Step :value="1">Participantes</Step>
               <Step :value="2">Extras</Step>
-              <Step :value="3">Confirmar</Step>
+              <Step v-if="hasActiveAccommodations" :value="3">Alojamiento</Step>
+              <Step :value="confirmStepValue">Confirmar</Step>
             </StepList>
 
             <StepPanels>
@@ -307,14 +338,14 @@ onMounted(async () => {
                         label="Saltar este paso"
                         severity="secondary"
                         text
-                        @click="currentStep = 3"
+                        @click="currentStep = stepAfterExtras"
                         data-testid="skip-extras-btn"
                       />
                       <Button
                         label="Siguiente"
                         icon="pi pi-arrow-right"
                         icon-pos="right"
-                        @click="currentStep = 3"
+                        @click="currentStep = stepAfterExtras"
                         data-testid="next-step-btn"
                       />
                     </div>
@@ -322,8 +353,52 @@ onMounted(async () => {
                 </div>
               </StepPanel>
 
-              <!-- Step 3: Confirm -->
-              <StepPanel :value="3">
+              <!-- Step 3: Accommodation preferences (conditional) -->
+              <StepPanel v-if="hasActiveAccommodations" :value="3">
+                <div class="flex flex-col gap-6 py-4">
+                  <div>
+                    <h2 class="mb-1 text-base font-semibold text-gray-900">
+                      Preferencia de alojamiento (opcional)
+                    </h2>
+                    <p class="mb-4 text-sm text-gray-500">
+                      Selecciona hasta 3 opciones de alojamiento ordenadas por preferencia.
+                    </p>
+
+                    <RegistrationAccommodationSelector
+                      v-model="accommodationPreferences"
+                      :accommodations="campAccommodations"
+                    />
+                  </div>
+
+                  <div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
+                    <Button
+                      label="Atrás"
+                      icon="pi pi-arrow-left"
+                      severity="secondary"
+                      @click="currentStep = 2"
+                    />
+                    <div class="flex gap-2">
+                      <Button
+                        label="Saltar este paso"
+                        severity="secondary"
+                        text
+                        @click="currentStep = confirmStepValue"
+                        data-testid="skip-accommodation-btn"
+                      />
+                      <Button
+                        label="Siguiente"
+                        icon="pi pi-arrow-right"
+                        icon-pos="right"
+                        @click="currentStep = confirmStepValue"
+                        data-testid="next-step-btn"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </StepPanel>
+
+              <!-- Confirm step -->
+              <StepPanel :value="confirmStepValue">
                 <div class="flex flex-col gap-6 py-4">
                   <div>
                     <h2 class="mb-1 text-base font-semibold text-gray-900">
@@ -494,6 +569,27 @@ onMounted(async () => {
                       </ul>
                     </div>
 
+                    <!-- Accommodation preferences summary -->
+                    <div
+                      v-if="accommodationPreferences.length > 0"
+                      class="mb-4 rounded-lg border border-gray-200 p-4"
+                    >
+                      <h3 class="mb-2 text-sm font-semibold text-gray-700">
+                        Preferencias de alojamiento
+                      </h3>
+                      <ol class="list-inside list-decimal space-y-1">
+                        <li
+                          v-for="pref in [...accommodationPreferences].sort(
+                            (a, b) => a.preferenceOrder - b.preferenceOrder
+                          )"
+                          :key="pref.campEditionAccommodationId"
+                          class="text-sm text-gray-800"
+                        >
+                          {{ pref.accommodationName }}
+                        </li>
+                      </ol>
+                    </div>
+
                     <!-- Notes -->
                     <div class="mb-4">
                       <label class="mb-1 block text-sm font-medium text-gray-700">
@@ -533,7 +629,7 @@ onMounted(async () => {
                       label="Atrás"
                       icon="pi pi-arrow-left"
                       severity="secondary"
-                      @click="currentStep = 2"
+                      @click="currentStep = hasActiveAccommodations ? accommodationStepValue : 2"
                     />
                     <Button
                       label="Confirmar inscripción"

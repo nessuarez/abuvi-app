@@ -176,3 +176,32 @@ export interface WizardExtrasSelection {
   quantity: number
   unitPrice: number
 }
+
+// === Accommodation Preferences ===
+
+import type { AccommodationType } from './camp-edition'
+
+// Wizard-local state for accommodation preferences
+export interface WizardAccommodationPreference {
+  campEditionAccommodationId: string
+  accommodationName: string
+  accommodationType: AccommodationType
+  preferenceOrder: number
+}
+
+// API request/response shapes
+export interface AccommodationPreferenceRequest {
+  campEditionAccommodationId: string
+  preferenceOrder: number
+}
+
+export interface UpdateAccommodationPreferencesRequest {
+  preferences: AccommodationPreferenceRequest[]
+}
+
+export interface AccommodationPreferenceResponse {
+  campEditionAccommodationId: string
+  accommodationName: string
+  accommodationType: AccommodationType
+  preferenceOrder: number
+}
