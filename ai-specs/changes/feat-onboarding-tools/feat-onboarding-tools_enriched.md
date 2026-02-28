@@ -110,23 +110,27 @@ frontend/src/onboarding/
 ### FR-4: Initial Tours to Implement
 
 #### 4.1 Welcome Tour (all users)
+
 - Dashboard overview
 - Navigation sidebar explanation
 - Profile / account settings
 - How to access help
 
 #### 4.2 Registration Flow Tour (all users)
+
 - How to start a camp registration
 - Selecting family members
 - Choosing attendance periods
 - Reviewing and submitting
 
 #### 4.3 Membership Management Tour (all users)
+
 - Viewing membership status
 - Paying fees
 - Understanding membership types
 
 #### 4.4 Camp Management Tour (board members only)
+
 - Proposing camp editions
 - Managing locations
 - Viewing registrations
@@ -156,25 +160,30 @@ frontend/src/onboarding/
 ## Non-Functional Requirements
 
 ### NFR-1: Performance
+
 - Driver.js adds only ~5 KB to the bundle (gzipped)
 - Tour definition files should be lazy-loaded per page to avoid loading all tours upfront
 - Media files should be lazy-loaded only when the step containing them is reached
 
 ### NFR-2: Accessibility
+
 - Keyboard navigation (arrow keys, Escape to close) — built into Driver.js
 - Screen reader support for popover content
 - Sufficient color contrast for overlay and popovers
 
 ### NFR-3: Responsiveness
+
 - Tours must work on mobile viewports
 - Popover positioning should adapt to screen size (Driver.js handles this automatically)
 - Steps targeting elements not visible on mobile should be skipped
 
 ### NFR-4: Internationalization
+
 - Tour content (titles, descriptions) should be externalized for future i18n support
 - Consider using Vue I18n keys in tour definitions from the start
 
 ### NFR-5: Security
+
 - No user data should be exposed in tour content
 - Media files should be served from the same origin or a trusted CDN
 
@@ -183,37 +192,44 @@ frontend/src/onboarding/
 ## Technical Implementation Plan
 
 ### Step 1: Install Driver.js
+
 ```bash
 cd frontend && npm install driver.js
 ```
 
 ### Step 2: Create `useOnboarding` Composable
+
 - File: `frontend/src/composables/useOnboarding.ts`
 - Wraps Driver.js `driver()` API
 - Manages tour registry, progress tracking (localStorage), and auto-trigger logic
 - Provides `startTour()`, `hasCompletedTour()`, `resetTour()`, `resetAllTours()`
 
 ### Step 3: Create Tour Definition Structure
+
 - Directory: `frontend/src/onboarding/tours/`
 - Each tour exports a typed array of step objects
 - Types defined in `frontend/src/types/onboarding.ts`
 
 ### Step 4: Create `OnboardingButton.vue` Component
+
 - File: `frontend/src/components/ui/OnboardingButton.vue`
 - Floating button or header integration using PrimeVue
 - Lists available tours for the current route
 
 ### Step 5: Integrate into Existing Pages
+
 - Add `data-onboarding="step-id"` attributes to key elements in existing pages
 - Wire up auto-start logic in page `onMounted()` hooks
 - Start with the Welcome tour on the Home/Dashboard page
 
 ### Step 6: Add Media Support
+
 - Extend step configuration to accept media objects
 - Create a helper that renders `<video>` / `<img>` HTML for Driver.js popover content
 - Store media in `frontend/public/onboarding/`
 
 ### Step 7: Write Tests
+
 - Unit tests for `useOnboarding` composable (Vitest)
   - Tour registration and retrieval
   - Progress tracking (localStorage mock)
@@ -226,6 +242,7 @@ cd frontend && npm install driver.js
 ## Files to Create / Modify
 
 ### New Files
+
 | File | Purpose |
 |---|---|
 | `frontend/src/composables/useOnboarding.ts` | Core onboarding composable |
@@ -240,6 +257,7 @@ cd frontend && npm install driver.js
 | `frontend/src/components/__tests__/OnboardingButton.spec.ts` | Component tests |
 
 ### Modified Files
+
 | File | Change |
 |---|---|
 | `frontend/package.json` | Add `driver.js` dependency |
