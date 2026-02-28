@@ -10,6 +10,7 @@ using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.Guests;
 using Abuvi.API.Features.Memberships;
 using Abuvi.API.Features.Registrations;
+using Abuvi.API.Features.BlobStorage;
 using Abuvi.API.Common.Services;
 using FluentValidation;
 using System.Text.Json.Serialization;
@@ -186,6 +187,9 @@ builder.Services.AddScoped<IPaymentsRepository, PaymentsRepository>();
 builder.Services.AddScoped<RegistrationPricingService>();
 builder.Services.AddScoped<RegistrationsService>();
 
+// Blob Storage
+builder.Services.AddBlobStorage(builder.Configuration);
+
 // Encryption Service
 builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
 
@@ -237,7 +241,17 @@ builder.Services.AddHealthChecks()
     .AddCheck<SeqHealthCheck>(
         name: "seq",
         failureStatus: HealthStatus.Degraded,
-        tags: ["logging", "external"]);
+        tags: ["logging", "external"])
+    .AddCheck<BlobStorageHealthCheck>(
+        name: "blob-storage",
+        failureStatus: HealthStatus.Degraded,
+        tags: ["storage", "external"]);
+
+// Increase Kestrel limit for file uploads (default is 30 MB)
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 55 * 1024 * 1024; // 55 MB (50 MB file + headers)
+});
 
 var app = builder.Build();
 
@@ -351,6 +365,7 @@ app.MapGuestsEndpoints();
 app.MapMembershipsEndpoints();
 app.MapMembershipFeeEndpoints();
 app.MapRegistrationsEndpoints();
+app.MapBlobStorageEndpoints();
 
 app.Run();
 
