@@ -37,6 +37,18 @@ interface FormModel {
   customAdultMinAge: number | null
   maxCapacity: number | null
   notes: string
+  allowPartialAttendance: boolean
+  halfDate: Date | null
+  pricePerAdultWeek: number | null
+  pricePerChildWeek: number | null
+  pricePerBabyWeek: number | null
+  allowWeekendVisit: boolean
+  weekendStartDate: Date | null
+  weekendEndDate: Date | null
+  pricePerAdultWeekend: number | null
+  pricePerChildWeekend: number | null
+  pricePerBabyWeekend: number | null
+  maxWeekendCapacity: number | null
   description: string
 }
 
@@ -53,6 +65,18 @@ const form = reactive<FormModel>({
   customAdultMinAge: null,
   maxCapacity: null,
   notes: '',
+  allowPartialAttendance: false,
+  halfDate: null,
+  pricePerAdultWeek: null,
+  pricePerChildWeek: null,
+  pricePerBabyWeek: null,
+  allowWeekendVisit: false,
+  weekendStartDate: null,
+  weekendEndDate: null,
+  pricePerAdultWeekend: null,
+  pricePerChildWeekend: null,
+  pricePerBabyWeekend: null,
+  maxWeekendCapacity: null,
   description: ''
 })
 
@@ -74,6 +98,18 @@ const initializeForm = () => {
   form.customAdultMinAge = props.edition.adultMinAge ?? null
   form.maxCapacity = props.edition.maxCapacity > 0 ? props.edition.maxCapacity : null
   form.notes = ''
+  form.allowPartialAttendance = props.edition.pricePerAdultWeek != null
+  form.halfDate = props.edition.halfDate ? new Date(props.edition.halfDate) : null
+  form.pricePerAdultWeek = props.edition.pricePerAdultWeek ?? null
+  form.pricePerChildWeek = props.edition.pricePerChildWeek ?? null
+  form.pricePerBabyWeek = props.edition.pricePerBabyWeek ?? null
+  form.allowWeekendVisit = props.edition.weekendStartDate != null
+  form.weekendStartDate = props.edition.weekendStartDate ? new Date(props.edition.weekendStartDate) : null
+  form.weekendEndDate = props.edition.weekendEndDate ? new Date(props.edition.weekendEndDate) : null
+  form.pricePerAdultWeekend = props.edition.pricePerAdultWeekend ?? null
+  form.pricePerChildWeekend = props.edition.pricePerChildWeekend ?? null
+  form.pricePerBabyWeekend = props.edition.pricePerBabyWeekend ?? null
+  form.maxWeekendCapacity = props.edition.maxWeekendCapacity ?? null
   form.description = props.edition.description ?? ''
   errors.value = {}
 }
@@ -102,6 +138,30 @@ const validate = (): boolean => {
   }
   if (form.notes && form.notes.length > 2000) {
     errors.value.notes = 'Las notas no deben superar los 2000 caracteres'
+  }
+  if (form.allowPartialAttendance) {
+    if (form.pricePerAdultWeek == null || form.pricePerAdultWeek < 0)
+      errors.value.pricePerAdultWeek = 'El precio por adulto/semana es obligatorio'
+    if (form.pricePerChildWeek == null || form.pricePerChildWeek < 0)
+      errors.value.pricePerChildWeek = 'El precio por niño/semana es obligatorio'
+    if (form.pricePerBabyWeek == null || form.pricePerBabyWeek < 0)
+      errors.value.pricePerBabyWeek = 'El precio por bebé/semana es obligatorio'
+  }
+  if (form.allowWeekendVisit) {
+    if (!form.weekendStartDate)
+      errors.value.weekendStartDate = 'La fecha de inicio del fin de semana es obligatoria'
+    if (!form.weekendEndDate)
+      errors.value.weekendEndDate = 'La fecha de fin del fin de semana es obligatoria'
+    if (form.weekendStartDate && form.weekendEndDate && form.weekendEndDate <= form.weekendStartDate)
+      errors.value.weekendEndDate = 'La fecha de fin debe ser posterior a la de inicio'
+    if (form.pricePerAdultWeekend == null || form.pricePerAdultWeekend < 0)
+      errors.value.pricePerAdultWeekend = 'El precio por adulto/fds es obligatorio'
+    if (form.pricePerChildWeekend == null || form.pricePerChildWeekend < 0)
+      errors.value.pricePerChildWeekend = 'El precio por niño/fds es obligatorio'
+    if (form.pricePerBabyWeekend == null || form.pricePerBabyWeekend < 0)
+      errors.value.pricePerBabyWeekend = 'El precio por bebé/fds es obligatorio'
+    if (form.maxWeekendCapacity != null && form.maxWeekendCapacity <= 0)
+      errors.value.maxWeekendCapacity = 'La capacidad debe ser mayor a 0'
   }
   if (form.useCustomAgeRanges) {
     if (!form.customBabyMaxAge) errors.value.customBabyMaxAge = 'La edad máxima de bebé es obligatoria'
@@ -136,6 +196,19 @@ const handleSave = async () => {
     }),
     maxCapacity: form.maxCapacity ?? undefined,
     notes: form.notes || undefined,
+    halfDate: form.allowPartialAttendance && form.halfDate
+      ? formatDateToIso(form.halfDate) : null,
+    pricePerAdultWeek: form.allowPartialAttendance ? form.pricePerAdultWeek : null,
+    pricePerChildWeek: form.allowPartialAttendance ? form.pricePerChildWeek : null,
+    pricePerBabyWeek: form.allowPartialAttendance ? form.pricePerBabyWeek : null,
+    weekendStartDate: form.allowWeekendVisit && form.weekendStartDate
+      ? formatDateToIso(form.weekendStartDate) : null,
+    weekendEndDate: form.allowWeekendVisit && form.weekendEndDate
+      ? formatDateToIso(form.weekendEndDate) : null,
+    pricePerAdultWeekend: form.allowWeekendVisit ? form.pricePerAdultWeekend : null,
+    pricePerChildWeekend: form.allowWeekendVisit ? form.pricePerChildWeekend : null,
+    pricePerBabyWeekend: form.allowWeekendVisit ? form.pricePerBabyWeekend : null,
+    maxWeekendCapacity: form.allowWeekendVisit ? (form.maxWeekendCapacity || null) : null,
     description: form.description || undefined
   }
 
@@ -240,6 +313,156 @@ const handleSave = async () => {
           class="w-full"
         />
         <span v-if="errors.maxCapacity" class="text-xs text-red-600">{{ errors.maxCapacity }}</span>
+      </div>
+
+      <!-- Partial attendance (week pricing) -->
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-3">
+          <ToggleSwitch v-model="form.allowPartialAttendance" :disabled="isOpenEdition" />
+          <label class="text-sm font-medium text-gray-700">Permitir inscripción por semanas</label>
+        </div>
+
+        <div v-if="form.allowPartialAttendance" class="space-y-4 pl-1">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-gray-600">Fecha de corte (opcional)</label>
+            <DatePicker
+              v-model="form.halfDate"
+              date-format="dd/mm/yy"
+              show-icon
+              :disabled="isOpenEdition"
+              class="w-full"
+            />
+          </div>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-gray-600">Precio adulto/sem</label>
+              <InputNumber
+                v-model="form.pricePerAdultWeek"
+                mode="currency"
+                currency="EUR"
+                locale="es-ES"
+                :min="0"
+                :disabled="isOpenEdition"
+                class="w-full"
+              />
+              <span v-if="errors.pricePerAdultWeek" class="text-xs text-red-600">{{ errors.pricePerAdultWeek }}</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-gray-600">Precio niño/sem</label>
+              <InputNumber
+                v-model="form.pricePerChildWeek"
+                mode="currency"
+                currency="EUR"
+                locale="es-ES"
+                :min="0"
+                :disabled="isOpenEdition"
+                class="w-full"
+              />
+              <span v-if="errors.pricePerChildWeek" class="text-xs text-red-600">{{ errors.pricePerChildWeek }}</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-gray-600">Precio bebé/sem</label>
+              <InputNumber
+                v-model="form.pricePerBabyWeek"
+                mode="currency"
+                currency="EUR"
+                locale="es-ES"
+                :min="0"
+                :disabled="isOpenEdition"
+                class="w-full"
+              />
+              <span v-if="errors.pricePerBabyWeek" class="text-xs text-red-600">{{ errors.pricePerBabyWeek }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekend visit -->
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-3">
+          <ToggleSwitch v-model="form.allowWeekendVisit" :disabled="isOpenEdition" />
+          <label class="text-sm font-medium text-gray-700">Permitir visitas de fin de semana</label>
+        </div>
+
+        <div v-if="form.allowWeekendVisit" class="space-y-4 pl-1">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-gray-600">Fecha inicio fds</label>
+              <DatePicker
+                v-model="form.weekendStartDate"
+                date-format="dd/mm/yy"
+                show-icon
+                :disabled="isOpenEdition"
+                class="w-full"
+              />
+              <span v-if="errors.weekendStartDate" class="text-xs text-red-600">{{ errors.weekendStartDate }}</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-gray-600">Fecha fin fds</label>
+              <DatePicker
+                v-model="form.weekendEndDate"
+                date-format="dd/mm/yy"
+                show-icon
+                :disabled="isOpenEdition"
+                class="w-full"
+              />
+              <span v-if="errors.weekendEndDate" class="text-xs text-red-600">{{ errors.weekendEndDate }}</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-gray-600">Precio adulto/fds</label>
+              <InputNumber
+                v-model="form.pricePerAdultWeekend"
+                mode="currency"
+                currency="EUR"
+                locale="es-ES"
+                :min="0"
+                :disabled="isOpenEdition"
+                class="w-full"
+              />
+              <span v-if="errors.pricePerAdultWeekend" class="text-xs text-red-600">{{ errors.pricePerAdultWeekend }}</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-gray-600">Precio niño/fds</label>
+              <InputNumber
+                v-model="form.pricePerChildWeekend"
+                mode="currency"
+                currency="EUR"
+                locale="es-ES"
+                :min="0"
+                :disabled="isOpenEdition"
+                class="w-full"
+              />
+              <span v-if="errors.pricePerChildWeekend" class="text-xs text-red-600">{{ errors.pricePerChildWeekend }}</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-gray-600">Precio bebé/fds</label>
+              <InputNumber
+                v-model="form.pricePerBabyWeekend"
+                mode="currency"
+                currency="EUR"
+                locale="es-ES"
+                :min="0"
+                :disabled="isOpenEdition"
+                class="w-full"
+              />
+              <span v-if="errors.pricePerBabyWeekend" class="text-xs text-red-600">{{ errors.pricePerBabyWeekend }}</span>
+            </div>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-gray-600">Capacidad máx. fds (opcional)</label>
+            <InputNumber
+              v-model="form.maxWeekendCapacity"
+              :min="1"
+              :use-grouping="false"
+              placeholder="Sin límite"
+              :disabled="isOpenEdition"
+              class="w-full"
+            />
+            <span v-if="errors.maxWeekendCapacity" class="text-xs text-red-600">{{ errors.maxWeekendCapacity }}</span>
+          </div>
+        </div>
       </div>
 
       <!-- Notes -->
