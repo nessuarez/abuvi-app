@@ -49,6 +49,7 @@ interface FormModel {
   pricePerChildWeekend: number | null
   pricePerBabyWeekend: number | null
   maxWeekendCapacity: number | null
+  description: string
 }
 
 const form = reactive<FormModel>({
@@ -75,7 +76,8 @@ const form = reactive<FormModel>({
   pricePerAdultWeekend: null,
   pricePerChildWeekend: null,
   pricePerBabyWeekend: null,
-  maxWeekendCapacity: null
+  maxWeekendCapacity: null,
+  description: ''
 })
 
 const errors = ref<Record<string, string>>({})
@@ -108,6 +110,7 @@ const initializeForm = () => {
   form.pricePerChildWeekend = props.edition.pricePerChildWeekend ?? null
   form.pricePerBabyWeekend = props.edition.pricePerBabyWeekend ?? null
   form.maxWeekendCapacity = props.edition.maxWeekendCapacity ?? null
+  form.description = props.edition.description ?? ''
   errors.value = {}
 }
 
@@ -205,7 +208,8 @@ const handleSave = async () => {
     pricePerAdultWeekend: form.allowWeekendVisit ? form.pricePerAdultWeekend : null,
     pricePerChildWeekend: form.allowWeekendVisit ? form.pricePerChildWeekend : null,
     pricePerBabyWeekend: form.allowWeekendVisit ? form.pricePerBabyWeekend : null,
-    maxWeekendCapacity: form.allowWeekendVisit ? (form.maxWeekendCapacity || null) : null
+    maxWeekendCapacity: form.allowWeekendVisit ? (form.maxWeekendCapacity || null) : null,
+    description: form.description || undefined
   }
 
   const result = await updateEdition(props.edition.id, request)
@@ -227,7 +231,7 @@ const handleSave = async () => {
   >
     <div class="space-y-4">
       <Message v-if="isOpenEdition" severity="info" :closable="false">
-        Esta edición está abierta para inscripciones. Solo se pueden modificar las notas y la capacidad máxima.
+        Esta edición está abierta para inscripciones. Solo se pueden modificar las notas, la descripción y la capacidad máxima.
       </Message>
 
       <Message v-if="error" severity="error" :closable="false">
@@ -466,6 +470,17 @@ const handleSave = async () => {
         <label class="text-sm font-medium text-gray-700">Notas</label>
         <Textarea v-model="form.notes" :max-length="2000" rows="3" class="w-full" />
         <span v-if="errors.notes" class="text-xs text-red-600">{{ errors.notes }}</span>
+      </div>
+
+      <!-- Description -->
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium text-gray-700">Descripción</label>
+        <Textarea
+          v-model="form.description"
+          rows="5"
+          class="w-full"
+          placeholder="Descripción de la edición (actividades, novedades, información pública...)"
+        />
       </div>
 
       <!-- Custom Age Ranges -->

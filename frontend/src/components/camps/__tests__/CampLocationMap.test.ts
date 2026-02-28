@@ -50,7 +50,7 @@ describe('CampLocationMap', () => {
     mount(CampLocationMap, {
       props: {
         locations: [
-          { latitude: 40.0, longitude: -3.0, name: 'Camp A', location: 'Madrid, Spain' },
+          { latitude: 40.0, longitude: -3.0, name: 'Camp A', rawAddress: 'Madrid, Spain' },
         ],
       },
     })

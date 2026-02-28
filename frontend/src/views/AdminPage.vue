@@ -8,6 +8,10 @@ import TabPanel from 'primevue/tabpanel'
 import CampsAdminPanel from '@/components/admin/CampsAdminPanel.vue'
 import FamilyUnitsAdminPanel from '@/components/admin/FamilyUnitsAdminPanel.vue'
 import UsersAdminPanel from '@/components/admin/UsersAdminPanel.vue'
+import BlobStorageAdminPanel from '@/components/admin/BlobStorageAdminPanel.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
 </script>
 
 <template>
@@ -29,6 +33,10 @@ import UsersAdminPanel from '@/components/admin/UsersAdminPanel.vue'
             <i class="pi pi-user-edit mr-2" />
             Usuarios
           </Tab>
+          <Tab v-if="auth.isAdmin" value="3" data-testid="tab-storage">
+            <i class="pi pi-database mr-2" />
+            Almacenamiento
+          </Tab>
         </TabList>
 
         <TabPanels>
@@ -47,6 +55,12 @@ import UsersAdminPanel from '@/components/admin/UsersAdminPanel.vue'
           <TabPanel value="2" data-testid="panel-users">
             <div class="py-4">
               <UsersAdminPanel />
+            </div>
+          </TabPanel>
+
+          <TabPanel v-if="auth.isAdmin" value="3" data-testid="panel-storage">
+            <div class="py-4">
+              <BlobStorageAdminPanel />
             </div>
           </TabPanel>
         </TabPanels>

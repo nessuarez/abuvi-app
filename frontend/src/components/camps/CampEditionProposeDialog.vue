@@ -48,7 +48,8 @@ const form = ref({
   pricePerAdultWeekend: null as number | null,
   pricePerChildWeekend: null as number | null,
   pricePerBabyWeekend: null as number | null,
-  maxWeekendCapacity: null as number | null
+  maxWeekendCapacity: null as number | null,
+  description: ''
 })
 
 const errors = ref<Record<string, string>>({})
@@ -77,7 +78,7 @@ watch(() => props.visible, (val) => {
       year: targetYear,
       startDate: null,
       endDate: null,
-      location: props.camp?.location ?? props.camp?.name ?? '',
+      location: props.camp?.rawAddress ?? props.camp?.name ?? '',
       pricePerAdult: props.camp?.pricePerAdult ?? 0,
       pricePerChild: props.camp?.pricePerChild ?? 0,
       pricePerBaby: props.camp?.pricePerBaby ?? 0,
@@ -94,7 +95,8 @@ watch(() => props.visible, (val) => {
       pricePerAdultWeekend: null,
       pricePerChildWeekend: null,
       pricePerBabyWeekend: null,
-      maxWeekendCapacity: null
+      maxWeekendCapacity: null,
+      description: ''
     }
     prefillDatesFromPreviousYear(targetYear)
   }
@@ -172,7 +174,8 @@ const handleSubmit = async () => {
     pricePerAdultWeekend: form.value.allowWeekendVisit ? form.value.pricePerAdultWeekend : null,
     pricePerChildWeekend: form.value.allowWeekendVisit ? form.value.pricePerChildWeekend : null,
     pricePerBabyWeekend: form.value.allowWeekendVisit ? form.value.pricePerBabyWeekend : null,
-    maxWeekendCapacity: form.value.allowWeekendVisit ? (form.value.maxWeekendCapacity || null) : null
+    maxWeekendCapacity: form.value.allowWeekendVisit ? (form.value.maxWeekendCapacity || null) : null,
+    description: form.value.description || undefined
   })
   if (result) {
     emit('saved', result)
@@ -375,6 +378,15 @@ const handleSubmit = async () => {
           v-model="form.proposalReason"
           rows="3"
           placeholder="Explica por qué se propone esta edición (opcional)..."
+        />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium">Descripción</label>
+        <Textarea
+          v-model="form.description"
+          rows="4"
+          placeholder="Descripción de la edición (actividades, novedades, información pública...)"
         />
       </div>
     </div>

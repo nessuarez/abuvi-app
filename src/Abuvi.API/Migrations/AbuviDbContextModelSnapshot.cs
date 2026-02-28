@@ -381,6 +381,10 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("custom_child_min_age");
 
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("end_date");

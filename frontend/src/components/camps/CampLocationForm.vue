@@ -5,10 +5,13 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import InputNumber from 'primevue/inputnumber'
 import AutoComplete from 'primevue/autocomplete'
+import Select from 'primevue/select'
 import Message from 'primevue/message'
 import Button from 'primevue/button'
 import { useGooglePlaces, type PlaceAutocomplete } from '@/composables/useGooglePlaces'
+import { useAuthStore } from '@/stores/auth'
 import AccommodationCapacityForm from '@/components/camps/AccommodationCapacityForm.vue'
+import CampAbuviTrackingForm from '@/components/camps/CampAbuviTrackingForm.vue'
 import type { Camp, CreateCampRequest, UpdateCampRequest, AccommodationCapacity } from '@/types/camp'
 
 interface Props {
@@ -22,12 +25,13 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
+const auth = useAuthStore()
 const { loading: placesLoading, error: placesError, searchPlaces, getPlaceDetails } = useGooglePlaces()
 
 const formData = reactive<CreateCampRequest | UpdateCampRequest>({
   name: '',
   description: null,
-  location: null,
+  rawAddress: null,
   latitude: null,
   longitude: null,
   googlePlaceId: null,
@@ -35,8 +39,27 @@ const formData = reactive<CreateCampRequest | UpdateCampRequest>({
   pricePerChild: 0,
   pricePerBaby: 0,
   accommodationCapacity: null,
+  // Extra fields
+  province: null,
+  contactEmail: null,
+  contactPerson: null,
+  contactCompany: null,
+  secondaryWebsiteUrl: null,
+  basePrice: null,
+  vatIncluded: null,
+  abuviManagedByUserId: null,
+  abuviContactedAt: null,
+  abuviPossibility: null,
+  abuviLastVisited: null,
+  abuviHasDataErrors: null,
   ...(props.mode === 'edit' && { isActive: true })
 })
+
+const vatOptions = [
+  { label: 'Desconocido', value: null },
+  { label: 'Sí', value: true },
+  { label: 'No', value: false }
+]
 
 const placeSuggestions = ref<PlaceAutocomplete[]>([])
 const selectedPlace = ref<PlaceAutocomplete | null>(null)
@@ -50,7 +73,7 @@ if (props.mode === 'edit' && props.camp) {
   Object.assign(formData, {
     name: props.camp.name,
     description: props.camp.description,
-    location: props.camp.location,
+    rawAddress: props.camp.rawAddress,
     latitude: props.camp.latitude,
     longitude: props.camp.longitude,
     googlePlaceId: props.camp.googlePlaceId,
@@ -58,7 +81,20 @@ if (props.mode === 'edit' && props.camp) {
     pricePerChild: props.camp.pricePerChild,
     pricePerBaby: props.camp.pricePerBaby,
     accommodationCapacity: props.camp.accommodationCapacity ?? null,
-    isActive: props.camp.isActive
+    isActive: props.camp.isActive,
+    // Extra fields
+    province: props.camp.province,
+    contactEmail: props.camp.contactEmail,
+    contactPerson: props.camp.contactPerson,
+    contactCompany: props.camp.contactCompany,
+    secondaryWebsiteUrl: props.camp.secondaryWebsiteUrl,
+    basePrice: props.camp.basePrice,
+    vatIncluded: props.camp.vatIncluded,
+    abuviManagedByUserId: props.camp.abuviManagedByUserId,
+    abuviContactedAt: props.camp.abuviContactedAt,
+    abuviPossibility: props.camp.abuviPossibility,
+    abuviLastVisited: props.camp.abuviLastVisited,
+    abuviHasDataErrors: props.camp.abuviHasDataErrors
   })
   searchQuery.value = props.camp.name
 }
@@ -96,7 +132,7 @@ const handlePlaceSelected = async (event: { value: PlaceAutocomplete }) => {
 
   if (details) {
     formData.name = details.name
-    formData.location = details.formattedAddress
+    formData.rawAddress = details.formattedAddress
     formData.latitude = details.latitude
     formData.longitude = details.longitude
     formData.googlePlaceId = details.placeId
@@ -162,6 +198,14 @@ const validate = (): boolean => {
 
   if (formData.pricePerBaby < 0) {
     errors.value.pricePerBaby = 'El precio debe ser mayor o igual a 0'
+  }
+
+  if (formData.basePrice !== undefined && formData.basePrice !== null && formData.basePrice < 0) {
+    errors.value.basePrice = 'El precio base debe ser mayor o igual a 0'
+  }
+
+  if (formData.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contactEmail)) {
+    errors.value.contactEmail = 'Formato de email no válido'
   }
 
   return Object.keys(errors.value).length === 0
@@ -265,15 +309,15 @@ watch(
       />
     </div>
 
-    <!-- Location -->
+    <!-- Raw Address (renamed from location) -->
     <div>
-      <label for="location" class="mb-1 block text-sm font-medium text-gray-700">
-        Ubicación
+      <label for="rawAddress" class="mb-1 block text-sm font-medium text-gray-700">
+        Dirección (referencia)
         <span v-if="autoFilledFromPlaces" class="text-xs text-blue-600">(Auto-completado)</span>
       </label>
       <InputText
-        id="location"
-        v-model="formData.location"
+        id="rawAddress"
+        v-model="formData.rawAddress"
         class="w-full"
         placeholder="Dirección del campamento..."
       />
@@ -319,6 +363,71 @@ watch(
         />
         <small v-if="errors.longitude" class="text-red-500">{{ errors.longitude }}</small>
         <small v-else class="text-gray-500">Entre -180 y 180</small>
+      </div>
+    </div>
+
+    <!-- Contact Information -->
+    <div class="rounded-lg border border-gray-200 p-4">
+      <h4 class="mb-3 text-sm font-semibold text-gray-900">Información de contacto</h4>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label for="contactPerson" class="mb-1 block text-sm font-medium text-gray-700">
+            Persona de contacto
+          </label>
+          <InputText
+            id="contactPerson"
+            v-model="formData.contactPerson"
+            class="w-full"
+            placeholder="Nombre del contacto"
+          />
+        </div>
+        <div>
+          <label for="contactCompany" class="mb-1 block text-sm font-medium text-gray-700">
+            Empresa / Organización
+          </label>
+          <InputText
+            id="contactCompany"
+            v-model="formData.contactCompany"
+            class="w-full"
+            placeholder="Nombre de la empresa"
+          />
+        </div>
+        <div>
+          <label for="contactEmail" class="mb-1 block text-sm font-medium text-gray-700">
+            Email de contacto
+          </label>
+          <InputText
+            id="contactEmail"
+            v-model="formData.contactEmail"
+            type="email"
+            class="w-full"
+            :invalid="!!errors.contactEmail"
+            placeholder="email@ejemplo.com"
+          />
+          <small v-if="errors.contactEmail" class="text-red-500">{{ errors.contactEmail }}</small>
+        </div>
+        <div>
+          <label for="secondaryWebsiteUrl" class="mb-1 block text-sm font-medium text-gray-700">
+            Web secundaria
+          </label>
+          <InputText
+            id="secondaryWebsiteUrl"
+            v-model="formData.secondaryWebsiteUrl"
+            class="w-full"
+            placeholder="https://..."
+          />
+        </div>
+        <div>
+          <label for="province" class="mb-1 block text-sm font-medium text-gray-700">
+            Provincia
+          </label>
+          <InputText
+            id="province"
+            v-model="formData.province"
+            class="w-full"
+            placeholder="Provincia"
+          />
+        </div>
       </div>
     </div>
 
@@ -383,12 +492,54 @@ watch(
           }}</small>
         </div>
       </div>
+      <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div>
+          <label for="basePrice" class="mb-1 block text-sm font-medium text-gray-700">
+            Precio base (€)
+          </label>
+          <InputNumber
+            id="basePrice"
+            v-model="formData.basePrice"
+            :invalid="!!errors.basePrice"
+            mode="currency"
+            currency="EUR"
+            locale="es-ES"
+            :min="0"
+            class="w-full"
+          />
+          <small v-if="errors.basePrice" class="text-red-500">{{ errors.basePrice }}</small>
+        </div>
+        <div>
+          <label for="vatIncluded" class="mb-1 block text-sm font-medium text-gray-700">
+            IVA incluido
+          </label>
+          <Select
+            id="vatIncluded"
+            v-model="formData.vatIncluded"
+            :options="vatOptions"
+            option-label="label"
+            option-value="value"
+            class="w-full"
+          />
+        </div>
+      </div>
     </div>
 
     <!-- Accommodation Capacity -->
     <AccommodationCapacityForm
       :model-value="formData.accommodationCapacity ?? null"
       @update:model-value="(val: AccommodationCapacity | null) => (formData.accommodationCapacity = val)"
+    />
+
+    <!-- ABUVI Tracking (Board+ only) -->
+    <CampAbuviTrackingForm
+      v-if="auth.isBoard"
+      v-model:abuvi-managed-by-user-id="formData.abuviManagedByUserId"
+      v-model:abuvi-contacted-at="formData.abuviContactedAt"
+      v-model:abuvi-possibility="formData.abuviPossibility"
+      v-model:abuvi-last-visited="formData.abuviLastVisited"
+      v-model:abuvi-has-data-errors="formData.abuviHasDataErrors"
+      :external-source-id="(formData as any).externalSourceId ?? null"
     />
 
     <!-- Status (Edit mode only) -->
