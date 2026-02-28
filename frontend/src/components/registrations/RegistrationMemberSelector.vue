@@ -51,10 +51,44 @@ const toggleMember = (memberId: string) => {
       props.modelValue.filter((s) => s.memberId !== memberId)
     )
   } else {
-    emit('update:modelValue', [
+    const member = props.members.find((m) => m.id === memberId)
+    const adult = firstSelectedAdult.value
+    const isNewMemberAdult = member && !isMinor(member)
+
+    const guardianName = member && isMinor(member) && adult
+      ? `${adult.firstName} ${adult.lastName}`
+      : null
+    const guardianDocumentNumber = member && isMinor(member) && adult
+      ? adult.documentNumber
+      : null
+
+    let updatedSelections: WizardMemberSelection[] = [
       ...props.modelValue,
-      { memberId, attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
-    ])
+      {
+        memberId,
+        attendancePeriod: 'Complete',
+        visitStartDate: null,
+        visitEndDate: null,
+        guardianName,
+        guardianDocumentNumber
+      }
+    ]
+
+    // Backfill empty guardian fields on existing minors when first adult is selected
+    if (isNewMemberAdult && !adult) {
+      const newAdultName = `${member!.firstName} ${member!.lastName}`
+      const newAdultDoc = member!.documentNumber
+      updatedSelections = updatedSelections.map((s) => {
+        if (s.memberId === memberId) return s
+        const m = props.members.find((fm) => fm.id === s.memberId)
+        if (m && isMinor(m) && !s.guardianName && !s.guardianDocumentNumber) {
+          return { ...s, guardianName: newAdultName, guardianDocumentNumber: newAdultDoc }
+        }
+        return s
+      })
+    }
+
+    emit('update:modelValue', updatedSelections)
   }
 }
 
@@ -111,6 +145,15 @@ const isMinor = (member: FamilyMemberResponse): boolean => {
   }
   return age < 18
 }
+
+const firstSelectedAdult = computed(() => {
+  for (const member of props.members) {
+    if (isSelected(member.id) && !isMinor(member)) {
+      return member
+    }
+  }
+  return null
+})
 
 const relationshipLabel = (rel: FamilyRelationship): string =>
   FamilyRelationshipLabels[rel] ?? rel
