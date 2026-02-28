@@ -228,9 +228,10 @@ const displayPhone = computed(() => fullUser.value?.phone ?? auth.user?.phone ??
 
 <template>
   <Container>
-    <div class="py-8 space-y-6 max-w-3xl">
+    <div class="py-8 space-y-6 max-w-5xl">
       <h1 class="text-4xl font-bold text-gray-900">Mi Perfil</h1>
 
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <!-- Section 1: Personal Information -->
       <Card data-testid="personal-info-card">
         <template #content>
@@ -348,6 +349,36 @@ const displayPhone = computed(() => fullUser.value?.phone ?? auth.user?.phone ??
           </div>
         </template>
       </Card>
+
+      <!-- Section 4: Account Security -->
+      <Card data-testid="security-card">
+        <template #title>
+          <div class="flex items-center gap-2">
+            <i class="pi pi-lock" aria-hidden="true" />
+            <span>Seguridad</span>
+          </div>
+        </template>
+        <template #content>
+          <div class="space-y-3 text-sm">
+            <div class="flex items-center gap-2">
+              <i class="pi pi-envelope text-gray-400" aria-hidden="true" />
+              <span class="text-gray-700">{{ auth.user?.email }}</span>
+              <span class="text-xs text-gray-400">(no editable)</span>
+            </div>
+            <div>
+              <Button
+                label="Cambiar contraseña"
+                icon="pi pi-key"
+                text
+                size="small"
+                data-testid="change-password-btn"
+                @click="goToForgotPassword"
+              />
+            </div>
+          </div>
+        </template>
+      </Card>
+      </div>
 
       <!-- Section 2 & 3: Family Unit & Members -->
       <Card data-testid="family-unit-card">
@@ -477,35 +508,6 @@ const displayPhone = computed(() => fullUser.value?.phone ?? auth.user?.phone ??
                   />
                 </div>
               </div>
-            </div>
-          </div>
-        </template>
-      </Card>
-
-      <!-- Section 4: Account Security -->
-      <Card data-testid="security-card">
-        <template #title>
-          <div class="flex items-center gap-2">
-            <i class="pi pi-lock" aria-hidden="true" />
-            <span>Seguridad</span>
-          </div>
-        </template>
-        <template #content>
-          <div class="space-y-3 text-sm">
-            <div class="flex items-center gap-2">
-              <i class="pi pi-envelope text-gray-400" aria-hidden="true" />
-              <span class="text-gray-700">{{ auth.user?.email }}</span>
-              <span class="text-xs text-gray-400">(no editable)</span>
-            </div>
-            <div>
-              <Button
-                label="Cambiar contraseña"
-                icon="pi pi-key"
-                text
-                size="small"
-                data-testid="change-password-btn"
-                @click="goToForgotPassword"
-              />
             </div>
           </div>
         </template>

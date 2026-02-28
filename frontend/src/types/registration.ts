@@ -13,6 +13,8 @@ export interface MemberAttendanceRequest {
   attendancePeriod: AttendancePeriod
   visitStartDate?: string | null // YYYY-MM-DD, required when WeekendVisit
   visitEndDate?: string | null // YYYY-MM-DD, required when WeekendVisit
+  guardianName?: string | null
+  guardianDocumentNumber?: string | null
 }
 
 // Wizard-local state: richer than MemberAttendanceRequest, not sent directly to API
@@ -21,6 +23,8 @@ export interface WizardMemberSelection {
   attendancePeriod: AttendancePeriod
   visitStartDate: string | null // ISO date string YYYY-MM-DD
   visitEndDate: string | null
+  guardianName: string | null
+  guardianDocumentNumber: string | null
 }
 
 // Embedded summaries in RegistrationResponse
@@ -50,6 +54,8 @@ export interface MemberPricingDetail {
   visitStartDate: string | null // only populated for WeekendVisit
   visitEndDate: string | null
   individualAmount: number
+  guardianName: string | null
+  guardianDocumentNumber: string | null
 }
 
 export interface ExtraPricingDetail {
@@ -93,6 +99,8 @@ export interface RegistrationResponse {
   amountRemaining: number
   createdAt: string
   updatedAt: string
+  specialNeeds: string | null
+  campatesPreference: string | null
 }
 
 // Available camp edition for registration wizard
@@ -144,6 +152,8 @@ export interface CreateRegistrationRequest {
   familyUnitId: string
   members: MemberAttendanceRequest[]
   notes?: string | null
+  specialNeeds: string | null
+  campatesPreference: string | null
 }
 
 export interface UpdateRegistrationMembersRequest {
@@ -165,4 +175,33 @@ export interface WizardExtrasSelection {
   name: string
   quantity: number
   unitPrice: number
+}
+
+// === Accommodation Preferences ===
+
+import type { AccommodationType } from './camp-edition'
+
+// Wizard-local state for accommodation preferences
+export interface WizardAccommodationPreference {
+  campEditionAccommodationId: string
+  accommodationName: string
+  accommodationType: AccommodationType
+  preferenceOrder: number
+}
+
+// API request/response shapes
+export interface AccommodationPreferenceRequest {
+  campEditionAccommodationId: string
+  preferenceOrder: number
+}
+
+export interface UpdateAccommodationPreferencesRequest {
+  preferences: AccommodationPreferenceRequest[]
+}
+
+export interface AccommodationPreferenceResponse {
+  campEditionAccommodationId: string
+  accommodationName: string
+  accommodationType: AccommodationType
+  preferenceOrder: number
 }

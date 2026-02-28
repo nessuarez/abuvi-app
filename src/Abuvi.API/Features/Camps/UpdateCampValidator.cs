@@ -35,5 +35,41 @@ public class UpdateCampValidator : AbstractValidator<UpdateCampRequest>
 
         RuleFor(x => x.PricePerBaby)
             .GreaterThanOrEqualTo(0).WithMessage("El precio por bebé debe ser mayor o igual a 0");
+
+        RuleFor(x => x.Province)
+            .MaximumLength(100).When(x => x.Province != null)
+            .WithMessage("La provincia no puede exceder 100 caracteres");
+
+        RuleFor(x => x.ContactEmail)
+            .EmailAddress().When(x => !string.IsNullOrEmpty(x.ContactEmail))
+            .WithMessage("El email de contacto no es válido");
+
+        RuleFor(x => x.ContactPerson)
+            .MaximumLength(200).When(x => x.ContactPerson != null)
+            .WithMessage("El nombre de contacto no puede exceder 200 caracteres");
+
+        RuleFor(x => x.ContactCompany)
+            .MaximumLength(200).When(x => x.ContactCompany != null)
+            .WithMessage("La empresa de contacto no puede exceder 200 caracteres");
+
+        RuleFor(x => x.SecondaryWebsiteUrl)
+            .MaximumLength(500).When(x => x.SecondaryWebsiteUrl != null)
+            .WithMessage("La URL secundaria no puede exceder 500 caracteres");
+
+        RuleFor(x => x.BasePrice)
+            .GreaterThanOrEqualTo(0).When(x => x.BasePrice.HasValue)
+            .WithMessage("El precio base debe ser mayor o igual a 0");
+
+        RuleFor(x => x.AbuviContactedAt)
+            .MaximumLength(100).When(x => x.AbuviContactedAt != null)
+            .WithMessage("La fecha de contacto ABUVI no puede exceder 100 caracteres");
+
+        RuleFor(x => x.AbuviPossibility)
+            .MaximumLength(100).When(x => x.AbuviPossibility != null)
+            .WithMessage("La posibilidad ABUVI no puede exceder 100 caracteres");
+
+        RuleFor(x => x.AbuviLastVisited)
+            .MaximumLength(200).When(x => x.AbuviLastVisited != null)
+            .WithMessage("La última visita ABUVI no puede exceder 200 caracteres");
     }
 }

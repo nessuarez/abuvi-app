@@ -150,6 +150,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 // Camps
 builder.Services.AddScoped<ICampsRepository, CampsRepository>();
 builder.Services.AddScoped<CampsService>();
+builder.Services.AddScoped<ICampObservationsRepository, CampObservationsRepository>();
+builder.Services.AddScoped<ICampObservationsService, CampObservationsService>();
 builder.Services.AddScoped<IAssociationSettingsRepository, AssociationSettingsRepository>();
 builder.Services.AddScoped<AssociationSettingsService>();
 builder.Services.AddScoped<ICampEditionsRepository, CampEditionsRepository>();
@@ -157,6 +159,8 @@ builder.Services.AddScoped<CampEditionsService>();
 builder.Services.AddScoped<CampPhotosService>();
 builder.Services.AddScoped<ICampEditionExtrasRepository, CampEditionExtrasRepository>();
 builder.Services.AddScoped<CampEditionExtrasService>();
+builder.Services.AddScoped<ICampEditionAccommodationsRepository, CampEditionAccommodationsRepository>();
+builder.Services.AddScoped<CampEditionAccommodationsService>();
 
 // Google Places API integration
 builder.Services.AddHttpClient<IGooglePlacesService, GooglePlacesService>();
@@ -178,6 +182,7 @@ builder.Services.AddScoped<MembershipsService>();
 // Registrations feature
 builder.Services.AddScoped<IRegistrationsRepository, RegistrationsRepository>();
 builder.Services.AddScoped<IRegistrationExtrasRepository, RegistrationExtrasRepository>();
+builder.Services.AddScoped<IRegistrationAccommodationPreferencesRepository, RegistrationAccommodationPreferencesRepository>();
 builder.Services.AddScoped<IPaymentsRepository, PaymentsRepository>();
 builder.Services.AddScoped<RegistrationPricingService>();
 builder.Services.AddScoped<RegistrationsService>();

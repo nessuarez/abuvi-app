@@ -54,7 +54,7 @@ const updateMarkers = () => {
     const marker = L.marker([location.latitude, location.longitude])
       .addTo(map as L.Map)
       .bindPopup(
-        `<strong>${location.name}</strong>${location.year ? `<br>${location.year}` : ''}`
+        `<div class="text-sm"><strong>${location.name}</strong>${location.rawAddress ? `<br><span>${location.rawAddress}</span>` : ''}${location.lastEditionYear ? `<br><span>Última edición: ${location.lastEditionYear}</span>` : ''}${location.year ? `<br><span>${location.year}</span>` : ''}</div>`
       )
 
     // Handle marker click
@@ -96,5 +96,5 @@ watch(
 </script>
 
 <template>
-  <div ref="mapContainer" class="h-96 w-full rounded-lg border border-gray-200" />
+  <div ref="mapContainer" class="h-[500px] w-full rounded-lg border border-gray-200" />
 </template>

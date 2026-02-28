@@ -35,6 +35,11 @@ public class RegistrationMemberConfiguration : IEntityTypeConfiguration<Registra
             .HasColumnName("visit_end_date")
             .HasColumnType("date");
 
+        builder.Property(m => m.GuardianName)
+            .HasMaxLength(200).HasColumnName("guardian_name");
+        builder.Property(m => m.GuardianDocumentNumber)
+            .HasMaxLength(50).HasColumnName("guardian_document_number");
+
         builder.Property(m => m.CreatedAt).IsRequired().HasColumnName("created_at")
             .HasDefaultValueSql("NOW()");
 

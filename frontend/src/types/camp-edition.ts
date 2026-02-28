@@ -72,8 +72,7 @@ export interface CreateCampEditionRequest {
 }
 
 export interface ProposeCampEditionRequest extends CreateCampEditionRequest {
-  proposalReason: string
-  proposalNotes: string
+  proposalReason?: string
   accommodationCapacity?: AccommodationCapacity | null
   // Partial attendance (week pricing):
   halfDate?: string | null
@@ -99,8 +98,7 @@ export interface CampEditionExtra {
   pricingPeriod: 'OneTime' | 'PerDay'
   isRequired: boolean
   maxQuantity?: number
-  currentQuantity: number
-  sortOrder: number
+  currentQuantitySold: number | null
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -114,6 +112,50 @@ export interface CreateCampExtraRequest {
   pricingPeriod: 'OneTime' | 'PerDay'
   isRequired: boolean
   maxQuantity?: number
+}
+
+export interface UpdateCampExtraRequest {
+  name: string
+  description?: string
+  price: number
+  isRequired: boolean
+  isActive: boolean
+  maxQuantity?: number
+}
+
+// === Accommodation Types ===
+
+export type AccommodationType = 'Lodge' | 'Caravan' | 'Tent' | 'Bungalow' | 'Motorhome'
+
+export interface CampEditionAccommodation {
+  id: string
+  campEditionId: string
+  name: string
+  accommodationType: AccommodationType
+  description?: string
+  capacity?: number
+  isActive: boolean
+  sortOrder: number
+  currentPreferenceCount: number
+  firstChoiceCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateCampEditionAccommodationRequest {
+  name: string
+  accommodationType: AccommodationType
+  description?: string
+  capacity?: number
+  sortOrder?: number
+}
+
+export interface UpdateCampEditionAccommodationRequest {
+  name: string
+  accommodationType: AccommodationType
+  description?: string
+  capacity?: number
+  isActive: boolean
   sortOrder: number
 }
 
@@ -130,6 +172,7 @@ export interface UpdateCampEditionRequest {
   customAdultMinAge?: number
   maxCapacity?: number
   notes?: string
+  description?: string
   // Partial attendance (week pricing):
   halfDate?: string | null
   pricePerAdultWeek?: number | null
@@ -170,6 +213,7 @@ export interface ActiveCampEditionResponse {
   maxCapacity?: number
   registrationCount: number
   notes?: string
+  description?: string
   createdAt: string
   updatedAt: string
   // Partial attendance (week pricing):

@@ -17,9 +17,29 @@ const router = useRouter()
 const toast = useToast()
 const auth = useAuthStore()
 
-const { registration, loading, error, getRegistrationById, cancelRegistration } = useRegistrations()
+const {
+  registration,
+  loading,
+  error,
+  getRegistrationById,
+  cancelRegistration,
+  getAccommodationPreferences
+} = useRegistrations()
 const showCancelDialog = ref(false)
 const cancelling = ref(false)
+
+import type { AccommodationPreferenceResponse } from '@/types/registration'
+import type { AccommodationType } from '@/types/camp-edition'
+
+const accommodationPrefs = ref<AccommodationPreferenceResponse[]>([])
+
+const ACCOMMODATION_TYPE_LABELS: Record<AccommodationType, string> = {
+  Lodge: 'Refugio',
+  Caravan: 'Caravana',
+  Tent: 'Tienda de campaña',
+  Bungalow: 'Bungalow',
+  Motorhome: 'Autocaravana'
+}
 
 const registrationId = computed(() => route.params.id as string)
 
@@ -78,7 +98,13 @@ const handleCancel = async () => {
   }
 }
 
-onMounted(() => getRegistrationById(registrationId.value))
+onMounted(async () => {
+  await getRegistrationById(registrationId.value)
+  const prefs = await getAccommodationPreferences(registrationId.value)
+  if (prefs) {
+    accommodationPrefs.value = prefs.sort((a, b) => a.preferenceOrder - b.preferenceOrder)
+  }
+})
 </script>
 
 <template>
@@ -126,6 +152,40 @@ onMounted(() => getRegistrationById(registrationId.value))
         <div v-if="registration.notes" class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
           <h2 class="mb-1 text-sm font-semibold text-gray-700">Notas</h2>
           <p class="text-sm text-gray-600">{{ registration.notes }}</p>
+        </div>
+
+        <!-- Preference fields -->
+        <div
+          v-if="registration.specialNeeds || registration.campatesPreference"
+          class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4"
+        >
+          <h2 class="mb-3 text-sm font-semibold text-gray-700">Informacion adicional</h2>
+          <dl class="space-y-2 text-sm">
+            <div v-if="registration.specialNeeds" class="flex flex-col gap-0.5">
+              <dt class="font-medium text-gray-600">Necesidades especiales</dt>
+              <dd class="whitespace-pre-line text-gray-800">{{ registration.specialNeeds }}</dd>
+            </div>
+            <div v-if="registration.campatesPreference" class="flex flex-col gap-0.5">
+              <dt class="font-medium text-gray-600">Preferencia de acampantes</dt>
+              <dd class="text-gray-800">{{ registration.campatesPreference }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <!-- Accommodation preferences -->
+        <div
+          v-if="accommodationPrefs.length > 0"
+          class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4"
+        >
+          <h2 class="mb-2 text-sm font-semibold text-gray-700">Preferencias de alojamiento</h2>
+          <ol class="list-inside list-decimal space-y-1 text-sm text-gray-800">
+            <li v-for="pref in accommodationPrefs" :key="pref.campEditionAccommodationId">
+              {{ pref.accommodationName }}
+              <span class="text-xs text-gray-500">
+                · {{ ACCOMMODATION_TYPE_LABELS[pref.accommodationType] }}
+              </span>
+            </li>
+          </ol>
         </div>
 
         <!-- Pricing breakdown -->

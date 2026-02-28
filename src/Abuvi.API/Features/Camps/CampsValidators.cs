@@ -1,3 +1,4 @@
+using Abuvi.API.Features.Registrations;
 using FluentValidation;
 
 namespace Abuvi.API.Features.Camps;
@@ -377,6 +378,112 @@ public class ReorderCampPhotosRequestValidator : AbstractValidator<ReorderCampPh
 
             photo.RuleFor(p => p.DisplayOrder)
                 .GreaterThanOrEqualTo(0).WithMessage("Display order must be greater than or equal to 0");
+        });
+    }
+}
+
+/// <summary>
+/// Validator for CreateCampEditionAccommodationRequest
+/// </summary>
+public class CreateCampEditionAccommodationRequestValidator
+    : AbstractValidator<CreateCampEditionAccommodationRequest>
+{
+    public CreateCampEditionAccommodationRequestValidator()
+    {
+        RuleFor(x => x.Name)
+            .NotEmpty().WithMessage("Accommodation name is required")
+            .MaximumLength(200).WithMessage("Accommodation name must not exceed 200 characters");
+
+        RuleFor(x => x.AccommodationType)
+            .IsInEnum().WithMessage("Invalid accommodation type");
+
+        RuleFor(x => x.Description)
+            .MaximumLength(1000).WithMessage("Description must not exceed 1000 characters")
+            .When(x => !string.IsNullOrWhiteSpace(x.Description));
+
+        RuleFor(x => x.Capacity)
+            .GreaterThan(0).WithMessage("Capacity must be greater than 0")
+            .When(x => x.Capacity.HasValue);
+
+        RuleFor(x => x.SortOrder)
+            .GreaterThanOrEqualTo(0).WithMessage("Sort order must be greater than or equal to 0");
+    }
+}
+
+/// <summary>
+/// Validator for UpdateCampEditionAccommodationRequest
+/// </summary>
+public class UpdateCampEditionAccommodationRequestValidator
+    : AbstractValidator<UpdateCampEditionAccommodationRequest>
+{
+    public UpdateCampEditionAccommodationRequestValidator()
+    {
+        RuleFor(x => x.Name)
+            .NotEmpty().WithMessage("Accommodation name is required")
+            .MaximumLength(200).WithMessage("Accommodation name must not exceed 200 characters");
+
+        RuleFor(x => x.AccommodationType)
+            .IsInEnum().WithMessage("Invalid accommodation type");
+
+        RuleFor(x => x.Description)
+            .MaximumLength(1000).WithMessage("Description must not exceed 1000 characters")
+            .When(x => !string.IsNullOrWhiteSpace(x.Description));
+
+        RuleFor(x => x.Capacity)
+            .GreaterThan(0).WithMessage("Capacity must be greater than 0")
+            .When(x => x.Capacity.HasValue);
+
+        RuleFor(x => x.SortOrder)
+            .GreaterThanOrEqualTo(0).WithMessage("Sort order must be greater than or equal to 0");
+    }
+}
+
+/// <summary>
+/// Validator for AddCampObservationRequest
+/// </summary>
+public class AddCampObservationRequestValidator : AbstractValidator<AddCampObservationRequest>
+{
+    public AddCampObservationRequestValidator()
+    {
+        RuleFor(x => x.Text)
+            .NotEmpty().WithMessage("El texto de la observación es obligatorio")
+            .MaximumLength(4000).WithMessage("El texto no puede exceder 4000 caracteres");
+
+        RuleFor(x => x.Season)
+            .MaximumLength(20).When(x => x.Season != null)
+            .WithMessage("La temporada no puede exceder 20 caracteres");
+    }
+}
+
+/// <summary>
+/// Validator for UpdateRegistrationAccommodationPreferencesRequest
+/// </summary>
+public class UpdateRegistrationAccommodationPreferencesRequestValidator
+    : AbstractValidator<UpdateRegistrationAccommodationPreferencesRequest>
+{
+    public UpdateRegistrationAccommodationPreferencesRequestValidator()
+    {
+        RuleFor(x => x.Preferences)
+            .Must(p => p == null || p.Count <= 3)
+            .WithMessage("Maximum 3 accommodation preferences allowed");
+
+        RuleFor(x => x.Preferences)
+            .Must(p => p == null || p.Select(pref => pref.CampEditionAccommodationId).Distinct().Count() == p.Count)
+            .WithMessage("Duplicate accommodation selections are not allowed");
+
+        RuleFor(x => x.Preferences)
+            .Must(p => p == null || p.Select(pref => pref.PreferenceOrder).Distinct().Count() == p.Count)
+            .WithMessage("Duplicate preference orders are not allowed");
+
+        RuleForEach(x => x.Preferences).ChildRules(pref =>
+        {
+            pref.RuleFor(p => p.PreferenceOrder)
+                .InclusiveBetween(1, 3)
+                .WithMessage("Preference order must be between 1 and 3");
+
+            pref.RuleFor(p => p.CampEditionAccommodationId)
+                .NotEmpty()
+                .WithMessage("Accommodation ID is required");
         });
     }
 }

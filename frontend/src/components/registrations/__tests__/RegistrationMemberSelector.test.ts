@@ -91,7 +91,9 @@ describe('RegistrationMemberSelector', () => {
       memberId: 'member-1',
       attendancePeriod: 'Complete',
       visitStartDate: null,
-      visitEndDate: null
+      visitEndDate: null,
+      guardianName: null,
+      guardianDocumentNumber: null
     })
   })
 

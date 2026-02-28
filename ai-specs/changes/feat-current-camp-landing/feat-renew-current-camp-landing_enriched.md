@@ -185,6 +185,7 @@ Update the `GET /api/camps/current` response schema to reflect the new fields.
 **File:** `src/Abuvi.Tests/Unit/Features/Camps/CampEditionsServiceTests.cs`
 
 Add unit tests covering:
+
 - `GetCurrentAsync` returns `CampPhotos` from `Camp.Photos` ordered (primary first, then by DisplayOrder)
 - `GetCurrentAsync` returns `Extras` only for `IsActive == true`, ordered by `SortOrder`
 - `AccommodationCapacity` uses edition override when present; falls back to camp capacity when edition has none
@@ -267,6 +268,7 @@ const fetchCurrentCampEdition = async (): Promise<void> => {
 Replace the current `getActiveEdition()` call with `fetchCurrentCampEdition()` and redesign the template.
 
 **Data fetching:**
+
 - On mount: call `fetchCurrentCampEdition()` and `getCurrentUserFamilyUnit()`
 - Loading, error, and empty states remain (using PrimeVue `ProgressSpinner` and `Message`)
 
@@ -329,6 +331,7 @@ Replace the current `getActiveEdition()` call with `fetchCurrentCampEdition()` a
 Displays active extras as a card list with name, description, price and pricing labels.
 
 **Props:**
+
 ```typescript
 defineProps<{
   extras: CampEditionExtra[]
@@ -336,6 +339,7 @@ defineProps<{
 ```
 
 **Pricing label logic:**
+
 - `pricingType === 'PerPerson'` → "por persona"
 - `pricingType === 'PerFamily'` → "por familia"
 - `pricingPeriod === 'PerDay'` → "/ día"
@@ -343,6 +347,7 @@ defineProps<{
 - Required extras: display a "Incluido" or "Obligatorio" badge
 
 **Template structure:**
+
 ```html
 <section>
   <h2>Servicios adicionales</h2>
@@ -369,6 +374,7 @@ No route changes needed. Keep `/camp` with `name: 'camp'`. Title can stay `"ABUV
 **File:** `ai-specs/specs/api-endpoints.md`
 
 Update `GET /api/camps/current` section to document the new response fields:
+
 - `campDescription`, `campPhoneNumber`, `campNationalPhoneNumber`, `campWebsiteUrl`, `campGoogleMapsUrl`, `campGoogleRating`, `campGoogleRatingCount`
 - `campPhotos`: array of `CampPhotoResponse` (same shape as in `GET /api/camps/{id}`)
 - `accommodationCapacity`: same shape as in `GET /api/camps/{id}` (edition override takes priority over camp default)
@@ -380,6 +386,7 @@ Update `GET /api/camps/current` section to document the new response fields:
 ## Files to Modify
 
 ### Backend
+
 | File | Change |
 |---|---|
 | `src/Abuvi.API/Features/Camps/CampsModels.cs` | Add new fields to `CurrentCampEditionResponse`; add `CampEditionExtraResponse` if absent |
@@ -388,6 +395,7 @@ Update `GET /api/camps/current` section to document the new response fields:
 | `src/Abuvi.Tests/Unit/Features/Camps/CampEditionsServiceTests.cs` | Add unit tests for new field mappings |
 
 ### Frontend
+
 | File | Change |
 |---|---|
 | `frontend/src/types/camp-edition.ts` | Add/update `CurrentCampEditionResponse` interface |
@@ -397,6 +405,7 @@ Update `GET /api/camps/current` section to document the new response fields:
 | `ai-specs/specs/api-endpoints.md` | Document new fields on `GET /api/camps/current` |
 
 ### Components to reuse (no changes needed)
+
 - `CampPlacesGallery.vue` — photo gallery
 - `CampLocationMap.vue` — embedded map
 - `AccommodationCapacityDisplay.vue` — accommodation breakdown

@@ -73,6 +73,7 @@ public class CampEditionsService
             Status = CampEditionStatus.Proposed,
             MaxCapacity = request.MaxCapacity,
             Notes = request.Notes,
+            Description = request.Description,
             ProposalReason = request.ProposalReason,
             ProposalNotes  = request.ProposalNotes,
             IsArchived = false,
@@ -250,6 +251,7 @@ public class CampEditionsService
         edition.CustomAdultMinAge = request.CustomAdultMinAge;
         edition.MaxCapacity = request.MaxCapacity;
         edition.Notes = request.Notes;
+        edition.Description = request.Description;
         edition.HalfDate = request.HalfDate;
         edition.PricePerAdultWeek = request.PricePerAdultWeek;
         edition.PricePerChildWeek = request.PricePerChildWeek;
@@ -335,6 +337,7 @@ public class CampEditionsService
             RegistrationCount: registrationCount,
             AvailableSpots: availableSpots,
             Notes: edition.Notes,
+            Description: edition.Description,
             CreatedAt: edition.CreatedAt,
             UpdatedAt: edition.UpdatedAt
         );
@@ -381,6 +384,7 @@ public class CampEditionsService
             MaxCapacity: edition.MaxCapacity,
             RegistrationCount: 0,
             Notes: edition.Notes,
+            Description: edition.Description,
             CreatedAt: edition.CreatedAt,
             UpdatedAt: edition.UpdatedAt
         );
@@ -436,6 +440,7 @@ public class CampEditionsService
             Status: edition.Status,
             MaxCapacity: edition.MaxCapacity,
             Notes: edition.Notes,
+            Description: edition.Description,
             AccommodationCapacity: accommodation,
             CalculatedTotalBedCapacity: accommodation?.CalculateTotalBedCapacity(),
             IsArchived: edition.IsArchived,

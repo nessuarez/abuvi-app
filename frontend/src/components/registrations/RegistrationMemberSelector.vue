@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import Checkbox from 'primevue/checkbox'
+import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import type { FamilyMemberResponse, FamilyRelationship } from '@/types/family-unit'
@@ -52,7 +53,7 @@ const toggleMember = (memberId: string) => {
   } else {
     emit('update:modelValue', [
       ...props.modelValue,
-      { memberId, attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null }
+      { memberId, attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
     ])
   }
 }
@@ -82,10 +83,34 @@ const updateVisitDate = (
   )
 }
 
+const updateGuardianField = (
+  memberId: string,
+  field: 'guardianName' | 'guardianDocumentNumber',
+  value: string
+) => {
+  emit(
+    'update:modelValue',
+    props.modelValue.map((s) =>
+      s.memberId === memberId ? { ...s, [field]: value || null } : s
+    )
+  )
+}
+
 const formatDate = (dateStr: string): string =>
   new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(
     new Date(dateStr)
   )
+
+const isMinor = (member: FamilyMemberResponse): boolean => {
+  const dob = new Date(member.dateOfBirth)
+  const today = new Date()
+  let age = today.getFullYear() - dob.getFullYear()
+  const monthDiff = today.getMonth() - dob.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+    age--
+  }
+  return age < 18
+}
 
 const relationshipLabel = (rel: FamilyRelationship): string =>
   FamilyRelationshipLabels[rel] ?? rel
@@ -202,6 +227,31 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
               {{ formatDate(edition.weekendEndDate) }}
             </p>
           </template>
+        </div>
+
+        <!-- Guardian info for minors -->
+        <div
+          v-if="isSelected(member.id) && isMinor(member)"
+          class="mt-2 space-y-2 border-t border-gray-100 pt-2"
+          @click.stop
+        >
+          <p class="text-xs font-medium text-gray-500">Datos del tutor/a legal</p>
+          <InputText
+            :model-value="getSelection(member.id)?.guardianName ?? ''"
+            placeholder="Nombre completo del tutor/a"
+            class="w-full text-sm"
+            :maxlength="200"
+            :data-testid="`guardian-name-${member.id}`"
+            @update:model-value="(v: string) => updateGuardianField(member.id, 'guardianName', v)"
+          />
+          <InputText
+            :model-value="getSelection(member.id)?.guardianDocumentNumber ?? ''"
+            placeholder="DNI / Documento del tutor/a"
+            class="w-full text-sm"
+            :maxlength="50"
+            :data-testid="`guardian-doc-${member.id}`"
+            @update:model-value="(v: string) => updateGuardianField(member.id, 'guardianDocumentNumber', v)"
+          />
         </div>
       </div>
     </label>

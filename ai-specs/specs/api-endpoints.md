@@ -1675,8 +1675,8 @@ Proposes a new camp edition. The edition is created with `Proposed` status and r
 
 **Field Notes:**
 
-- `proposalReason`: Required, reason for proposing this edition
-- `proposalNotes`: Required, additional context for the board
+- `proposalReason`: **Optional** (`string | null`). Reason for proposing this edition. Previously documented as required; now optional. Maximum 1000 characters.
+- `proposalNotes`: **Optional** (`string | null`). Additional context for the board. Accepted by the API but no longer sent by the frontend after the UX improvement. Maximum 2000 characters.
 - `accommodationCapacity`: Optional; when provided, is also synced to the parent `Camp.accommodationCapacityJson` in the same transaction
 
 **Success Response (201 Created):** Returns the created `CampEditionResponse` (same shape as `GET /api/camps/editions/{id}`) with `status: "Proposed"`.
@@ -2200,6 +2200,258 @@ Soft-deletes a guest (sets `isActive = false`). The record is retained in the da
 
 - **403 Forbidden**: User is not the representative
 - **404 Not Found**: Family unit or guest doesn't exist
+
+---
+
+## Camp Edition Accommodation Endpoints
+
+Manage accommodation options for a camp edition. Accommodations are preference-only (no price) — families rank up to 3 choices during registration.
+
+**Base Path:** `/api/camps/editions`
+
+---
+
+### POST /api/camps/editions/{editionId}/accommodations
+
+Create a new accommodation option for a camp edition.
+
+**Authorization**: Admin or Board
+
+**Request Body:**
+
+```json
+{
+  "name": "Refugio Norte",
+  "accommodationType": "Lodge",
+  "description": "Refugio con capacidad para 20 personas",
+  "capacity": 20,
+  "sortOrder": 0
+}
+```
+
+**Success Response (201 Created):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "...",
+    "campEditionId": "...",
+    "name": "Refugio Norte",
+    "accommodationType": "Lodge",
+    "description": "Refugio con capacidad para 20 personas",
+    "capacity": 20,
+    "isActive": true,
+    "sortOrder": 0,
+    "currentPreferenceCount": 0,
+    "firstChoiceCount": 0,
+    "createdAt": "...",
+    "updatedAt": "..."
+  }
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **404 Not Found**: Camp edition not found
+
+---
+
+### GET /api/camps/editions/{editionId}/accommodations
+
+List accommodation options for a camp edition.
+
+**Authorization**: Any authenticated user (Member+)
+
+**Query Parameters:**
+
+- `activeOnly` (optional, boolean): Filter to active accommodations only
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "...",
+      "campEditionId": "...",
+      "name": "Refugio Norte",
+      "accommodationType": "Lodge",
+      "description": "...",
+      "capacity": 20,
+      "isActive": true,
+      "sortOrder": 0,
+      "currentPreferenceCount": 5,
+      "firstChoiceCount": 3,
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/camps/editions/accommodations/{id}
+
+Get a single accommodation option by ID.
+
+**Authorization**: Any authenticated user (Member+)
+
+**Success Response (200 OK):** Same structure as single item in list response.
+
+---
+
+### PUT /api/camps/editions/accommodations/{id}
+
+Update an accommodation option.
+
+**Authorization**: Admin or Board
+
+**Request Body:**
+
+```json
+{
+  "name": "Refugio Norte Ampliado",
+  "accommodationType": "Lodge",
+  "description": "Refugio ampliado con capacidad para 25 personas",
+  "capacity": 25,
+  "isActive": true,
+  "sortOrder": 0
+}
+```
+
+**Success Response (200 OK):** Returns updated accommodation.
+
+---
+
+### DELETE /api/camps/editions/accommodations/{id}
+
+Delete an accommodation option. Fails if any registration has preferences referencing this accommodation.
+
+**Authorization**: Admin or Board
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **400 Bad Request**: Accommodation has existing preferences (deactivate instead)
+- **404 Not Found**: Accommodation not found
+
+---
+
+### PATCH /api/camps/editions/accommodations/{id}/activate
+
+Activate a deactivated accommodation option.
+
+**Authorization**: Admin or Board
+
+**Success Response (200 OK):** Returns updated accommodation.
+
+---
+
+### PATCH /api/camps/editions/accommodations/{id}/deactivate
+
+Deactivate an accommodation option (soft-disable without deleting).
+
+**Authorization**: Admin or Board
+
+**Success Response (200 OK):** Returns updated accommodation.
+
+---
+
+## Registration Accommodation Preference Endpoints
+
+Families rank up to 3 accommodation preferences per registration.
+
+**Base Path:** `/api/registrations`
+
+---
+
+### PUT /api/registrations/{id}/accommodation-preferences
+
+Set or replace accommodation preferences for a registration. Replaces all existing preferences.
+
+**Authorization**: Family representative or Admin/Board
+
+**Request Body:**
+
+```json
+{
+  "preferences": [
+    { "campEditionAccommodationId": "...", "preferenceOrder": 1 },
+    { "campEditionAccommodationId": "...", "preferenceOrder": 2 },
+    { "campEditionAccommodationId": "...", "preferenceOrder": 3 }
+  ]
+}
+```
+
+**Validation Rules:**
+
+- Maximum 3 preferences
+- No duplicate accommodation IDs
+- No duplicate preference orders
+- Each preference order must be between 1 and 3
+- Each accommodation must belong to the same camp edition and be active
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "campEditionAccommodationId": "...",
+      "accommodationName": "Refugio Norte",
+      "accommodationType": "Lodge",
+      "preferenceOrder": 1
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **403 Forbidden**: User is not the representative
+- **404 Not Found**: Registration or accommodation not found
+- **422 Unprocessable Entity**: Business rule violation (e.g., registration not in Pending status)
+
+---
+
+### GET /api/registrations/{id}/accommodation-preferences
+
+Get accommodation preferences for a registration, ordered by preference rank.
+
+**Authorization**: Any authenticated user
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "campEditionAccommodationId": "...",
+      "accommodationName": "Refugio Norte",
+      "accommodationType": "Lodge",
+      "preferenceOrder": 1
+    },
+    {
+      "campEditionAccommodationId": "...",
+      "accommodationName": "Parcela Caravanas A",
+      "accommodationType": "Caravan",
+      "preferenceOrder": 2
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **404 Not Found**: Registration not found
 
 ---
 

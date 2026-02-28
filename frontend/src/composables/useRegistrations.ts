@@ -5,7 +5,9 @@ import type {
   RegistrationResponse,
   CreateRegistrationRequest,
   UpdateRegistrationMembersRequest,
-  UpdateRegistrationExtrasRequest
+  UpdateRegistrationExtrasRequest,
+  UpdateAccommodationPreferencesRequest,
+  AccommodationPreferenceResponse
 } from '@/types/registration'
 
 export function useRegistrations() {
@@ -129,6 +131,48 @@ export function useRegistrations() {
     }
   }
 
+  const setAccommodationPreferences = async (
+    id: string,
+    request: UpdateAccommodationPreferencesRequest
+  ): Promise<AccommodationPreferenceResponse[] | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.put<ApiResponse<AccommodationPreferenceResponse[]>>(
+        `/registrations/${id}/accommodation-preferences`,
+        request
+      )
+      if (response.data.success && response.data.data) {
+        return response.data.data
+      }
+      return null
+    } catch (err: unknown) {
+      error.value = (err as { response?: { data?: { error?: { message?: string } } } })
+        ?.response?.data?.error?.message || 'Error al guardar preferencias de alojamiento'
+      console.error('Failed to set accommodation preferences:', err)
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const getAccommodationPreferences = async (
+    id: string
+  ): Promise<AccommodationPreferenceResponse[] | null> => {
+    try {
+      const response = await api.get<ApiResponse<AccommodationPreferenceResponse[]>>(
+        `/registrations/${id}/accommodation-preferences`
+      )
+      if (response.data.success && response.data.data) {
+        return response.data.data
+      }
+      return null
+    } catch (err: unknown) {
+      console.error('Failed to fetch accommodation preferences:', err)
+      return null
+    }
+  }
+
   const cancelRegistration = async (id: string): Promise<boolean> => {
     loading.value = true
     error.value = null
@@ -162,6 +206,8 @@ export function useRegistrations() {
     createRegistration,
     updateMembers,
     setExtras,
+    setAccommodationPreferences,
+    getAccommodationPreferences,
     cancelRegistration
   }
 }

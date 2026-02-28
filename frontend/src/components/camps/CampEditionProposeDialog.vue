@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -24,7 +24,7 @@ const emit = defineEmits<{
   'saved': [edition: CampEdition]
 }>()
 
-const { proposeEdition, loading, error } = useCampEditions()
+const { proposeEdition, loading, error, editions } = useCampEditions()
 
 const form = ref({
   year: new Date().getFullYear(),
@@ -36,26 +36,50 @@ const form = ref({
   pricePerBaby: 0,
   maxCapacity: 0,
   proposalReason: '',
-  proposalNotes: ''
+  description: ''
 })
 
 const errors = ref<Record<string, string>>({})
 
+const prefillDatesFromPreviousYear = (targetYear: number) => {
+  const previousEdition = editions.value
+    .filter(e => e.year === targetYear - 1)
+    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]
+
+  if (previousEdition) {
+    const prevStart = new Date(previousEdition.startDate)
+    const prevEnd = new Date(previousEdition.endDate)
+    form.value.startDate = new Date(targetYear, prevStart.getMonth(), prevStart.getDate())
+    form.value.endDate = new Date(targetYear, prevEnd.getMonth(), prevEnd.getDate())
+  } else {
+    form.value.startDate = new Date(targetYear, 7, 15)
+    form.value.endDate = new Date(targetYear, 7, 22)
+  }
+}
+
 watch(() => props.visible, (val) => {
   if (val) {
     errors.value = {}
+    const targetYear = new Date().getFullYear()
     form.value = {
-      year: new Date().getFullYear(),
+      year: targetYear,
       startDate: null,
       endDate: null,
-      location: props.camp?.location ?? props.camp?.name ?? '',
+      location: props.camp?.rawAddress ?? props.camp?.name ?? '',
       pricePerAdult: props.camp?.pricePerAdult ?? 0,
       pricePerChild: props.camp?.pricePerChild ?? 0,
       pricePerBaby: props.camp?.pricePerBaby ?? 0,
       maxCapacity: 0,
       proposalReason: '',
-      proposalNotes: ''
+      description: ''
     }
+    prefillDatesFromPreviousYear(targetYear)
+  }
+})
+
+watch(() => form.value.year, (newYear) => {
+  if (props.visible && newYear) {
+    prefillDatesFromPreviousYear(newYear)
   }
 })
 
@@ -70,7 +94,6 @@ const validate = (): boolean => {
   if (form.value.pricePerAdult < 0) errors.value.pricePerAdult = 'El precio debe ser mayor o igual a 0'
   if (form.value.pricePerChild < 0) errors.value.pricePerChild = 'El precio debe ser mayor o igual a 0'
   if (form.value.pricePerBaby < 0) errors.value.pricePerBaby = 'El precio debe ser mayor o igual a 0'
-  if (!form.value.proposalReason.trim()) errors.value.proposalReason = 'El motivo de la propuesta es obligatorio'
   return Object.keys(errors.value).length === 0
 }
 
@@ -88,8 +111,8 @@ const handleSubmit = async () => {
     pricePerChild: form.value.pricePerChild,
     pricePerBaby: form.value.pricePerBaby,
     maxCapacity: form.value.maxCapacity || null,
-    proposalReason: form.value.proposalReason,
-    proposalNotes: form.value.proposalNotes
+    proposalReason: form.value.proposalReason || undefined,
+    description: form.value.description || undefined
   })
   if (result) {
     emit('saved', result)
@@ -162,21 +185,20 @@ const handleSubmit = async () => {
       </div>
 
       <div class="flex flex-col gap-1">
-        <label class="text-sm font-medium">Motivo de la propuesta *</label>
+        <label class="text-sm font-medium">Motivo de la propuesta</label>
         <Textarea
           v-model="form.proposalReason"
           rows="3"
-          placeholder="Explica por qué se propone esta edición..."
+          placeholder="Explica por qué se propone esta edición (opcional)..."
         />
-        <span v-if="errors.proposalReason" class="text-xs text-red-600">{{ errors.proposalReason }}</span>
       </div>
 
       <div class="flex flex-col gap-1">
-        <label class="text-sm font-medium">Notas adicionales</label>
+        <label class="text-sm font-medium">Descripción</label>
         <Textarea
-          v-model="form.proposalNotes"
-          rows="2"
-          placeholder="Información adicional (opcional)..."
+          v-model="form.description"
+          rows="4"
+          placeholder="Descripción de la edición (actividades, novedades, información pública...)"
         />
       </div>
     </div>

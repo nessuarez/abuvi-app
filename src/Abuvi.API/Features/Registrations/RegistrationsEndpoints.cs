@@ -66,6 +66,19 @@ public static class RegistrationsEndpoints
             .Produces<ApiResponse<CancelRegistrationResponse>>()
             .Produces(403).Produces(404).Produces(422);
 
+        group.MapPut("/{id:guid}/accommodation-preferences", SetAccommodationPreferences)
+            .WithName("SetAccommodationPreferences")
+            .WithSummary("Set accommodation preferences ranked 1-3 (representative or Admin/Board)")
+            .AddEndpointFilter<ValidationFilter<UpdateRegistrationAccommodationPreferencesRequest>>()
+            .Produces<ApiResponse<List<AccommodationPreferenceResponse>>>()
+            .Produces(400).Produces(403).Produces(404).Produces(422);
+
+        group.MapGet("/{id:guid}/accommodation-preferences", GetAccommodationPreferences)
+            .WithName("GetAccommodationPreferences")
+            .WithSummary("Get accommodation preferences for a registration")
+            .Produces<ApiResponse<List<AccommodationPreferenceResponse>>>()
+            .Produces(404);
+
         return app;
     }
 
@@ -216,6 +229,51 @@ public static class RegistrationsEndpoints
         {
             return TypedResults.UnprocessableEntity(
                 ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
+        }
+    }
+
+    private static async Task<IResult> SetAccommodationPreferences(
+        Guid id,
+        UpdateRegistrationAccommodationPreferencesRequest request,
+        RegistrationsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
+        var isAdminOrBoard = userRole is "Admin" or "Board";
+
+        try
+        {
+            var result = await service.SetAccommodationPreferencesAsync(
+                id, userId, isAdminOrBoard, request, ct);
+            return TypedResults.Ok(ApiResponse<List<AccommodationPreferenceResponse>>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.UnprocessableEntity(
+                ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
+        }
+    }
+
+    private static async Task<IResult> GetAccommodationPreferences(
+        Guid id,
+        RegistrationsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await service.GetAccommodationPreferencesAsync(id, ct);
+            return TypedResults.Ok(ApiResponse<List<AccommodationPreferenceResponse>>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
         }
     }
 }

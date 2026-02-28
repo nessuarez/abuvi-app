@@ -8,8 +8,10 @@ namespace Abuvi.API.Features.Registrations;
 public class RegistrationsService(
     IRegistrationsRepository registrationsRepo,
     IRegistrationExtrasRepository extrasRepo,
+    IRegistrationAccommodationPreferencesRepository accommodationPrefsRepo,
     IFamilyUnitsRepository familyUnitsRepo,
     ICampEditionsRepository campEditionsRepo,
+    ICampEditionAccommodationsRepository accommodationsRepo,
     RegistrationPricingService pricingService,
     ILogger<RegistrationsService> logger)
 {
@@ -71,6 +73,8 @@ public class RegistrationsService(
                 AttendancePeriod = m.AttendancePeriod,
                 VisitStartDate = m.VisitStartDate,
                 VisitEndDate = m.VisitEndDate,
+                GuardianName = m.GuardianName,
+                GuardianDocumentNumber = m.GuardianDocumentNumber,
                 CreatedAt = DateTime.UtcNow
             });
         }
@@ -131,6 +135,8 @@ public class RegistrationsService(
             TotalAmount = baseTotalAmount,
             Status = RegistrationStatus.Pending,
             Notes = request.Notes,
+            SpecialNeeds = request.SpecialNeeds,
+            CampatesPreference = request.CampatesPreference,
             Members = registrationMembers
         };
 
@@ -207,6 +213,8 @@ public class RegistrationsService(
                 AttendancePeriod = m.AttendancePeriod,
                 VisitStartDate = m.VisitStartDate,
                 VisitEndDate = m.VisitEndDate,
+                GuardianName = m.GuardianName,
+                GuardianDocumentNumber = m.GuardianDocumentNumber,
                 CreatedAt = DateTime.UtcNow
             });
         }
@@ -501,5 +509,66 @@ public class RegistrationsService(
                 AmountRemaining: r.TotalAmount - amountPaid,
                 CreatedAt: r.CreatedAt);
         }).ToList();
+    }
+
+    public async Task<List<AccommodationPreferenceResponse>> SetAccommodationPreferencesAsync(
+        Guid registrationId, Guid userId, bool isAdminOrBoard,
+        UpdateRegistrationAccommodationPreferencesRequest request, CancellationToken ct)
+    {
+        // 1. Load registration with details
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        // 2. Verify representative or admin/board
+        if (!isAdminOrBoard && registration.FamilyUnit.RepresentativeUserId != userId)
+            throw new BusinessRuleException("No tienes permiso para modificar esta inscripción");
+
+        // 3. Verify status
+        if (registration.Status != RegistrationStatus.Pending)
+            throw new BusinessRuleException("Solo se pueden modificar inscripciones en estado Pendiente");
+
+        // 4. Validate each accommodation exists, belongs to edition, and is active
+        var newPreferences = new List<RegistrationAccommodationPreference>();
+        foreach (var pref in request.Preferences)
+        {
+            var accommodation = await accommodationsRepo.GetByIdAsync(pref.CampEditionAccommodationId, ct)
+                ?? throw new NotFoundException("Alojamiento", pref.CampEditionAccommodationId);
+
+            if (accommodation.CampEditionId != registration.CampEditionId)
+                throw new BusinessRuleException(
+                    $"El alojamiento '{accommodation.Name}' no pertenece a esta edición del campamento");
+
+            if (!accommodation.IsActive)
+                throw new BusinessRuleException(
+                    $"El alojamiento '{accommodation.Name}' no está disponible");
+
+            newPreferences.Add(new RegistrationAccommodationPreference
+            {
+                Id = Guid.NewGuid(),
+                RegistrationId = registrationId,
+                CampEditionAccommodationId = pref.CampEditionAccommodationId,
+                PreferenceOrder = pref.PreferenceOrder
+            });
+        }
+
+        // 5. Delete existing and save new
+        await accommodationPrefsRepo.DeleteByRegistrationIdAsync(registrationId, ct);
+        if (newPreferences.Count > 0)
+            await accommodationPrefsRepo.AddRangeAsync(newPreferences, ct);
+
+        // 6. Reload and return
+        return await GetAccommodationPreferencesAsync(registrationId, ct);
+    }
+
+    public async Task<List<AccommodationPreferenceResponse>> GetAccommodationPreferencesAsync(
+        Guid registrationId, CancellationToken ct)
+    {
+        var preferences = await accommodationPrefsRepo.GetByRegistrationIdAsync(registrationId, ct);
+
+        return preferences.Select(p => new AccommodationPreferenceResponse(
+            p.CampEditionAccommodationId,
+            p.CampEditionAccommodation.Name,
+            p.CampEditionAccommodation.AccommodationType,
+            p.PreferenceOrder)).ToList();
     }
 }
