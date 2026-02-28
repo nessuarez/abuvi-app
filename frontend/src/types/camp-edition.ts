@@ -1,6 +1,6 @@
 // Camp edition types matching backend DTOs
 
-import type { Camp, AccommodationCapacity } from './camp'
+import type { Camp, AccommodationCapacity, CampPlacesPhoto } from './camp'
 
 export interface CampEdition {
   id: string
@@ -234,4 +234,44 @@ export interface CampEditionFilters {
   year?: number
   status?: CampEditionStatus
   campId?: string
+}
+
+export interface CurrentCampEditionResponse {
+  id: string
+  campId: string
+  campName: string
+  campLocation: string | null
+  campFormattedAddress: string | null
+  campLatitude: number | null
+  campLongitude: number | null
+  year: number
+  startDate: string
+  endDate: string
+  pricePerAdult: number
+  pricePerChild: number
+  pricePerBaby: number
+  useCustomAgeRanges: boolean
+  customBabyMaxAge?: number | null
+  customChildMinAge?: number | null
+  customChildMaxAge?: number | null
+  customAdultMinAge?: number | null
+  status: CampEditionStatus
+  maxCapacity?: number | null
+  registrationCount: number
+  availableSpots?: number | null
+  notes?: string | null
+  description?: string | null
+  createdAt: string
+  updatedAt: string
+  campDescription: string | null
+  campPhoneNumber: string | null
+  campNationalPhoneNumber: string | null
+  campWebsiteUrl: string | null
+  campGoogleMapsUrl: string | null
+  campGoogleRating: number | null
+  campGoogleRatingCount: number | null
+  campPhotos: CampPlacesPhoto[]
+  accommodationCapacity: AccommodationCapacity | null
+  calculatedTotalBedCapacity: number | null
+  extras: CampEditionExtra[]
 }
