@@ -712,7 +712,18 @@ public record CurrentCampEditionResponse(
     string? Notes,
     string? Description,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    string? CampDescription,
+    string? CampPhoneNumber,
+    string? CampNationalPhoneNumber,
+    string? CampWebsiteUrl,
+    string? CampGoogleMapsUrl,
+    decimal? CampGoogleRating,
+    int? CampGoogleRatingCount,
+    IReadOnlyList<CampPhotoResponse> CampPhotos,
+    AccommodationCapacity? AccommodationCapacity,
+    int? CalculatedTotalBedCapacity,
+    IReadOnlyList<CampEditionExtraResponse> Extras
 );
 
 /// <summary>

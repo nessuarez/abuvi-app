@@ -71,7 +71,6 @@ const campLocations = computed(() => {
       longitude: camp.longitude as number,
       name: camp.name,
       rawAddress: camp.rawAddress ?? undefined
-      rawAddress: camp.rawAddress ?? undefined
     }))
 })
 

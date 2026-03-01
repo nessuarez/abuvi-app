@@ -1091,13 +1091,70 @@ Returns the best available camp edition for the current user. Uses status-priori
     "registrationCount": 0,
     "availableSpots": 100,
     "notes": null,
+    "description": null,
     "createdAt": "2026-02-17T10:00:00Z",
-    "updatedAt": "2026-02-17T10:00:00Z"
+    "updatedAt": "2026-02-17T10:00:00Z",
+    "campDescription": "A beautiful pine forest camp near the Sierra de Guadarrama",
+    "campPhoneNumber": "+34918691311",
+    "campNationalPhoneNumber": "918 691 311",
+    "campWebsiteUrl": "https://camping-elpinar.es",
+    "campGoogleMapsUrl": "https://maps.google.com/?cid=123",
+    "campGoogleRating": 4.3,
+    "campGoogleRatingCount": 156,
+    "campPhotos": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "photoReference": "AUc7tXUr...",
+        "photoUrl": null,
+        "width": 1024,
+        "height": 768,
+        "attributionName": "John Doe",
+        "attributionUrl": "https://maps.google.com/...",
+        "description": null,
+        "isPrimary": true,
+        "displayOrder": 0
+      }
+    ],
+    "accommodationCapacity": {
+      "privateRoomsWithBathroom": 10,
+      "privateRoomsSharedBathroom": null,
+      "sharedRooms": null,
+      "bungalows": 5,
+      "campOwnedTents": null,
+      "memberTentAreaSquareMeters": null,
+      "memberTentCapacityEstimate": null,
+      "motorhomeSpots": null,
+      "notes": null
+    },
+    "calculatedTotalBedCapacity": 20,
+    "extras": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "campEditionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "name": "Kayak sessions",
+        "description": "1-hour guided kayak on the lake",
+        "price": 25.00,
+        "pricingType": "PerPerson",
+        "pricingPeriod": "OneTime",
+        "isRequired": false,
+        "isActive": true,
+        "maxQuantity": 20,
+        "currentQuantitySold": 0,
+        "createdAt": "2026-02-17T10:00:00Z",
+        "updatedAt": "2026-02-17T10:00:00Z"
+      }
+    ]
   }
 }
 ```
 
 > **Note:** `registrationCount` is always `0` and `availableSpots` equals `maxCapacity` until the Registrations feature is implemented.
+>
+> - `campPhotos` is ordered: primary photo first, then by `displayOrder` ascending. Empty array when no photos.
+> - `accommodationCapacity`: edition-level value takes priority over camp-level value. `null` when neither is set.
+> - `calculatedTotalBedCapacity`: computed from private rooms (2 beds/room) and shared rooms. `null` when no accommodation capacity.
+> - `extras`: only active extras are included, ordered by creation date. Empty array when none.
+> - `currentQuantitySold` is always `0` in this endpoint (placeholder until Registrations feature tracks purchases).
 
 **Error Responses:**
 
