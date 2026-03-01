@@ -4,6 +4,7 @@ import { usePasswordReset } from '@/composables/usePasswordReset'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import landingBackground from '@/assets/images/landing-background.png'
 
 const { loading, error, forgotPassword } = usePasswordReset()
 
@@ -38,11 +39,11 @@ const handleSubmit = async () => {
     <!-- Blurred background image -->
     <div
       class="absolute inset-0 bg-cover bg-center bg-no-repeat"
-      style="
-        background-image: url('/src/assets/images/landing-background.png');
-        filter: blur(8px);
-        transform: scale(1.1);
-      "
+      :style="{
+        backgroundImage: `url(${landingBackground})`,
+        filter: 'blur(8px)',
+        transform: 'scale(1.1)'
+      }"
     />
     <!-- Dark overlay -->
     <div class="absolute inset-0 bg-black/40" />
