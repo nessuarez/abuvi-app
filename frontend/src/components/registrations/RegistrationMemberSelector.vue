@@ -4,6 +4,7 @@ import Checkbox from 'primevue/checkbox'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
+import InputText from 'primevue/inputtext'
 import type { FamilyMemberResponse, FamilyRelationship } from '@/types/family-unit'
 import { FamilyRelationshipLabels } from '@/types/family-unit'
 import type { CampEdition } from '@/types/camp-edition'
@@ -146,6 +147,19 @@ const isMinor = (member: FamilyMemberResponse): boolean => {
   return age < 18
 }
 
+const updateGuardianField = (
+  memberId: string,
+  field: 'guardianName' | 'guardianDocumentNumber',
+  value: string
+) => {
+  emit(
+    'update:modelValue',
+    props.modelValue.map((s) =>
+      s.memberId === memberId ? { ...s, [field]: value || null } : s
+    )
+  )
+}
+
 const firstSelectedAdult = computed(() => {
   for (const member of props.members) {
     if (isSelected(member.id) && !isMinor(member)) {
@@ -161,41 +175,22 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
 
 <template>
   <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-    <label
-      v-for="member in members"
-      :key="member.id"
+    <label v-for="member in members" :key="member.id"
       class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 transition hover:border-blue-300 hover:bg-blue-50"
-      :class="{ 'border-blue-400 bg-blue-50': isSelected(member.id) }"
-      :data-testid="`member-label-${member.id}`"
-    >
-      <Checkbox
-        :model-value="isSelected(member.id)"
-        :binary="true"
-        @update:model-value="toggleMember(member.id)"
-        :input-id="`member-${member.id}`"
-        data-testid="member-checkbox"
-      />
+      :class="{ 'border-blue-400 bg-blue-50': isSelected(member.id) }" :data-testid="`member-label-${member.id}`">
+      <Checkbox :model-value="isSelected(member.id)" :binary="true" @update:model-value="toggleMember(member.id)"
+        :input-id="`member-${member.id}`" data-testid="member-checkbox" />
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
           <span class="font-medium text-gray-900">
             {{ member.firstName }} {{ member.lastName }}
           </span>
-          <span
-            v-if="member.hasMedicalNotes"
-            class="inline-flex items-center text-amber-500"
-            aria-label="Tiene notas médicas"
-            title="Tiene notas médicas"
-            data-testid="medical-notes-icon"
-          >
+          <span v-if="member.hasMedicalNotes" class="inline-flex items-center text-amber-500"
+            aria-label="Tiene notas médicas" title="Tiene notas médicas" data-testid="medical-notes-icon">
             <i class="pi pi-exclamation-triangle text-xs" />
           </span>
-          <span
-            v-if="member.hasAllergies"
-            class="inline-flex items-center text-orange-500"
-            aria-label="Tiene alergias"
-            title="Tiene alergias"
-            data-testid="allergies-icon"
-          >
+          <span v-if="member.hasAllergies" class="inline-flex items-center text-orange-500" aria-label="Tiene alergias"
+            title="Tiene alergias" data-testid="allergies-icon">
             <i class="pi pi-exclamation-circle text-xs" />
           </span>
         </div>
@@ -204,68 +199,38 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
         </p>
 
         <!-- Period selector: only shown when member is selected and edition allows multiple periods -->
-        <div
-          v-if="isSelected(member.id) && showPeriodSelector"
-          class="mt-2 space-y-2"
-          @click.stop
-        >
-          <Select
-            :model-value="getSelection(member.id)?.attendancePeriod"
-            :options="periodOptions"
-            option-label="label"
-            option-value="value"
-            placeholder="Periodo"
-            class="w-full text-sm"
+        <div v-if="isSelected(member.id) && showPeriodSelector" class="mt-2 space-y-2" @click.stop>
+          <Select :model-value="getSelection(member.id)?.attendancePeriod" :options="periodOptions" option-label="label"
+            option-value="value" placeholder="Periodo" class="w-full text-sm"
             :data-testid="`period-select-${member.id}`"
-            @update:model-value="(p: AttendancePeriod) => updatePeriod(member.id, p)"
-          />
+            @update:model-value="(p: AttendancePeriod) => updatePeriod(member.id, p)" />
 
           <!-- Weekend visit date pickers -->
           <template v-if="getSelection(member.id)?.attendancePeriod === 'WeekendVisit'">
             <div class="flex gap-2">
               <div class="flex-1">
                 <label class="mb-1 block text-xs text-gray-500">Llegada</label>
-                <DatePicker
-                  :model-value="
-                    getSelection(member.id)?.visitStartDate
-                      ? new Date(getSelection(member.id)!.visitStartDate!)
-                      : null
-                  "
-                  :min-date="weekendMinDate"
-                  :max-date="weekendMaxDate"
-                  date-format="dd/mm/yy"
-                  show-icon
-                  class="w-full text-sm"
-                  :data-testid="`visit-start-${member.id}`"
-                  @update:model-value="(d: Date | null) => updateVisitDate(member.id, 'visitStartDate', d)"
-                />
+                <DatePicker :model-value="getSelection(member.id)?.visitStartDate
+                  ? new Date(getSelection(member.id)!.visitStartDate!)
+                  : null
+                  " :min-date="weekendMinDate" :max-date="weekendMaxDate" date-format="dd/mm/yy" show-icon
+                  class="w-full text-sm" :data-testid="`visit-start-${member.id}`"
+                  @update:model-value="(d: Date | null) => updateVisitDate(member.id, 'visitStartDate', d)" />
               </div>
               <div class="flex-1">
                 <label class="mb-1 block text-xs text-gray-500">Salida</label>
-                <DatePicker
-                  :model-value="
-                    getSelection(member.id)?.visitEndDate
-                      ? new Date(getSelection(member.id)!.visitEndDate!)
-                      : null
-                  "
-                  :min-date="
-                    getSelection(member.id)?.visitStartDate
-                      ? new Date(getSelection(member.id)!.visitStartDate!)
-                      : weekendMinDate
-                  "
-                  :max-date="weekendMaxDate"
-                  date-format="dd/mm/yy"
-                  show-icon
-                  class="w-full text-sm"
+                <DatePicker :model-value="getSelection(member.id)?.visitEndDate
+                  ? new Date(getSelection(member.id)!.visitEndDate!)
+                  : null
+                  " :min-date="getSelection(member.id)?.visitStartDate
+                    ? new Date(getSelection(member.id)!.visitStartDate!)
+                    : weekendMinDate
+                    " :max-date="weekendMaxDate" date-format="dd/mm/yy" show-icon class="w-full text-sm"
                   :data-testid="`visit-end-${member.id}`"
-                  @update:model-value="(d: Date | null) => updateVisitDate(member.id, 'visitEndDate', d)"
-                />
+                  @update:model-value="(d: Date | null) => updateVisitDate(member.id, 'visitEndDate', d)" />
               </div>
             </div>
-            <p
-              v-if="edition.weekendStartDate && edition.weekendEndDate"
-              class="text-xs text-orange-600"
-            >
+            <p v-if="edition.weekendStartDate && edition.weekendEndDate" class="text-xs text-orange-600">
               Máximo 3 días. Dentro del periodo {{ formatDate(edition.weekendStartDate) }} —
               {{ formatDate(edition.weekendEndDate) }}
             </p>
@@ -273,28 +238,17 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
         </div>
 
         <!-- Guardian info for minors -->
-        <div
-          v-if="isSelected(member.id) && isMinor(member)"
-          class="mt-2 space-y-2 border-t border-gray-100 pt-2"
-          @click.stop
-        >
+        <div v-if="isSelected(member.id) && isMinor(member)" class="mt-2 space-y-2 border-t border-gray-100 pt-2"
+          @click.stop>
           <p class="text-xs font-medium text-gray-500">Datos del tutor/a legal</p>
-          <InputText
-            :model-value="getSelection(member.id)?.guardianName ?? ''"
-            placeholder="Nombre completo del tutor/a"
-            class="w-full text-sm"
-            :maxlength="200"
+          <InputText :model-value="getSelection(member.id)?.guardianName ?? ''"
+            placeholder="Nombre completo del tutor/a" class="w-full text-sm" :maxlength="200"
             :data-testid="`guardian-name-${member.id}`"
-            @update:model-value="(v: string) => updateGuardianField(member.id, 'guardianName', v)"
-          />
-          <InputText
-            :model-value="getSelection(member.id)?.guardianDocumentNumber ?? ''"
-            placeholder="DNI / Documento del tutor/a"
-            class="w-full text-sm"
-            :maxlength="50"
+            @update:model-value="(v: string) => updateGuardianField(member.id, 'guardianName', v)" />
+          <InputText :model-value="getSelection(member.id)?.guardianDocumentNumber ?? ''"
+            placeholder="DNI / Documento del tutor/a" class="w-full text-sm" :maxlength="50"
             :data-testid="`guardian-doc-${member.id}`"
-            @update:model-value="(v: string) => updateGuardianField(member.id, 'guardianDocumentNumber', v)"
-          />
+            @update:model-value="(v: string) => updateGuardianField(member.id, 'guardianDocumentNumber', v)" />
         </div>
       </div>
     </label>

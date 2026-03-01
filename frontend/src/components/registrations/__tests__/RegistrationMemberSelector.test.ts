@@ -136,7 +136,7 @@ describe('RegistrationMemberSelector', () => {
 
   it('should emit update:modelValue removing member when unchecked', async () => {
     const preSelected: WizardMemberSelection[] = [
-      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null }
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
     ]
     const wrapper = mountComponent(preSelected)
     const input = wrapper.find('input[type="checkbox"]')
@@ -164,7 +164,7 @@ describe('RegistrationMemberSelector', () => {
 
   it('should not show period selector when edition has only Complete period', () => {
     const selected: WizardMemberSelection[] = [
-      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null }
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
     ]
     const wrapper = mountComponent(selected, mockEditionComplete)
     expect(wrapper.find('[data-testid="period-select-member-1"]').exists()).toBe(false)
@@ -172,7 +172,7 @@ describe('RegistrationMemberSelector', () => {
 
   it('should show period selector when member is selected and edition allows multiple periods', () => {
     const selected: WizardMemberSelection[] = [
-      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null }
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
     ]
     const wrapper = mountComponent(selected, mockEditionWithPeriods)
     expect(wrapper.find('[data-testid="period-select-member-1"]').exists()).toBe(true)
@@ -189,7 +189,9 @@ describe('RegistrationMemberSelector', () => {
         memberId: 'member-1',
         attendancePeriod: 'WeekendVisit',
         visitStartDate: null,
-        visitEndDate: null
+        visitEndDate: null,
+        guardianName: null,
+        guardianDocumentNumber: null
       }
     ]
     const wrapper = mountComponent(selected, mockEditionWithPeriods)
@@ -199,7 +201,7 @@ describe('RegistrationMemberSelector', () => {
 
   it('should not show WeekendVisit date pickers when period is Complete', () => {
     const selected: WizardMemberSelection[] = [
-      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null }
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
     ]
     const wrapper = mountComponent(selected, mockEditionWithPeriods)
     expect(wrapper.find('[data-testid="visit-start-member-1"]').exists()).toBe(false)
