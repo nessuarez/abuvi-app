@@ -31,9 +31,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Serilog Configuration
 // ========================================
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .ReadFrom.Configuration(builder.Configuration)
 
     // Enrich with contextual information
     .Enrich.FromLogContext()
@@ -295,18 +293,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseMiddleware<GlobalExceptionMiddleware>();
-app.UseCors();
-app.UseHttpsRedirection();
-
-// Authentication and Authorization middleware (order matters!)
-app.UseAuthentication(); // Must come before UseAuthorization
-app.UseAuthorization();
-
-// Serilog HTTP request logging
+// Serilog HTTP request logging — MUST be first to capture all requests
 app.UseSerilogRequestLogging(options =>
 {
     options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+
+    // Suppress healthcheck logs (demote to Verbose so they're below minimum level)
+    options.GetLevel = (httpContext, elapsed, ex) =>
+        httpContext.Request.Path.StartsWithSegments("/health")
+            ? LogEventLevel.Verbose
+            : LogEventLevel.Information;
+
     options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
     {
         if (!string.IsNullOrEmpty(httpContext.Request.Host.Value))
@@ -330,6 +327,14 @@ app.UseSerilogRequestLogging(options =>
         }
     };
 });
+
+app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseCors();
+app.UseHttpsRedirection();
+
+// Authentication and Authorization middleware (order matters!)
+app.UseAuthentication(); // Must come before UseAuthorization
+app.UseAuthorization();
 
 // Health check endpoint (anonymous access — no auth required for monitoring tools)
 app.MapHealthChecks("/health", new HealthCheckOptions
