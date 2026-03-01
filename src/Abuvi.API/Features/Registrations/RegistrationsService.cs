@@ -1,4 +1,5 @@
 using Abuvi.API.Common.Exceptions;
+using Abuvi.API.Common.Services;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,7 @@ public class RegistrationsService(
     ICampEditionsRepository campEditionsRepo,
     ICampEditionAccommodationsRepository accommodationsRepo,
     RegistrationPricingService pricingService,
+    IEmailService emailService,
     ILogger<RegistrationsService> logger)
 {
     public async Task<RegistrationResponse> CreateAsync(
@@ -151,6 +153,19 @@ public class RegistrationsService(
         // 12. Reload and return
         var detailed = await registrationsRepo.GetByIdWithDetailsAsync(registration.Id, ct)
             ?? throw new NotFoundException("Inscripción", registration.Id);
+
+        // 13. Send confirmation email (non-blocking on failure)
+        try
+        {
+            var emailData = BuildRegistrationEmailData(detailed, edition);
+            await emailService.SendCampRegistrationConfirmationAsync(emailData, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to send registration confirmation email for {RegistrationId}",
+                registration.Id);
+        }
 
         return detailed.ToResponse(amountPaid: 0m);
     }
@@ -378,6 +393,22 @@ public class RegistrationsService(
         logger.LogInformation(
             "Registration {RegistrationId} cancelled by user {UserId}", registrationId, userId);
 
+        // 5. Send cancellation email (non-blocking on failure)
+        try
+        {
+            var detailed = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+                ?? throw new NotFoundException("Inscripción", registrationId);
+            var edition = detailed.CampEdition;
+            var emailData = BuildRegistrationEmailData(detailed, edition);
+            await emailService.SendCampRegistrationCancellationAsync(emailData, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to send registration cancellation email for {RegistrationId}",
+                registrationId);
+        }
+
         return new CancelRegistrationResponse("Inscripción cancelada correctamente");
     }
 
@@ -571,4 +602,50 @@ public class RegistrationsService(
             p.CampEditionAccommodation.AccommodationType,
             p.PreferenceOrder)).ToList();
     }
+
+    private static CampRegistrationEmailData BuildRegistrationEmailData(
+        Registration registration, CampEdition edition)
+    {
+        return new CampRegistrationEmailData
+        {
+            ToEmail = registration.RegisteredByUser.Email,
+            RecipientFirstName = registration.RegisteredByUser.FirstName,
+            CampName = edition.Camp.Name,
+            CampLocation = edition.Camp.Location ?? "Sin ubicación",
+            StartDate = DateOnly.FromDateTime(edition.StartDate),
+            EndDate = DateOnly.FromDateTime(edition.EndDate),
+            Year = edition.Year,
+            RegistrationId = registration.Id,
+            TotalAmount = registration.TotalAmount,
+            BaseTotalAmount = registration.BaseTotalAmount,
+            ExtrasAmount = registration.ExtrasAmount,
+            SpecialNeeds = registration.SpecialNeeds,
+            CampatesPreference = registration.CampatesPreference,
+            Members = registration.Members.Select(m => new RegistrationMemberEmailData
+            {
+                FullName = $"{m.FamilyMember.FirstName} {m.FamilyMember.LastName}",
+                AgeCategory = MapAgeCategory(m.AgeCategory),
+                AgeAtCamp = m.AgeAtCamp,
+                AttendancePeriod = MapAttendancePeriod(m.AttendancePeriod),
+                IndividualAmount = m.IndividualAmount
+            }).ToList()
+        };
+    }
+
+    private static string MapAgeCategory(AgeCategory category) => category switch
+    {
+        AgeCategory.Adult => "Adulto",
+        AgeCategory.Child => "Niño",
+        AgeCategory.Baby => "Bebé",
+        _ => category.ToString()
+    };
+
+    private static string MapAttendancePeriod(AttendancePeriod period) => period switch
+    {
+        AttendancePeriod.Complete => "Completo",
+        AttendancePeriod.FirstWeek => "1ª Semana",
+        AttendancePeriod.SecondWeek => "2ª Semana",
+        AttendancePeriod.WeekendVisit => "Visita fin de semana",
+        _ => period.ToString()
+    };
 }
