@@ -1,19 +1,24 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Container from '@/components/ui/Container.vue'
 import CampEditionStatusBadge from '@/components/camps/CampEditionStatusBadge.vue'
+import CampEditionAccommodationsPanel from '@/components/camps/CampEditionAccommodationsPanel.vue'
+import CampEditionExtrasList from '@/components/camps/CampEditionExtrasList.vue'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import { useCampEditions } from '@/composables/useCampEditions'
+import { useAuthStore } from '@/stores/auth'
 import type { CampEdition } from '@/types/camp-edition'
 
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
 const { loading, error, getEditionById } = useCampEditions()
 
 const edition = ref<CampEdition | null>(null)
+const isBoard = computed(() => auth.user?.role === 'Admin' || auth.user?.role === 'Board')
 
 const formatDate = (dateStr: string): string =>
   new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(
@@ -106,6 +111,20 @@ onMounted(async () => {
         <div v-if="edition.description" class="mt-6 rounded-lg border border-gray-200 bg-white p-6">
           <h2 class="mb-2 text-lg font-semibold text-gray-900">Descripción</h2>
           <p class="text-sm text-gray-700">{{ edition.description }}</p>
+        </div>
+
+        <CampEditionAccommodationsPanel
+          v-if="isBoard"
+          :edition-id="edition.id"
+          class="mt-6"
+        />
+
+        <!-- Camp Edition Extras -->
+        <div class="mt-6 rounded-lg border border-gray-200 bg-white p-6" data-testid="edition-extras-section">
+          <CampEditionExtrasList
+            :edition-id="edition.id"
+            :edition-status="edition.status"
+          />
         </div>
       </div>
     </div>

@@ -18,6 +18,21 @@ public class AccommodationCapacity
     public int? MotorhomeSpots { get; set; }
     public string? Notes { get; set; }
 
+    // Capacity descriptions (raw text from spreadsheet)
+    public int? TotalCapacity { get; set; }
+    public string? RoomsDescription { get; set; }
+    public string? BungalowsDescription { get; set; }
+    public string? TentsDescription { get; set; }
+    public string? TentAreaDescription { get; set; }
+    public int? ParkingSpots { get; set; }
+
+    // Facility flags
+    public bool? HasAdaptedMenu { get; set; }
+    public bool? HasEnclosedDiningRoom { get; set; }
+    public bool? HasSwimmingPool { get; set; }
+    public bool? HasSportsCourt { get; set; }
+    public bool? HasForestArea { get; set; }
+
     public int CalculateTotalBedCapacity()
     {
         var total = 0;
@@ -81,6 +96,28 @@ public class Camp
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
+    // Contact info
+    public string? Province { get; set; }
+    public string? ContactEmail { get; set; }
+    public string? ContactPerson { get; set; }
+    public string? ContactCompany { get; set; }
+    public string? SecondaryWebsiteUrl { get; set; }
+
+    // Pricing
+    public decimal? BasePrice { get; set; }
+    public bool? VatIncluded { get; set; }
+
+    // ABUVI internal tracking
+    public int? ExternalSourceId { get; set; }
+    public Guid? AbuviManagedByUserId { get; set; }
+    public string? AbuviContactedAt { get; set; }
+    public string? AbuviPossibility { get; set; }
+    public string? AbuviLastVisited { get; set; }
+    public bool? AbuviHasDataErrors { get; set; }
+
+    // Audit
+    public Guid? LastModifiedByUserId { get; set; }
+
     public string? AccommodationCapacityJson { get; set; }
 
     public AccommodationCapacity? GetAccommodationCapacity()
@@ -106,6 +143,38 @@ public class Camp
     // Navigation properties
     public ICollection<CampEdition> Editions { get; set; } = new List<CampEdition>();
     public ICollection<CampPhoto> Photos { get; set; } = new List<CampPhoto>();
+    public Users.User? AbuviManagedByUser { get; set; }
+    public ICollection<CampObservation> Observations { get; set; } = new List<CampObservation>();
+    public ICollection<CampAuditLog> AuditLogs { get; set; } = new List<CampAuditLog>();
+}
+
+/// <summary>
+/// Append-only observation/note for a camp with authorship tracking
+/// </summary>
+public class CampObservation
+{
+    public Guid Id { get; set; }
+    public Guid CampId { get; set; }
+    public string Text { get; set; } = string.Empty;
+    public string? Season { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public Camp Camp { get; set; } = null!;
+}
+
+/// <summary>
+/// Immutable field-level change tracking entry for a camp
+/// </summary>
+public class CampAuditLog
+{
+    public Guid Id { get; set; }
+    public Guid CampId { get; set; }
+    public string FieldName { get; set; } = string.Empty;
+    public string? OldValue { get; set; }
+    public string? NewValue { get; set; }
+    public Guid ChangedByUserId { get; set; }
+    public DateTime ChangedAt { get; set; }
+    public Camp Camp { get; set; } = null!;
 }
 
 /// <summary>
@@ -136,6 +205,7 @@ public class CampEdition
 
     public int? MaxCapacity { get; set; }
     public string? Notes { get; set; }
+    public string? Description { get; set; }
 
     /// <summary>
     /// Optional reason for proposing this edition (provided during proposal, stored for board review).
@@ -197,6 +267,7 @@ public class CampEdition
     // Navigation properties
     public Camp Camp { get; set; } = null!;
     public ICollection<CampEditionExtra> Extras { get; set; } = new List<CampEditionExtra>();
+    public ICollection<CampEditionAccommodation> Accommodations { get; set; } = [];
 }
 
 /// <summary>
@@ -254,6 +325,75 @@ public enum PricingPeriod
     OneTime,    // One-time charge
     PerDay      // Charged per day of camp
 }
+
+// ── Accommodation Types ──────────────────────────────────────────────────────
+
+/// <summary>
+/// Type of accommodation offered at a camp edition
+/// </summary>
+public enum AccommodationType
+{
+    Lodge,       // Refugio / cabaña
+    Caravan,     // Caravana
+    Tent,        // Tienda de campaña
+    Bungalow,    // Bungalow
+    Motorhome    // Autocaravana
+}
+
+/// <summary>
+/// Accommodation option available for a camp edition.
+/// Families rank their preferences during registration (no pricing — preference only).
+/// </summary>
+public class CampEditionAccommodation
+{
+    public Guid Id { get; set; }
+    public Guid CampEditionId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public AccommodationType AccommodationType { get; set; }
+    public string? Description { get; set; }
+    public int? Capacity { get; set; }
+    public bool IsActive { get; set; } = true;
+    public int SortOrder { get; set; } = 0;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Navigation
+    public CampEdition CampEdition { get; set; } = null!;
+}
+
+// ── Camp Edition Accommodations DTOs ────────────────────────────────────────
+
+public record CampEditionAccommodationResponse(
+    Guid Id,
+    Guid CampEditionId,
+    string Name,
+    AccommodationType AccommodationType,
+    string? Description,
+    int? Capacity,
+    bool IsActive,
+    int SortOrder,
+    int CurrentPreferenceCount,
+    int FirstChoiceCount,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
+);
+
+public record CreateCampEditionAccommodationRequest(
+    string Name,
+    AccommodationType AccommodationType,
+    string? Description,
+    int? Capacity,
+    int SortOrder = 0
+);
+
+public record UpdateCampEditionAccommodationRequest(
+    string Name,
+    AccommodationType AccommodationType,
+    string? Description,
+    int? Capacity,
+    bool IsActive,
+    int SortOrder
+);
 
 // ── Camp Edition Extras DTOs ──────────────────────────────────────────────────
 
@@ -334,7 +474,19 @@ public record UpdateCampRequest(
     decimal PricePerChild,
     decimal PricePerBaby,
     bool IsActive,
-    AccommodationCapacity? AccommodationCapacity = null
+    AccommodationCapacity? AccommodationCapacity = null,
+    string? Province = null,
+    string? ContactEmail = null,
+    string? ContactPerson = null,
+    string? ContactCompany = null,
+    string? SecondaryWebsiteUrl = null,
+    decimal? BasePrice = null,
+    bool? VatIncluded = null,
+    Guid? AbuviManagedByUserId = null,
+    string? AbuviContactedAt = null,
+    string? AbuviPossibility = null,
+    string? AbuviLastVisited = null,
+    bool? AbuviHasDataErrors = null
 );
 
 /// <summary>
@@ -398,7 +550,23 @@ public record CampDetailResponse(
     int? CalculatedTotalBedCapacity,
     IReadOnlyList<CampPhotoResponse> Photos,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    string? Province,
+    string? ContactEmail,
+    string? ContactPerson,
+    string? ContactCompany,
+    string? SecondaryWebsiteUrl,
+    decimal? BasePrice,
+    bool? VatIncluded,
+    int? ExternalSourceId,
+    Guid? AbuviManagedByUserId,
+    string? AbuviManagedByUserName,
+    string? AbuviContactedAt,
+    string? AbuviPossibility,
+    string? AbuviLastVisited,
+    bool? AbuviHasDataErrors,
+    Guid? LastModifiedByUserId,
+    IReadOnlyList<CampObservationResponse> Observations
 );
 
 /// <summary>
@@ -457,6 +625,7 @@ public record ProposeCampEditionRequest(
     int? CustomAdultMinAge,
     int? MaxCapacity,
     string? Notes,
+    string? Description = null,
     AccommodationCapacity? AccommodationCapacity = null,
     string? ProposalReason = null,   // Optional: reason for proposing this edition
     string? ProposalNotes = null,     // Optional: additional context (frontend no longer sends this)
@@ -507,6 +676,7 @@ public record ActiveCampEditionResponse(
     int? MaxCapacity,
     int RegistrationCount,
     string? Notes,
+    string? Description,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );
@@ -540,8 +710,20 @@ public record CurrentCampEditionResponse(
     int RegistrationCount,
     int? AvailableSpots,
     string? Notes,
+    string? Description,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    string? CampDescription,
+    string? CampPhoneNumber,
+    string? CampNationalPhoneNumber,
+    string? CampWebsiteUrl,
+    string? CampGoogleMapsUrl,
+    decimal? CampGoogleRating,
+    int? CampGoogleRatingCount,
+    IReadOnlyList<CampPhotoResponse> CampPhotos,
+    AccommodationCapacity? AccommodationCapacity,
+    int? CalculatedTotalBedCapacity,
+    IReadOnlyList<CampEditionExtraResponse> Extras
 );
 
 /// <summary>
@@ -560,6 +742,7 @@ public record UpdateCampEditionRequest(
     int? CustomAdultMinAge,
     int? MaxCapacity,
     string? Notes,
+    string? Description = null,
     // Partial attendance (week pricing):
     DateOnly? HalfDate = null,
     decimal? PricePerAdultWeek = null,
@@ -595,6 +778,7 @@ public record CampEditionResponse(
     CampEditionStatus Status,
     int? MaxCapacity,
     string? Notes,
+    string? Description,
     AccommodationCapacity? AccommodationCapacity,
     int? CalculatedTotalBedCapacity,
     bool IsArchived,
@@ -677,3 +861,14 @@ public record PhotoOrderItem(
     Guid Id,
     int DisplayOrder
 );
+
+// ── Camp Observations & Audit DTOs ──────────────────────────────────────────
+
+public record AddCampObservationRequest(string Text, string? Season);
+
+public record CampObservationResponse(
+    Guid Id, string Text, string? Season, Guid? CreatedByUserId, DateTime CreatedAt);
+
+public record CampAuditLogResponse(
+    Guid Id, string FieldName, string? OldValue, string? NewValue,
+    Guid ChangedByUserId, DateTime ChangedAt);

@@ -70,7 +70,7 @@ public static class BlobStorageEndpoints
     }
 
     private static async Task<IResult> DeleteAsync(
-        DeleteBlobsRequest body,
+        [Microsoft.AspNetCore.Mvc.FromBody] DeleteBlobsRequest body,
         IBlobStorageService blobService,
         CancellationToken ct)
     {

@@ -118,6 +118,10 @@ public class CampEditionsRepository : ICampEditionsRepository
         var currentYearEdition = await _context.CampEditions
             .AsNoTracking()
             .Include(e => e.Camp)
+                .ThenInclude(c => c.Photos.OrderBy(p => p.IsPrimary ? 0 : 1)
+                                          .ThenBy(p => p.DisplayOrder))
+            .Include(e => e.Extras.Where(x => x.IsActive)
+                                  .OrderBy(x => x.CreatedAt))
             .Where(e => e.Year == currentYear && !e.IsArchived
                 && (e.Status == CampEditionStatus.Open || e.Status == CampEditionStatus.Closed))
             .OrderByDescending(e => e.Status == CampEditionStatus.Open ? 1 : 0)
@@ -131,6 +135,10 @@ public class CampEditionsRepository : ICampEditionsRepository
         return await _context.CampEditions
             .AsNoTracking()
             .Include(e => e.Camp)
+                .ThenInclude(c => c.Photos.OrderBy(p => p.IsPrimary ? 0 : 1)
+                                          .ThenBy(p => p.DisplayOrder))
+            .Include(e => e.Extras.Where(x => x.IsActive)
+                                  .OrderBy(x => x.CreatedAt))
             .Where(e => e.Year == previousYear && !e.IsArchived
                 && (e.Status == CampEditionStatus.Completed || e.Status == CampEditionStatus.Closed))
             .OrderByDescending(e => e.Status == CampEditionStatus.Completed ? 1 : 0)

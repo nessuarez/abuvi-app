@@ -188,6 +188,68 @@ dotnet ef database drop --project src/Abuvi.API --force
 dotnet ef database update --project src/Abuvi.API
 ```
 
+### Database Setup Tool (Abuvi.Setup)
+
+A standalone console application for resetting the database and importing seed data from CSV files. Located at `src/Abuvi.Setup/`.
+
+#### Quick Start (Development)
+
+```bash
+# Full reset + seed with default CSV files (dev mode, no confirmation needed)
+dotnet run --project src/Abuvi.Setup
+
+# Reset only (wipe all data, re-seed admin)
+dotnet run --project src/Abuvi.Setup reset
+
+# Import only (no reset, skips duplicates)
+dotnet run --project src/Abuvi.Setup setup
+
+# Import a single entity
+dotnet run --project src/Abuvi.Setup import users
+
+# Use custom CSV directory
+dotnet run --project src/Abuvi.Setup run-all --dir=./my-data/
+```
+
+#### Production Mode
+
+```bash
+# Safe import: only inserts on empty tables, no reset
+dotnet run --project src/Abuvi.Setup setup \
+  --env=production \
+  --connection="Host=prod-host;Database=abuvi;..." \
+  --dir=./production-data/
+
+# Full reset (requires --confirm flag + interactive "YES")
+dotnet run --project src/Abuvi.Setup run-all \
+  --env=production \
+  --confirm \
+  --connection="Host=prod-host;Database=abuvi;..."
+```
+
+#### CSV File Format
+
+All CSV files use comma separator, UTF-8 encoding, first row as header, ISO 8601 dates. Default seed files are located at `src/Abuvi.Setup/seed/`.
+
+| File | Required Columns |
+| ------ | ----------------- |
+| `users.csv` | email, password, firstName, lastName, role |
+| `family-units.csv` | name, representativeEmail |
+| `family-members.csv` | familyUnitName, firstName, lastName, dateOfBirth, relationship |
+| `camps.csv` | name, pricePerAdult, pricePerChild, pricePerBaby |
+| `camp-editions.csv` | campName, year, startDate, endDate, pricePerAdult, pricePerChild, pricePerBaby, status |
+
+#### Import Order
+
+Files are processed in strict dependency order: Users → FamilyUnits → FamilyMembers → Camps → CampEditions.
+
+#### Safety
+
+- **Dev mode**: Reset and import freely, duplicates are skipped
+- **Production mode**: Reset requires `--confirm` + interactive "YES"; import only allowed on empty tables
+- Sensitive fields (medicalNotes, allergies) are excluded from CSV import
+- Passwords in CSV are plain text; BCrypt-hashed before DB insertion
+
 ### Adding a New Feature (Vertical Slice)
 
 Create the following files in `src/Abuvi.API/Features/[FeatureName]/`:

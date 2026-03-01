@@ -1,4 +1,6 @@
+using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Features.GooglePlaces;
+using Abuvi.API.Features.Users;
 
 namespace Abuvi.API.Features.Camps;
 
@@ -10,15 +12,18 @@ public class CampsService
     private readonly ICampsRepository _repository;
     private readonly IGooglePlacesService _googlePlacesService;
     private readonly IGooglePlacesMapperService _mapper;
+    private readonly IUsersRepository _usersRepository;
 
     public CampsService(
         ICampsRepository repository,
         IGooglePlacesService googlePlacesService,
-        IGooglePlacesMapperService mapper)
+        IGooglePlacesMapperService mapper,
+        IUsersRepository usersRepository)
     {
         _repository = repository;
         _googlePlacesService = googlePlacesService;
         _mapper = mapper;
+        _usersRepository = usersRepository;
     }
 
     /// <summary>
@@ -89,11 +94,12 @@ public class CampsService
     }
 
     /// <summary>
-    /// Updates an existing camp
+    /// Updates an existing camp with audit logging for tracked fields
     /// </summary>
     public async Task<CampDetailResponse?> UpdateAsync(
         Guid id,
         UpdateCampRequest request,
+        Guid updatedByUserId,
         CancellationToken cancellationToken = default)
     {
         var camp = await _repository.GetByIdWithPhotosAsync(id, cancellationToken);
@@ -110,6 +116,20 @@ public class CampsService
         if (request.Longitude.HasValue && (request.Longitude < -180 || request.Longitude > 180))
             throw new ArgumentException("Longitude must be between -180 and 180");
 
+        // Validate AbuviManagedByUserId if provided
+        if (request.AbuviManagedByUserId.HasValue)
+        {
+            var managedByUser = await _usersRepository.GetByIdAsync(request.AbuviManagedByUserId.Value, cancellationToken);
+            if (managedByUser is null)
+                throw new BusinessRuleException("AbuviManagedByUserId references a non-existent user.");
+            if (managedByUser.Role != UserRole.Board && managedByUser.Role != UserRole.Admin)
+                throw new BusinessRuleException("AbuviManagedByUserId must reference a user with Board or Admin role.");
+        }
+
+        // Build audit entries before applying changes
+        var auditEntries = BuildAuditEntries(camp, request, updatedByUserId);
+
+        // Apply existing fields
         camp.Name = request.Name;
         camp.Description = request.Description;
         camp.Location = request.Location;
@@ -122,9 +142,41 @@ public class CampsService
         camp.IsActive = request.IsActive;
         camp.SetAccommodationCapacity(request.AccommodationCapacity);
 
+        // Apply new fields
+        camp.Province = request.Province;
+        camp.ContactEmail = request.ContactEmail;
+        camp.ContactPerson = request.ContactPerson;
+        camp.ContactCompany = request.ContactCompany;
+        camp.SecondaryWebsiteUrl = request.SecondaryWebsiteUrl;
+        camp.BasePrice = request.BasePrice;
+        camp.VatIncluded = request.VatIncluded;
+        camp.AbuviManagedByUserId = request.AbuviManagedByUserId;
+        camp.AbuviContactedAt = request.AbuviContactedAt;
+        camp.AbuviPossibility = request.AbuviPossibility;
+        camp.AbuviLastVisited = request.AbuviLastVisited;
+        camp.AbuviHasDataErrors = request.AbuviHasDataErrors;
+
+        // Always set audit metadata
+        camp.LastModifiedByUserId = updatedByUserId;
+
         var updated = await _repository.UpdateAsync(camp, cancellationToken);
 
+        if (auditEntries.Count > 0)
+            await _repository.AddAuditLogsAsync(auditEntries, cancellationToken);
+
         return MapToCampDetailResponse(updated, updated.Photos);
+    }
+
+    /// <summary>
+    /// Gets the audit log for a camp
+    /// </summary>
+    public async Task<List<CampAuditLogResponse>> GetAuditLogAsync(
+        Guid campId,
+        CancellationToken cancellationToken = default)
+    {
+        var logs = await _repository.GetAuditLogAsync(campId, cancellationToken);
+        return logs.Select(l => new CampAuditLogResponse(
+            l.Id, l.FieldName, l.OldValue, l.NewValue, l.ChangedByUserId, l.ChangedAt)).ToList();
     }
 
     /// <summary>
@@ -145,6 +197,40 @@ public class CampsService
     }
 
     // --- Private helpers ---
+
+    private static List<CampAuditLog> BuildAuditEntries(
+        Camp camp, UpdateCampRequest request, Guid changedByUserId)
+    {
+        var entries = new List<CampAuditLog>();
+        var now = DateTime.UtcNow;
+
+        void Track(string fieldName, string? oldVal, string? newVal)
+        {
+            if (oldVal != newVal)
+                entries.Add(new CampAuditLog
+                {
+                    Id = Guid.NewGuid(),
+                    CampId = camp.Id,
+                    FieldName = fieldName,
+                    OldValue = oldVal,
+                    NewValue = newVal,
+                    ChangedByUserId = changedByUserId,
+                    ChangedAt = now
+                });
+        }
+
+        Track("BasePrice", camp.BasePrice?.ToString(), request.BasePrice?.ToString());
+        Track("VatIncluded", camp.VatIncluded?.ToString(), request.VatIncluded?.ToString());
+        Track("AbuviPossibility", camp.AbuviPossibility, request.AbuviPossibility);
+        Track("AbuviLastVisited", camp.AbuviLastVisited, request.AbuviLastVisited);
+        Track("AbuviContactedAt", camp.AbuviContactedAt, request.AbuviContactedAt);
+        Track("AbuviManagedByUserId", camp.AbuviManagedByUserId?.ToString(), request.AbuviManagedByUserId?.ToString());
+        Track("IsActive", camp.IsActive.ToString(), request.IsActive.ToString());
+        Track("ContactPerson", camp.ContactPerson, request.ContactPerson);
+        Track("ContactEmail", camp.ContactEmail, request.ContactEmail);
+
+        return entries;
+    }
 
     private async Task<Camp> EnrichFromGooglePlacesAsync(Camp camp, CancellationToken ct)
     {
@@ -204,7 +290,7 @@ public class CampsService
         UpdatedAt: camp.UpdatedAt
     );
 
-    private static CampDetailResponse MapToCampDetailResponse(Camp camp, IEnumerable<CampPhoto> photos)
+    internal static CampDetailResponse MapToCampDetailResponse(Camp camp, IEnumerable<CampPhoto> photos)
     {
         var accommodation = camp.GetAccommodationCapacity();
         return new CampDetailResponse(
@@ -238,7 +324,25 @@ public class CampsService
             CalculatedTotalBedCapacity: accommodation?.CalculateTotalBedCapacity(),
             Photos: photos.Select(MapToPhotoResponse).ToList(),
             CreatedAt: camp.CreatedAt,
-            UpdatedAt: camp.UpdatedAt
+            UpdatedAt: camp.UpdatedAt,
+            Province: camp.Province,
+            ContactEmail: camp.ContactEmail,
+            ContactPerson: camp.ContactPerson,
+            ContactCompany: camp.ContactCompany,
+            SecondaryWebsiteUrl: camp.SecondaryWebsiteUrl,
+            BasePrice: camp.BasePrice,
+            VatIncluded: camp.VatIncluded,
+            ExternalSourceId: camp.ExternalSourceId,
+            AbuviManagedByUserId: camp.AbuviManagedByUserId,
+            AbuviManagedByUserName: camp.AbuviManagedByUser?.FirstName != null
+                ? $"{camp.AbuviManagedByUser.FirstName} {camp.AbuviManagedByUser.LastName}"
+                : null,
+            AbuviContactedAt: camp.AbuviContactedAt,
+            AbuviPossibility: camp.AbuviPossibility,
+            AbuviLastVisited: camp.AbuviLastVisited,
+            AbuviHasDataErrors: camp.AbuviHasDataErrors,
+            LastModifiedByUserId: camp.LastModifiedByUserId,
+            Observations: []
         );
     }
 

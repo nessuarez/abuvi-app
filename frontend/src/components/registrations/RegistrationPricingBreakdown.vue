@@ -44,7 +44,17 @@ const formatCurrency = (amount: number): string =>
               :key="member.familyMemberId"
               class="border-t border-gray-100"
             >
-              <td class="px-4 py-2 text-gray-900">{{ member.fullName }}</td>
+              <td class="px-4 py-2">
+                <span class="text-gray-900">{{ member.fullName }}</span>
+                <span
+                  v-if="member.guardianName"
+                  class="block text-xs text-gray-400"
+                  :data-testid="`guardian-info-${member.familyMemberId}`"
+                >
+                  Tutor/a: {{ member.guardianName }}
+                  <span v-if="member.guardianDocumentNumber"> · {{ member.guardianDocumentNumber }}</span>
+                </span>
+              </td>
               <td class="px-4 py-2 text-gray-600">
                 {{ AGE_CATEGORY_LABELS[member.ageCategory] }}
                 <span class="text-xs text-gray-400">({{ member.ageAtCamp }} años)</span>

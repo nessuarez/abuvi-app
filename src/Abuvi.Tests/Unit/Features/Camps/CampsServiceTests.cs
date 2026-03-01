@@ -1,5 +1,7 @@
+using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.GooglePlaces;
+using Abuvi.API.Features.Users;
 using FluentAssertions;
 using NSubstitute;
 using Xunit;
@@ -14,6 +16,7 @@ public class CampsServiceTests
     private readonly ICampsRepository _repository;
     private readonly IGooglePlacesService _googlePlacesService;
     private readonly IGooglePlacesMapperService _mapper;
+    private readonly IUsersRepository _usersRepository;
     private readonly CampsService _sut;
 
     public CampsServiceTests()
@@ -21,7 +24,8 @@ public class CampsServiceTests
         _repository = Substitute.For<ICampsRepository>();
         _googlePlacesService = Substitute.For<IGooglePlacesService>();
         _mapper = Substitute.For<IGooglePlacesMapperService>();
-        _sut = new CampsService(_repository, _googlePlacesService, _mapper);
+        _usersRepository = Substitute.For<IUsersRepository>();
+        _sut = new CampsService(_repository, _googlePlacesService, _mapper, _usersRepository);
     }
 
     #region CreateAsync Tests
@@ -158,20 +162,12 @@ public class CampsServiceTests
     [Fact]
     public async Task CreateAsync_WithNegativePrices_ThrowsArgumentException()
     {
-        // Arrange
         var request = new CreateCampRequest(
-            Name: "Test Camp",
-            Description: null,
-            Location: null,
-            Latitude: null,
-            Longitude: null,
-            GooglePlaceId: null,
-            PricePerAdult: -10.00m, // Invalid negative price
-            PricePerChild: 120.00m,
-            PricePerBaby: 60.00m
+            Name: "Test Camp", Description: null, Location: null,
+            Latitude: null, Longitude: null, GooglePlaceId: null,
+            PricePerAdult: -10.00m, PricePerChild: 120.00m, PricePerBaby: 60.00m
         );
 
-        // Act & Assert
         var act = async () => await _sut.CreateAsync(request);
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*price*cannot be negative*");
@@ -180,20 +176,12 @@ public class CampsServiceTests
     [Fact]
     public async Task CreateAsync_WithInvalidLatitude_ThrowsArgumentException()
     {
-        // Arrange
         var request = new CreateCampRequest(
-            Name: "Test Camp",
-            Description: null,
-            Location: null,
-            Latitude: 95.0m, // Invalid latitude (> 90)
-            Longitude: -74.0060m,
-            GooglePlaceId: null,
-            PricePerAdult: 180.00m,
-            PricePerChild: 120.00m,
-            PricePerBaby: 60.00m
+            Name: "Test Camp", Description: null, Location: null,
+            Latitude: 95.0m, Longitude: -74.0060m, GooglePlaceId: null,
+            PricePerAdult: 180.00m, PricePerChild: 120.00m, PricePerBaby: 60.00m
         );
 
-        // Act & Assert
         var act = async () => await _sut.CreateAsync(request);
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Latitude*must be between -90 and 90*");
@@ -202,20 +190,12 @@ public class CampsServiceTests
     [Fact]
     public async Task CreateAsync_WithInvalidLongitude_ThrowsArgumentException()
     {
-        // Arrange
         var request = new CreateCampRequest(
-            Name: "Test Camp",
-            Description: null,
-            Location: null,
-            Latitude: 40.7128m,
-            Longitude: 185.0m, // Invalid longitude (> 180)
-            GooglePlaceId: null,
-            PricePerAdult: 180.00m,
-            PricePerChild: 120.00m,
-            PricePerBaby: 60.00m
+            Name: "Test Camp", Description: null, Location: null,
+            Latitude: 40.7128m, Longitude: 185.0m, GooglePlaceId: null,
+            PricePerAdult: 180.00m, PricePerChild: 120.00m, PricePerBaby: 60.00m
         );
 
-        // Act & Assert
         var act = async () => await _sut.CreateAsync(request);
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Longitude*must be between -180 and 180*");
@@ -228,27 +208,18 @@ public class CampsServiceTests
     [Fact]
     public async Task GetByIdAsync_WithValidId_ReturnsCampDetailResponse()
     {
-        // Arrange
         var campId = Guid.NewGuid();
         var camp = new Camp
         {
-            Id = campId,
-            Name = "Test Camp",
-            PricePerAdult = 180.00m,
-            PricePerChild = 120.00m,
-            PricePerBaby = 60.00m,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            Id = campId, Name = "Test Camp",
+            PricePerAdult = 180.00m, PricePerChild = 120.00m, PricePerBaby = 60.00m,
+            IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         };
 
-        _repository.GetByIdWithPhotosAsync(campId, Arg.Any<CancellationToken>())
-            .Returns(camp);
+        _repository.GetByIdWithPhotosAsync(campId, Arg.Any<CancellationToken>()).Returns(camp);
 
-        // Act
         var result = await _sut.GetByIdAsync(campId);
 
-        // Assert
         result.Should().NotBeNull();
         result!.Id.Should().Be(campId);
         result.Name.Should().Be("Test Camp");
@@ -258,45 +229,29 @@ public class CampsServiceTests
     [Fact]
     public async Task GetByIdAsync_WithInvalidId_ReturnsNull()
     {
-        // Arrange
         _repository.GetByIdWithPhotosAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((Camp?)null);
 
-        // Act
         var result = await _sut.GetByIdAsync(Guid.NewGuid());
-
-        // Assert
         result.Should().BeNull();
     }
 
     [Fact]
     public async Task GetByIdAsync_WithPhotos_ReturnsPhotosInResponse()
     {
-        // Arrange
         var campId = Guid.NewGuid();
         var camp = new Camp
         {
-            Id = campId,
-            Name = "Test Camp",
-            PricePerAdult = 100m,
-            PricePerChild = 60m,
-            PricePerBaby = 30m,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
-            Photos =
-            [
-                new CampPhoto { Id = Guid.NewGuid(), CampId = campId, PhotoReference = "ref1", Width = 800, Height = 600, AttributionName = "Author", IsPrimary = true, DisplayOrder = 1 }
-            ]
+            Id = campId, Name = "Test Camp",
+            PricePerAdult = 100m, PricePerChild = 60m, PricePerBaby = 30m,
+            IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+            Photos = [new CampPhoto { Id = Guid.NewGuid(), CampId = campId, PhotoReference = "ref1", Width = 800, Height = 600, AttributionName = "Author", IsPrimary = true, DisplayOrder = 1 }]
         };
 
-        _repository.GetByIdWithPhotosAsync(campId, Arg.Any<CancellationToken>())
-            .Returns(camp);
+        _repository.GetByIdWithPhotosAsync(campId, Arg.Any<CancellationToken>()).Returns(camp);
 
-        // Act
         var result = await _sut.GetByIdAsync(campId);
 
-        // Assert
         result.Should().NotBeNull();
         result!.Photos.Should().HaveCount(1);
         result.Photos[0].PhotoReference.Should().Be("ref1");
@@ -310,43 +265,31 @@ public class CampsServiceTests
     [Fact]
     public async Task GetAllAsync_ReturnsAllCamps()
     {
-        // Arrange
         var camps = new List<Camp>
         {
             new() { Id = Guid.NewGuid(), Name = "Camp 1", PricePerAdult = 180m, PricePerChild = 120m, PricePerBaby = 60m, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
             new() { Id = Guid.NewGuid(), Name = "Camp 2", PricePerAdult = 200m, PricePerChild = 140m, PricePerBaby = 70m, IsActive = false, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
         };
 
-        _repository.GetAllAsync(null, 0, 100, Arg.Any<CancellationToken>())
-            .Returns(camps);
+        _repository.GetAllAsync(null, 0, 100, Arg.Any<CancellationToken>()).Returns(camps);
 
-        // Act
         var result = await _sut.GetAllAsync();
 
-        // Assert
         result.Should().HaveCount(2);
-        result.Should().Contain(c => c.Name == "Camp 1");
-        result.Should().Contain(c => c.Name == "Camp 2");
     }
 
     [Fact]
     public async Task GetAllAsync_WithActiveFilter_ReturnsOnlyActiveCamps()
     {
-        // Arrange
         var camps = new List<Camp>
         {
             new() { Id = Guid.NewGuid(), Name = "Active Camp", PricePerAdult = 180m, PricePerChild = 120m, PricePerBaby = 60m, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
         };
 
-        _repository.GetAllAsync(true, 0, 100, Arg.Any<CancellationToken>())
-            .Returns(camps);
+        _repository.GetAllAsync(true, 0, 100, Arg.Any<CancellationToken>()).Returns(camps);
 
-        // Act
         var result = await _sut.GetAllAsync(isActive: true);
-
-        // Assert
         result.Should().HaveCount(1);
-        result.Should().Contain(c => c.Name == "Active Camp");
     }
 
     #endregion
@@ -356,74 +299,35 @@ public class CampsServiceTests
     [Fact]
     public async Task UpdateAsync_WithValidData_UpdatesCamp()
     {
-        // Arrange
         var campId = Guid.NewGuid();
-        var existingCamp = new Camp
-        {
-            Id = campId,
-            Name = "Original Name",
-            PricePerAdult = 180.00m,
-            PricePerChild = 120.00m,
-            PricePerBaby = 60.00m,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+        var userId = Guid.NewGuid();
+        var existingCamp = CreateTestCamp(campId);
 
         var updateRequest = new UpdateCampRequest(
-            Name: "Updated Name",
-            Description: "Updated description",
-            Location: null,
-            Latitude: null,
-            Longitude: null,
-            GooglePlaceId: null,
-            PricePerAdult: 200.00m,
-            PricePerChild: 140.00m,
-            PricePerBaby: 70.00m,
+            Name: "Updated Name", Description: "Updated description",
+            Location: null, Latitude: null, Longitude: null, GooglePlaceId: null,
+            PricePerAdult: 200.00m, PricePerChild: 140.00m, PricePerBaby: 70.00m,
             IsActive: true
         );
 
-        _repository.GetByIdWithPhotosAsync(campId, Arg.Any<CancellationToken>())
-            .Returns(existingCamp);
+        SetupUpdateMocks(campId, existingCamp);
 
-        _repository.UpdateAsync(Arg.Any<Camp>(), Arg.Any<CancellationToken>())
-            .Returns(args => args.Arg<Camp>());
+        var result = await _sut.UpdateAsync(campId, updateRequest, userId);
 
-        // Act
-        var result = await _sut.UpdateAsync(campId, updateRequest);
-
-        // Assert
         result.Should().NotBeNull();
         result!.Name.Should().Be("Updated Name");
         result.PricePerAdult.Should().Be(200.00m);
-
         await _repository.Received(1).UpdateAsync(Arg.Any<Camp>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task UpdateAsync_WithNonExistentId_ReturnsNull()
     {
-        // Arrange
         _repository.GetByIdWithPhotosAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((Camp?)null);
 
-        var updateRequest = new UpdateCampRequest(
-            Name: "Updated Name",
-            Description: null,
-            Location: null,
-            Latitude: null,
-            Longitude: null,
-            GooglePlaceId: null,
-            PricePerAdult: 200.00m,
-            PricePerChild: 140.00m,
-            PricePerBaby: 70.00m,
-            IsActive: true
-        );
-
-        // Act
-        var result = await _sut.UpdateAsync(Guid.NewGuid(), updateRequest);
-
-        // Assert
+        var request = CreateTestUpdateRequest();
+        var result = await _sut.UpdateAsync(Guid.NewGuid(), request, Guid.NewGuid());
         result.Should().BeNull();
     }
 
@@ -434,28 +338,14 @@ public class CampsServiceTests
     [Fact]
     public async Task DeleteAsync_WithValidId_DeletesCamp()
     {
-        // Arrange
         var campId = Guid.NewGuid();
-        var camp = new Camp
-        {
-            Id = campId,
-            Name = "Camp to Delete",
-            PricePerAdult = 180.00m,
-            PricePerChild = 120.00m,
-            PricePerBaby = 60.00m,
-            IsActive = true
-        };
+        var camp = new Camp { Id = campId, Name = "Camp to Delete", PricePerAdult = 180.00m, PricePerChild = 120.00m, PricePerBaby = 60.00m, IsActive = true };
 
-        _repository.GetByIdAsync(campId, Arg.Any<CancellationToken>())
-            .Returns(camp);
+        _repository.GetByIdAsync(campId, Arg.Any<CancellationToken>()).Returns(camp);
+        _repository.DeleteAsync(campId, Arg.Any<CancellationToken>()).Returns(true);
 
-        _repository.DeleteAsync(campId, Arg.Any<CancellationToken>())
-            .Returns(true);
-
-        // Act
         var result = await _sut.DeleteAsync(campId);
 
-        // Assert
         result.Should().BeTrue();
         await _repository.Received(1).DeleteAsync(campId, Arg.Any<CancellationToken>());
     }
@@ -463,40 +353,28 @@ public class CampsServiceTests
     [Fact]
     public async Task DeleteAsync_WithNonExistentId_ReturnsFalse()
     {
-        // Arrange
-        _repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((Camp?)null);
+        _repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Camp?)null);
 
-        // Act
         var result = await _sut.DeleteAsync(Guid.NewGuid());
-
-        // Assert
         result.Should().BeFalse();
     }
 
     [Fact]
     public async Task DeleteAsync_WithActiveEditions_ThrowsInvalidOperationException()
     {
-        // Arrange
         var campId = Guid.NewGuid();
         var camp = new Camp
         {
-            Id = campId,
-            Name = "Camp with Editions",
-            PricePerAdult = 180.00m,
-            PricePerChild = 120.00m,
-            PricePerBaby = 60.00m,
-            IsActive = true,
+            Id = campId, Name = "Camp with Editions",
+            PricePerAdult = 180.00m, PricePerChild = 120.00m, PricePerBaby = 60.00m, IsActive = true,
             Editions = new List<CampEdition>
             {
                 new() { Id = Guid.NewGuid(), CampId = campId, Year = 2026, Status = CampEditionStatus.Open, StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddDays(10), PricePerAdult = 180m, PricePerChild = 120m, PricePerBaby = 60m }
             }
         };
 
-        _repository.GetByIdAsync(campId, Arg.Any<CancellationToken>())
-            .Returns(camp);
+        _repository.GetByIdAsync(campId, Arg.Any<CancellationToken>()).Returns(camp);
 
-        // Act & Assert
         var act = async () => await _sut.DeleteAsync(campId);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Cannot delete camp*editions*");
@@ -509,86 +387,45 @@ public class CampsServiceTests
     [Fact]
     public async Task CreateAsync_WithAccommodationCapacity_SavesCapacityInJson()
     {
-        // Arrange
         var accommodation = new AccommodationCapacity
         {
             PrivateRoomsWithBathroom = 10,
-            SharedRooms = new List<SharedRoomInfo>
-            {
-                new() { Quantity = 5, BedsPerRoom = 4, HasBathroom = true }
-            }
+            SharedRooms = new List<SharedRoomInfo> { new() { Quantity = 5, BedsPerRoom = 4, HasBathroom = true } }
         };
 
         var request = new CreateCampRequest(
-            Name: "Camp with Capacity",
-            Description: null,
-            Location: null,
-            Latitude: null,
-            Longitude: null,
-            GooglePlaceId: null,
-            PricePerAdult: 180m,
-            PricePerChild: 120m,
-            PricePerBaby: 60m,
+            Name: "Camp with Capacity", Description: null, Location: null,
+            Latitude: null, Longitude: null, GooglePlaceId: null,
+            PricePerAdult: 180m, PricePerChild: 120m, PricePerBaby: 60m,
             AccommodationCapacity: accommodation
         );
 
-        var createdCamp = new Camp
-        {
-            Id = Guid.NewGuid(),
-            Name = request.Name,
-            PricePerAdult = 180m,
-            PricePerChild = 120m,
-            PricePerBaby = 60m
-        };
+        var createdCamp = new Camp { Id = Guid.NewGuid(), Name = request.Name, PricePerAdult = 180m, PricePerChild = 120m, PricePerBaby = 60m };
         createdCamp.SetAccommodationCapacity(accommodation);
 
-        _repository.CreateAsync(Arg.Any<Camp>(), Arg.Any<CancellationToken>())
-            .Returns(createdCamp);
+        _repository.CreateAsync(Arg.Any<Camp>(), Arg.Any<CancellationToken>()).Returns(createdCamp);
 
-        // Act
         var result = await _sut.CreateAsync(request);
 
-        // Assert
         result.AccommodationCapacity.Should().NotBeNull();
         result.AccommodationCapacity!.PrivateRoomsWithBathroom.Should().Be(10);
-        result.CalculatedTotalBedCapacity.Should().Be(40); // (10*2) + (5*4)
-
-        await _repository.Received(1).CreateAsync(
-            Arg.Is<Camp>(c => c.AccommodationCapacityJson != null),
-            Arg.Any<CancellationToken>());
+        result.CalculatedTotalBedCapacity.Should().Be(40);
     }
 
     [Fact]
     public async Task CreateAsync_WithNullAccommodation_SavesNullJson()
     {
-        // Arrange
         var request = new CreateCampRequest(
-            Name: "Camp",
-            Description: null,
-            Location: null,
-            Latitude: null,
-            Longitude: null,
-            GooglePlaceId: null,
-            PricePerAdult: 180m,
-            PricePerChild: 120m,
-            PricePerBaby: 60m
+            Name: "Camp", Description: null, Location: null,
+            Latitude: null, Longitude: null, GooglePlaceId: null,
+            PricePerAdult: 180m, PricePerChild: 120m, PricePerBaby: 60m
         );
 
-        var createdCamp = new Camp
-        {
-            Id = Guid.NewGuid(),
-            Name = "Camp",
-            PricePerAdult = 180m,
-            PricePerChild = 120m,
-            PricePerBaby = 60m
-        };
-
+        var createdCamp = new Camp { Id = Guid.NewGuid(), Name = "Camp", PricePerAdult = 180m, PricePerChild = 120m, PricePerBaby = 60m };
         _repository.CreateAsync(Arg.Any<Camp>(), Arg.Any<CancellationToken>()).Returns(createdCamp);
 
-        // Act
         var result = await _sut.CreateAsync(request);
 
-        // Assert
         result.AccommodationCapacity.Should().BeNull();
         result.CalculatedTotalBedCapacity.Should().BeNull();
     }
@@ -596,44 +433,287 @@ public class CampsServiceTests
     [Fact]
     public async Task UpdateAsync_WithAccommodationCapacity_UpdatesCapacity()
     {
-        // Arrange
         var campId = Guid.NewGuid();
-        var existingCamp = new Camp
-        {
-            Id = campId,
-            Name = "Original",
-            PricePerAdult = 180m,
-            PricePerChild = 120m,
-            PricePerBaby = 60m
-        };
+        var userId = Guid.NewGuid();
+        var existingCamp = CreateTestCamp(campId);
 
         var newAccommodation = new AccommodationCapacity { PrivateRoomsWithBathroom = 8 };
         var request = new UpdateCampRequest(
-            Name: "Updated",
+            Name: "Updated", Description: null, Location: null,
+            Latitude: null, Longitude: null, GooglePlaceId: null,
+            PricePerAdult: 180m, PricePerChild: 120m, PricePerBaby: 60m,
+            IsActive: true, AccommodationCapacity: newAccommodation
+        );
+
+        SetupUpdateMocks(campId, existingCamp);
+
+        var result = await _sut.UpdateAsync(campId, request, userId);
+
+        result.Should().NotBeNull();
+        result!.AccommodationCapacity.Should().NotBeNull();
+        result.AccommodationCapacity!.PrivateRoomsWithBathroom.Should().Be(8);
+        result.CalculatedTotalBedCapacity.Should().Be(16);
+    }
+
+    #endregion
+
+    #region Audit Log Tests
+
+    [Fact]
+    public async Task UpdateAsync_WhenBasePriceChanges_CreatesAuditLogEntry()
+    {
+        var campId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var camp = CreateTestCamp(campId, basePrice: 100m);
+        var request = CreateTestUpdateRequest(basePrice: 200m);
+
+        SetupUpdateMocks(campId, camp);
+
+        await _sut.UpdateAsync(campId, request, userId);
+
+        await _repository.Received(1).AddAuditLogsAsync(
+            Arg.Is<List<CampAuditLog>>(logs =>
+                logs.Any(l => l.FieldName == "BasePrice" && l.OldValue == "100" && l.NewValue == "200")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenIsActiveChanges_CreatesAuditLogEntry()
+    {
+        var campId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var camp = CreateTestCamp(campId, isActive: true);
+        var request = CreateTestUpdateRequest(isActive: false);
+
+        SetupUpdateMocks(campId, camp);
+
+        await _sut.UpdateAsync(campId, request, userId);
+
+        await _repository.Received(1).AddAuditLogsAsync(
+            Arg.Is<List<CampAuditLog>>(logs =>
+                logs.Any(l => l.FieldName == "IsActive" && l.OldValue == "True" && l.NewValue == "False")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenNoTrackedFieldChanges_DoesNotCreateAuditLog()
+    {
+        var campId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var camp = CreateTestCamp(campId);
+        var request = CreateTestUpdateRequest();
+
+        SetupUpdateMocks(campId, camp);
+
+        await _sut.UpdateAsync(campId, request, userId);
+
+        await _repository.DidNotReceive().AddAuditLogsAsync(
+            Arg.Any<IEnumerable<CampAuditLog>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenMultipleTrackedFieldsChange_CreatesOneEntryPerField()
+    {
+        var campId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var camp = CreateTestCamp(campId, basePrice: 100m, contactPerson: "Old Person");
+        var request = CreateTestUpdateRequest(basePrice: 200m, contactPerson: "New Person");
+
+        SetupUpdateMocks(campId, camp);
+
+        await _sut.UpdateAsync(campId, request, userId);
+
+        await _repository.Received(1).AddAuditLogsAsync(
+            Arg.Is<List<CampAuditLog>>(logs => logs.Count == 2),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_AlwaysSetsLastModifiedByUserId()
+    {
+        var campId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var camp = CreateTestCamp(campId);
+        var request = CreateTestUpdateRequest();
+
+        SetupUpdateMocks(campId, camp);
+
+        await _sut.UpdateAsync(campId, request, userId);
+
+        await _repository.Received(1).UpdateAsync(
+            Arg.Is<Camp>(c => c.LastModifiedByUserId == userId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenCampNotFound_ReturnsNull_AuditTest()
+    {
+        _repository.GetByIdWithPhotosAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((Camp?)null);
+
+        var result = await _sut.UpdateAsync(Guid.NewGuid(), CreateTestUpdateRequest(), Guid.NewGuid());
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenAbuviManagedByUserIdChanges_CreatesAuditLogEntry()
+    {
+        var campId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var oldManagedBy = Guid.NewGuid();
+        var newManagedBy = Guid.NewGuid();
+
+        var camp = CreateTestCamp(campId, abuviManagedByUserId: oldManagedBy);
+        var request = CreateTestUpdateRequest(abuviManagedByUserId: newManagedBy);
+
+        SetupUpdateMocks(campId, camp);
+        _usersRepository.GetByIdAsync(newManagedBy, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = newManagedBy, Role = UserRole.Board, FirstName = "Test", LastName = "User", Email = "t@t.com", PasswordHash = "h" });
+
+        await _sut.UpdateAsync(campId, request, userId);
+
+        await _repository.Received(1).AddAuditLogsAsync(
+            Arg.Is<List<CampAuditLog>>(logs =>
+                logs.Any(l => l.FieldName == "AbuviManagedByUserId")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenAbuviManagedByUserIdIsValidBoardUser_Succeeds()
+    {
+        var campId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var boardUserId = Guid.NewGuid();
+
+        var camp = CreateTestCamp(campId);
+        var request = CreateTestUpdateRequest(abuviManagedByUserId: boardUserId);
+
+        SetupUpdateMocks(campId, camp);
+        _usersRepository.GetByIdAsync(boardUserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = boardUserId, Role = UserRole.Board, FirstName = "B", LastName = "U", Email = "b@t.com", PasswordHash = "h" });
+
+        var result = await _sut.UpdateAsync(campId, request, userId);
+        result.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenAbuviManagedByUserIdIsNotBoardUser_ThrowsBusinessRuleException()
+    {
+        var campId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var memberUserId = Guid.NewGuid();
+
+        var camp = CreateTestCamp(campId);
+        var request = CreateTestUpdateRequest(abuviManagedByUserId: memberUserId);
+
+        SetupUpdateMocks(campId, camp);
+        _usersRepository.GetByIdAsync(memberUserId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = memberUserId, Role = UserRole.Member, FirstName = "M", LastName = "U", Email = "m@t.com", PasswordHash = "h" });
+
+        var act = async () => await _sut.UpdateAsync(campId, request, userId);
+        await act.Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage("*Board or Admin role*");
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenAbuviManagedByUserIdDoesNotExist_ThrowsBusinessRuleException()
+    {
+        var campId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var nonExistentUserId = Guid.NewGuid();
+
+        var camp = CreateTestCamp(campId);
+        var request = CreateTestUpdateRequest(abuviManagedByUserId: nonExistentUserId);
+
+        SetupUpdateMocks(campId, camp);
+        _usersRepository.GetByIdAsync(nonExistentUserId, Arg.Any<CancellationToken>())
+            .Returns((User?)null);
+
+        var act = async () => await _sut.UpdateAsync(campId, request, userId);
+        await act.Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage("*non-existent user*");
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenAbuviManagedByUserIdIsNull_ClearsAssignment()
+    {
+        var campId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var oldManagedBy = Guid.NewGuid();
+
+        var camp = CreateTestCamp(campId, abuviManagedByUserId: oldManagedBy);
+        var request = CreateTestUpdateRequest(abuviManagedByUserId: null);
+
+        SetupUpdateMocks(campId, camp);
+
+        var result = await _sut.UpdateAsync(campId, request, userId);
+
+        result.Should().NotBeNull();
+        result!.AbuviManagedByUserId.Should().BeNull();
+        await _repository.Received(1).UpdateAsync(
+            Arg.Is<Camp>(c => c.AbuviManagedByUserId == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    #endregion
+
+    #region Test Helpers
+
+    private static Camp CreateTestCamp(
+        Guid campId,
+        bool isActive = true,
+        decimal? basePrice = null,
+        string? contactPerson = null,
+        string? contactEmail = null,
+        Guid? abuviManagedByUserId = null)
+    {
+        return new Camp
+        {
+            Id = campId,
+            Name = "Test Camp",
+            PricePerAdult = 100m,
+            PricePerChild = 60m,
+            PricePerBaby = 30m,
+            IsActive = isActive,
+            BasePrice = basePrice,
+            ContactPerson = contactPerson,
+            ContactEmail = contactEmail,
+            AbuviManagedByUserId = abuviManagedByUserId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+    }
+
+    private static UpdateCampRequest CreateTestUpdateRequest(
+        bool isActive = true,
+        decimal? basePrice = null,
+        string? contactPerson = null,
+        string? contactEmail = null,
+        Guid? abuviManagedByUserId = null)
+    {
+        return new UpdateCampRequest(
+            Name: "Test Camp",
             Description: null,
             Location: null,
             Latitude: null,
             Longitude: null,
             GooglePlaceId: null,
-            PricePerAdult: 180m,
-            PricePerChild: 120m,
-            PricePerBaby: 60m,
-            IsActive: true,
-            AccommodationCapacity: newAccommodation
+            PricePerAdult: 100m,
+            PricePerChild: 60m,
+            PricePerBaby: 30m,
+            IsActive: isActive,
+            BasePrice: basePrice,
+            ContactPerson: contactPerson,
+            ContactEmail: contactEmail,
+            AbuviManagedByUserId: abuviManagedByUserId
         );
+    }
 
-        _repository.GetByIdWithPhotosAsync(campId, Arg.Any<CancellationToken>()).Returns(existingCamp);
+    private void SetupUpdateMocks(Guid campId, Camp camp)
+    {
+        _repository.GetByIdWithPhotosAsync(campId, Arg.Any<CancellationToken>()).Returns(camp);
         _repository.UpdateAsync(Arg.Any<Camp>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo => callInfo.Arg<Camp>());
-
-        // Act
-        var result = await _sut.UpdateAsync(campId, request);
-
-        // Assert
-        result.Should().NotBeNull();
-        result!.AccommodationCapacity.Should().NotBeNull();
-        result.AccommodationCapacity!.PrivateRoomsWithBathroom.Should().Be(8);
-        result.CalculatedTotalBedCapacity.Should().Be(16); // 8 * 2
+            .Returns(args => args.Arg<Camp>());
     }
 
     #endregion

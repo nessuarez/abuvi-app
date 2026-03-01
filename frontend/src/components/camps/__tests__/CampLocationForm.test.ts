@@ -6,6 +6,15 @@ import { useGooglePlaces } from '@/composables/useGooglePlaces'
 // Mock the useGooglePlaces composable
 vi.mock('@/composables/useGooglePlaces')
 
+// Mock the auth store
+vi.mock('@/stores/auth', () => ({
+  useAuthStore: () => ({
+    isAdmin: true,
+    isBoard: true,
+    user: { id: '1', role: 'Admin' }
+  })
+}))
+
 // Mock PrimeVue components to simplify testing
 vi.mock('primevue/autocomplete', () => ({
   default: {
@@ -85,6 +94,23 @@ vi.mock('primevue/button', () => ({
   }
 }))
 
+vi.mock('primevue/select', () => ({
+  default: {
+    name: 'Select',
+    props: ['modelValue', 'options', 'optionLabel', 'optionValue', 'placeholder'],
+    emits: ['update:modelValue'],
+    template: '<select :id="$attrs.id"><option>mock</option></select>'
+  }
+}))
+
+// Mock child component to avoid its PrimeVue dependencies
+vi.mock('@/components/camps/CampAbuviTrackingForm.vue', () => ({
+  default: {
+    name: 'CampAbuviTrackingForm',
+    template: '<div data-testid="abuvi-tracking-form"></div>'
+  }
+}))
+
 // Mock VueUse debounce
 vi.mock('@vueuse/core', () => ({
   useDebounceFn: (fn: Function) => fn
@@ -112,7 +138,7 @@ describe('CampLocationForm', () => {
       expect(wrapper.find('form').exists()).toBe(true)
       expect(wrapper.find('#name').exists()).toBe(true)
       expect(wrapper.find('#description').exists()).toBe(true)
-      expect(wrapper.find('#location').exists()).toBe(true)
+      expect(wrapper.find('#rawAddress').exists()).toBe(true)
       expect(wrapper.find('#latitude').exists()).toBe(true)
       expect(wrapper.find('#longitude').exists()).toBe(true)
     })
@@ -209,7 +235,7 @@ describe('CampLocationForm', () => {
 
       // Check form data was updated
       expect((wrapper.vm as any).formData.name).toBe('Camping El Pinar')
-      expect((wrapper.vm as any).formData.location).toBe('Calle Example, 123, Madrid, España')
+      expect((wrapper.vm as any).formData.rawAddress).toBe('Calle Example, 123, Madrid, España')
       expect((wrapper.vm as any).formData.latitude).toBe(40.416775)
       expect((wrapper.vm as any).formData.longitude).toBe(-3.703790)
       expect((wrapper.vm as any).formData.googlePlaceId).toBe('ChIJN1t_tDeuEmsRUsoyG83frY4')
