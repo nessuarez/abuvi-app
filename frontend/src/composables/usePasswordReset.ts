@@ -5,6 +5,7 @@ import type { ApiResponse } from '@/types/api'
 export function usePasswordReset() {
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const fieldErrors = ref<Record<string, string>>({})
 
   const forgotPassword = async (email: string): Promise<boolean> => {
     loading.value = true
@@ -26,18 +27,29 @@ export function usePasswordReset() {
   const resetPassword = async (token: string, newPassword: string): Promise<boolean> => {
     loading.value = true
     error.value = null
+    fieldErrors.value = {}
     try {
       await api.post<ApiResponse<object>>('/auth/reset-password', { token, newPassword })
       return true
     } catch (err: any) {
-      error.value =
-        err.response?.data?.error?.message ||
-        'El enlace de recuperación es inválido o ha expirado.'
+      const apiError = err.response?.data?.error
+      const details = apiError?.details as Array<{ field: string; message: string }> | undefined
+
+      if (details?.length) {
+        for (const detail of details) {
+          const key = detail.field.charAt(0).toLowerCase() + detail.field.slice(1)
+          fieldErrors.value[key] = detail.message
+        }
+      } else {
+        error.value =
+          apiError?.message ||
+          'El enlace de recuperación es inválido o ha expirado.'
+      }
       return false
     } finally {
       loading.value = false
     }
   }
 
-  return { loading, error, forgotPassword, resetPassword }
+  return { loading, error, fieldErrors, resetPassword, forgotPassword }
 }
