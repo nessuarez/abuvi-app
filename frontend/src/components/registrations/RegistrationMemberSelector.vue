@@ -117,19 +117,6 @@ const updateVisitDate = (
   )
 }
 
-const updateGuardianField = (
-  memberId: string,
-  field: 'guardianName' | 'guardianDocumentNumber',
-  value: string
-) => {
-  emit(
-    'update:modelValue',
-    props.modelValue.map((s) =>
-      s.memberId === memberId ? { ...s, [field]: value || null } : s
-    )
-  )
-}
-
 const formatDate = (dateStr: string): string =>
   new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(
     new Date(dateStr)
