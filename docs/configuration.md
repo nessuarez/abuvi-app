@@ -198,7 +198,7 @@ GooglePlaces__ApiKey=${GOOGLE_PLACES_API_KEY}
 
 ### `BlobStorage`
 
-S3-compatible object storage used for media uploads (camp photos, documents, audio, video). The application uses Hetzner Object Storage but any S3-compatible provider (AWS S3, MinIO, etc.) works.
+S3-compatible object storage used for media uploads (images, videos, audio, documents). The application uses the AWS SDK (`AWSSDK.S3`) with Hetzner Object Storage as the default provider, but any S3-compatible service works.
 
 ```json
 "BlobStorage": {
@@ -223,30 +223,38 @@ S3-compatible object storage used for media uploads (camp photos, documents, aud
 
 | Field | Description |
 |---|---|
-| `BucketName` | S3 bucket name. Must exist before the application starts. |
-| `Endpoint` | S3-compatible API endpoint URL. |
-| `Region` | Storage region (e.g. `fsn1` for Hetzner Falkenstein). |
-| `AccessKeyId` | S3 access key — **secret, do not commit**. |
-| `SecretAccessKey` | S3 secret key — **secret, do not commit**. |
-| `PublicBaseUrl` | Public URL prefix used to build download links for uploaded files. |
-| `MaxFileSizeBytes` | Maximum upload size in bytes. Default is 50 MB (52428800). Kestrel is configured to allow 55 MB to account for multipart headers. |
-| `AllowedImageExtensions` | Accepted image file extensions. |
-| `AllowedVideoExtensions` | Accepted video file extensions. |
-| `AllowedAudioExtensions` | Accepted audio file extensions. |
-| `AllowedDocumentExtensions` | Accepted document file extensions. |
-| `ThumbnailWidthPx` / `ThumbnailHeightPx` | Dimensions for auto-generated image thumbnails (WebP format). |
-| `StorageQuotaBytes` | Total storage quota in bytes. `0` disables quota checking. Default is 50 GB. |
-| `StorageWarningThresholdPct` | Percentage of quota at which the health check returns a warning. |
-| `StorageCriticalThresholdPct` | Percentage of quota at which the health check returns critical / degraded. |
+| `BucketName` | S3 bucket name. **Required** — startup validation fails if empty. |
+| `Endpoint` | S3-compatible service URL. For Hetzner: `https://fsn1.your-objectstorage.com`. |
+| `Region` | Storage region identifier (e.g. `fsn1` for Hetzner Falkenstein). |
+| `AccessKeyId` | S3 access key. **Secret** — do not commit. |
+| `SecretAccessKey` | S3 secret key. **Secret** — do not commit. |
+| `PublicBaseUrl` | Public URL prefix for uploaded objects. **Required** — startup validation fails if empty. |
+| `MaxFileSizeBytes` | Maximum allowed upload size in bytes. Default: `52428800` (50 MB). |
+| `AllowedImageExtensions` | Permitted image file extensions. |
+| `AllowedVideoExtensions` | Permitted video file extensions. |
+| `AllowedAudioExtensions` | Permitted audio file extensions. |
+| `AllowedDocumentExtensions` | Permitted document file extensions. |
+| `ThumbnailWidthPx` | Maximum width in pixels for generated thumbnails. |
+| `ThumbnailHeightPx` | Maximum height in pixels for generated thumbnails. |
+| `StorageQuotaBytes` | Total storage quota in bytes. `0` disables threshold checks. Default in appsettings: ~50 GB. |
+| `StorageWarningThresholdPct` | Usage percentage at which the health check reports **Degraded**. |
+| `StorageCriticalThresholdPct` | Usage percentage at which the health check reports **Unhealthy**. |
 
-> **Secrets** — `AccessKeyId` and `SecretAccessKey` must not be committed. Supply them via environment variables:
->
-> ```
-> BlobStorage__AccessKeyId=${BLOB_STORAGE_ACCESS_KEY_ID}
-> BlobStorage__SecretAccessKey=${BLOB_STORAGE_SECRET_ACCESS_KEY}
-> ```
+`BucketName`, `Endpoint`, `Region`, and `PublicBaseUrl` can stay in the file. The `AccessKeyId` and `SecretAccessKey` are secrets and must not be committed — supply them via user secrets in development or environment variables in production:
 
-> **Health check** — A blob storage health check is registered under the name `blob-storage` with failure status `Degraded`. It verifies bucket accessibility and monitors storage quota usage against the configured thresholds.
+```bash
+# Development (user secrets)
+dotnet user-secrets set "BlobStorage:AccessKeyId" "your-key" --project src/Abuvi.API
+dotnet user-secrets set "BlobStorage:SecretAccessKey" "your-secret" --project src/Abuvi.API
+```
+
+```
+# Production (environment variables)
+BlobStorage__AccessKeyId=${BLOB_ACCESS_KEY_ID}
+BlobStorage__SecretAccessKey=${BLOB_SECRET_ACCESS_KEY}
+```
+
+> **Note:** The Kestrel request body limit is set to 55 MB to accommodate file uploads. If you increase `MaxFileSizeBytes` beyond this value, update the Kestrel limit in `Program.cs` as well.
 
 ---
 
@@ -291,8 +299,8 @@ services:
       - Encryption__Key=${ENCRYPTION_KEY}
       - Resend__ApiKey=${RESEND_API_KEY}
       - GooglePlaces__ApiKey=${GOOGLE_PLACES_API_KEY}
-      - BlobStorage__AccessKeyId=${BLOB_STORAGE_ACCESS_KEY_ID}
-      - BlobStorage__SecretAccessKey=${BLOB_STORAGE_SECRET_ACCESS_KEY}
+      - BlobStorage__AccessKeyId=${BLOB_ACCESS_KEY_ID}
+      - BlobStorage__SecretAccessKey=${BLOB_SECRET_ACCESS_KEY}
 ```
 
 The `${...}` values should come from a `.env` file (not committed) or a secrets manager (e.g. Docker Secrets, AWS Secrets Manager, Doppler).
@@ -385,12 +393,14 @@ Users → FamilyUnits → FamilyMembers → Camps → CampEditions
 | `Encryption:Key` | **Yes** | **Yes** | Never rotate once data exists |
 | `GooglePlaces:ApiKey` | **Yes** | **Yes** | Supply via env var |
 | `GooglePlaces:AutocompleteUrl` / `DetailsUrl` | No | No | Stable Google URLs |
-| `BlobStorage:BucketName` | No | No | Already set to `abuvi-media` |
-| `BlobStorage:Endpoint` | No | Yes | S3-compatible endpoint URL |
-| `BlobStorage:Region` | No | No | Matches the endpoint region |
+| `BlobStorage:BucketName` | No | No | Already set to production bucket |
+| `BlobStorage:Endpoint` / `Region` | No | No | Already set to Hetzner fsn1 |
 | `BlobStorage:AccessKeyId` | **Yes** | **Yes** | Supply via env var |
 | `BlobStorage:SecretAccessKey` | **Yes** | **Yes** | Supply via env var |
-| `BlobStorage:PublicBaseUrl` | No | Yes | Public download URL prefix |
-| `BlobStorage:MaxFileSizeBytes` | No | No | Default 50 MB |
-| `BlobStorage:StorageQuotaBytes` | No | No | Default 50 GB; 0 disables |
+| `BlobStorage:PublicBaseUrl` | No | No | Already set to production URL |
+| `BlobStorage:MaxFileSizeBytes` | No | No | Adjust to taste (default 50 MB) |
+| `BlobStorage:Allowed*Extensions` | No | No | Adjust to taste |
+| `BlobStorage:Thumbnail*Px` | No | No | Adjust to taste |
+| `BlobStorage:StorageQuotaBytes` | No | No | 0 disables threshold checks |
+| `BlobStorage:Storage*ThresholdPct` | No | No | Health check thresholds |
 | `FrontendUrl` | No | Yes | Real frontend URL |

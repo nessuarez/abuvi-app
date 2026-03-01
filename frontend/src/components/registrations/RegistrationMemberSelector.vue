@@ -4,7 +4,6 @@ import Checkbox from 'primevue/checkbox'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
-import InputText from 'primevue/inputtext'
 import type { FamilyMemberResponse, FamilyRelationship } from '@/types/family-unit'
 import { FamilyRelationshipLabels } from '@/types/family-unit'
 import type { CampEdition } from '@/types/camp-edition'
@@ -115,19 +114,6 @@ const updateVisitDate = (
   emit(
     'update:modelValue',
     props.modelValue.map((s) => (s.memberId === memberId ? { ...s, [field]: dateStr } : s))
-  )
-}
-
-const updateGuardianField = (
-  memberId: string,
-  field: 'guardianName' | 'guardianDocumentNumber',
-  value: string
-) => {
-  emit(
-    'update:modelValue',
-    props.modelValue.map((s) =>
-      s.memberId === memberId ? { ...s, [field]: value || null } : s
-    )
   )
 }
 
