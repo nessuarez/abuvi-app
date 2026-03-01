@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePasswordReset } from '@/composables/usePasswordReset'
 import Password from 'primevue/password'
@@ -8,7 +8,7 @@ import Message from 'primevue/message'
 
 const route = useRoute()
 const router = useRouter()
-const { loading, error, resetPassword } = usePasswordReset()
+const { loading, error, fieldErrors: serverFieldErrors, resetPassword } = usePasswordReset()
 
 const token = ref<string | null>(null)
 const tokenMissing = ref(false)
@@ -18,7 +18,24 @@ const formData = reactive({
   newPassword: '',
   confirmPassword: ''
 })
-const fieldErrors = ref<Record<string, string>>({})
+const clientFieldErrors = ref<Record<string, string>>({})
+
+const passwordCriteria = computed(() => ({
+  hasMinLength: formData.newPassword.length >= 8,
+  hasUppercase: /[A-Z]/.test(formData.newPassword),
+  hasLowercase: /[a-z]/.test(formData.newPassword),
+  hasDigit: /\d/.test(formData.newPassword),
+  hasSpecialChar: /[@$!%*?&#]/.test(formData.newPassword)
+}))
+
+const allCriteriaMet = computed(() =>
+  Object.values(passwordCriteria.value).every(Boolean)
+)
+
+const mergedFieldErrors = computed(() => ({
+  ...serverFieldErrors.value,
+  ...clientFieldErrors.value
+}))
 
 onMounted(() => {
   const queryToken = route.query.token
@@ -31,21 +48,21 @@ onMounted(() => {
 })
 
 const validate = (): boolean => {
-  fieldErrors.value = {}
+  clientFieldErrors.value = {}
 
   if (!formData.newPassword) {
-    fieldErrors.value.newPassword = 'La nueva contraseña es obligatoria'
-  } else if (formData.newPassword.length < 8) {
-    fieldErrors.value.newPassword = 'La contraseña debe tener al menos 8 caracteres'
+    clientFieldErrors.value.newPassword = 'La nueva contraseña es obligatoria'
+  } else if (!allCriteriaMet.value) {
+    clientFieldErrors.value.newPassword = 'La contraseña no cumple todos los requisitos'
   }
 
   if (!formData.confirmPassword) {
-    fieldErrors.value.confirmPassword = 'Debes confirmar la contraseña'
+    clientFieldErrors.value.confirmPassword = 'Debes confirmar la contraseña'
   } else if (formData.newPassword !== formData.confirmPassword) {
-    fieldErrors.value.confirmPassword = 'Las contraseñas no coinciden'
+    clientFieldErrors.value.confirmPassword = 'Las contraseñas no coinciden'
   }
 
-  return Object.keys(fieldErrors.value).length === 0
+  return Object.keys(clientFieldErrors.value).length === 0
 }
 
 const handleSubmit = async () => {
@@ -122,15 +139,35 @@ const handleSubmit = async () => {
                 v-model="formData.newPassword"
                 toggle-mask
                 :feedback="false"
-                placeholder="Mínimo 8 caracteres"
-                :invalid="!!fieldErrors.newPassword"
+                placeholder="Introduce tu nueva contraseña"
+                :invalid="!!mergedFieldErrors.newPassword"
                 :disabled="loading"
                 input-class="w-full"
+                :input-props="{ autocomplete: 'new-password' }"
                 data-testid="new-password-input"
               />
-              <small v-if="fieldErrors.newPassword" class="text-red-500">
-                {{ fieldErrors.newPassword }}
+              <small v-if="mergedFieldErrors.newPassword" class="text-red-500">
+                {{ mergedFieldErrors.newPassword }}
               </small>
+
+              <!-- Password requirements checklist -->
+              <ul v-if="formData.newPassword" class="mt-1 space-y-0.5 text-xs">
+                <li :class="passwordCriteria.hasMinLength ? 'text-green-600' : 'text-gray-500'">
+                  {{ passwordCriteria.hasMinLength ? '&#10003;' : '&#9675;' }} Mínimo 8 caracteres
+                </li>
+                <li :class="passwordCriteria.hasUppercase ? 'text-green-600' : 'text-gray-500'">
+                  {{ passwordCriteria.hasUppercase ? '&#10003;' : '&#9675;' }} Una letra mayúscula (A-Z)
+                </li>
+                <li :class="passwordCriteria.hasLowercase ? 'text-green-600' : 'text-gray-500'">
+                  {{ passwordCriteria.hasLowercase ? '&#10003;' : '&#9675;' }} Una letra minúscula (a-z)
+                </li>
+                <li :class="passwordCriteria.hasDigit ? 'text-green-600' : 'text-gray-500'">
+                  {{ passwordCriteria.hasDigit ? '&#10003;' : '&#9675;' }} Un dígito (0-9)
+                </li>
+                <li :class="passwordCriteria.hasSpecialChar ? 'text-green-600' : 'text-gray-500'">
+                  {{ passwordCriteria.hasSpecialChar ? '&#10003;' : '&#9675;' }} Un carácter especial (@ $ ! % * ? & #)
+                </li>
+              </ul>
             </div>
 
             <div class="flex flex-col gap-2">
@@ -143,13 +180,14 @@ const handleSubmit = async () => {
                 toggle-mask
                 :feedback="false"
                 placeholder="Repite la contraseña"
-                :invalid="!!fieldErrors.confirmPassword"
+                :invalid="!!mergedFieldErrors.confirmPassword"
                 :disabled="loading"
                 input-class="w-full"
+                :input-props="{ autocomplete: 'new-password' }"
                 data-testid="confirm-password-input"
               />
-              <small v-if="fieldErrors.confirmPassword" class="text-red-500">
-                {{ fieldErrors.confirmPassword }}
+              <small v-if="mergedFieldErrors.confirmPassword" class="text-red-500">
+                {{ mergedFieldErrors.confirmPassword }}
               </small>
             </div>
 
