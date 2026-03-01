@@ -30,7 +30,7 @@ public class ResendEmailIntegrationTests
     }
 
     [Fact(
-    // Skip = "Manual test - sends real email to personal address"
+     Skip = "Manual test - sends real email to personal address"
     )]
     public async Task SendVerificationEmail_ToRealAddress_SendsSuccessfully()
     {
@@ -79,7 +79,7 @@ public class ResendEmailIntegrationTests
     }
 
     [Fact(
-    // Skip = "Manual test - sends real welcome email"
+     Skip = "Manual test - sends real welcome email"
     )]
     public async Task SendWelcomeEmail_ToRealAddress_SendsSuccessfully()
     {
