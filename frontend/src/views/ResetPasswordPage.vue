@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { reactive, ref, computed, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePasswordReset } from '@/composables/usePasswordReset'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import landingBackground from '@/assets/images/landing-background.png'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,6 +21,19 @@ const formData = reactive({
 })
 const clientFieldErrors = ref<Record<string, string>>({})
 
+const clearPasswordErrorIfValid = () => {
+  if (allCriteriaMet.value && clientFieldErrors.value.newPassword) {
+    delete clientFieldErrors.value.newPassword
+  }
+  if (
+    formData.confirmPassword &&
+    formData.newPassword === formData.confirmPassword &&
+    clientFieldErrors.value.confirmPassword
+  ) {
+    delete clientFieldErrors.value.confirmPassword
+  }
+}
+
 const passwordCriteria = computed(() => ({
   hasMinLength: formData.newPassword.length >= 8,
   hasUppercase: /[A-Z]/.test(formData.newPassword),
@@ -31,6 +45,8 @@ const passwordCriteria = computed(() => ({
 const allCriteriaMet = computed(() =>
   Object.values(passwordCriteria.value).every(Boolean)
 )
+
+watch(() => [formData.newPassword, formData.confirmPassword], clearPasswordErrorIfValid)
 
 const mergedFieldErrors = computed(() => ({
   ...serverFieldErrors.value,
@@ -80,11 +96,11 @@ const handleSubmit = async () => {
     <!-- Blurred background image -->
     <div
       class="absolute inset-0 bg-cover bg-center bg-no-repeat"
-      style="
-        background-image: url('/src/assets/images/landing-background.png');
-        filter: blur(8px);
-        transform: scale(1.1);
-      "
+      :style="{
+        backgroundImage: `url(${landingBackground})`,
+        filter: 'blur(8px)',
+        transform: 'scale(1.1)'
+      }"
     />
     <!-- Dark overlay -->
     <div class="absolute inset-0 bg-black/40" />
