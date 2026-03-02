@@ -251,6 +251,20 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestBodySize = 55 * 1024 * 1024; // 55 MB (50 MB file + headers)
 });
 
+// ========================================
+// GlitchTip Error Tracking (Sentry-compatible)
+// ========================================
+var sentryDsn = builder.Configuration["Sentry:Dsn"];
+if (!string.IsNullOrEmpty(sentryDsn))
+{
+    builder.WebHost.UseSentry(o =>
+    {
+        o.Dsn = sentryDsn;
+        o.TracesSampleRate = 0; // Disabled to conserve GlitchTip free tier quota (1K events/mo)
+        o.Environment = builder.Environment.EnvironmentName;
+    });
+}
+
 var app = builder.Build();
 
 // ========================================
