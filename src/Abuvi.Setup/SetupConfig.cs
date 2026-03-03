@@ -8,6 +8,7 @@ public class SetupConfig
     public string ConnectionString { get; init; } = null!;
     public string SeedDir { get; init; } = null!;
     public bool Confirm { get; init; }
+    public bool DryRun { get; init; }
 
     public bool IsProduction => Env == SetupEnv.Production;
 
@@ -26,6 +27,7 @@ public class SetupConfig
             ?? Path.Combine(AppContext.BaseDirectory, "seed");
 
         var confirm = args.Contains("--confirm");
+        var dryRun = args.Contains("--dry-run");
 
         return new SetupConfig
         {
@@ -34,7 +36,8 @@ public class SetupConfig
                 : SetupEnv.Dev,
             ConnectionString = connection,
             SeedDir = dir,
-            Confirm = confirm
+            Confirm = confirm,
+            DryRun = dryRun
         };
     }
 }

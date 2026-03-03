@@ -94,14 +94,11 @@ const handleSubmit = async () => {
 <template>
   <div class="relative flex min-h-screen items-center justify-center">
     <!-- Blurred background image -->
-    <div
-      class="absolute inset-0 bg-cover bg-center bg-no-repeat"
-      :style="{
-        backgroundImage: `url(${landingBackground})`,
-        filter: 'blur(8px)',
-        transform: 'scale(1.1)'
-      }"
-    />
+    <div class="absolute inset-0 bg-cover bg-center bg-no-repeat" :style="{
+      backgroundImage: `url(${landingBackground})`,
+      filter: 'blur(8px)',
+      transform: 'scale(1.1)'
+    }" />
     <!-- Dark overlay -->
     <div class="absolute inset-0 bg-black/40" />
 
@@ -124,11 +121,8 @@ const handleSubmit = async () => {
           <Message severity="success" :closable="false">
             Tu contraseña ha sido restablecida exitosamente.
           </Message>
-          <RouterLink
-            to="/"
-            class="text-center text-sm text-primary-600 hover:text-primary-700 hover:underline"
-            data-testid="login-link"
-          >
+          <RouterLink to="/" class="text-center text-sm text-primary-600 hover:text-primary-700 hover:underline"
+            data-testid="login-link">
             Iniciar Sesión
           </RouterLink>
         </div>
@@ -150,18 +144,10 @@ const handleSubmit = async () => {
               <label for="newPassword" class="text-sm font-medium text-gray-700">
                 Nueva Contraseña *
               </label>
-              <Password
-                id="newPassword"
-                v-model="formData.newPassword"
-                toggle-mask
-                :feedback="false"
-                placeholder="Introduce tu nueva contraseña"
-                :invalid="!!mergedFieldErrors.newPassword"
-                :disabled="loading"
-                input-class="w-full"
-                :input-props="{ autocomplete: 'new-password' }"
-                data-testid="new-password-input"
-              />
+              <Password id="newPassword" v-model="formData.newPassword" toggle-mask :feedback="false"
+                placeholder="Introduce tu nueva contraseña" :invalid="!!mergedFieldErrors.newPassword"
+                :disabled="loading" input-class="w-full" :input-props="{ autocomplete: 'new-password' }"
+                data-testid="new-password-input" />
               <small v-if="mergedFieldErrors.newPassword" class="text-red-500">
                 {{ mergedFieldErrors.newPassword }}
               </small>
@@ -190,31 +176,17 @@ const handleSubmit = async () => {
               <label for="confirmPassword" class="text-sm font-medium text-gray-700">
                 Confirmar Contraseña *
               </label>
-              <Password
-                id="confirmPassword"
-                v-model="formData.confirmPassword"
-                toggle-mask
-                :feedback="false"
-                placeholder="Repite la contraseña"
-                :invalid="!!mergedFieldErrors.confirmPassword"
-                :disabled="loading"
-                input-class="w-full"
-                :input-props="{ autocomplete: 'new-password' }"
-                data-testid="confirm-password-input"
-              />
+              <Password id="confirmPassword" v-model="formData.confirmPassword" toggle-mask :feedback="false"
+                placeholder="Repite la contraseña" :invalid="!!mergedFieldErrors.confirmPassword" :disabled="loading"
+                input-class="w-full" :input-props="{ autocomplete: 'new-password' }"
+                data-testid="confirm-password-input" />
               <small v-if="mergedFieldErrors.confirmPassword" class="text-red-500">
                 {{ mergedFieldErrors.confirmPassword }}
               </small>
             </div>
 
-            <Button
-              type="submit"
-              label="Restablecer Contraseña"
-              :loading="loading"
-              :disabled="loading"
-              class="w-full"
-              data-testid="submit-button"
-            />
+            <Button type="submit" label="Restablecer Contraseña" :loading="loading" :disabled="loading" class="w-full"
+              data-testid="submit-button" />
           </form>
         </div>
 

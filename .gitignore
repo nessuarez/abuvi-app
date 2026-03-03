@@ -443,3 +443,6 @@ __pycache__/
 *.pyc
 .venv/
 nul
+
+# Setup tool logs
+logs/
