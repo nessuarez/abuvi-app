@@ -149,3 +149,50 @@ scp -r ./publish/setup/* user@your-vps:~/abuvi-setup/
 | `setup` | Import only (no reset) | Skips duplicates | Only on empty tables |
 | `reset` | Wipe all data, re-seed admin | Free | `--confirm` + "YES" |
 | `import <entity>` | Import a single CSV | Skips duplicates | Only on empty table |
+
+### Global flags
+
+| Flag | Description |
+|---|---|
+| `--dry-run` | Run full pipeline (parse, validate, map) without saving. Prints a report of what would happen. Safe for repeated use. |
+
+---
+
+## 7. Logging
+
+The setup tool writes structured logs to two destinations:
+
+- **Console**: Colored output via Serilog
+- **File**: `logs/setup-YYYYMMDD.log` in the tool's directory (daily rolling, 31-day retention)
+
+### Changing log level
+
+Set the `SETUP_LOG_LEVEL` environment variable before running:
+
+```bash
+export SETUP_LOG_LEVEL=Debug
+./Abuvi.Setup setup --env=dev
+```
+
+Valid levels: `Verbose`, `Debug`, `Information` (default), `Warning`, `Error`, `Fatal`
+
+---
+
+## 8. Dry-run mode
+
+Preview what the import would do without writing to the database:
+
+```bash
+./Abuvi.Setup setup \
+  --env=production \
+  --connection="Host=...;Database=...;Username=...;Password=..." \
+  --dir=./seed/ \
+  --dry-run
+```
+
+- Parses all CSV files and validates every row
+- Checks for duplicates and resolves FK references
+- Reports what would be imported, skipped, or fail
+- **No data is written** — uses a transaction that is always rolled back
+- Does not require `--confirm` even in production mode
+- Exit code is always 0 (it's a report, not an action)

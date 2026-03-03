@@ -2,6 +2,7 @@ namespace Abuvi.Setup;
 
 using Abuvi.API.Data;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 public class SafetyGuard(AbuviDbContext db, SetupConfig config)
 {
@@ -11,26 +12,24 @@ public class SafetyGuard(AbuviDbContext db, SetupConfig config)
     /// </summary>
     public bool EnsureResetAllowed()
     {
+        if (config.DryRun) return true;
         if (!config.IsProduction) return true;
 
         if (!config.Confirm)
         {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.Error.WriteLine(
-                "PRODUCTION RESET BLOCKED: this will DELETE ALL DATA.");
-            Console.Error.WriteLine(
-                "Add --confirm flag to proceed: dotnet run reset --env=production --confirm");
-            Console.ResetColor();
+            Log.Error("PRODUCTION RESET BLOCKED: this will DELETE ALL DATA");
+            Log.Error("Add --confirm flag to proceed: dotnet run reset --env=production --confirm");
             return false;
         }
 
+        Log.Warning("Production reset confirmation required");
         Console.ForegroundColor = ConsoleColor.Red;
         Console.Write("You are about to RESET a PRODUCTION database. Type 'YES' to confirm: ");
         Console.ResetColor();
         var input = Console.ReadLine()?.Trim();
         if (input != "YES")
         {
-            Console.Error.WriteLine("Aborted.");
+            Log.Warning("Reset aborted by user");
             return false;
         }
 
@@ -43,6 +42,7 @@ public class SafetyGuard(AbuviDbContext db, SetupConfig config)
     /// </summary>
     public async Task<bool> EnsureImportAllowedAsync(string entity, CancellationToken ct = default)
     {
+        if (config.DryRun) return true;
         if (!config.IsProduction) return true;
 
         var hasData = entity.ToLowerInvariant() switch
@@ -57,12 +57,8 @@ public class SafetyGuard(AbuviDbContext db, SetupConfig config)
 
         if (hasData)
         {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.Error.WriteLine(
-                $"  {entity}: BLOCKED — table already has data (production mode).");
-            Console.Error.WriteLine(
-                "  Use 'reset' first or switch to --env=dev for incremental imports.");
-            Console.ResetColor();
+            Log.Error("{Entity}: BLOCKED — table already has data (production mode)", entity);
+            Log.Error("Use 'reset' first or switch to --env=dev for incremental imports");
             return false;
         }
 
