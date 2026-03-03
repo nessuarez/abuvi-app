@@ -1,0 +1,24 @@
+{
+  "fileName": "family-units.csv",
+  "separator": ",",
+  "encoding": "UTF-8",
+  "columns": [
+    {
+      "name": "name",
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    {
+      "name": "representativeEmail",
+      "type": "string",
+      "required": true,
+      "references": "users.csv:email",
+      "notes": "Must match an existing User.Email in the DB. Case-insensitive lookup."
+    }
+  ],
+  "constraints": {
+    "uniqueColumns": ["name"],
+    "dependsOn": ["users.csv"]
+  }
+}
