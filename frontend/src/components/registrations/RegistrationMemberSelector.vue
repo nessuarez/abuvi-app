@@ -4,7 +4,7 @@ import Checkbox from 'primevue/checkbox'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
-import InputText from 'primevue/inputtext'
+
 import type { FamilyMemberResponse, FamilyRelationship } from '@/types/family-unit'
 import { FamilyRelationshipLabels } from '@/types/family-unit'
 import type { CampEdition } from '@/types/camp-edition'
