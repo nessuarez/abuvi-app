@@ -244,9 +244,6 @@ This approach also passes user identity metadata to Userback, making feedback su
 - [ ] Frontend errors are automatically captured and visible in GlitchTip dashboard
 - [ ] Backend exceptions are automatically captured and visible in GlitchTip dashboard
 - [ ] Performance tracing is disabled (`tracesSampleRate: 0`) to conserve free tier quota
-- [ ] Userback project domains are configured (localhost + production domain)
-- [ ] At least one Userback feedback widget is set to Live status
-- [ ] Userback "Verify Domains" confirms successful installation
 - [ ] Userback widget is visible on the frontend for authenticated users
 - [ ] Users can annotate screenshots and submit visual feedback via Userback
 - [ ] Feedback submissions appear in the Userback dashboard
@@ -267,4 +264,3 @@ This approach also passes user identity metadata to Userback, making feedback su
 - [ ] Add GlitchTip access info to team documentation
 - [ ] Document how to triage Userback feedback within the 7-day window
 - [ ] Document migration path from GlitchTip cloud to self-hosted
-- [ ] Document Userback dashboard setup steps (domain configuration, widget activation, verification)
