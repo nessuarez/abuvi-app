@@ -19,7 +19,7 @@ public class SeqHealthCheck(IConfiguration configuration, IHttpClientFactory htt
             using var client = httpClientFactory.CreateClient();
             client.Timeout = TimeSpan.FromSeconds(5);
 
-            var response = await client.GetAsync($"{serverUrl.TrimEnd('/')}/api", cancellationToken);
+            var response = await client.GetAsync($"{serverUrl.TrimEnd('/')}/health", cancellationToken);
 
             return response.IsSuccessStatusCode
                 ? HealthCheckResult.Healthy("Seq is reachable")

@@ -57,8 +57,8 @@ const tocEntries = [
         <div class="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-3">
           <dt class="text-sm font-semibold text-gray-700">Correo electrónico</dt>
           <dd class="text-sm text-gray-600 sm:col-span-2">
-            <a href="mailto:juntaabuvi@gmail.com" class="text-primary-600 hover:underline">
-              juntaabuvi@gmail.com
+            <a href="mailto:junta.abuvi@gmail.com" class="text-primary-600 hover:underline">
+              junta.abuvi@gmail.com
             </a>
           </dd>
         </div>
@@ -220,8 +220,8 @@ const tocEntries = [
       <div class="mt-6 rounded-lg bg-gray-50 p-4">
         <p class="text-sm text-gray-700">
           Para ejercer cualquiera de estos derechos, puede contactar con nosotros en:
-          <a href="mailto:juntaabuvi@gmail.com" class="font-medium text-primary-600 hover:underline">
-            juntaabuvi@gmail.com
+          <a href="mailto:junta.abuvi@gmail.com" class="font-medium text-primary-600 hover:underline">
+            junta.abuvi@gmail.com
           </a>
           adjuntando una copia de su documento de identidad.
         </p>
@@ -269,8 +269,8 @@ const tocEntries = [
       <p class="leading-relaxed text-gray-700">
         Para cualquier consulta sobre el tratamiento de sus datos personales, puede contactar
         con nosotros en:
-        <a href="mailto:juntaabuvi@gmail.com" class="font-medium text-primary-600 hover:underline">
-          juntaabuvi@gmail.com
+        <a href="mailto:junta.abuvi@gmail.com" class="font-medium text-primary-600 hover:underline">
+          junta.abuvi@gmail.com
         </a>
       </p>
       <p class="mt-4 leading-relaxed text-gray-700">

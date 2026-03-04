@@ -26,12 +26,10 @@ const toast = useToast()
 const confirm = useConfirm()
 const auth = useAuthStore()
 
-const { camps, loading, error, fetchCamps, createCamp, updateCamp, deleteCamp } = useCamps()
+const { camps, loading, error, fetchCamps, createCamp, deleteCamp } = useCamps()
 
 const showCreateDialog = ref(false)
-const showEditDialog = ref(false)
 const showImportDialog = ref(false)
-const selectedCamp = ref<Camp | null>(null)
 const searchQuery = ref('')
 const selectedStatus = ref<boolean | null>(null)
 const viewMode = ref<'table' | 'cards' | 'map'>('table')
@@ -70,8 +68,7 @@ const campLocations = computed(() => {
       latitude: camp.latitude as number,
       longitude: camp.longitude as number,
       name: camp.name,
-      rawAddress: camp.rawAddress ?? undefined
-      rawAddress: camp.rawAddress ?? undefined
+      location: camp.location ?? undefined
     }))
 })
 
@@ -92,13 +89,11 @@ onMounted(() => {
 })
 
 const handleCreate = () => {
-  selectedCamp.value = null
   showCreateDialog.value = true
 }
 
 const handleEdit = (camp: Camp) => {
-  selectedCamp.value = camp
-  showEditDialog.value = true
+  router.push({ name: 'camp-location-detail', params: { id: camp.id } })
 }
 
 const handleDelete = (camp: Camp) => {
@@ -158,27 +153,6 @@ const handleSubmitCreate = async (data: CreateCampRequest) => {
   }
 }
 
-const handleSubmitEdit = async (data: CreateCampRequest) => {
-  if (!selectedCamp.value) return
-
-  const result = await updateCamp(selectedCamp.value.id, { ...data, id: selectedCamp.value.id })
-  if (result) {
-    toast.add({
-      severity: 'success',
-      summary: 'Éxito',
-      detail: 'Campamento actualizado correctamente',
-      life: 3000
-    })
-    showEditDialog.value = false
-  } else {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: error.value || 'Error al actualizar campamento',
-      life: 5000
-    })
-  }
-}
 </script>
 
 <template>
@@ -309,12 +283,6 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
     <!-- Create Dialog -->
     <Dialog v-model:visible="showCreateDialog" header="Nuevo Campamento" modal class="w-full max-w-2xl">
       <CampLocationForm mode="create" @submit="handleSubmitCreate" @cancel="showCreateDialog = false" />
-    </Dialog>
-
-    <!-- Edit Dialog -->
-    <Dialog v-model:visible="showEditDialog" header="Editar Campamento" modal class="w-full max-w-2xl">
-      <CampLocationForm v-if="selectedCamp" mode="edit" :camp="selectedCamp" @submit="handleSubmitEdit"
-        @cancel="showEditDialog = false" />
     </Dialog>
 
   </div>

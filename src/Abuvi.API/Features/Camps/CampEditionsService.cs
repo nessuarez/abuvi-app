@@ -313,6 +313,24 @@ public class CampEditionsService
             ? edition.MaxCapacity.Value - registrationCount
             : (int?)null;
 
+        // Accommodation: edition override takes priority over camp-level value
+        var accommodationCapacity = edition.GetAccommodationCapacity()
+            ?? edition.Camp.GetAccommodationCapacity();
+
+        var calculatedTotalBedCapacity = accommodationCapacity?.CalculateTotalBedCapacity();
+        int? bedCapacity = calculatedTotalBedCapacity > 0 ? calculatedTotalBedCapacity : null;
+
+        var campPhotos = edition.Camp.Photos
+            .Select(p => new CampPhotoResponse(
+                p.Id, p.PhotoReference, p.PhotoUrl, p.Width, p.Height,
+                p.AttributionName, p.AttributionUrl, p.Description,
+                p.IsPrimary, p.DisplayOrder))
+            .ToList();
+
+        var extras = edition.Extras
+            .Select(x => x.ToResponse(currentQuantitySold: 0))
+            .ToList();
+
         return new CurrentCampEditionResponse(
             Id: edition.Id,
             CampId: edition.CampId,
@@ -339,7 +357,18 @@ public class CampEditionsService
             Notes: edition.Notes,
             Description: edition.Description,
             CreatedAt: edition.CreatedAt,
-            UpdatedAt: edition.UpdatedAt
+            UpdatedAt: edition.UpdatedAt,
+            CampDescription: edition.Camp.Description,
+            CampPhoneNumber: edition.Camp.PhoneNumber,
+            CampNationalPhoneNumber: edition.Camp.NationalPhoneNumber,
+            CampWebsiteUrl: edition.Camp.WebsiteUrl,
+            CampGoogleMapsUrl: edition.Camp.GoogleMapsUrl,
+            CampGoogleRating: edition.Camp.GoogleRating,
+            CampGoogleRatingCount: edition.Camp.GoogleRatingCount,
+            CampPhotos: campPhotos,
+            AccommodationCapacity: accommodationCapacity,
+            CalculatedTotalBedCapacity: bedCapacity,
+            Extras: extras
         );
     }
 

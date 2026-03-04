@@ -196,6 +196,60 @@ GooglePlaces__ApiKey=${GOOGLE_PLACES_API_KEY}
 
 ---
 
+### `BlobStorage`
+
+S3-compatible object storage used for media uploads (camp photos, documents, audio, video). The application uses Hetzner Object Storage but any S3-compatible provider (AWS S3, MinIO, etc.) works.
+
+```json
+"BlobStorage": {
+  "BucketName": "abuvi-media",
+  "Endpoint": "https://fsn1.your-objectstorage.com",
+  "Region": "fsn1",
+  "AccessKeyId": "",
+  "SecretAccessKey": "",
+  "PublicBaseUrl": "https://abuvi-media.fsn1.your-objectstorage.com",
+  "MaxFileSizeBytes": 52428800,
+  "AllowedImageExtensions": [".jpg", ".jpeg", ".png", ".webp", ".gif"],
+  "AllowedVideoExtensions": [".mp4", ".mov", ".avi", ".webm"],
+  "AllowedAudioExtensions": [".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac"],
+  "AllowedDocumentExtensions": [".pdf", ".doc", ".docx"],
+  "ThumbnailWidthPx": 400,
+  "ThumbnailHeightPx": 400,
+  "StorageQuotaBytes": 53687091200,
+  "StorageWarningThresholdPct": 80,
+  "StorageCriticalThresholdPct": 95
+}
+```
+
+| Field | Description |
+|---|---|
+| `BucketName` | S3 bucket name. Must exist before the application starts. |
+| `Endpoint` | S3-compatible API endpoint URL. |
+| `Region` | Storage region (e.g. `fsn1` for Hetzner Falkenstein). |
+| `AccessKeyId` | S3 access key — **secret, do not commit**. |
+| `SecretAccessKey` | S3 secret key — **secret, do not commit**. |
+| `PublicBaseUrl` | Public URL prefix used to build download links for uploaded files. |
+| `MaxFileSizeBytes` | Maximum upload size in bytes. Default is 50 MB (52428800). Kestrel is configured to allow 55 MB to account for multipart headers. |
+| `AllowedImageExtensions` | Accepted image file extensions. |
+| `AllowedVideoExtensions` | Accepted video file extensions. |
+| `AllowedAudioExtensions` | Accepted audio file extensions. |
+| `AllowedDocumentExtensions` | Accepted document file extensions. |
+| `ThumbnailWidthPx` / `ThumbnailHeightPx` | Dimensions for auto-generated image thumbnails (WebP format). |
+| `StorageQuotaBytes` | Total storage quota in bytes. `0` disables quota checking. Default is 50 GB. |
+| `StorageWarningThresholdPct` | Percentage of quota at which the health check returns a warning. |
+| `StorageCriticalThresholdPct` | Percentage of quota at which the health check returns critical / degraded. |
+
+> **Secrets** — `AccessKeyId` and `SecretAccessKey` must not be committed. Supply them via environment variables:
+>
+> ```
+> BlobStorage__AccessKeyId=${BLOB_STORAGE_ACCESS_KEY_ID}
+> BlobStorage__SecretAccessKey=${BLOB_STORAGE_SECRET_ACCESS_KEY}
+> ```
+
+> **Health check** — A blob storage health check is registered under the name `blob-storage` with failure status `Degraded`. It verifies bucket accessibility and monitors storage quota usage against the configured thresholds.
+
+---
+
 ### `FrontendUrl`
 
 ```json
@@ -228,11 +282,17 @@ services:
       - Seq__ServerUrl=http://seq:5341
       - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=abuvi;Username=abuvi_user;Password=${DB_PASSWORD}
 
+      # Blob storage
+      - BlobStorage__Endpoint=https://fsn1.your-objectstorage.com
+      - BlobStorage__PublicBaseUrl=https://abuvi-media.fsn1.your-objectstorage.com
+
       # Secrets — values come from .env file or secret manager
       - Jwt__Secret=${JWT_SECRET}
       - Encryption__Key=${ENCRYPTION_KEY}
       - Resend__ApiKey=${RESEND_API_KEY}
       - GooglePlaces__ApiKey=${GOOGLE_PLACES_API_KEY}
+      - BlobStorage__AccessKeyId=${BLOB_STORAGE_ACCESS_KEY_ID}
+      - BlobStorage__SecretAccessKey=${BLOB_STORAGE_SECRET_ACCESS_KEY}
 ```
 
 The `${...}` values should come from a `.env` file (not committed) or a secrets manager (e.g. Docker Secrets, AWS Secrets Manager, Doppler).
@@ -325,4 +385,12 @@ Users → FamilyUnits → FamilyMembers → Camps → CampEditions
 | `Encryption:Key` | **Yes** | **Yes** | Never rotate once data exists |
 | `GooglePlaces:ApiKey` | **Yes** | **Yes** | Supply via env var |
 | `GooglePlaces:AutocompleteUrl` / `DetailsUrl` | No | No | Stable Google URLs |
+| `BlobStorage:BucketName` | No | No | Already set to `abuvi-media` |
+| `BlobStorage:Endpoint` | No | Yes | S3-compatible endpoint URL |
+| `BlobStorage:Region` | No | No | Matches the endpoint region |
+| `BlobStorage:AccessKeyId` | **Yes** | **Yes** | Supply via env var |
+| `BlobStorage:SecretAccessKey` | **Yes** | **Yes** | Supply via env var |
+| `BlobStorage:PublicBaseUrl` | No | Yes | Public download URL prefix |
+| `BlobStorage:MaxFileSizeBytes` | No | No | Default 50 MB |
+| `BlobStorage:StorageQuotaBytes` | No | No | Default 50 GB; 0 disables |
 | `FrontendUrl` | No | Yes | Real frontend URL |

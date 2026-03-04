@@ -71,6 +71,7 @@ No Pinia store or composable needed — legal pages are purely static content wi
 - **File**: `frontend/src/components/legal/LegalPageLayout.vue`
 - **Action**: Create the shared layout wrapper for all legal pages
 - **Component Signature**:
+
   ```typescript
   interface Props {
     title: string
@@ -79,6 +80,7 @@ No Pinia store or composable needed — legal pages are purely static content wi
     showPrintButton?: boolean // default: true
   }
   ```
+
 - **Implementation Steps**:
   1. Create `frontend/src/components/legal/` directory
   2. Create `LegalPageLayout.vue` with `<script setup lang="ts">`
@@ -106,6 +108,7 @@ No Pinia store or composable needed — legal pages are purely static content wi
 - **File**: `frontend/src/components/legal/TableOfContents.vue`
 - **Action**: Static prop-driven TOC (entries passed as data, no DOM scanning for mock-up simplicity)
 - **Component Signature**:
+
   ```typescript
   interface TocEntry {
     id: string     // anchor ID matching h2/h3 id attributes in content
@@ -117,6 +120,7 @@ No Pinia store or composable needed — legal pages are purely static content wi
     entries: TocEntry[]
   }
   ```
+
 - **Implementation Steps**:
   1. Accept `entries` prop array
   2. Render a `<nav aria-label="Tabla de contenidos">` with an `<ol>` list
@@ -139,6 +143,7 @@ No Pinia store or composable needed — legal pages are purely static content wi
 - **Implementation Steps**:
 
   **LegalPageLayout.test.ts** — test cases:
+
   ```
   - should render the page title in h1
   - should render the last updated date
@@ -151,6 +156,7 @@ No Pinia store or composable needed — legal pages are purely static content wi
   ```
 
   **TableOfContents.test.ts** — test cases:
+
   ```
   - should render nav with aria-label "Tabla de contenidos"
   - should render one link per entry
@@ -172,6 +178,7 @@ No Pinia store or composable needed — legal pages are purely static content wi
 - **Implementation Steps**:
   1. Add a `/legal` parent route with children array (or flat routes — flat is simpler)
   2. Add four routes as flat public routes:
+
   ```typescript
   // Public legal routes
   {
@@ -199,7 +206,8 @@ No Pinia store or composable needed — legal pages are purely static content wi
     meta: { title: 'ABUVI | Transparencia', requiresAuth: false }
   },
   ```
-  3. No route guard changes needed — routes without `requiresAuth: true` already pass through the guard
+
+  1. No route guard changes needed — routes without `requiresAuth: true` already pass through the guard
 
 - **Implementation Notes**:
   - Lazy-load all legal pages with dynamic imports for performance
@@ -223,7 +231,7 @@ No Pinia store or composable needed — legal pages are purely static content wi
      - `{ id: 'legislacion', label: '5. Legislación Aplicable y Jurisdicción', level: 1 }`
   4. Wrap content in `<LegalPageLayout title="Aviso Legal" last-updated="Febrero 2026" :show-toc="true">`
   5. Implement each section with placeholder content structured per the spec:
-     - **Section 1** (`id="identificacion"`): Organization data table (Denominación: Asociación ABUVI, CIF: G-79013322, Domicilio: C/BUTRÓN 27, 28022 Madrid, Email: juntaabuvi@gmail.com, Hosting: NAMECHEAP INC.)
+     - **Section 1** (`id="identificacion"`): Organization data table (Denominación: Asociación ABUVI, CIF: G-79013322, Domicilio: C/BUTRÓN 27, 28022 Madrid, Email: <junta.abuvi@gmail.com>, Hosting: NAMECHEAP INC.)
      - **Section 2** (`id="objeto"`): Placeholder paragraph about website purpose
      - **Section 3** (`id="propiedad-intelectual"`): Placeholder copyright notice
      - **Section 4** (`id="responsabilidad"`): Placeholder liability disclaimers
@@ -257,7 +265,7 @@ No Pinia store or composable needed — legal pages are purely static content wi
   4. Implement all 9 GDPR-required sections with placeholder content:
      - **Section 6** (User Rights) is the most important: use `<ul>` list for the 7 GDPR rights
      - **Section 9** must include mention of AEPD (Agencia Española de Protección de Datos)
-  5. Contact email for exercising rights: `juntaabuvi@gmail.com`
+  5. Contact email for exercising rights: `junta.abuvi@gmail.com`
 - **Implementation Notes**: Content is placeholder. Add a `<Message severity="warn">` PrimeVue component at top noting "Contenido pendiente de revisión legal" for the mock-up
 
 ---
@@ -323,6 +331,7 @@ No Pinia store or composable needed — legal pages are purely static content wi
 - **Implementation Steps**:
   1. Create `frontend/cypress/e2e/legal-pages.cy.ts`
   2. Test cases:
+
      ```
      - should navigate to /legal/notice and display heading "Aviso Legal"
      - should navigate to /legal/privacy and display heading "Política de Privacidad"
@@ -335,6 +344,7 @@ No Pinia store or composable needed — legal pages are purely static content wi
      - should display table of contents on Aviso Legal page
      - should anchor navigation work (TOC link scrolls to section)
      ```
+
   3. Add data-testid attributes to key elements in the view components:
      - `data-testid="legal-page-title"` on `<h1>`
      - `data-testid="legal-last-updated"` on last updated paragraph
@@ -380,6 +390,7 @@ No Pinia store or composable needed — legal pages are purely static content wi
 ## Testing Checklist
 
 ### Unit Tests (Vitest)
+
 - [ ] `LegalPageLayout.vue` — title prop renders in h1
 - [ ] `LegalPageLayout.vue` — lastUpdated prop renders
 - [ ] `LegalPageLayout.vue` — slot content renders
@@ -392,6 +403,7 @@ No Pinia store or composable needed — legal pages are purely static content wi
 - [ ] `TableOfContents.vue` — handles empty entries array
 
 ### Cypress E2E Tests
+
 - [ ] All four `/legal/*` routes load without 404
 - [ ] Pages accessible without authentication
 - [ ] "Volver al inicio" link navigates correctly
@@ -400,6 +412,7 @@ No Pinia store or composable needed — legal pages are purely static content wi
 - [ ] Print button is visible
 
 ### Manual Verification
+
 - [ ] Footer links in AppFooter navigate to correct pages (test when authenticated)
 - [ ] Pages render correctly on mobile (375px)
 - [ ] Pages render correctly on tablet (768px)
@@ -412,6 +425,7 @@ No Pinia store or composable needed — legal pages are purely static content wi
 ## Error Handling Patterns
 
 These pages have no API calls. Error handling only applies to:
+
 - **Router 404**: If a user navigates to an undefined `/legal/*` path — the existing router handles this (falls through)
 - **Print failure**: `window.print()` is native and cannot fail silently; no extra handling needed
 
@@ -477,6 +491,7 @@ These pages have no API calls. Error handling only applies to:
 ### No New NPM Packages Required
 
 All functionality uses:
+
 - Vue Router (already installed) — for RouterLink and navigation
 - PrimeVue (already installed) — Accordion, DataTable, Card, Button, Message
 - Tailwind CSS (already installed) — all styling

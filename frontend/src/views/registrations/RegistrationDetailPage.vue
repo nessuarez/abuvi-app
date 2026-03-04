@@ -124,13 +124,8 @@ onMounted(async () => {
       <template v-else-if="registration">
         <!-- Header -->
         <div class="mb-6 flex items-start gap-3">
-          <Button
-            icon="pi pi-arrow-left"
-            severity="secondary"
-            text
-            @click="router.push({ name: 'registrations' })"
-            aria-label="Volver a mis inscripciones"
-          />
+          <Button icon="pi pi-arrow-left" severity="secondary" text @click="router.push({ name: 'registrations' })"
+            aria-label="Volver a mis inscripciones" />
           <div class="flex-1">
             <div class="flex flex-wrap items-center gap-3">
               <h1 class="text-2xl font-bold text-gray-900">
@@ -155,10 +150,8 @@ onMounted(async () => {
         </div>
 
         <!-- Preference fields -->
-        <div
-          v-if="registration.specialNeeds || registration.campatesPreference"
-          class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4"
-        >
+        <div v-if="registration.specialNeeds || registration.campatesPreference"
+          class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
           <h2 class="mb-3 text-sm font-semibold text-gray-700">Informacion adicional</h2>
           <dl class="space-y-2 text-sm">
             <div v-if="registration.specialNeeds" class="flex flex-col gap-0.5">
@@ -173,10 +166,7 @@ onMounted(async () => {
         </div>
 
         <!-- Accommodation preferences -->
-        <div
-          v-if="accommodationPrefs.length > 0"
-          class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4"
-        >
+        <div v-if="accommodationPrefs.length > 0" class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
           <h2 class="mb-2 text-sm font-semibold text-gray-700">Preferencias de alojamiento</h2>
           <ol class="list-inside list-decimal space-y-1 text-sm text-gray-800">
             <li v-for="pref in accommodationPrefs" :key="pref.campEditionAccommodationId">
@@ -199,11 +189,8 @@ onMounted(async () => {
           <h2 class="mb-3 text-base font-semibold text-gray-900">Pagos</h2>
 
           <div v-if="registration.payments.length > 0" class="space-y-2">
-            <div
-              v-for="payment in registration.payments"
-              :key="payment.id"
-              class="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3"
-            >
+            <div v-for="payment in registration.payments" :key="payment.id"
+              class="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3">
               <div>
                 <span class="text-sm font-medium text-gray-900">
                   {{ PAYMENT_METHOD_LABELS[payment.method] ?? payment.method }}
@@ -217,7 +204,8 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div v-else class="rounded-lg border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-400">
+          <div v-else
+            class="rounded-lg border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-400">
             Sin pagos registrados
           </div>
 
@@ -235,22 +223,12 @@ onMounted(async () => {
 
         <!-- Cancel action -->
         <div v-if="isRepresentative && canCancel" class="flex justify-end">
-          <Button
-            label="Cancelar inscripción"
-            severity="danger"
-            outlined
-            icon="pi pi-times"
-            @click="showCancelDialog = true"
-            data-testid="cancel-registration-btn"
-          />
+          <Button label="Cancelar inscripción" severity="danger" outlined icon="pi pi-times"
+            @click="showCancelDialog = true" data-testid="cancel-registration-btn" />
         </div>
 
-        <RegistrationCancelDialog
-          v-model:visible="showCancelDialog"
-          :registration-id="registrationId"
-          :loading="cancelling"
-          @confirm="handleCancel"
-        />
+        <RegistrationCancelDialog v-model:visible="showCancelDialog" :registration-id="registrationId"
+          :loading="cancelling" @confirm="handleCancel" />
       </template>
     </div>
   </Container>

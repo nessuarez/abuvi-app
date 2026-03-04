@@ -1580,4 +1580,265 @@ public class CampEditionsServiceTests
     }
 
     #endregion
+
+    #region GetCurrentAsync Tests
+
+    private static CampEdition CreateEditionWithCamp(
+        CampEditionStatus status = CampEditionStatus.Open,
+        int year = 2026,
+        string? accommodationJsonEdition = null,
+        string? accommodationJsonCamp = null,
+        List<CampPhoto>? photos = null,
+        List<CampEditionExtra>? extras = null)
+    {
+        var camp = new Camp
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Camp",
+            Description = "A great camp",
+            PhoneNumber = "+34918691311",
+            NationalPhoneNumber = "918 691 311",
+            WebsiteUrl = "https://camp.test",
+            GoogleMapsUrl = "https://maps.google.com/?cid=123",
+            GoogleRating = 4.5m,
+            GoogleRatingCount = 100,
+            AccommodationCapacityJson = accommodationJsonCamp,
+            Photos = photos ?? new List<CampPhoto>(),
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            IsActive = true
+        };
+
+        return new CampEdition
+        {
+            Id = Guid.NewGuid(),
+            CampId = camp.Id,
+            Camp = camp,
+            Year = year,
+            StartDate = new DateTime(year, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(year, 7, 10, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult = 180m,
+            PricePerChild = 120m,
+            PricePerBaby = 60m,
+            Status = status,
+            MaxCapacity = 100,
+            AccommodationCapacityJson = accommodationJsonEdition,
+            Extras = extras ?? new List<CampEditionExtra>()
+        };
+    }
+
+    [Fact]
+    public async Task GetCurrentAsync_WhenNoEditionExists_ReturnsNull()
+    {
+        // Arrange
+        _repository.GetCurrentAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns((CampEdition?)null);
+
+        // Act
+        var result = await _sut.GetCurrentAsync();
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetCurrentAsync_WithCampContactData_MapsCampFields()
+    {
+        // Arrange
+        var edition = CreateEditionWithCamp();
+        _repository.GetCurrentAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(edition);
+
+        // Act
+        var result = await _sut.GetCurrentAsync();
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.CampDescription.Should().Be("A great camp");
+        result.CampPhoneNumber.Should().Be("+34918691311");
+        result.CampNationalPhoneNumber.Should().Be("918 691 311");
+        result.CampWebsiteUrl.Should().Be("https://camp.test");
+        result.CampGoogleMapsUrl.Should().Be("https://maps.google.com/?cid=123");
+        result.CampGoogleRating.Should().Be(4.5m);
+        result.CampGoogleRatingCount.Should().Be(100);
+    }
+
+    [Fact]
+    public async Task GetCurrentAsync_WithCampPhotos_MapsPhotosOrderedPrimaryFirst()
+    {
+        // Arrange
+        var photos = new List<CampPhoto>
+        {
+            new() { Id = Guid.NewGuid(), IsPrimary = true, DisplayOrder = 0, AttributionName = "A", Width = 100, Height = 100 },
+            new() { Id = Guid.NewGuid(), IsPrimary = false, DisplayOrder = 1, AttributionName = "B", Width = 100, Height = 100 },
+            new() { Id = Guid.NewGuid(), IsPrimary = false, DisplayOrder = 2, AttributionName = "C", Width = 100, Height = 100 }
+        };
+        var edition = CreateEditionWithCamp(photos: photos);
+        _repository.GetCurrentAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(edition);
+
+        // Act
+        var result = await _sut.GetCurrentAsync();
+
+        // Assert
+        result!.CampPhotos.Should().HaveCount(3);
+        result.CampPhotos[0].IsPrimary.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetCurrentAsync_WithNoCampPhotos_ReturnsEmptyPhotosList()
+    {
+        // Arrange
+        var edition = CreateEditionWithCamp(photos: new List<CampPhoto>());
+        _repository.GetCurrentAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(edition);
+
+        // Act
+        var result = await _sut.GetCurrentAsync();
+
+        // Assert
+        result!.CampPhotos.Should().NotBeNull();
+        result.CampPhotos.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetCurrentAsync_WithEditionAccommodation_UsesEditionOverCamp()
+    {
+        // Arrange
+        var editionJson = """{"privateRoomsWithBathroom": 5}""";
+        var campJson    = """{"privateRoomsWithBathroom": 2}""";
+        var edition = CreateEditionWithCamp(
+            accommodationJsonEdition: editionJson,
+            accommodationJsonCamp: campJson);
+        _repository.GetCurrentAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(edition);
+
+        // Act
+        var result = await _sut.GetCurrentAsync();
+
+        // Assert
+        result!.AccommodationCapacity.Should().NotBeNull();
+        result.AccommodationCapacity!.PrivateRoomsWithBathroom.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task GetCurrentAsync_WithoutEditionAccommodation_UsesCampAccommodation()
+    {
+        // Arrange
+        var campJson = """{"privateRoomsWithBathroom": 3}""";
+        var edition = CreateEditionWithCamp(
+            accommodationJsonEdition: null,
+            accommodationJsonCamp: campJson);
+        _repository.GetCurrentAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(edition);
+
+        // Act
+        var result = await _sut.GetCurrentAsync();
+
+        // Assert
+        result!.AccommodationCapacity!.PrivateRoomsWithBathroom.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task GetCurrentAsync_WithNoAccommodation_ReturnsNullAccommodation()
+    {
+        // Arrange
+        var edition = CreateEditionWithCamp(
+            accommodationJsonEdition: null,
+            accommodationJsonCamp: null);
+        _repository.GetCurrentAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(edition);
+
+        // Act
+        var result = await _sut.GetCurrentAsync();
+
+        // Assert
+        result!.AccommodationCapacity.Should().BeNull();
+        result.CalculatedTotalBedCapacity.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetCurrentAsync_WithAccommodation_ComputesBedCapacity()
+    {
+        // Arrange: 2 private rooms with bathroom (2*2=4) + 1 shared bathroom (1*2=2) = 6
+        var editionJson = """{"privateRoomsWithBathroom": 2, "privateRoomsSharedBathroom": 1}""";
+        var edition = CreateEditionWithCamp(accommodationJsonEdition: editionJson);
+        _repository.GetCurrentAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(edition);
+
+        // Act
+        var result = await _sut.GetCurrentAsync();
+
+        // Assert
+        result!.CalculatedTotalBedCapacity.Should().Be(6);
+    }
+
+    [Fact]
+    public async Task GetCurrentAsync_WithActiveExtras_MapsExtras()
+    {
+        // Arrange
+        var extras = new List<CampEditionExtra>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(), CampEditionId = Guid.NewGuid(), Name = "Kayak",
+                IsActive = true, Price = 20m, PricingType = PricingType.PerPerson,
+                PricingPeriod = PricingPeriod.OneTime, CreatedAt = DateTime.UtcNow
+            }
+        };
+        var edition = CreateEditionWithCamp(extras: extras);
+        _repository.GetCurrentAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(edition);
+
+        // Act
+        var result = await _sut.GetCurrentAsync();
+
+        // Assert
+        result!.Extras.Should().ContainSingle();
+        result.Extras[0].Name.Should().Be("Kayak");
+    }
+
+    [Fact]
+    public async Task GetCurrentAsync_WithNoActiveExtras_ReturnsEmptyExtrasList()
+    {
+        // Arrange
+        var edition = CreateEditionWithCamp(extras: new List<CampEditionExtra>());
+        _repository.GetCurrentAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(edition);
+
+        // Act
+        var result = await _sut.GetCurrentAsync();
+
+        // Assert
+        result!.Extras.Should().NotBeNull();
+        result.Extras.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetCurrentAsync_WithExtras_SetsCurrentQuantitySoldToZero()
+    {
+        // Arrange
+        var extras = new List<CampEditionExtra>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(), CampEditionId = Guid.NewGuid(), Name = "Kayak",
+                IsActive = true, Price = 20m, PricingType = PricingType.PerPerson,
+                PricingPeriod = PricingPeriod.OneTime, CreatedAt = DateTime.UtcNow
+            }
+        };
+        var edition = CreateEditionWithCamp(extras: extras);
+        _repository.GetCurrentAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(edition);
+
+        // Act
+        var result = await _sut.GetCurrentAsync();
+
+        // Assert
+        result!.Extras.Should().ContainSingle();
+        result.Extras[0].CurrentQuantitySold.Should().Be(0);
+    }
+
+    #endregion
 }

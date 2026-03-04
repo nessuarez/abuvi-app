@@ -274,10 +274,10 @@ const stats = [
         <p class="text-sm text-gray-700">
           <strong>Correo electrónico:</strong>
           <a
-            href="mailto:juntaabuvi@gmail.com"
+            href="mailto:junta.abuvi@gmail.com"
             class="ml-1 font-medium text-primary-600 hover:underline"
           >
-            juntaabuvi@gmail.com
+            junta.abuvi@gmail.com
           </a>
         </p>
         <p class="mt-2 text-sm text-gray-500">

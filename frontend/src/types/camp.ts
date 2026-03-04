@@ -37,7 +37,7 @@ export interface Camp {
 	id: string;
 	name: string;
 	description: string | null;
-	rawAddress: string | null;
+	location: string | null;
 	latitude: number | null;
 	longitude: number | null;
 	googlePlaceId: string | null;
@@ -106,7 +106,7 @@ export interface CampDetailResponse extends Camp {
 export interface CreateCampRequest {
 	name: string;
 	description: string | null;
-	rawAddress: string | null;
+	location: string | null;
 	latitude: number | null;
 	longitude: number | null;
 	googlePlaceId: string | null;
@@ -139,7 +139,7 @@ export interface CampLocation {
 	longitude: number;
 	name: string;
 	year?: number;
-	rawAddress?: string;
+	location?: string;
 	lastEditionYear?: number;
 }
 

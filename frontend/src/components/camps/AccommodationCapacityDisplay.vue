@@ -9,12 +9,12 @@ interface Props {
 
 defineProps<Props>()
 
-const facilityLabels: { key: keyof AccommodationCapacity; label: string }[] = [
-  { key: 'hasAdaptedMenu', label: 'Menú adaptado' },
-  { key: 'hasEnclosedDiningRoom', label: 'Comedor cerrado' },
-  { key: 'hasSwimmingPool', label: 'Piscina' },
-  { key: 'hasSportsCourt', label: 'Pista polideportiva' },
-  { key: 'hasForestArea', label: 'Pinar / zona natural' }
+const facilityLabels: { key: keyof AccommodationCapacity; label: string; icon: string }[] = [
+  { key: 'hasAdaptedMenu', label: 'Menú adaptado', icon: 'pi pi-apple' },
+  { key: 'hasEnclosedDiningRoom', label: 'Comedor cerrado', icon: 'pi pi-building' },
+  { key: 'hasSwimmingPool', label: 'Piscina', icon: 'pi pi-sun' },
+  { key: 'hasSportsCourt', label: 'Pista polideportiva', icon: 'pi pi-trophy' },
+  { key: 'hasForestArea', label: 'Pinar / zona natural', icon: 'pi pi-leaf' }
 ]
 </script>
 
@@ -121,8 +121,9 @@ const facilityLabels: { key: keyof AccommodationCapacity; label: string }[] = [
           <template v-for="f in facilityLabels" :key="f.key">
             <span
               v-if="capacity![f.key]"
-              class="rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700"
+              class="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700"
             >
+              <i :class="f.icon" class="text-xs"></i>
               {{ f.label }}
             </span>
           </template>

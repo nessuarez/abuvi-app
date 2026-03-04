@@ -1,4 +1,4 @@
-# API Endpoints Documentation
+****# API Endpoints Documentation
 
 This document describes the REST API endpoints for the ABUVI web application.
 
@@ -1091,13 +1091,70 @@ Returns the best available camp edition for the current user. Uses status-priori
     "registrationCount": 0,
     "availableSpots": 100,
     "notes": null,
+    "description": null,
     "createdAt": "2026-02-17T10:00:00Z",
-    "updatedAt": "2026-02-17T10:00:00Z"
+    "updatedAt": "2026-02-17T10:00:00Z",
+    "campDescription": "A beautiful pine forest camp near the Sierra de Guadarrama",
+    "campPhoneNumber": "+34918691311",
+    "campNationalPhoneNumber": "918 691 311",
+    "campWebsiteUrl": "https://camping-elpinar.es",
+    "campGoogleMapsUrl": "https://maps.google.com/?cid=123",
+    "campGoogleRating": 4.3,
+    "campGoogleRatingCount": 156,
+    "campPhotos": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "photoReference": "AUc7tXUr...",
+        "photoUrl": null,
+        "width": 1024,
+        "height": 768,
+        "attributionName": "John Doe",
+        "attributionUrl": "https://maps.google.com/...",
+        "description": null,
+        "isPrimary": true,
+        "displayOrder": 0
+      }
+    ],
+    "accommodationCapacity": {
+      "privateRoomsWithBathroom": 10,
+      "privateRoomsSharedBathroom": null,
+      "sharedRooms": null,
+      "bungalows": 5,
+      "campOwnedTents": null,
+      "memberTentAreaSquareMeters": null,
+      "memberTentCapacityEstimate": null,
+      "motorhomeSpots": null,
+      "notes": null
+    },
+    "calculatedTotalBedCapacity": 20,
+    "extras": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "campEditionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "name": "Kayak sessions",
+        "description": "1-hour guided kayak on the lake",
+        "price": 25.00,
+        "pricingType": "PerPerson",
+        "pricingPeriod": "OneTime",
+        "isRequired": false,
+        "isActive": true,
+        "maxQuantity": 20,
+        "currentQuantitySold": 0,
+        "createdAt": "2026-02-17T10:00:00Z",
+        "updatedAt": "2026-02-17T10:00:00Z"
+      }
+    ]
   }
 }
 ```
 
 > **Note:** `registrationCount` is always `0` and `availableSpots` equals `maxCapacity` until the Registrations feature is implemented.
+>
+> - `campPhotos` is ordered: primary photo first, then by `displayOrder` ascending. Empty array when no photos.
+> - `accommodationCapacity`: edition-level value takes priority over camp-level value. `null` when neither is set.
+> - `calculatedTotalBedCapacity`: computed from private rooms (2 beds/room) and shared rooms. `null` when no accommodation capacity.
+> - `extras`: only active extras are included, ordered by creation date. Empty array when none.
+> - `currentQuantitySold` is always `0` in this endpoint (placeholder until Registrations feature tracks purchases).
 
 **Error Responses:**
 
@@ -2452,6 +2509,114 @@ Get accommodation preferences for a registration, ordered by preference rank.
 **Error Responses:**
 
 - **404 Not Found**: Registration not found
+
+---
+
+## Blob Storage Endpoints
+
+Blob Storage endpoints manage file uploads to and deletions from the configured S3-compatible object store (Hetzner Object Storage). All upload operations are available to any authenticated user; delete and stats operations require Admin role.
+
+### POST /api/blobs/upload
+
+Uploads a file to object storage. Accepts `multipart/form-data`.
+
+**Authorization**: Any authenticated user (`Bearer` token required)
+
+**Request (multipart/form-data):**
+
+| Field               | Type    | Required | Description                                                                        |
+| ------------------- | ------- | -------- | ---------------------------------------------------------------------------------- |
+| `file`              | File    | Yes      | The file to upload (max 50 MB)                                                     |
+| `folder`            | string  | Yes      | Target folder — one of: `photos`, `media-items`, `camp-locations`, `camp-photos`  |
+| `contextId`         | GUID    | No       | Optional context entity ID scoped to the file path                                 |
+| `generateThumbnail` | boolean | No       | When `true` and the file is an image, a WebP thumbnail is generated (default: `false`) |
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "fileUrl": "https://abuvi-media.fsn1.your-objectstorage.com/photos/abc123/photo.jpg",
+    "thumbnailUrl": "https://abuvi-media.fsn1.your-objectstorage.com/photos/abc123/thumbs/photo.webp",
+    "fileName": "photo.jpg",
+    "contentType": "image/jpeg",
+    "sizeBytes": 204800
+  }
+}
+```
+
+`thumbnailUrl` is `null` when `generateThumbnail` is `false` or the file type does not support thumbnails (audio, video, documents).
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed — invalid folder, disallowed extension for the folder, or file exceeds maximum size.
+- **401 Unauthorized**: No valid Bearer token.
+- **413 Payload Too Large**: File exceeds the server-side body limit (55 MB including multipart headers).
+
+---
+
+### DELETE /api/blobs
+
+Deletes one or more objects from storage by their storage keys.
+
+**Authorization**: Admin role required
+
+**Request Body:**
+
+```json
+{
+  "blobKeys": [
+    "photos/abc123/photo.jpg",
+    "photos/abc123/thumbs/photo.webp"
+  ]
+}
+```
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **400 Bad Request**: `blobKeys` array is empty or null.
+- **401 Unauthorized**: No valid Bearer token.
+- **403 Forbidden**: Authenticated user does not have Admin role.
+
+---
+
+### GET /api/blobs/stats
+
+Returns storage usage statistics. Results are cached server-side for 5 minutes to avoid expensive bucket enumeration on every call.
+
+**Authorization**: Admin role required
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "totalObjects": 27,
+    "totalSizeBytes": 15728640,
+    "totalSizeHumanReadable": "15 MB",
+    "quotaBytes": 53687091200,
+    "usedPct": 0.029,
+    "freeBytes": 53671362560,
+    "byFolder": {
+      "photos": { "objects": 15, "sizeBytes": 8388608 },
+      "media-items": { "objects": 8, "sizeBytes": 5242880 },
+      "camp-locations": { "objects": 3, "sizeBytes": 1572864 },
+      "camp-photos": { "objects": 1, "sizeBytes": 524288 }
+    }
+  }
+}
+```
+
+`quotaBytes`, `usedPct`, and `freeBytes` are `null` when `StorageQuotaBytes` is not configured (set to 0).
+
+**Error Responses:**
+
+- **401 Unauthorized**: No valid Bearer token.
+- **403 Forbidden**: Authenticated user does not have Admin role.
 
 ---
 

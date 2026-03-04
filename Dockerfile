@@ -9,7 +9,8 @@ RUN dotnet restore Abuvi.API/Abuvi.API.csproj
 # Copy source and publish
 COPY src/Abuvi.API/ ./Abuvi.API/
 WORKDIR /src/Abuvi.API
-RUN dotnet publish -c Release -o /app/publish --no-restore
+RUN dotnet publish -c Release -o /app/publish --no-restore /p:ConcurrencyLevel=1 /maxcpucount:1
+
 
 # Runtime stage (smaller image, no SDK)
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble AS final
