@@ -3,16 +3,14 @@ namespace Abuvi.Setup;
 using Abuvi.API.Data;
 using Abuvi.Setup.Importers;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
-using Serilog;
 
-public class SeedRunner(AbuviDbContext db, SafetyGuard guard, bool dryRun = false)
+public class SeedRunner(AbuviDbContext db, SafetyGuard guard)
 {
     private static readonly Guid AdminId = new("00000000-0000-0000-0000-000000000001");
 
     public async Task ResetAsync()
     {
-        Log.Information("Resetting database...");
+        Console.WriteLine("Resetting database...");
 
         // Delete in FK-safe order (children before parents)
         await db.Payments.ExecuteDeleteAsync();
@@ -52,12 +50,14 @@ public class SeedRunner(AbuviDbContext db, SafetyGuard guard, bool dryRun = fals
             await db.SaveChangesAsync();
         }
 
-        Log.Information("Database reset completed");
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("Database reset completed.\n");
+        Console.ResetColor();
     }
 
     public async Task ImportAllAsync(string seedDir)
     {
-        Log.Information("Importing from: {SeedDir}", seedDir);
+        Console.WriteLine($"Importing from: {seedDir}\n");
 
         // Strict dependency order
         var importers = new (string file, string entity, string guardKey,
@@ -75,45 +75,23 @@ public class SeedRunner(AbuviDbContext db, SafetyGuard guard, bool dryRun = fals
                 f => new CampEditionImporter(db).ImportAsync(f)),
         };
 
-        IDbContextTransaction? transaction = null;
-        if (dryRun)
-            transaction = await db.Database.BeginTransactionAsync();
-
-        try
+        foreach (var (file, entity, guardKey, import) in importers)
         {
-            var results = new List<SeedResult>();
-
-            foreach (var (file, entity, guardKey, import) in importers)
+            var path = Path.Combine(seedDir, file);
+            if (!File.Exists(path))
             {
-                var path = Path.Combine(seedDir, file);
-                if (!File.Exists(path))
-                {
-                    Log.Warning("{Entity}: skipped (file not found: {File})", entity, file);
-                    continue;
-                }
-
-                if (!await guard.EnsureImportAllowedAsync(guardKey))
-                    continue;
-
-                var result = await import(path);
-                results.Add(result);
-                result.Print(dryRun);
+                Console.WriteLine($"  {entity}: skipped (file not found: {file})");
+                continue;
             }
 
-            if (dryRun)
-                PrintDryRunSummary(results);
-            else
-                Log.Information("Setup complete");
+            if (!await guard.EnsureImportAllowedAsync(guardKey))
+                continue;
+
+            var result = await import(path);
+            result.Print();
         }
-        finally
-        {
-            if (transaction != null)
-            {
-                await transaction.RollbackAsync();
-                await transaction.DisposeAsync();
-                Log.Information("Dry-run complete — all changes rolled back");
-            }
-        }
+
+        Console.WriteLine("\nSetup complete.");
     }
 
     public async Task ImportSingleAsync(string seedDir, string entity)
@@ -131,58 +109,23 @@ public class SeedRunner(AbuviDbContext db, SafetyGuard guard, bool dryRun = fals
         var path = Path.Combine(seedDir, file);
         if (!File.Exists(path))
         {
-            Log.Error("File not found: {Path}", path);
+            Console.Error.WriteLine($"File not found: {path}");
             return;
         }
 
         if (!await guard.EnsureImportAllowedAsync(guardKey))
             return;
 
-        IDbContextTransaction? transaction = null;
-        if (dryRun)
-            transaction = await db.Database.BeginTransactionAsync();
-
-        try
+        var result = entity.ToLowerInvariant() switch
         {
-            var result = entity.ToLowerInvariant() switch
-            {
-                "users"          => await new UserImporter(db).ImportAsync(path),
-                "family-units"   => await new FamilyUnitImporter(db).ImportAsync(path),
-                "family-members" => await new FamilyMemberImporter(db).ImportAsync(path),
-                "camps"          => await new CampImporter(db).ImportAsync(path),
-                "camp-editions"  => await new CampEditionImporter(db).ImportAsync(path),
-                _ => throw new ArgumentException($"Unknown entity: {entity}")
-            };
+            "users"          => await new UserImporter(db).ImportAsync(path),
+            "family-units"   => await new FamilyUnitImporter(db).ImportAsync(path),
+            "family-members" => await new FamilyMemberImporter(db).ImportAsync(path),
+            "camps"          => await new CampImporter(db).ImportAsync(path),
+            "camp-editions"  => await new CampEditionImporter(db).ImportAsync(path),
+            _ => throw new ArgumentException($"Unknown entity: {entity}")
+        };
 
-            result.Print(dryRun);
-
-            if (dryRun)
-                PrintDryRunSummary([result]);
-        }
-        finally
-        {
-            if (transaction != null)
-            {
-                await transaction.RollbackAsync();
-                await transaction.DisposeAsync();
-                Log.Information("Dry-run complete — all changes rolled back");
-            }
-        }
-    }
-
-    private static void PrintDryRunSummary(List<SeedResult> results)
-    {
-        Log.Information("=== DRY-RUN SUMMARY ===");
-        var totalRows = results.Sum(r => r.TotalRows);
-        var totalImported = results.Sum(r => r.Imported);
-        var totalSkipped = results.Sum(r => r.Skipped);
-        var totalFailed = results.Sum(r => r.Rows.Count(row => !row.Success));
-
-        Log.Information("Total entities: {Count}", results.Count);
-        Log.Information("Total rows: {Total}", totalRows);
-        Log.Information("Would import: {Imported}", totalImported);
-        Log.Information("Would skip: {Skipped}", totalSkipped);
-        Log.Information("Would fail: {Failed}", totalFailed);
-        Log.Information("=======================");
+        result.Print();
     }
 }

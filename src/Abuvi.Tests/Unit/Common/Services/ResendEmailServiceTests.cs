@@ -92,7 +92,7 @@ public class ResendEmailServiceTests
         // Assert
         await _resendClient.Received(1).SendEmailAsync(
             Arg.Is<EmailMessage>(m =>
-                m.Subject.Contains("Verifica tu correo") &&
+                m.Subject.Contains("Verify your email") &&
                 m.HtmlBody!.Contains(firstName) &&
                 m.HtmlBody.Contains(token)));
     }
@@ -194,7 +194,7 @@ public class ResendEmailServiceTests
         // Assert
         await _resendClient.Received(1).SendEmailAsync(
             Arg.Is<EmailMessage>(m =>
-                m.Subject.Contains("Bienvenido") &&
+                m.Subject.Contains("Welcome") &&
                 m.HtmlBody!.Contains(firstName)));
     }
 
@@ -234,7 +234,7 @@ public class ResendEmailServiceTests
         // Assert
         await _resendClient.Received(1).SendEmailAsync(
             Arg.Is<EmailMessage>(m =>
-                m.Subject.Contains("Restablece tu contraseña") &&
+                m.Subject.Contains("Reset your password") &&
                 m.HtmlBody!.Contains(resetToken)));
     }
 
@@ -261,156 +261,27 @@ public class ResendEmailServiceTests
     #region SendCampRegistrationConfirmationAsync Tests
 
     [Fact]
-    public async Task SendCampRegistrationConfirmationAsync_WithValidData_SendsEmail()
+    public async Task SendCampRegistrationConfirmationAsync_WithValidInputs_SendsEmailSuccessfully()
     {
         // Arrange
-        var data = CreateTestRegistrationEmailData();
-        _resendClient.SendEmailAsync(Arg.Any<EmailMessage>()).Returns("msg_camp_123");
+        var toEmail = "parent@example.com";
+        var firstName = "Maria";
+        var campName = "Summer Adventure 2026";
+        var campStartDate = new DateTime(2026, 7, 15);
+
+        _resendClient.SendEmailAsync(Arg.Any<EmailMessage>())
+            .Returns("msg_camp_123");
 
         // Act
-        await _sut.SendCampRegistrationConfirmationAsync(data, CancellationToken.None);
-
-        // Assert
-        await _resendClient.Received(1).SendEmailAsync(Arg.Any<EmailMessage>());
-    }
-
-    [Fact]
-    public async Task SendCampRegistrationConfirmationAsync_IncludesAllMembersInBody()
-    {
-        // Arrange
-        var data = CreateTestRegistrationEmailData();
-        _resendClient.SendEmailAsync(Arg.Any<EmailMessage>()).Returns("msg_123");
-
-        // Act
-        await _sut.SendCampRegistrationConfirmationAsync(data, CancellationToken.None);
+        await _sut.SendCampRegistrationConfirmationAsync(
+            toEmail, firstName, campName, campStartDate, CancellationToken.None);
 
         // Assert
         await _resendClient.Received(1).SendEmailAsync(
             Arg.Is<EmailMessage>(m =>
-                m.HtmlBody!.Contains("Juan P&#233;rez") &&
-                m.HtmlBody.Contains("Ana P&#233;rez")));
-    }
-
-    [Fact]
-    public async Task SendCampRegistrationConfirmationAsync_IncludesPricingSummary()
-    {
-        // Arrange
-        var data = CreateTestRegistrationEmailData();
-        _resendClient.SendEmailAsync(Arg.Any<EmailMessage>()).Returns("msg_123");
-
-        // Act
-        await _sut.SendCampRegistrationConfirmationAsync(data, CancellationToken.None);
-
-        // Assert
-        await _resendClient.Received(1).SendEmailAsync(
-            Arg.Is<EmailMessage>(m =>
-                m.HtmlBody!.Contains("450") &&
-                m.HtmlBody.Contains("400") &&
-                m.HtmlBody.Contains("50")));
-    }
-
-    [Fact]
-    public async Task SendCampRegistrationConfirmationAsync_SubjectContainsCampYear()
-    {
-        // Arrange
-        var data = CreateTestRegistrationEmailData();
-        _resendClient.SendEmailAsync(Arg.Any<EmailMessage>()).Returns("msg_123");
-
-        // Act
-        await _sut.SendCampRegistrationConfirmationAsync(data, CancellationToken.None);
-
-        // Assert
-        await _resendClient.Received(1).SendEmailAsync(
-            Arg.Is<EmailMessage>(m =>
-                m.Subject.Contains("2026") &&
-                m.Subject.Contains("confirmada")));
-    }
-
-    [Fact]
-    public async Task SendCampRegistrationConfirmationAsync_SanitizesUserInput()
-    {
-        // Arrange
-        var data = CreateTestRegistrationEmailData() with
-        {
-            SpecialNeeds = "<script>alert('xss')</script>"
-        };
-        _resendClient.SendEmailAsync(Arg.Any<EmailMessage>()).Returns("msg_123");
-
-        // Act
-        await _sut.SendCampRegistrationConfirmationAsync(data, CancellationToken.None);
-
-        // Assert
-        await _resendClient.Received(1).SendEmailAsync(
-            Arg.Is<EmailMessage>(m =>
-                !m.HtmlBody!.Contains("<script>") &&
-                m.HtmlBody.Contains("&lt;script&gt;")));
-    }
-
-    [Fact]
-    public async Task SendCampRegistrationConfirmationAsync_WhenResendFails_ThrowsInvalidOperationException()
-    {
-        // Arrange
-        var data = CreateTestRegistrationEmailData();
-        _resendClient.SendEmailAsync(Arg.Any<EmailMessage>()).Throws(new Exception("Network error"));
-
-        // Act
-        Func<Task> act = async () =>
-            await _sut.SendCampRegistrationConfirmationAsync(data, CancellationToken.None);
-
-        // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Failed to send camp registration confirmation*");
-    }
-
-    #endregion
-
-    #region SendCampRegistrationCancellationAsync Tests
-
-    [Fact]
-    public async Task SendCampRegistrationCancellationAsync_WithValidData_SendsEmail()
-    {
-        // Arrange
-        var data = CreateTestRegistrationEmailData();
-        _resendClient.SendEmailAsync(Arg.Any<EmailMessage>()).Returns("msg_cancel_123");
-
-        // Act
-        await _sut.SendCampRegistrationCancellationAsync(data, CancellationToken.None);
-
-        // Assert
-        await _resendClient.Received(1).SendEmailAsync(Arg.Any<EmailMessage>());
-    }
-
-    [Fact]
-    public async Task SendCampRegistrationCancellationAsync_SubjectContainsCancelledAndYear()
-    {
-        // Arrange
-        var data = CreateTestRegistrationEmailData();
-        _resendClient.SendEmailAsync(Arg.Any<EmailMessage>()).Returns("msg_123");
-
-        // Act
-        await _sut.SendCampRegistrationCancellationAsync(data, CancellationToken.None);
-
-        // Assert
-        await _resendClient.Received(1).SendEmailAsync(
-            Arg.Is<EmailMessage>(m =>
-                m.Subject.Contains("cancelada") &&
-                m.Subject.Contains("2026")));
-    }
-
-    [Fact]
-    public async Task SendCampRegistrationCancellationAsync_WhenResendFails_ThrowsInvalidOperationException()
-    {
-        // Arrange
-        var data = CreateTestRegistrationEmailData();
-        _resendClient.SendEmailAsync(Arg.Any<EmailMessage>()).Throws(new Exception("Network error"));
-
-        // Act
-        Func<Task> act = async () =>
-            await _sut.SendCampRegistrationCancellationAsync(data, CancellationToken.None);
-
-        // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Failed to send camp registration cancellation*");
+                m.Subject.Contains(campName) &&
+                m.HtmlBody!.Contains(firstName) &&
+                m.HtmlBody.Contains("2026")));
     }
 
     #endregion
@@ -553,46 +424,6 @@ public class ResendEmailServiceTests
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
-
-    #endregion
-
-    #region Helpers
-
-    private static CampRegistrationEmailData CreateTestRegistrationEmailData() => new()
-    {
-        ToEmail = "test@example.com",
-        RecipientFirstName = "María",
-        CampName = "Campamento Sierra",
-        CampLocation = "Sierra de Gredos",
-        StartDate = new DateOnly(2026, 7, 1),
-        EndDate = new DateOnly(2026, 7, 15),
-        Year = 2026,
-        RegistrationId = Guid.NewGuid(),
-        TotalAmount = 450.00m,
-        BaseTotalAmount = 400.00m,
-        ExtrasAmount = 50.00m,
-        SpecialNeeds = "Vegetariano",
-        CampatesPreference = "Familia López",
-        Members =
-        [
-            new()
-            {
-                FullName = "Juan Pérez",
-                AgeCategory = "Adulto",
-                AgeAtCamp = 35,
-                AttendancePeriod = "Completo",
-                IndividualAmount = 200.00m
-            },
-            new()
-            {
-                FullName = "Ana Pérez",
-                AgeCategory = "Niño",
-                AgeAtCamp = 8,
-                AttendancePeriod = "Completo",
-                IndividualAmount = 200.00m
-            }
-        ]
-    };
 
     #endregion
 }

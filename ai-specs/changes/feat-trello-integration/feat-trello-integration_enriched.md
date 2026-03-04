@@ -82,7 +82,6 @@ All endpoints under prefix `/api/trello`. Grouped via `MapGroup("trello")`.
 | `PUT` | `/api/trello/boards/select` | Yes | Admin, Board | Select a board to sync |
 
 **Request — Select Board:**
-
 ```json
 {
   "boardId": "string",
@@ -100,7 +99,6 @@ All endpoints under prefix `/api/trello`. Grouped via `MapGroup("trello")`.
 | `PUT` | `/api/trello/cards/{cardId}/move` | Yes | Any | Move card to a different list |
 
 **Request — Create Card:**
-
 ```json
 {
   "listId": "string",
@@ -110,7 +108,6 @@ All endpoints under prefix `/api/trello`. Grouped via `MapGroup("trello")`.
 ```
 
 **Request — Update Card:**
-
 ```json
 {
   "name": "string?",
@@ -119,7 +116,6 @@ All endpoints under prefix `/api/trello`. Grouped via `MapGroup("trello")`.
 ```
 
 **Request — Move Card:**
-
 ```json
 {
   "targetListId": "string"
@@ -135,18 +131,15 @@ All endpoints under prefix `/api/trello`. Grouped via `MapGroup("trello")`.
 | `DELETE` | `/api/trello/cards/{cardId}/links/{linkId}` | Yes | Any | Remove a GitHub link |
 
 **Request — Create Link:**
-
 ```json
 {
   "gitBranch": "string?",
   "pullRequestUrl": "string?"
 }
 ```
-
 *At least one of `gitBranch` or `pullRequestUrl` must be provided.*
 
 **Response — Card Link:**
-
 ```json
 {
   "id": "guid",
@@ -268,7 +261,6 @@ Add to `appsettings.json` (secrets via user-secrets):
 ## Non-Functional Requirements
 
 ### Security
-
 - **Token Encryption**: Trello OAuth tokens must be encrypted at rest in the database (use AES-256 or ASP.NET Data Protection API).
 - **Secret Management**: `ApiKey` and `ApiSecret` stored in user-secrets, never in committed config.
 - **CSRF Protection**: OAuth callback must validate the `oauth_verifier` and match the request token stored in the user's session/temp store.
@@ -276,13 +268,11 @@ Add to `appsettings.json` (secrets via user-secrets):
 - **Rate Limiting**: Trello API has a rate limit of 100 requests per 10-second window per token. Implement basic rate-limit awareness (retry with backoff on 429).
 
 ### Performance
-
 - **Caching**: Cache board lists/cards in memory for 30 seconds to reduce Trello API calls during rapid navigation.
 - **Lazy Loading**: Only fetch card details when the card dialog is opened, not on board load.
 - **Pagination**: If a board has many cards, paginate or virtualize the card list.
 
 ### Reliability
-
 - **Health Check**: `TrelloHealthCheck` pings Trello API `/1/members/me` to verify connectivity.
 - **Graceful Degradation**: If Trello API is unreachable, show cached data with a warning banner.
 - **Token Revocation**: On disconnect, revoke the token via Trello API before deleting locally.
@@ -322,7 +312,6 @@ Add to `appsettings.json` (secrets via user-secrets):
 ## Implementation Steps (ordered)
 
 ### Phase 1: Backend Foundation
-
 1. **RED**: Write `TrelloConnection` and `TrelloCardLink` entity tests
 2. **GREEN**: Create entities, EF configurations, migration
 3. **RED**: Write `ITrelloRepository` / `TrelloRepository` tests
@@ -339,26 +328,23 @@ Add to `appsettings.json` (secrets via user-secrets):
 14. Run migration against local database
 
 ### Phase 2: Frontend Foundation
-
-1. Define TypeScript types in `types/trello.ts`
-2. **RED**: Write `useTrello` composable tests
-3. **GREEN**: Implement `useTrello.ts` composable
-4. Add routes to `router/index.ts`
+15. Define TypeScript types in `types/trello.ts`
+16. **RED**: Write `useTrello` composable tests
+17. **GREEN**: Implement `useTrello.ts` composable
+18. Add routes to `router/index.ts`
 
 ### Phase 3: Frontend UI
-
-1. Build `TrelloSettingsPage` (connect/disconnect, board selector)
-2. Build `TrelloBoardPage` with `TrelloList` and `TrelloCard` components
-3. Build `TrelloCardDialog` (create/edit)
-4. Build `TrelloCardLinkDialog` (link branch/PR)
-5. Add Trello item to sidebar navigation
+19. Build `TrelloSettingsPage` (connect/disconnect, board selector)
+20. Build `TrelloBoardPage` with `TrelloList` and `TrelloCard` components
+21. Build `TrelloCardDialog` (create/edit)
+22. Build `TrelloCardLinkDialog` (link branch/PR)
+23. Add Trello item to sidebar navigation
 
 ### Phase 4: Polish
-
-1. Add loading skeletons and error toasts
-2. Add drag-and-drop for card movement
-3. Write E2E tests
-4. Update project documentation
+24. Add loading skeletons and error toasts
+25. Add drag-and-drop for card movement
+26. Write E2E tests
+27. Update project documentation
 
 ---
 

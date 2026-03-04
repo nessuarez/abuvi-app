@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/utils/api'
 import { useAuthStore } from '@/stores/auth'
-import type { LoginRequest, LoginResponse, RegisterResult } from '@/types/auth'
+import type { LoginRequest, RegisterRequest, LoginResponse, UserInfo } from '@/types/auth'
 import type { ApiResponse } from '@/types/api'
 
 export function useAuth() {
@@ -40,35 +40,29 @@ export function useAuth() {
     }
   }
 
-  async function register(data: {
-    email: string
-    password: string
-    firstName: string
-    lastName: string
-    acceptedTerms: boolean
-    phone?: string | null
-  }): Promise<RegisterResult> {
+  async function register(data: RegisterRequest): Promise<UserInfo | null> {
     loading.value = true
     error.value = null
     try {
-      const response = await api.post<ApiResponse<unknown>>(
-        '/auth/register-user',
+      const response = await api.post<ApiResponse<UserInfo>>(
+        '/auth/register',
         data
       )
 
-      if (response.data.success) {
-        return { success: true, email: data.email }
+      if (response.data.success && response.data.data) {
+        return response.data.data
       } else {
         error.value = response.data.error?.message || 'Registration failed'
-        return { success: false, error: error.value }
+        return null
       }
     } catch (err: any) {
+      // Handle 400 Bad Request (email exists)
       if (err.response?.status === 400) {
         error.value = err.response.data.error?.message || 'Email already registered'
       } else {
         error.value = 'Network error. Please try again.'
       }
-      return { success: false, error: error.value }
+      return null
     } finally {
       loading.value = false
     }

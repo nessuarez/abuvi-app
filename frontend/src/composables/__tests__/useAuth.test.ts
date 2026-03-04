@@ -166,47 +166,31 @@ describe('useAuth', () => {
   })
 
   describe('register', () => {
-    const registerData = {
-      email: 'test@example.com',
-      password: 'Password123!',
-      firstName: 'John',
-      lastName: 'Doe',
-      acceptedTerms: true
-    }
-
-    it('should call register-user endpoint', async () => {
+    it('should register successfully', async () => {
       vi.mocked(api.post).mockResolvedValue({
-        data: { success: true, data: {}, error: null }
-      })
-
-      const { register } = useAuth()
-      await register(registerData)
-
-      expect(api.post).toHaveBeenCalledWith('/auth/register-user', registerData)
-    })
-
-    it('should return success with email on successful registration', async () => {
-      vi.mocked(api.post).mockResolvedValue({
-        data: { success: true, data: {}, error: null }
+        data: { success: true, data: mockUser, error: null }
       })
 
       const { loading, error, register } = useAuth()
-      const result = await register(registerData)
 
-      expect(result).toEqual({ success: true, email: 'test@example.com' })
-      expect(loading.value).toBe(false)
-      expect(error.value).toBeNull()
-    })
-
-    it('should not call setAuth after registration', async () => {
-      vi.mocked(api.post).mockResolvedValue({
-        data: { success: true, data: {}, error: null }
+      const result = await register({
+        email: 'test@example.com',
+        password: 'Password123',
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: null
       })
 
-      const { register } = useAuth()
-      await register(registerData)
-
-      expect(mockAuthStore.setAuth).not.toHaveBeenCalled()
+      expect(result).toEqual(mockUser)
+      expect(loading.value).toBe(false)
+      expect(error.value).toBeNull()
+      expect(api.post).toHaveBeenCalledWith('/auth/register', {
+        email: 'test@example.com',
+        password: 'Password123',
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: null
+      })
     })
 
     it('should handle 400 Bad Request (email exists)', async () => {
@@ -220,27 +204,17 @@ describe('useAuth', () => {
       })
 
       const { error, register } = useAuth()
-      const result = await register(registerData)
 
-      expect(result).toEqual({ success: false, error: 'Email already exists' })
-      expect(error.value).toBe('Email already exists')
-    })
-
-    it('should handle 400 Bad Request for duplicate document', async () => {
-      vi.mocked(api.post).mockRejectedValue({
-        response: {
-          status: 400,
-          data: {
-            error: { message: 'Document number already exists' }
-          }
-        }
+      const result = await register({
+        email: 'existing@example.com',
+        password: 'Password123',
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: null
       })
 
-      const { error, register } = useAuth()
-      const result = await register({ ...registerData, documentNumber: '12345' } as any)
-
-      expect(result).toEqual({ success: false, error: 'Document number already exists' })
-      expect(error.value).toBe('Document number already exists')
+      expect(result).toBeNull()
+      expect(error.value).toBe('Email already exists')
     })
 
     it('should handle 400 Bad Request without message', async () => {
@@ -252,9 +226,16 @@ describe('useAuth', () => {
       })
 
       const { error, register } = useAuth()
-      const result = await register(registerData)
 
-      expect(result).toEqual({ success: false, error: 'Email already registered' })
+      const result = await register({
+        email: 'test@example.com',
+        password: 'Password123',
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: null
+      })
+
+      expect(result).toBeNull()
       expect(error.value).toBe('Email already registered')
     })
 
@@ -262,9 +243,16 @@ describe('useAuth', () => {
       vi.mocked(api.post).mockRejectedValue(new Error('Network error'))
 
       const { error, register } = useAuth()
-      const result = await register(registerData)
 
-      expect(result).toEqual({ success: false, error: 'Network error. Please try again.' })
+      const result = await register({
+        email: 'test@example.com',
+        password: 'Password123',
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: null
+      })
+
+      expect(result).toBeNull()
       expect(error.value).toBe('Network error. Please try again.')
     })
 
@@ -278,9 +266,16 @@ describe('useAuth', () => {
       })
 
       const { error, register } = useAuth()
-      const result = await register(registerData)
 
-      expect(result).toEqual({ success: false, error: 'Validation failed' })
+      const result = await register({
+        email: 'invalid',
+        password: 'short',
+        firstName: '',
+        lastName: '',
+        phone: null
+      })
+
+      expect(result).toBeNull()
       expect(error.value).toBe('Validation failed')
     })
 
@@ -293,18 +288,30 @@ describe('useAuth', () => {
           }
         })
         .mockResolvedValueOnce({
-          data: { success: true, data: {}, error: null }
+          data: { success: true, data: mockUser, error: null }
         })
 
       const { error, register } = useAuth()
 
       // First attempt - should fail
-      await register(registerData)
+      await register({
+        email: 'existing@example.com',
+        password: 'Password123',
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: null
+      })
       expect(error.value).toBe('Email already exists')
 
       // Second attempt - should clear error and succeed
-      const result = await register({ ...registerData, email: 'new@example.com' })
-      expect(result).toEqual({ success: true, email: 'new@example.com' })
+      const result = await register({
+        email: 'new@example.com',
+        password: 'Password123',
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: null
+      })
+      expect(result).toEqual(mockUser)
       expect(error.value).toBeNull()
     })
 
@@ -320,13 +327,19 @@ describe('useAuth', () => {
 
       expect(loading.value).toBe(false)
 
-      const registerCall = register(registerData)
+      const registerCall = register({
+        email: 'test@example.com',
+        password: 'Password123',
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: null
+      })
 
       // Should be loading during API call
       expect(loading.value).toBe(true)
 
       resolveRegister({
-        data: { success: true, data: {}, error: null }
+        data: { success: true, data: mockUser, error: null }
       })
 
       await registerCall

@@ -40,17 +40,13 @@ public interface IEmailService
     // ========================================
 
     /// <summary>
-    /// Sends a camp registration confirmation email with full details
+    /// Sends a camp registration confirmation email
     /// </summary>
     Task SendCampRegistrationConfirmationAsync(
-        CampRegistrationEmailData data,
-        CancellationToken ct);
-
-    /// <summary>
-    /// Sends a camp registration cancellation notification
-    /// </summary>
-    Task SendCampRegistrationCancellationAsync(
-        CampRegistrationEmailData data,
+        string toEmail,
+        string firstName,
+        string campName,
+        DateTime campStartDate,
         CancellationToken ct);
 
     /// <summary>
@@ -99,37 +95,4 @@ public interface IEmailService
         string eventName,
         DateTime eventDate,
         CancellationToken ct);
-}
-
-/// <summary>
-/// Data transfer object for camp registration email notifications
-/// </summary>
-public record CampRegistrationEmailData
-{
-    public required string ToEmail { get; init; }
-    public required string RecipientFirstName { get; init; }
-    public required string CampName { get; init; }
-    public required string CampLocation { get; init; }
-    public required DateOnly StartDate { get; init; }
-    public required DateOnly EndDate { get; init; }
-    public required int Year { get; init; }
-    public required Guid RegistrationId { get; init; }
-    public required decimal TotalAmount { get; init; }
-    public required decimal BaseTotalAmount { get; init; }
-    public required decimal ExtrasAmount { get; init; }
-    public required IReadOnlyList<RegistrationMemberEmailData> Members { get; init; }
-    public string? SpecialNeeds { get; init; }
-    public string? CampatesPreference { get; init; }
-}
-
-/// <summary>
-/// Member details for camp registration email notifications
-/// </summary>
-public record RegistrationMemberEmailData
-{
-    public required string FullName { get; init; }
-    public required string AgeCategory { get; init; }
-    public required int AgeAtCamp { get; init; }
-    public required string AttendancePeriod { get; init; }
-    public required decimal IndividualAmount { get; init; }
 }

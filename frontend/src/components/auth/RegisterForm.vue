@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
-import { api } from '@/utils/api'
+import { reactive, ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -8,10 +8,7 @@ import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 
-const emit = defineEmits<{
-  'go-to-login': []
-}>()
-
+const router = useRouter()
 const auth = useAuthStore()
 
 const formData = reactive({
@@ -26,12 +23,13 @@ const formData = reactive({
 const errors = ref<Record<string, string>>({})
 const submitting = ref(false)
 const errorMessage = ref('')
-const registrationComplete = ref(false)
-const registeredEmail = ref('')
-const resending = ref(false)
-const resendSuccess = ref(false)
 
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])/
+const passwordStrength = computed(() => {
+  const pwd = formData.password
+  if (pwd.length < 6) return 'weak'
+  if (pwd.length < 10) return 'medium'
+  return 'strong'
+})
 
 const validate = (): boolean => {
   errors.value = {}
@@ -52,11 +50,8 @@ const validate = (): boolean => {
 
   if (!formData.password) {
     errors.value.password = 'La contraseña es obligatoria'
-  } else if (formData.password.length < 8) {
-    errors.value.password = 'La contraseña debe tener al menos 8 caracteres'
-  } else if (!PASSWORD_REGEX.test(formData.password)) {
-    errors.value.password =
-      'La contraseña debe incluir mayúscula, minúscula, número y carácter especial (@$!%*?&#)'
+  } else if (formData.password.length < 6) {
+    errors.value.password = 'La contraseña debe tener al menos 6 caracteres'
   }
 
   if (formData.password !== formData.confirmPassword) {
@@ -70,15 +65,6 @@ const validate = (): boolean => {
   return Object.keys(errors.value).length === 0
 }
 
-const resetForm = () => {
-  formData.firstName = ''
-  formData.lastName = ''
-  formData.email = ''
-  formData.password = ''
-  formData.confirmPassword = ''
-  formData.acceptTerms = false
-}
-
 const handleSubmit = async () => {
   if (!validate()) return
 
@@ -86,18 +72,10 @@ const handleSubmit = async () => {
   submitting.value = true
 
   try {
-    const result = await auth.register({
-      email: formData.email,
-      password: formData.password,
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      acceptedTerms: formData.acceptTerms
-    })
+    const result = await auth.register(formData)
 
     if (result.success) {
-      registeredEmail.value = result.email || formData.email
-      resetForm()
-      registrationComplete.value = true
+      router.push('/home')
     } else {
       errorMessage.value = result.error || 'Error al registrarse'
     }
@@ -105,59 +83,10 @@ const handleSubmit = async () => {
     submitting.value = false
   }
 }
-
-const handleResendVerification = async () => {
-  resending.value = true
-  resendSuccess.value = false
-  try {
-    await api.post('/auth/resend-verification', { email: registeredEmail.value })
-    resendSuccess.value = true
-  } catch {
-    // Silently handle — user can retry
-  } finally {
-    resending.value = false
-  }
-}
-
-const handleGoToLogin = () => {
-  registrationComplete.value = false
-  emit('go-to-login')
-}
 </script>
 
 <template>
-  <!-- Success state -->
-  <div v-if="registrationComplete" class="flex flex-col items-center gap-4 py-4 text-center" role="alert">
-    <i class="pi pi-check-circle text-5xl text-green-500" />
-    <h2 class="text-xl font-bold text-gray-900">¡Registro completado!</h2>
-    <p class="text-sm text-gray-600">
-      Hemos enviado un email de verificación a
-      <strong class="text-gray-900">{{ registeredEmail }}</strong>.
-      Revisa tu bandeja de entrada (y la carpeta de spam) para confirmar tu cuenta.
-    </p>
-
-    <Button
-      label="Ir al inicio de sesión"
-      class="w-full"
-      @click="handleGoToLogin"
-    />
-
-    <button
-      type="button"
-      class="text-sm text-primary-600 hover:text-primary-700 hover:underline"
-      :disabled="resending"
-      @click="handleResendVerification"
-    >
-      {{ resending ? 'Reenviando...' : '¿No recibiste el email? Reenviar' }}
-    </button>
-
-    <Message v-if="resendSuccess" severity="success" :closable="false" class="w-full">
-      Email de verificación reenviado correctamente.
-    </Message>
-  </div>
-
-  <!-- Registration form -->
-  <form v-else class="flex flex-col gap-4" @submit.prevent="handleSubmit">
+  <form class="flex flex-col gap-4" @submit.prevent="handleSubmit">
     <Message v-if="errorMessage" severity="error" :closable="false">
       {{ errorMessage }}
     </Message>
@@ -250,7 +179,7 @@ const handleGoToLogin = () => {
             :to="{ name: 'legal-privacy' }"
             target="_blank"
             rel="noopener noreferrer"
-            class="font-semibold underline text-primary-600 hover:text-primary-700"
+            class="text-primary-600 hover:text-primary-700"
           >
             términos y condiciones
           </router-link>

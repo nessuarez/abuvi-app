@@ -512,8 +512,7 @@ public record CampResponse(
     decimal PricePerBaby,
     bool IsActive,
     DateTime CreatedAt,
-    DateTime UpdatedAt,
-    int EditionCount
+    DateTime UpdatedAt
 );
 
 /// <summary>
