@@ -98,7 +98,7 @@ public class ResendEmailService : IEmailService
         string firstName,
         CancellationToken ct)
     {
-        var dashboardUrl = $"{_frontendUrl}/dashboard";
+        var dashboardUrl = $"{_frontendUrl}/home";
 
         var message = new EmailMessage
         {
