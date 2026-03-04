@@ -70,6 +70,16 @@ public static class CampsEndpoints
             .Produces(403)
             .Produces(404);
 
+        // POST /api/camps/{id}/refresh-places - Re-sync Google Places data
+        group.MapPost("/{id:guid}/refresh-places", RefreshGooglePlaces)
+            .WithName("RefreshGooglePlaces")
+            .WithSummary("Re-sync camp data from Google Places API")
+            .Produces<ApiResponse<CampDetailResponse>>()
+            .Produces(400)
+            .Produces(401)
+            .Produces(403)
+            .Produces(404);
+
         // Age Ranges Configuration endpoints (separate group for different authorization)
         var settingsGroup = app.MapGroup("/api/settings")
             .WithTags("Settings")
@@ -601,6 +611,27 @@ public static class CampsEndpoints
         catch (InvalidOperationException ex)
         {
             return Results.BadRequest(ApiResponse<object>.Fail(ex.Message, "OPERATION_ERROR"));
+        }
+    }
+
+    /// <summary>
+    /// Re-syncs Google Places data for an existing camp
+    /// </summary>
+    private static async Task<IResult> RefreshGooglePlaces(
+        Guid id,
+        [FromServices] CampsService campsService,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var result = await campsService.RefreshGooglePlacesAsync(id, cancellationToken);
+            return result is null
+                ? Results.NotFound(ApiResponse<CampDetailResponse>.NotFound("Camp not found"))
+                : Results.Ok(ApiResponse<CampDetailResponse>.Ok(result));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return Results.BadRequest(ApiResponse<CampDetailResponse>.Fail(ex.Message, "BUSINESS_RULE_ERROR"));
         }
     }
 

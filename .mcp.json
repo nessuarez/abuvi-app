@@ -14,6 +14,15 @@
 		"resend": {
 			"type": "http",
 			"url": "https://resend.com/docs/mcp"
+		},
+		"trello": {
+			"command": "cmd",
+			"args": ["/c", "npx", "-y", "@delorenj/mcp-server-trello"],
+			"env": {
+				"TRELLO_API_KEY": "${TRELLO_API_KEY}",
+				"TRELLO_TOKEN": "${TRELLO_TOKEN}",
+				"TRELLO_BOARD_ID": "${TRELLO_BOARD_ID}"
+			}
 		}
 	}
 }

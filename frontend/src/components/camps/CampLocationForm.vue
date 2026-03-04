@@ -31,7 +31,7 @@ const { loading: placesLoading, error: placesError, searchPlaces, getPlaceDetail
 const formData = reactive<CreateCampRequest | UpdateCampRequest>({
   name: '',
   description: null,
-  rawAddress: null,
+  location: null,
   latitude: null,
   longitude: null,
   googlePlaceId: null,
@@ -73,7 +73,7 @@ if (props.mode === 'edit' && props.camp) {
   Object.assign(formData, {
     name: props.camp.name,
     description: props.camp.description,
-    rawAddress: props.camp.rawAddress,
+    location: props.camp.location,
     latitude: props.camp.latitude,
     longitude: props.camp.longitude,
     googlePlaceId: props.camp.googlePlaceId,
@@ -122,6 +122,17 @@ watch(searchQuery, (newQuery) => {
   }
 })
 
+// Selected place details for create-mode confirmation card
+const selectedPlaceDetails = ref<{
+  name: string
+  formattedAddress: string
+  locality: string | null
+  province: string | null
+  country: string | null
+  rating: number | null
+  ratingCount: number | null
+} | null>(null)
+
 // Handle place selection from autocomplete
 const handlePlaceSelected = async (event: { value: PlaceAutocomplete }) => {
   const place = event.value
@@ -132,14 +143,29 @@ const handlePlaceSelected = async (event: { value: PlaceAutocomplete }) => {
 
   if (details) {
     formData.name = details.name
-    formData.rawAddress = details.formattedAddress
+    formData.location = details.formattedAddress
     formData.latitude = details.latitude
     formData.longitude = details.longitude
     formData.googlePlaceId = details.placeId
 
-    // Auto-generate description if empty
-    if (!formData.description) {
-      formData.description = generateDescription(details)
+    // Extract locality/province/country from addressComponents
+    const components = details.addressComponents ?? []
+    const locality = components.find(c => c.types.includes('locality'))?.longName ?? null
+    const province = components.find(c => c.types.includes('administrative_area_level_2'))?.longName ?? null
+    const country = components.find(c => c.types.includes('country'))?.longName ?? null
+
+    if (province) {
+      formData.province = province
+    }
+
+    selectedPlaceDetails.value = {
+      name: details.name,
+      formattedAddress: details.formattedAddress,
+      locality,
+      province,
+      country,
+      rating: details.rating,
+      ratingCount: details.ratingCount
     }
 
     autoFilledFromPlaces.value = true
@@ -147,24 +173,10 @@ const handlePlaceSelected = async (event: { value: PlaceAutocomplete }) => {
   }
 }
 
-// Generate automatic description from place details
-const generateDescription = (details: { name: string; formattedAddress: string; types: string[] }): string => {
-  const typeDescriptions: Record<string, string> = {
-    'campground': 'Zona de camping',
-    'park': 'Parque natural',
-    'lodging': 'Alojamiento',
-    'establishment': 'Establecimiento'
-  }
-
-  const matchedType = details.types.find(t => typeDescriptions[t])
-  const typeDesc = matchedType ? typeDescriptions[matchedType] : 'Ubicación'
-
-  return `${typeDesc} ubicada en ${details.formattedAddress}`
-}
-
 // Clear autocomplete and allow manual entry
 const clearAutocomplete = () => {
   selectedPlace.value = null
+  selectedPlaceDetails.value = null
   autoFilledFromPlaces.value = false
   formData.googlePlaceId = null
   searchQuery.value = formData.name
@@ -220,6 +232,9 @@ const handleSubmit = () => {
 }
 
 const isFormValid = computed(() => {
+  if (props.mode === 'create') {
+    return formData.name.trim().length > 0
+  }
   return (
     formData.name.trim().length > 0 &&
     (formData.latitude === null || (formData.latitude >= -90 && formData.latitude <= 90)) &&
@@ -279,282 +294,318 @@ watch(
       />
     </div>
 
-    <!-- Auto-filled indicator -->
-    <Message
-      v-if="autoFilledFromPlaces"
-      severity="info"
-      :closable="false"
-      class="mt-2"
-    >
-      <i class="pi pi-check-circle mr-2"></i>
-      Datos cargados desde Google Places. Puedes ajustarlos antes de guardar.
-    </Message>
-
     <!-- Places API error -->
     <Message v-if="placesError" severity="error" :closable="true">
       {{ placesError }}
     </Message>
 
-    <!-- Description -->
-    <div>
-      <label for="description" class="mb-1 block text-sm font-medium text-gray-700">
-        Descripción
-      </label>
-      <Textarea
-        id="description"
-        v-model="formData.description"
-        class="w-full"
-        rows="3"
-        placeholder="Descripción detallada del campamento..."
-      />
-    </div>
-
-    <!-- Raw Address (renamed from location) -->
-    <div>
-      <label for="rawAddress" class="mb-1 block text-sm font-medium text-gray-700">
-        Dirección (referencia)
-        <span v-if="autoFilledFromPlaces" class="text-xs text-blue-600">(Auto-completado)</span>
-      </label>
-      <InputText
-        id="rawAddress"
-        v-model="formData.rawAddress"
-        class="w-full"
-        placeholder="Dirección del campamento..."
-      />
-    </div>
-
-    <!-- Coordinates -->
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <div>
-        <label for="latitude" class="mb-1 block text-sm font-medium text-gray-700">
-          Latitud
-          <span v-if="autoFilledFromPlaces" class="text-xs text-blue-600">(Auto-completado)</span>
-        </label>
-        <InputNumber
-          id="latitude"
-          v-model="formData.latitude"
-          :invalid="!!errors.latitude"
-          :min-fraction-digits="2"
-          :max-fraction-digits="6"
-          :min="-90"
-          :max="90"
-          class="w-full"
-          placeholder="40.416775"
+    <!-- CREATE MODE: Confirmation card after place selection -->
+    <div v-if="mode === 'create' && selectedPlaceDetails" class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+      <div class="mb-2 flex items-center justify-between">
+        <h4 class="text-sm font-semibold text-blue-900">Ubicación seleccionada</h4>
+        <Button
+          label="Cambiar"
+          icon="pi pi-refresh"
+          text
+          size="small"
+          @click="clearAutocomplete"
         />
-        <small v-if="errors.latitude" class="text-red-500">{{ errors.latitude }}</small>
-        <small v-else class="text-gray-500">Entre -90 y 90</small>
       </div>
-
-      <div>
-        <label for="longitude" class="mb-1 block text-sm font-medium text-gray-700">
-          Longitud
-          <span v-if="autoFilledFromPlaces" class="text-xs text-blue-600">(Auto-completado)</span>
-        </label>
-        <InputNumber
-          id="longitude"
-          v-model="formData.longitude"
-          :invalid="!!errors.longitude"
-          :min-fraction-digits="2"
-          :max-fraction-digits="6"
-          :min="-180"
-          :max="180"
-          class="w-full"
-          placeholder="-3.703790"
-        />
-        <small v-if="errors.longitude" class="text-red-500">{{ errors.longitude }}</small>
-        <small v-else class="text-gray-500">Entre -180 y 180</small>
+      <div class="space-y-1 text-sm text-blue-800">
+        <p class="font-medium">{{ selectedPlaceDetails.name }}</p>
+        <p>{{ selectedPlaceDetails.formattedAddress }}</p>
+        <div class="flex flex-wrap gap-3 pt-1 text-xs text-blue-600">
+          <span v-if="selectedPlaceDetails.locality">
+            <i class="pi pi-map-marker mr-1"></i>{{ selectedPlaceDetails.locality }}
+          </span>
+          <span v-if="selectedPlaceDetails.province">
+            <i class="pi pi-building mr-1"></i>{{ selectedPlaceDetails.province }}
+          </span>
+          <span v-if="selectedPlaceDetails.country">
+            <i class="pi pi-globe mr-1"></i>{{ selectedPlaceDetails.country }}
+          </span>
+          <span v-if="selectedPlaceDetails.rating">
+            <i class="pi pi-star-fill mr-1 text-yellow-500"></i>{{ selectedPlaceDetails.rating.toFixed(1) }}
+            <span v-if="selectedPlaceDetails.ratingCount"> ({{ selectedPlaceDetails.ratingCount }})</span>
+          </span>
+        </div>
       </div>
     </div>
 
-    <!-- Contact Information -->
-    <div class="rounded-lg border border-gray-200 p-4">
-      <h4 class="mb-3 text-sm font-semibold text-gray-900">Información de contacto</h4>
+    <!-- EDIT MODE: Full form fields -->
+    <template v-if="mode === 'edit'">
+      <!-- Auto-filled indicator -->
+      <Message
+        v-if="autoFilledFromPlaces"
+        severity="info"
+        :closable="false"
+        class="mt-2"
+      >
+        <i class="pi pi-check-circle mr-2"></i>
+        Datos cargados desde Google Places. Puedes ajustarlos antes de guardar.
+      </Message>
+
+      <!-- Description -->
+      <div>
+        <label for="description" class="mb-1 block text-sm font-medium text-gray-700">
+          Descripción
+        </label>
+        <Textarea
+          id="description"
+          v-model="formData.description"
+          class="w-full"
+          rows="3"
+          placeholder="Descripción detallada del campamento..."
+        />
+      </div>
+
+      <!-- Address -->
+      <div>
+        <label for="location" class="mb-1 block text-sm font-medium text-gray-700">
+          Dirección (referencia)
+          <span v-if="autoFilledFromPlaces" class="text-xs text-blue-600">(Auto-completado)</span>
+        </label>
+        <InputText
+          id="location"
+          v-model="formData.location"
+          class="w-full"
+          placeholder="Dirección del campamento..."
+        />
+      </div>
+
+      <!-- Coordinates -->
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label for="contactPerson" class="mb-1 block text-sm font-medium text-gray-700">
-            Persona de contacto
-          </label>
-          <InputText
-            id="contactPerson"
-            v-model="formData.contactPerson"
-            class="w-full"
-            placeholder="Nombre del contacto"
-          />
-        </div>
-        <div>
-          <label for="contactCompany" class="mb-1 block text-sm font-medium text-gray-700">
-            Empresa / Organización
-          </label>
-          <InputText
-            id="contactCompany"
-            v-model="formData.contactCompany"
-            class="w-full"
-            placeholder="Nombre de la empresa"
-          />
-        </div>
-        <div>
-          <label for="contactEmail" class="mb-1 block text-sm font-medium text-gray-700">
-            Email de contacto
-          </label>
-          <InputText
-            id="contactEmail"
-            v-model="formData.contactEmail"
-            type="email"
-            class="w-full"
-            :invalid="!!errors.contactEmail"
-            placeholder="email@ejemplo.com"
-          />
-          <small v-if="errors.contactEmail" class="text-red-500">{{ errors.contactEmail }}</small>
-        </div>
-        <div>
-          <label for="secondaryWebsiteUrl" class="mb-1 block text-sm font-medium text-gray-700">
-            Web secundaria
-          </label>
-          <InputText
-            id="secondaryWebsiteUrl"
-            v-model="formData.secondaryWebsiteUrl"
-            class="w-full"
-            placeholder="https://..."
-          />
-        </div>
-        <div>
-          <label for="province" class="mb-1 block text-sm font-medium text-gray-700">
-            Provincia
-          </label>
-          <InputText
-            id="province"
-            v-model="formData.province"
-            class="w-full"
-            placeholder="Provincia"
-          />
-        </div>
-      </div>
-    </div>
-
-    <!-- Pricing -->
-    <div class="rounded-lg border border-gray-200 p-4">
-      <h4 class="mb-3 text-sm font-semibold text-gray-900">Precios Base</h4>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div>
-          <label for="priceAdult" class="mb-1 block text-sm font-medium text-gray-700">
-            Precio adulto (€) *
+          <label for="latitude" class="mb-1 block text-sm font-medium text-gray-700">
+            Latitud
+            <span v-if="autoFilledFromPlaces" class="text-xs text-blue-600">(Auto-completado)</span>
           </label>
           <InputNumber
-            id="priceAdult"
-            v-model="formData.pricePerAdult"
-            :invalid="!!errors.pricePerAdult"
-            mode="currency"
-            currency="EUR"
-            locale="es-ES"
-            :min="0"
+            id="latitude"
+            v-model="formData.latitude"
+            :invalid="!!errors.latitude"
+            :min-fraction-digits="2"
+            :max-fraction-digits="6"
+            :min="-90"
+            :max="90"
             class="w-full"
+            placeholder="40.416775"
           />
-          <small v-if="errors.pricePerAdult" class="text-red-500">{{
-            errors.pricePerAdult
-          }}</small>
+          <small v-if="errors.latitude" class="text-red-500">{{ errors.latitude }}</small>
+          <small v-else class="text-gray-500">Entre -90 y 90</small>
         </div>
 
         <div>
-          <label for="priceChild" class="mb-1 block text-sm font-medium text-gray-700">
-            Precio niño (€) *
+          <label for="longitude" class="mb-1 block text-sm font-medium text-gray-700">
+            Longitud
+            <span v-if="autoFilledFromPlaces" class="text-xs text-blue-600">(Auto-completado)</span>
           </label>
           <InputNumber
-            id="priceChild"
-            v-model="formData.pricePerChild"
-            :invalid="!!errors.pricePerChild"
-            mode="currency"
-            currency="EUR"
-            locale="es-ES"
-            :min="0"
+            id="longitude"
+            v-model="formData.longitude"
+            :invalid="!!errors.longitude"
+            :min-fraction-digits="2"
+            :max-fraction-digits="6"
+            :min="-180"
+            :max="180"
             class="w-full"
+            placeholder="-3.703790"
           />
-          <small v-if="errors.pricePerChild" class="text-red-500">{{
-            errors.pricePerChild
-          }}</small>
-        </div>
-
-        <div>
-          <label for="priceBaby" class="mb-1 block text-sm font-medium text-gray-700">
-            Precio bebé (€) *
-          </label>
-          <InputNumber
-            id="priceBaby"
-            v-model="formData.pricePerBaby"
-            :invalid="!!errors.pricePerBaby"
-            mode="currency"
-            currency="EUR"
-            locale="es-ES"
-            :min="0"
-            class="w-full"
-          />
-          <small v-if="errors.pricePerBaby" class="text-red-500">{{
-            errors.pricePerBaby
-          }}</small>
+          <small v-if="errors.longitude" class="text-red-500">{{ errors.longitude }}</small>
+          <small v-else class="text-gray-500">Entre -180 y 180</small>
         </div>
       </div>
-      <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div>
-          <label for="basePrice" class="mb-1 block text-sm font-medium text-gray-700">
-            Precio base (€)
-          </label>
-          <InputNumber
-            id="basePrice"
-            v-model="formData.basePrice"
-            :invalid="!!errors.basePrice"
-            mode="currency"
-            currency="EUR"
-            locale="es-ES"
-            :min="0"
-            class="w-full"
-          />
-          <small v-if="errors.basePrice" class="text-red-500">{{ errors.basePrice }}</small>
-        </div>
-        <div>
-          <label for="vatIncluded" class="mb-1 block text-sm font-medium text-gray-700">
-            IVA incluido
-          </label>
-          <Select
-            id="vatIncluded"
-            v-model="formData.vatIncluded"
-            :options="vatOptions"
-            option-label="label"
-            option-value="value"
-            class="w-full"
-          />
+
+      <!-- Contact Information -->
+      <div class="rounded-lg border border-gray-200 p-4">
+        <h4 class="mb-3 text-sm font-semibold text-gray-900">Información de contacto</h4>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label for="contactPerson" class="mb-1 block text-sm font-medium text-gray-700">
+              Persona de contacto
+            </label>
+            <InputText
+              id="contactPerson"
+              v-model="formData.contactPerson"
+              class="w-full"
+              placeholder="Nombre del contacto"
+            />
+          </div>
+          <div>
+            <label for="contactCompany" class="mb-1 block text-sm font-medium text-gray-700">
+              Empresa / Organización
+            </label>
+            <InputText
+              id="contactCompany"
+              v-model="formData.contactCompany"
+              class="w-full"
+              placeholder="Nombre de la empresa"
+            />
+          </div>
+          <div>
+            <label for="contactEmail" class="mb-1 block text-sm font-medium text-gray-700">
+              Email de contacto
+            </label>
+            <InputText
+              id="contactEmail"
+              v-model="formData.contactEmail"
+              type="email"
+              class="w-full"
+              :invalid="!!errors.contactEmail"
+              placeholder="email@ejemplo.com"
+            />
+            <small v-if="errors.contactEmail" class="text-red-500">{{ errors.contactEmail }}</small>
+          </div>
+          <div>
+            <label for="secondaryWebsiteUrl" class="mb-1 block text-sm font-medium text-gray-700">
+              Web secundaria
+            </label>
+            <InputText
+              id="secondaryWebsiteUrl"
+              v-model="formData.secondaryWebsiteUrl"
+              class="w-full"
+              placeholder="https://..."
+            />
+          </div>
+          <div>
+            <label for="province" class="mb-1 block text-sm font-medium text-gray-700">
+              Provincia
+            </label>
+            <InputText
+              id="province"
+              v-model="formData.province"
+              class="w-full"
+              placeholder="Provincia"
+            />
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Accommodation Capacity -->
-    <AccommodationCapacityForm
-      :model-value="formData.accommodationCapacity ?? null"
-      @update:model-value="(val: AccommodationCapacity | null) => (formData.accommodationCapacity = val)"
-    />
+      <!-- Pricing -->
+      <div class="rounded-lg border border-gray-200 p-4">
+        <h4 class="mb-3 text-sm font-semibold text-gray-900">Precios Base</h4>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <label for="priceAdult" class="mb-1 block text-sm font-medium text-gray-700">
+              Precio adulto (€) *
+            </label>
+            <InputNumber
+              id="priceAdult"
+              v-model="formData.pricePerAdult"
+              :invalid="!!errors.pricePerAdult"
+              mode="currency"
+              currency="EUR"
+              locale="es-ES"
+              :min="0"
+              class="w-full"
+            />
+            <small v-if="errors.pricePerAdult" class="text-red-500">{{
+              errors.pricePerAdult
+            }}</small>
+          </div>
 
-    <!-- ABUVI Tracking (Board+ only) -->
-    <CampAbuviTrackingForm
-      v-if="auth.isBoard"
-      v-model:abuvi-managed-by-user-id="formData.abuviManagedByUserId"
-      v-model:abuvi-contacted-at="formData.abuviContactedAt"
-      v-model:abuvi-possibility="formData.abuviPossibility"
-      v-model:abuvi-last-visited="formData.abuviLastVisited"
-      v-model:abuvi-has-data-errors="formData.abuviHasDataErrors"
-      :external-source-id="(formData as any).externalSourceId ?? null"
-    />
+          <div>
+            <label for="priceChild" class="mb-1 block text-sm font-medium text-gray-700">
+              Precio niño (€) *
+            </label>
+            <InputNumber
+              id="priceChild"
+              v-model="formData.pricePerChild"
+              :invalid="!!errors.pricePerChild"
+              mode="currency"
+              currency="EUR"
+              locale="es-ES"
+              :min="0"
+              class="w-full"
+            />
+            <small v-if="errors.pricePerChild" class="text-red-500">{{
+              errors.pricePerChild
+            }}</small>
+          </div>
 
-    <!-- Status (Edit mode only) -->
-    <div v-if="mode === 'edit' && 'isActive' in formData">
-      <label class="mb-1 block text-sm font-medium text-gray-700">Estado</label>
-      <div class="flex items-center gap-2">
-        <input
-          id="isActive"
-          v-model="formData.isActive"
-          type="checkbox"
-          class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-        />
-        <label for="isActive" class="text-sm text-gray-700">Campamento activo</label>
+          <div>
+            <label for="priceBaby" class="mb-1 block text-sm font-medium text-gray-700">
+              Precio bebé (€) *
+            </label>
+            <InputNumber
+              id="priceBaby"
+              v-model="formData.pricePerBaby"
+              :invalid="!!errors.pricePerBaby"
+              mode="currency"
+              currency="EUR"
+              locale="es-ES"
+              :min="0"
+              class="w-full"
+            />
+            <small v-if="errors.pricePerBaby" class="text-red-500">{{
+              errors.pricePerBaby
+            }}</small>
+          </div>
+        </div>
+        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <label for="basePrice" class="mb-1 block text-sm font-medium text-gray-700">
+              Precio base (€)
+            </label>
+            <InputNumber
+              id="basePrice"
+              v-model="formData.basePrice"
+              :invalid="!!errors.basePrice"
+              mode="currency"
+              currency="EUR"
+              locale="es-ES"
+              :min="0"
+              class="w-full"
+            />
+            <small v-if="errors.basePrice" class="text-red-500">{{ errors.basePrice }}</small>
+          </div>
+          <div>
+            <label for="vatIncluded" class="mb-1 block text-sm font-medium text-gray-700">
+              IVA incluido
+            </label>
+            <Select
+              id="vatIncluded"
+              v-model="formData.vatIncluded"
+              :options="vatOptions"
+              option-label="label"
+              option-value="value"
+              class="w-full"
+            />
+          </div>
+        </div>
       </div>
-    </div>
+
+      <!-- Accommodation Capacity -->
+      <AccommodationCapacityForm
+        :model-value="formData.accommodationCapacity ?? null"
+        @update:model-value="(val: AccommodationCapacity | null) => (formData.accommodationCapacity = val)"
+      />
+
+      <!-- ABUVI Tracking (Board+ only) -->
+      <CampAbuviTrackingForm
+        v-if="auth.isBoard"
+        v-model:abuvi-managed-by-user-id="formData.abuviManagedByUserId"
+        v-model:abuvi-contacted-at="formData.abuviContactedAt"
+        v-model:abuvi-possibility="formData.abuviPossibility"
+        v-model:abuvi-last-visited="formData.abuviLastVisited"
+        v-model:abuvi-has-data-errors="formData.abuviHasDataErrors"
+        :external-source-id="(formData as any).externalSourceId ?? null"
+      />
+
+      <!-- Status -->
+      <div v-if="'isActive' in formData">
+        <label class="mb-1 block text-sm font-medium text-gray-700">Estado</label>
+        <div class="flex items-center gap-2">
+          <input
+            id="isActive"
+            v-model="formData.isActive"
+            type="checkbox"
+            class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <label for="isActive" class="text-sm text-gray-700">Campamento activo</label>
+        </div>
+      </div>
+    </template>
 
     <!-- Actions -->
     <div class="flex justify-end gap-2 pt-4">

@@ -94,14 +94,11 @@ const handleSubmit = async () => {
 <template>
   <div class="relative flex min-h-screen items-center justify-center">
     <!-- Blurred background image -->
-    <div
-      class="absolute inset-0 bg-cover bg-center bg-no-repeat"
-      :style="{
-        backgroundImage: `url(${landingBackground})`,
-        filter: 'blur(8px)',
-        transform: 'scale(1.1)'
-      }"
-    />
+    <div class="absolute inset-0 bg-cover bg-center bg-no-repeat" :style="{
+      backgroundImage: `url(${landingBackground})`,
+      filter: 'blur(8px)',
+      transform: 'scale(1.1)'
+    }" />
     <!-- Dark overlay -->
     <div class="absolute inset-0 bg-black/40" />
 
@@ -124,11 +121,8 @@ const handleSubmit = async () => {
           <Message severity="success" :closable="false">
             Tu contraseña ha sido restablecida exitosamente.
           </Message>
-          <RouterLink
-            to="/"
-            class="text-center text-sm text-primary-600 hover:text-primary-700 hover:underline"
-            data-testid="login-link"
-          >
+          <RouterLink to="/" class="text-center text-sm text-primary-600 hover:text-primary-700 hover:underline"
+            data-testid="login-link">
             Iniciar Sesión
           </RouterLink>
         </div>
@@ -207,14 +201,8 @@ const handleSubmit = async () => {
               </small>
             </div>
 
-            <Button
-              type="submit"
-              label="Restablecer Contraseña"
-              :loading="loading"
-              :disabled="loading"
-              class="w-full"
-              data-testid="submit-button"
-            />
+            <Button type="submit" label="Restablecer Contraseña" :loading="loading" :disabled="loading" class="w-full"
+              data-testid="submit-button" />
           </form>
         </div>
 

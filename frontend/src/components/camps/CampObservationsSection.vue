@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import Textarea from 'primevue/textarea'
-import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -18,15 +17,6 @@ const {
 } = useCamps()
 
 const newText = ref('')
-const newSeason = ref<string | null>(null)
-const seasonOptions = [
-  { label: 'Sin temporada', value: null },
-  { label: '2023', value: '2023' },
-  { label: '2024', value: '2024' },
-  { label: '2025', value: '2025' },
-  { label: '2025/2026', value: '2025/2026' },
-  { label: '2026', value: '2026' }
-]
 const formError = ref<string | null>(null)
 const submitting = ref(false)
 
@@ -41,11 +31,10 @@ const handleAdd = async () => {
   formError.value = null
   const result = await addCampObservation(props.campId, {
     text: newText.value.trim(),
-    season: newSeason.value
+    season: null
   })
   if (result) {
     newText.value = ''
-    newSeason.value = null
   }
   submitting.value = false
 }
@@ -57,26 +46,12 @@ const handleAdd = async () => {
 
     <!-- Add form -->
     <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
-        <div class="sm:col-span-3">
-          <Textarea
-            v-model="newText"
-            rows="2"
-            placeholder="Añadir observación..."
-            class="w-full"
-          />
-        </div>
-        <div>
-          <Select
-            v-model="newSeason"
-            :options="seasonOptions"
-            option-label="label"
-            option-value="value"
-            placeholder="Temporada"
-            class="w-full"
-          />
-        </div>
-      </div>
+      <Textarea
+        v-model="newText"
+        rows="2"
+        placeholder="Añadir observación..."
+        class="w-full"
+      />
       <Message v-if="formError" severity="error" :closable="false" class="text-sm">
         {{ formError }}
       </Message>
