@@ -144,10 +144,18 @@ const handleSubmit = async () => {
               <label for="newPassword" class="text-sm font-medium text-gray-700">
                 Nueva Contraseña *
               </label>
-              <Password id="newPassword" v-model="formData.newPassword" toggle-mask :feedback="false"
-                placeholder="Introduce tu nueva contraseña" :invalid="!!mergedFieldErrors.newPassword"
-                :disabled="loading" input-class="w-full" :input-props="{ autocomplete: 'new-password' }"
-                data-testid="new-password-input" />
+              <Password
+                id="newPassword"
+                v-model="formData.newPassword"
+                toggle-mask
+                :feedback="false"
+                placeholder="Introduce tu nueva contraseña"
+                :invalid="!!mergedFieldErrors.newPassword"
+                :disabled="loading"
+                input-class="w-full"
+                :input-props="{ autocomplete: 'new-password' }"
+                data-testid="new-password-input"
+              />
               <small v-if="mergedFieldErrors.newPassword" class="text-red-500">
                 {{ mergedFieldErrors.newPassword }}
               </small>
@@ -176,10 +184,18 @@ const handleSubmit = async () => {
               <label for="confirmPassword" class="text-sm font-medium text-gray-700">
                 Confirmar Contraseña *
               </label>
-              <Password id="confirmPassword" v-model="formData.confirmPassword" toggle-mask :feedback="false"
-                placeholder="Repite la contraseña" :invalid="!!mergedFieldErrors.confirmPassword" :disabled="loading"
-                input-class="w-full" :input-props="{ autocomplete: 'new-password' }"
-                data-testid="confirm-password-input" />
+              <Password
+                id="confirmPassword"
+                v-model="formData.confirmPassword"
+                toggle-mask
+                :feedback="false"
+                placeholder="Repite la contraseña"
+                :invalid="!!mergedFieldErrors.confirmPassword"
+                :disabled="loading"
+                input-class="w-full"
+                :input-props="{ autocomplete: 'new-password' }"
+                data-testid="confirm-password-input"
+              />
               <small v-if="mergedFieldErrors.confirmPassword" class="text-red-500">
                 {{ mergedFieldErrors.confirmPassword }}
               </small>

@@ -239,21 +239,13 @@ S3-compatible object storage used for media uploads (camp photos, documents, aud
 | `StorageWarningThresholdPct` | Percentage of quota at which the health check returns a warning. |
 | `StorageCriticalThresholdPct` | Percentage of quota at which the health check returns critical / degraded. |
 
-`BucketName`, `Endpoint`, `Region`, and `PublicBaseUrl` can stay in the file. The `AccessKeyId` and `SecretAccessKey` are secrets and must not be committed — supply them via user secrets in development or environment variables in production:
+> **Secrets** — `AccessKeyId` and `SecretAccessKey` must not be committed. Supply them via environment variables:
+>
+> ```
+> BlobStorage__AccessKeyId=${BLOB_STORAGE_ACCESS_KEY_ID}
+> BlobStorage__SecretAccessKey=${BLOB_STORAGE_SECRET_ACCESS_KEY}
+> ```
 
-```bash
-# Development (user secrets)
-dotnet user-secrets set "BlobStorage:AccessKeyId" "your-key" --project src/Abuvi.API
-dotnet user-secrets set "BlobStorage:SecretAccessKey" "your-secret" --project src/Abuvi.API
-```
-
-```
-# Production (environment variables)
-BlobStorage__AccessKeyId=${BLOB_ACCESS_KEY_ID}
-BlobStorage__SecretAccessKey=${BLOB_SECRET_ACCESS_KEY}
-```
-
-> **Note:** The Kestrel request body limit is set to 55 MB to accommodate file uploads. If you increase `MaxFileSizeBytes` beyond this value, update the Kestrel limit in `Program.cs` as well.
 > **Health check** — A blob storage health check is registered under the name `blob-storage` with failure status `Degraded`. It verifies bucket accessibility and monitors storage quota usage against the configured thresholds.
 
 ---
@@ -289,10 +281,6 @@ services:
       - FrontendUrl=https://abuvi.org
       - Seq__ServerUrl=http://seq:5341
       - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=abuvi;Username=abuvi_user;Password=${DB_PASSWORD}
-
-      # Blob storage
-      - BlobStorage__Endpoint=https://fsn1.your-objectstorage.com
-      - BlobStorage__PublicBaseUrl=https://abuvi-media.fsn1.your-objectstorage.com
 
       # Blob storage
       - BlobStorage__Endpoint=https://fsn1.your-objectstorage.com

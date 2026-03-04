@@ -2,7 +2,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/utils/api'
 import type { UserInfo, UserRole } from '@/types/auth'
-import type { LoginRequest, RegisterRequest, AuthResponse } from '@/types/auth'
+import type { LoginRequest, AuthResponse, RegisterResult } from '@/types/auth'
 import type { ApiResponse } from '@/types/api'
 
 const TOKEN_KEY = 'abuvi_auth_token'
@@ -57,20 +57,22 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(data: RegisterRequest): Promise<{ success: boolean; error?: string }> {
+  async function register(data: {
+    email: string
+    password: string
+    firstName: string
+    lastName: string
+    acceptedTerms: boolean
+    phone?: string | null
+  }): Promise<RegisterResult> {
     try {
-      const response = await api.post<ApiResponse<AuthResponse>>(
-        '/auth/register',
+      const response = await api.post<ApiResponse<unknown>>(
+        '/auth/register-user',
         data
       )
 
-      if (response.data.success && response.data.data) {
-        const { user: userData, token: authToken } = response.data.data
-        user.value = userData
-        token.value = authToken
-        saveToStorage(userData, authToken)
-
-        return { success: true }
+      if (response.data.success) {
+        return { success: true, email: data.email }
       }
 
       return {
