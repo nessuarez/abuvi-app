@@ -9,5 +9,16 @@
 <body>
   <div id="app"></div>
   <script type="module" src="/src/main.ts"></script>
+  <!-- Userback widget loader (static tag for domain verification; init happens in main.ts) -->
+  <script>
+    window.Userback = window.Userback || {};
+    window.Userback.access_token = '%VITE_USERBACK_TOKEN%';
+    (function(d) {
+      var s = d.createElement('script');
+      s.async = true;
+      s.src = 'https://static.userback.io/widget/v1.js';
+      (d.head || d.body).appendChild(s);
+    })(document);
+  </script>
 </body>
 </html>
