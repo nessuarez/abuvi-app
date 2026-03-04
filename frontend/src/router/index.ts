@@ -186,6 +186,14 @@ const router = createRouter({
 			meta: { title: "ABUVI | Transparencia", requiresAuth: false }
 		},
 
+		// Email verification — public, no auth required
+		{
+			path: "/verify-email",
+			name: "verify-email",
+			component: () => import("@/views/VerifyEmailPage.vue"),
+			meta: { requiresAuth: false, title: "ABUVI | Verificar Email" }
+		},
+
 		// Password reset routes — public, no auth required
 		{
 			path: "/forgot-password",
