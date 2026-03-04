@@ -128,6 +128,11 @@ const formattedRating = computed((): string | null =>
         Datos de Google Places actualizados el
         {{ new Date(camp.lastGoogleSyncAt).toLocaleDateString('es-ES') }}
       </p>
+
+      <!-- Actions slot -->
+      <div v-if="$slots.actions" class="pt-3">
+        <slot name="actions" />
+      </div>
     </div>
   </div>
 </template>
