@@ -53,8 +53,8 @@ const tocEntries = [
         <div class="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-3">
           <dt class="text-sm font-semibold text-gray-700">Correo electrónico</dt>
           <dd class="text-sm text-gray-600 sm:col-span-2">
-            <a href="mailto:juntaabuvi@gmail.com" class="text-primary-600 hover:underline">
-              juntaabuvi@gmail.com
+            <a href="mailto:junta.abuvi@gmail.com" class="text-primary-600 hover:underline">
+              junta.abuvi@gmail.com
             </a>
           </dd>
         </div>
