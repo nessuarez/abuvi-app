@@ -159,6 +159,7 @@ The `AccommodationCapacityDisplay.vue` shows facility features as plain text bad
 The `AccommodationCapacityForm.vue` uses `ToggleSwitch` for facilities, which works, but the fields are small and could benefit from larger touch targets with icons.
 
 **Fix for display** (`AccommodationCapacityDisplay.vue`):
+
 - Add PrimeVue icons to each facility badge:
   - Piscina → `pi pi-sun` (or custom pool icon)
   - Comedor cerrado → `pi pi-building`
@@ -168,6 +169,7 @@ The `AccommodationCapacityForm.vue` uses `ToggleSwitch` for facilities, which wo
 - Make badges larger and more visual
 
 **Fix for form** (`AccommodationCapacityForm.vue`):
+
 - Replace small `ToggleSwitch` with larger clickable cards/chips with icons
 - Each facility should be a card-style toggle: icon + label, highlighted when active
 - This makes it easier to check/uncheck, especially on mobile
@@ -181,6 +183,7 @@ The `CampObservationsSection.vue` includes a "Temporada" (Season) `Select` dropd
 **Current state**: The form shows a season selector with options like "2023", "2024", "2025/2026". Existing imported observations may have season values, but new manual observations shouldn't require this.
 
 **Fix**:
+
 1. **Frontend**: Remove the `Select` for season from the add-observation form in `CampObservationsSection.vue`. Always send `season: null`.
 2. **Display**: Keep showing the season badge on existing observations that have one (imported data), but don't allow setting it for new ones.
 3. **Backend**: No change needed — `season` is already nullable in `AddCampObservationRequest` and `CampObservation`.
@@ -388,6 +391,7 @@ Render badges with icons, larger size, more visual.
 **File**: `frontend/src/components/camps/AccommodationCapacityForm.vue`
 
 Replace the small `ToggleSwitch` + label layout with clickable card-style chips:
+
 - Each facility is a bordered card with icon + label
 - Clicking toggles the value
 - Active state: filled background (e.g., green/primary), bold text
