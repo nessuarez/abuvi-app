@@ -15,6 +15,26 @@ export function useCampPhotos() {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
+  const fetchPhotos = async (campId: string): Promise<CampPhoto[]> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.get<ApiResponse<CampPhoto[]>>(`/camps/${campId}/photos`)
+      if (response.data.success && response.data.data) {
+        photos.value = response.data.data
+        return response.data.data
+      }
+      return []
+    } catch (err: unknown) {
+      error.value =
+        (err as ApiErrorShape)?.response?.data?.error?.message || 'Error al cargar las fotos'
+      console.error('Failed to fetch photos:', err)
+      return []
+    } finally {
+      loading.value = false
+    }
+  }
+
   const addPhoto = async (campId: string, request: AddCampPhotoRequest): Promise<CampPhoto | null> => {
     loading.value = true
     error.value = null
@@ -130,6 +150,7 @@ export function useCampPhotos() {
     photos,
     loading,
     error,
+    fetchPhotos,
     addPhoto,
     updatePhoto,
     deletePhoto,

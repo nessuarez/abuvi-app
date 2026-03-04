@@ -7,8 +7,15 @@ import Checkbox from 'primevue/checkbox'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Divider from 'primevue/divider'
-import ToggleSwitch from 'primevue/toggleswitch'
 import type { AccommodationCapacity, SharedRoomInfo } from '@/types/camp'
+
+const facilityOptions: { key: keyof AccommodationCapacity; label: string; icon: string }[] = [
+  { key: 'hasAdaptedMenu', label: 'Menú adaptado', icon: 'pi pi-apple' },
+  { key: 'hasEnclosedDiningRoom', label: 'Comedor cerrado', icon: 'pi pi-building' },
+  { key: 'hasSwimmingPool', label: 'Piscina', icon: 'pi pi-sun' },
+  { key: 'hasSportsCourt', label: 'Pista polideportiva', icon: 'pi pi-trophy' },
+  { key: 'hasForestArea', label: 'Pinar / zona natural', icon: 'pi pi-leaf' }
+]
 
 interface Props {
   modelValue: AccommodationCapacity | null
@@ -307,27 +314,20 @@ const clearCapacity = () => {
       <!-- Facilities -->
       <Divider />
       <h4 class="text-sm font-semibold text-gray-700">Instalaciones</h4>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div class="flex items-center gap-3">
-          <ToggleSwitch v-model="localValue.hasAdaptedMenu" />
-          <label class="text-sm text-gray-700">Menú adaptado</label>
-        </div>
-        <div class="flex items-center gap-3">
-          <ToggleSwitch v-model="localValue.hasEnclosedDiningRoom" />
-          <label class="text-sm text-gray-700">Comedor cerrado</label>
-        </div>
-        <div class="flex items-center gap-3">
-          <ToggleSwitch v-model="localValue.hasSwimmingPool" />
-          <label class="text-sm text-gray-700">Piscina</label>
-        </div>
-        <div class="flex items-center gap-3">
-          <ToggleSwitch v-model="localValue.hasSportsCourt" />
-          <label class="text-sm text-gray-700">Pista polideportiva</label>
-        </div>
-        <div class="flex items-center gap-3">
-          <ToggleSwitch v-model="localValue.hasForestArea" />
-          <label class="text-sm text-gray-700">Pinar / zona natural</label>
-        </div>
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-for="f in facilityOptions"
+          :key="f.key"
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors"
+          :class="localValue[f.key]
+            ? 'border-green-300 bg-green-50 text-green-700'
+            : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50'"
+          @click="(localValue[f.key] as boolean | null) = localValue[f.key] ? null : true"
+        >
+          <i :class="f.icon" class="text-xs"></i>
+          {{ f.label }}
+        </button>
       </div>
 
       <!-- Clear all -->

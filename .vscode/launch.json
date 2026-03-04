@@ -1,0 +1,23 @@
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "C#: Abuvi.Setup Reset DB",
+			"type": "coreclr",
+			"request": "launch",
+			"preLaunchTask": "build-setup",
+			"program": "${workspaceFolder}/src/Abuvi.Setup/bin/Debug/net9.0/Abuvi.Setup.dll",
+			"args": [
+				"reset"
+			],
+			"cwd": "${workspaceFolder}/src/Abuvi.Setup",
+			"env": {
+				"DATABASE_URL": "Host=localhost;Port=5432;Database=abuvi;Username=abuvi_user;Password=dev_password"
+			},
+			"console": "integratedTerminal"
+		}
+	]
+}

@@ -1,5 +1,8 @@
 namespace Abuvi.API.Common.Services;
 
+using System.Globalization;
+using System.Net;
+using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Resend;
@@ -95,7 +98,7 @@ public class ResendEmailService : IEmailService
         string firstName,
         CancellationToken ct)
     {
-        var dashboardUrl = $"{_frontendUrl}/dashboard";
+        var dashboardUrl = $"{_frontendUrl}/home";
 
         var message = new EmailMessage
         {
@@ -208,42 +211,94 @@ public class ResendEmailService : IEmailService
     // ========================================
 
     public async Task SendCampRegistrationConfirmationAsync(
-        string toEmail,
-        string firstName,
-        string campName,
-        DateTime campStartDate,
+        CampRegistrationEmailData data,
         CancellationToken ct)
     {
-        var registrationsUrl = $"{_frontendUrl}/registrations";
-        var formattedDate = campStartDate.ToString("dddd, MMMM d, yyyy");
+        var culture = new CultureInfo("es-ES");
+        var registrationUrl = $"{_frontendUrl}/registrations/{data.RegistrationId}";
+        var startDate = data.StartDate.ToString("d 'de' MMMM", culture);
+        var endDate = data.EndDate.ToString("d 'de' MMMM 'de' yyyy", culture);
+        var recipientName = WebUtility.HtmlEncode(data.RecipientFirstName);
+
+        var membersHtml = new StringBuilder();
+        foreach (var member in data.Members)
+        {
+            var name = WebUtility.HtmlEncode(member.FullName);
+            membersHtml.Append($@"
+                <tr>
+                    <td style='padding: 8px; border-bottom: 1px solid #eee;'>{name}</td>
+                    <td style='padding: 8px; border-bottom: 1px solid #eee;'>{member.AgeCategory} ({member.AgeAtCamp} años)</td>
+                    <td style='padding: 8px; border-bottom: 1px solid #eee;'>{member.AttendancePeriod}</td>
+                    <td style='padding: 8px; border-bottom: 1px solid #eee; text-align: right;'>{member.IndividualAmount.ToString("N2", culture)} €</td>
+                </tr>");
+        }
+
+        var extrasHtml = data.ExtrasAmount > 0
+            ? $"<p style='margin: 5px 0;'>Extras: <strong>{data.ExtrasAmount.ToString("N2", culture)} €</strong></p>"
+            : "";
+
+        var specialNeedsHtml = !string.IsNullOrWhiteSpace(data.SpecialNeeds)
+            ? $"<p style='margin: 5px 0;'><strong>Necesidades especiales:</strong> {WebUtility.HtmlEncode(data.SpecialNeeds)}</p>"
+            : "";
+
+        var campatesHtml = !string.IsNullOrWhiteSpace(data.CampatesPreference)
+            ? $"<p style='margin: 5px 0;'><strong>Preferencia de compañeros:</strong> {WebUtility.HtmlEncode(data.CampatesPreference)}</p>"
+            : "";
 
         var message = new EmailMessage
         {
             From = $"{_fromName} <{_fromEmail}>",
-            To = toEmail,
-            Subject = $"Registration Confirmed - {campName}",
+            To = data.ToEmail,
+            Subject = $"Inscripción confirmada — Campamento {data.Year}",
             HtmlBody = $@"
                 <html>
                 <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
                     <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
-                        <h2 style='color: #16a34a;'>Registration Confirmed! ✓</h2>
-                        <p>Hello {firstName},</p>
-                        <p>Your registration for <strong>{campName}</strong> has been confirmed!</p>
+                        <h2 style='color: #16a34a;'>¡Inscripción Confirmada! ✓</h2>
+                        <p>Hola {recipientName},</p>
+                        <p>Tu inscripción en el campamento <strong>{WebUtility.HtmlEncode(data.CampName)}</strong> ha sido registrada correctamente.</p>
+
                         <div style='background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;'>
-                            <p style='margin: 5px 0;'><strong>Camp:</strong> {campName}</p>
-                            <p style='margin: 5px 0;'><strong>Start Date:</strong> {formattedDate}</p>
+                            <p style='margin: 5px 0;'><strong>Campamento:</strong> {WebUtility.HtmlEncode(data.CampName)}</p>
+                            <p style='margin: 5px 0;'><strong>Ubicación:</strong> {WebUtility.HtmlEncode(data.CampLocation)}</p>
+                            <p style='margin: 5px 0;'><strong>Fechas:</strong> {startDate} — {endDate}</p>
                         </div>
-                        <p>We're looking forward to seeing you at camp!</p>
+
+                        <h3 style='color: #1e40af; margin-top: 25px;'>Participantes</h3>
+                        <table style='width: 100%; border-collapse: collapse; margin: 10px 0;'>
+                            <thead>
+                                <tr style='background-color: #f3f4f6;'>
+                                    <th style='padding: 8px; text-align: left;'>Nombre</th>
+                                    <th style='padding: 8px; text-align: left;'>Categoría</th>
+                                    <th style='padding: 8px; text-align: left;'>Periodo</th>
+                                    <th style='padding: 8px; text-align: right;'>Importe</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {membersHtml}
+                            </tbody>
+                        </table>
+
+                        <div style='background-color: #f0fdf4; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                            <p style='margin: 5px 0;'>Base inscripción: <strong>{data.BaseTotalAmount.ToString("N2", culture)} €</strong></p>
+                            {extrasHtml}
+                            <hr style='border: none; border-top: 1px solid #ccc; margin: 10px 0;' />
+                            <p style='margin: 5px 0; font-size: 18px;'>Total: <strong>{data.TotalAmount.ToString("N2", culture)} €</strong></p>
+                        </div>
+
+                        {specialNeedsHtml}
+                        {campatesHtml}
+
                         <p style='margin: 30px 0;'>
-                            <a href=""{registrationsUrl}""
+                            <a href=""{registrationUrl}""
                                style='background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;'>
-                                View Registration Details
+                                Ver mi inscripción
                             </a>
                         </p>
                         <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;' />
                         <p style='color: #999; font-size: 12px;'>
-                            Best regards,<br>
-                            The Abuvi Team
+                            Saludos cordiales,<br>
+                            El equipo de Abuvi
                         </p>
                     </div>
                 </body>
@@ -256,14 +311,70 @@ public class ResendEmailService : IEmailService
             var messageId = await _resend.SendEmailAsync(message);
             _logger.LogInformation(
                 "Camp registration confirmation sent to {Email} for camp {CampName}, Resend ID: {MessageId}",
-                toEmail,
-                campName,
+                data.ToEmail,
+                data.CampName,
                 messageId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send camp registration confirmation to {Email}", toEmail);
+            _logger.LogError(ex, "Failed to send camp registration confirmation to {Email}", data.ToEmail);
             throw new InvalidOperationException($"Failed to send camp registration confirmation: {ex.Message}", ex);
+        }
+    }
+
+    public async Task SendCampRegistrationCancellationAsync(
+        CampRegistrationEmailData data,
+        CancellationToken ct)
+    {
+        var culture = new CultureInfo("es-ES");
+        var campUrl = $"{_frontendUrl}/camp";
+        var startDate = data.StartDate.ToString("d 'de' MMMM", culture);
+        var endDate = data.EndDate.ToString("d 'de' MMMM 'de' yyyy", culture);
+        var recipientName = WebUtility.HtmlEncode(data.RecipientFirstName);
+
+        var message = new EmailMessage
+        {
+            From = $"{_fromName} <{_fromEmail}>",
+            To = data.ToEmail,
+            Subject = $"Inscripción cancelada — Campamento {data.Year}",
+            HtmlBody = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                    <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                        <h2 style='color: #dc2626;'>Inscripción Cancelada</h2>
+                        <p>Hola {recipientName},</p>
+                        <p>Tu inscripción en el campamento <strong>{WebUtility.HtmlEncode(data.CampName)}</strong> ({startDate} — {endDate}) ha sido cancelada.</p>
+                        <p>Si esto fue un error o deseas volver a inscribirte, puedes hacerlo desde nuestra web.</p>
+                        <p style='margin: 30px 0;'>
+                            <a href=""{campUrl}""
+                               style='background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;'>
+                                Ver campamento
+                            </a>
+                        </p>
+                        <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;' />
+                        <p style='color: #999; font-size: 12px;'>
+                            Saludos cordiales,<br>
+                            El equipo de Abuvi
+                        </p>
+                    </div>
+                </body>
+                </html>
+            "
+        };
+
+        try
+        {
+            var messageId = await _resend.SendEmailAsync(message);
+            _logger.LogInformation(
+                "Camp registration cancellation sent to {Email} for camp {CampName}, Resend ID: {MessageId}",
+                data.ToEmail,
+                data.CampName,
+                messageId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send camp registration cancellation to {Email}", data.ToEmail);
+            throw new InvalidOperationException($"Failed to send camp registration cancellation: {ex.Message}", ex);
         }
     }
 

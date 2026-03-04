@@ -57,10 +57,13 @@
 			"Bash(git cherry-pick:*)",
 			"Bash(grep:*)",
 			"Bash(npm run type-check:*)",
-			"Bash(npm run:*)"
+			"Bash(npm run:*)",
+			"Bash(git log:*)",
+			"WebSearch",
+			"WebFetch(domain:github.com)"
 		]
 	},
 	"enableAllProjectMcpServers": true,
-	"enabledMcpjsonServers": ["github", "primevue", "resend"],
+	"enabledMcpjsonServers": ["github", "primevue", "resend", "trello"],
 	"disabledMcpjsonServers": []
 }
