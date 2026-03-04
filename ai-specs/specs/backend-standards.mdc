@@ -810,7 +810,6 @@ public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExcep
 - **Use ILogger\<T\>**: Use the built-in `ILogger<T>` from Microsoft.Extensions.Logging
 - **Structured Logging**: Use message templates with named parameters (not string interpolation)
 - **Log Levels**: Use appropriate levels — `Information` for business events, `Warning` for recoverable issues, `Error` for failures
-- **Configuration**: Log levels are configured via `appsettings.json` using `ReadFrom.Configuration()` (not hardcoded in C#). This allows runtime adjustment via environment variables (e.g., `Serilog__MinimumLevel__Default=Debug`)
 
 ```csharp
 // Good: Structured logging with named parameters
@@ -821,27 +820,6 @@ logger.LogError(ex, "Failed to process payment {PaymentId}", payment.Id);
 // Avoid: String interpolation in log messages (defeats structured logging)
 logger.LogInformation($"Camp {camp.Id} created by user {userId}");
 ```
-
-### Middleware Pipeline Order
-
-The middleware pipeline order is critical for logging and security. `UseSerilogRequestLogging()` must be the first middleware (after Swagger) to capture all HTTP requests, including those rejected by CORS, auth, or HTTPS redirect.
-
-```csharp
-// 1. Serilog request logging — MUST be first to capture all requests
-app.UseSerilogRequestLogging(options => { ... });
-// 2. Global exception handling
-app.UseMiddleware<GlobalExceptionMiddleware>();
-// 3. CORS
-app.UseCors();
-// 4. HTTPS redirection
-app.UseHttpsRedirection();
-// 5. Authentication (must come before Authorization)
-app.UseAuthentication();
-// 6. Authorization
-app.UseAuthorization();
-```
-
-Health check requests (`/health`) are suppressed from request logs to reduce noise by demoting them to `Verbose` level via `GetLevel`.
 
 ## Language Standards for User-Facing Content
 

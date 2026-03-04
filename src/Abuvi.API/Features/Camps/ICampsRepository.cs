@@ -79,11 +79,6 @@ public interface ICampsRepository
     /// </summary>
     Task ClearPrimaryPhotoAsync(Guid campId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Deletes all Google Places-sourced photos (IsOriginal == true) for a camp
-    /// </summary>
-    Task<int> DeleteGooglePhotosAsync(Guid campId, CancellationToken cancellationToken = default);
-
     Task AddAuditLogsAsync(IEnumerable<CampAuditLog> entries, CancellationToken cancellationToken = default);
 
     Task<List<CampAuditLog>> GetAuditLogAsync(Guid campId, CancellationToken cancellationToken = default);

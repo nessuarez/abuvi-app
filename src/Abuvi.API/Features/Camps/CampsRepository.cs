@@ -29,7 +29,7 @@ public class CampsRepository : ICampsRepository
         int take = 100,
         CancellationToken cancellationToken = default)
     {
-        IQueryable<Camp> query = _context.Camps.AsNoTracking().Include(c => c.Editions);
+        var query = _context.Camps.AsNoTracking();
 
         if (isActive.HasValue)
         {
@@ -177,20 +177,6 @@ public class CampsRepository : ICampsRepository
 
         if (primaries.Count > 0)
             await _context.SaveChangesAsync(cancellationToken);
-    }
-
-    public async Task<int> DeleteGooglePhotosAsync(Guid campId, CancellationToken cancellationToken = default)
-    {
-        var googlePhotos = await _context.CampPhotos
-            .Where(p => p.CampId == campId && p.IsOriginal)
-            .ToListAsync(cancellationToken);
-
-        if (googlePhotos.Count == 0) return 0;
-
-        _context.CampPhotos.RemoveRange(googlePhotos);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        return googlePhotos.Count;
     }
 
     public async Task AddAuditLogsAsync(IEnumerable<CampAuditLog> entries, CancellationToken cancellationToken = default)
