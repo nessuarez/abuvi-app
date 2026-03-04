@@ -29,7 +29,7 @@ public class CampsRepository : ICampsRepository
         int take = 100,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.Camps.AsNoTracking();
+        IQueryable<Camp> query = _context.Camps.AsNoTracking().Include(c => c.Editions);
 
         if (isActive.HasValue)
         {
@@ -178,4 +178,31 @@ public class CampsRepository : ICampsRepository
         if (primaries.Count > 0)
             await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<int> DeleteGooglePhotosAsync(Guid campId, CancellationToken cancellationToken = default)
+    {
+        var googlePhotos = await _context.CampPhotos
+            .Where(p => p.CampId == campId && p.IsOriginal)
+            .ToListAsync(cancellationToken);
+
+        if (googlePhotos.Count == 0) return 0;
+
+        _context.CampPhotos.RemoveRange(googlePhotos);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return googlePhotos.Count;
+    }
+
+    public async Task AddAuditLogsAsync(IEnumerable<CampAuditLog> entries, CancellationToken cancellationToken = default)
+    {
+        _context.CampAuditLogs.AddRange(entries);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<List<CampAuditLog>> GetAuditLogAsync(Guid campId, CancellationToken cancellationToken = default)
+        => await _context.CampAuditLogs
+            .AsNoTracking()
+            .Where(a => a.CampId == campId)
+            .OrderByDescending(a => a.ChangedAt)
+            .ToListAsync(cancellationToken);
 }

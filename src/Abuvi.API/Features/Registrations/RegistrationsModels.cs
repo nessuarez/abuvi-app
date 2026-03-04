@@ -17,6 +17,9 @@ public class Registration
     public decimal TotalAmount { get; set; }
     public RegistrationStatus Status { get; set; } = RegistrationStatus.Pending;
     public string? Notes { get; set; }
+    // Extra fields from Google Forms 2026
+    public string? SpecialNeeds { get; set; }
+    public string? CampatesPreference { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
@@ -26,6 +29,7 @@ public class Registration
     public User RegisteredByUser { get; set; } = null!;
     public ICollection<RegistrationMember> Members { get; set; } = [];
     public ICollection<RegistrationExtra> Extras { get; set; } = [];
+    public ICollection<RegistrationAccommodationPreference> AccommodationPreferences { get; set; } = [];
     public ICollection<Payment> Payments { get; set; } = [];
 }
 
@@ -37,6 +41,13 @@ public class RegistrationMember
     public int AgeAtCamp { get; set; }
     public AgeCategory AgeCategory { get; set; }
     public decimal IndividualAmount { get; set; }
+    public AttendancePeriod AttendancePeriod { get; set; } = AttendancePeriod.Complete;
+    // Only populated when AttendancePeriod = WeekendVisit
+    public DateOnly? VisitStartDate { get; set; }
+    public DateOnly? VisitEndDate { get; set; }
+    // Guardian info (only meaningful for minors: AgeCategory Baby or Child)
+    public string? GuardianName { get; set; }
+    public string? GuardianDocumentNumber { get; set; }
     public DateTime CreatedAt { get; set; }
     public Registration Registration { get; set; } = null!;
     public FamilyMember FamilyMember { get; set; } = null!;
@@ -54,6 +65,19 @@ public class RegistrationExtra
     public DateTime CreatedAt { get; set; }
     public Registration Registration { get; set; } = null!;
     public CampEditionExtra CampEditionExtra { get; set; } = null!;
+}
+
+public class RegistrationAccommodationPreference
+{
+    public Guid Id { get; set; }
+    public Guid RegistrationId { get; set; }
+    public Guid CampEditionAccommodationId { get; set; }
+    public int PreferenceOrder { get; set; }
+    public DateTime CreatedAt { get; set; }
+
+    // Navigation
+    public Registration Registration { get; set; } = null!;
+    public CampEditionAccommodation CampEditionAccommodation { get; set; } = null!;
 }
 
 public class Payment
@@ -77,20 +101,45 @@ public enum AgeCategory { Baby, Child, Adult }
 public enum PaymentMethod { Card, Transfer, Cash }
 public enum PaymentStatus { Pending, Completed, Failed, Refunded }
 
+public enum AttendancePeriod
+{
+    Complete,      // Full camp (default)
+    FirstWeek,
+    SecondWeek,
+    WeekendVisit   // Short visit, max 3 days, configurable window
+}
+
 // ── Request DTOs ──────────────────────────────────────────────────────────────
+
+public record MemberAttendanceRequest(
+    Guid MemberId,
+    AttendancePeriod AttendancePeriod,
+    DateOnly? VisitStartDate = null,   // Required when AttendancePeriod = WeekendVisit
+    DateOnly? VisitEndDate = null,     // Required when AttendancePeriod = WeekendVisit
+    string? GuardianName = null,
+    string? GuardianDocumentNumber = null
+);
 
 public record CreateRegistrationRequest(
     Guid CampEditionId,
     Guid FamilyUnitId,
-    List<Guid> MemberIds,
-    string? Notes
+    List<MemberAttendanceRequest> Members,
+    string? Notes,
+    string? SpecialNeeds,
+    string? CampatesPreference
 );
 
-public record UpdateRegistrationMembersRequest(List<Guid> MemberIds);
+public record UpdateRegistrationMembersRequest(List<MemberAttendanceRequest> Members);
 
 public record UpdateRegistrationExtrasRequest(List<ExtraSelectionRequest> Extras);
 
 public record ExtraSelectionRequest(Guid CampEditionExtraId, int Quantity);
+
+public record AccommodationPreferenceRequest(Guid CampEditionAccommodationId, int PreferenceOrder);
+
+public record UpdateRegistrationAccommodationPreferencesRequest(
+    List<AccommodationPreferenceRequest> Preferences
+);
 
 // ── Response DTOs ─────────────────────────────────────────────────────────────
 
@@ -108,7 +157,25 @@ public record AvailableCampEditionResponse(
     int CurrentRegistrations,
     int? SpotsRemaining,
     string Status,
-    AgeRangesInfo AgeRanges
+    AgeRangesInfo AgeRanges,
+    // Partial attendance:
+    bool AllowsPartialAttendance,
+    decimal? PricePerAdultWeek,
+    decimal? PricePerChildWeek,
+    decimal? PricePerBabyWeek,
+    DateOnly? HalfDate,
+    int FirstWeekDays,
+    int SecondWeekDays,
+    // Weekend visit:
+    bool AllowsWeekendVisit,
+    decimal? PricePerAdultWeekend,
+    decimal? PricePerChildWeekend,
+    decimal? PricePerBabyWeekend,
+    DateOnly? WeekendStartDate,
+    DateOnly? WeekendEndDate,
+    int WeekendDays,
+    int? MaxWeekendCapacity,
+    int? WeekendSpotsRemaining
 );
 
 public record AgeRangesInfo(int BabyMaxAge, int ChildMinAge, int ChildMaxAge, int AdultMinAge);
@@ -124,7 +191,9 @@ public record RegistrationResponse(
     decimal AmountPaid,
     decimal AmountRemaining,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    string? SpecialNeeds,
+    string? CampatesPreference
 );
 
 public record RegistrationFamilyUnitSummary(Guid Id, string Name);
@@ -136,7 +205,19 @@ public record PricingBreakdown(
     decimal ExtrasAmount,
     decimal TotalAmount
 );
-public record MemberPricingDetail(Guid FamilyMemberId, string FullName, int AgeAtCamp, AgeCategory AgeCategory, decimal IndividualAmount);
+public record MemberPricingDetail(
+    Guid FamilyMemberId,
+    string FullName,
+    int AgeAtCamp,
+    AgeCategory AgeCategory,
+    AttendancePeriod AttendancePeriod,
+    int AttendanceDays,
+    DateOnly? VisitStartDate,
+    DateOnly? VisitEndDate,
+    decimal IndividualAmount,
+    string? GuardianName,
+    string? GuardianDocumentNumber
+);
 public record ExtraPricingDetail(Guid CampEditionExtraId, string Name, decimal UnitPrice, string PricingType, string PricingPeriod, int Quantity, int? CampDurationDays, string Calculation, decimal TotalAmount);
 public record PaymentSummary(Guid Id, decimal Amount, DateTime PaymentDate, string Method, string Status);
 
@@ -152,6 +233,13 @@ public record RegistrationListResponse(
 );
 
 public record CancelRegistrationResponse(string Message);
+
+public record AccommodationPreferenceResponse(
+    Guid CampEditionAccommodationId,
+    string AccommodationName,
+    AccommodationType AccommodationType,
+    int PreferenceOrder
+);
 
 // ── Mapping Extensions ────────────────────────────────────────────────────────
 
@@ -171,7 +259,16 @@ public static class RegistrationMappingExtensions
             r.Members.Select(m => new MemberPricingDetail(
                 m.FamilyMemberId,
                 $"{m.FamilyMember.FirstName} {m.FamilyMember.LastName}",
-                m.AgeAtCamp, m.AgeCategory, m.IndividualAmount)).ToList(),
+                m.AgeAtCamp,
+                m.AgeCategory,
+                m.AttendancePeriod,
+                RegistrationPricingService.GetPeriodDays(
+                    m.AttendancePeriod, r.CampEdition, m.VisitStartDate, m.VisitEndDate),
+                m.VisitStartDate,
+                m.VisitEndDate,
+                m.IndividualAmount,
+                m.GuardianName,
+                m.GuardianDocumentNumber)).ToList(),
             r.BaseTotalAmount,
             r.Extras.Select(e => new ExtraPricingDetail(
                 e.CampEditionExtraId, e.CampEditionExtra.Name, e.UnitPrice,
@@ -186,7 +283,9 @@ public static class RegistrationMappingExtensions
         amountPaid,
         r.TotalAmount - amountPaid,
         r.CreatedAt,
-        r.UpdatedAt
+        r.UpdatedAt,
+        r.SpecialNeeds,
+        r.CampatesPreference
     );
 
     private static string BuildCalculation(RegistrationExtra e)

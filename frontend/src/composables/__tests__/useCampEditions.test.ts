@@ -212,6 +212,48 @@ describe('useCampEditions - changeStatus', () => {
     expect(result).toBeNull()
     expect(error.value).toBe('Transición no válida')
   })
+
+  it('sends force=true in request body when force param is true', async () => {
+    vi.mocked(api.patch).mockResolvedValueOnce({
+      data: { success: true, data: { ...mockUpdatedEdition, status: 'Open' }, error: null }
+    })
+
+    const { changeStatus } = useCampEditions()
+    await changeStatus('edition-1', 'Open', true)
+
+    expect(api.patch).toHaveBeenCalledWith(
+      '/camps/editions/edition-1/status',
+      { status: 'Open', force: true }
+    )
+  })
+
+  it('omits force from request body when force param is false/undefined', async () => {
+    vi.mocked(api.patch).mockResolvedValueOnce({
+      data: { success: true, data: mockUpdatedEdition, error: null }
+    })
+
+    const { changeStatus } = useCampEditions()
+    await changeStatus('edition-1', 'Open')
+
+    expect(api.patch).toHaveBeenCalledWith(
+      '/camps/editions/edition-1/status',
+      { status: 'Open' }
+    )
+  })
+
+  it('sends Draft status without force for normal Open→Draft rollback', async () => {
+    vi.mocked(api.patch).mockResolvedValueOnce({
+      data: { success: true, data: { ...mockUpdatedEdition, status: 'Draft' }, error: null }
+    })
+
+    const { changeStatus } = useCampEditions()
+    await changeStatus('edition-1', 'Draft')
+
+    expect(api.patch).toHaveBeenCalledWith(
+      '/camps/editions/edition-1/status',
+      { status: 'Draft' }
+    )
+  })
 })
 
 describe('useCampEditions - updateEdition', () => {

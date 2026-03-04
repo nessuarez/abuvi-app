@@ -10,6 +10,7 @@ using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.Guests;
 using Abuvi.API.Features.Memberships;
 using Abuvi.API.Features.Registrations;
+using Abuvi.API.Features.BlobStorage;
 using Abuvi.API.Common.Services;
 using FluentValidation;
 using System.Text.Json.Serialization;
@@ -30,9 +31,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Serilog Configuration
 // ========================================
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .ReadFrom.Configuration(builder.Configuration)
 
     // Enrich with contextual information
     .Enrich.FromLogContext()
@@ -149,6 +148,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 // Camps
 builder.Services.AddScoped<ICampsRepository, CampsRepository>();
 builder.Services.AddScoped<CampsService>();
+builder.Services.AddScoped<ICampObservationsRepository, CampObservationsRepository>();
+builder.Services.AddScoped<ICampObservationsService, CampObservationsService>();
 builder.Services.AddScoped<IAssociationSettingsRepository, AssociationSettingsRepository>();
 builder.Services.AddScoped<AssociationSettingsService>();
 builder.Services.AddScoped<ICampEditionsRepository, CampEditionsRepository>();
@@ -156,6 +157,8 @@ builder.Services.AddScoped<CampEditionsService>();
 builder.Services.AddScoped<CampPhotosService>();
 builder.Services.AddScoped<ICampEditionExtrasRepository, CampEditionExtrasRepository>();
 builder.Services.AddScoped<CampEditionExtrasService>();
+builder.Services.AddScoped<ICampEditionAccommodationsRepository, CampEditionAccommodationsRepository>();
+builder.Services.AddScoped<CampEditionAccommodationsService>();
 
 // Google Places API integration
 builder.Services.AddHttpClient<IGooglePlacesService, GooglePlacesService>();
@@ -177,9 +180,13 @@ builder.Services.AddScoped<MembershipsService>();
 // Registrations feature
 builder.Services.AddScoped<IRegistrationsRepository, RegistrationsRepository>();
 builder.Services.AddScoped<IRegistrationExtrasRepository, RegistrationExtrasRepository>();
+builder.Services.AddScoped<IRegistrationAccommodationPreferencesRepository, RegistrationAccommodationPreferencesRepository>();
 builder.Services.AddScoped<IPaymentsRepository, PaymentsRepository>();
 builder.Services.AddScoped<RegistrationPricingService>();
 builder.Services.AddScoped<RegistrationsService>();
+
+// Blob Storage
+builder.Services.AddBlobStorage(builder.Configuration);
 
 // Encryption Service
 builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
@@ -232,7 +239,31 @@ builder.Services.AddHealthChecks()
     .AddCheck<SeqHealthCheck>(
         name: "seq",
         failureStatus: HealthStatus.Degraded,
-        tags: ["logging", "external"]);
+        tags: ["logging", "external"])
+    .AddCheck<BlobStorageHealthCheck>(
+        name: "blob-storage",
+        failureStatus: HealthStatus.Degraded,
+        tags: ["storage", "external"]);
+
+// Increase Kestrel limit for file uploads (default is 30 MB)
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 55 * 1024 * 1024; // 55 MB (50 MB file + headers)
+});
+
+// ========================================
+// GlitchTip Error Tracking (Sentry-compatible)
+// ========================================
+var sentryDsn = builder.Configuration["Sentry:Dsn"];
+if (!string.IsNullOrEmpty(sentryDsn))
+{
+    builder.WebHost.UseSentry(o =>
+    {
+        o.Dsn = sentryDsn;
+        o.TracesSampleRate = 0; // Disabled to conserve GlitchTip free tier quota (1K events/mo)
+        o.Environment = builder.Environment.EnvironmentName;
+    });
+}
 
 var app = builder.Build();
 
@@ -276,18 +307,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseMiddleware<GlobalExceptionMiddleware>();
-app.UseCors();
-app.UseHttpsRedirection();
-
-// Authentication and Authorization middleware (order matters!)
-app.UseAuthentication(); // Must come before UseAuthorization
-app.UseAuthorization();
-
-// Serilog HTTP request logging
+// Serilog HTTP request logging — MUST be first to capture all requests
 app.UseSerilogRequestLogging(options =>
 {
     options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+
+    // Suppress healthcheck logs (demote to Verbose so they're below minimum level)
+    options.GetLevel = (httpContext, elapsed, ex) =>
+        httpContext.Request.Path.StartsWithSegments("/health")
+            ? LogEventLevel.Verbose
+            : LogEventLevel.Information;
+
     options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
     {
         if (!string.IsNullOrEmpty(httpContext.Request.Host.Value))
@@ -311,6 +341,14 @@ app.UseSerilogRequestLogging(options =>
         }
     };
 });
+
+app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseCors();
+app.UseHttpsRedirection();
+
+// Authentication and Authorization middleware (order matters!)
+app.UseAuthentication(); // Must come before UseAuthorization
+app.UseAuthorization();
 
 // Health check endpoint (anonymous access — no auth required for monitoring tools)
 app.MapHealthChecks("/health", new HealthCheckOptions
@@ -346,6 +384,7 @@ app.MapGuestsEndpoints();
 app.MapMembershipsEndpoints();
 app.MapMembershipFeeEndpoints();
 app.MapRegistrationsEndpoints();
+app.MapBlobStorageEndpoints();
 
 app.Run();
 

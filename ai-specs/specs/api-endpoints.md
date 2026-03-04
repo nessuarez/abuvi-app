@@ -1,4 +1,4 @@
-# API Endpoints Documentation
+****# API Endpoints Documentation
 
 This document describes the REST API endpoints for the ABUVI web application.
 
@@ -71,10 +71,13 @@ Returns the health status of the API and its external dependencies. Does not req
 
 **Checks included:**
 
-| Check name | Failure status | What it verifies                                      |
-| ---------- | -------------- | ----------------------------------------------------- |
-| `database` | `Unhealthy`    | PostgreSQL connectivity via `SELECT 1` (5s timeout)   |
-| `resend`   | `Degraded`     | Resend API key is configured in settings              |
+| Check name      | Failure status | What it verifies                                                 |
+| --------------- | -------------- | ---------------------------------------------------------------- |
+| `database`      | `Unhealthy`    | PostgreSQL connectivity via `SELECT 1` (5s timeout)              |
+| `resend`        | `Degraded`     | Resend API key is configured in settings                         |
+| `google-places` | `Degraded`     | Google Places API key is configured                              |
+| `seq`           | `Degraded`     | Seq logging server is reachable at configured URL                |
+| `blob-storage`  | `Degraded`     | S3-compatible bucket is reachable; quota thresholds are monitored |
 
 ## Response Format
 
@@ -1088,13 +1091,70 @@ Returns the best available camp edition for the current user. Uses status-priori
     "registrationCount": 0,
     "availableSpots": 100,
     "notes": null,
+    "description": null,
     "createdAt": "2026-02-17T10:00:00Z",
-    "updatedAt": "2026-02-17T10:00:00Z"
+    "updatedAt": "2026-02-17T10:00:00Z",
+    "campDescription": "A beautiful pine forest camp near the Sierra de Guadarrama",
+    "campPhoneNumber": "+34918691311",
+    "campNationalPhoneNumber": "918 691 311",
+    "campWebsiteUrl": "https://camping-elpinar.es",
+    "campGoogleMapsUrl": "https://maps.google.com/?cid=123",
+    "campGoogleRating": 4.3,
+    "campGoogleRatingCount": 156,
+    "campPhotos": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "photoReference": "AUc7tXUr...",
+        "photoUrl": null,
+        "width": 1024,
+        "height": 768,
+        "attributionName": "John Doe",
+        "attributionUrl": "https://maps.google.com/...",
+        "description": null,
+        "isPrimary": true,
+        "displayOrder": 0
+      }
+    ],
+    "accommodationCapacity": {
+      "privateRoomsWithBathroom": 10,
+      "privateRoomsSharedBathroom": null,
+      "sharedRooms": null,
+      "bungalows": 5,
+      "campOwnedTents": null,
+      "memberTentAreaSquareMeters": null,
+      "memberTentCapacityEstimate": null,
+      "motorhomeSpots": null,
+      "notes": null
+    },
+    "calculatedTotalBedCapacity": 20,
+    "extras": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "campEditionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "name": "Kayak sessions",
+        "description": "1-hour guided kayak on the lake",
+        "price": 25.00,
+        "pricingType": "PerPerson",
+        "pricingPeriod": "OneTime",
+        "isRequired": false,
+        "isActive": true,
+        "maxQuantity": 20,
+        "currentQuantitySold": 0,
+        "createdAt": "2026-02-17T10:00:00Z",
+        "updatedAt": "2026-02-17T10:00:00Z"
+      }
+    ]
   }
 }
 ```
 
 > **Note:** `registrationCount` is always `0` and `availableSpots` equals `maxCapacity` until the Registrations feature is implemented.
+>
+> - `campPhotos` is ordered: primary photo first, then by `displayOrder` ascending. Empty array when no photos.
+> - `accommodationCapacity`: edition-level value takes priority over camp-level value. `null` when neither is set.
+> - `calculatedTotalBedCapacity`: computed from private rooms (2 beds/room) and shared rooms. `null` when no accommodation capacity.
+> - `extras`: only active extras are included, ordered by creation date. Empty array when none.
+> - `currentQuantitySold` is always `0` in this endpoint (placeholder until Registrations feature tracks purchases).
 
 **Error Responses:**
 
@@ -1672,8 +1732,8 @@ Proposes a new camp edition. The edition is created with `Proposed` status and r
 
 **Field Notes:**
 
-- `proposalReason`: Required, reason for proposing this edition
-- `proposalNotes`: Required, additional context for the board
+- `proposalReason`: **Optional** (`string | null`). Reason for proposing this edition. Previously documented as required; now optional. Maximum 1000 characters.
+- `proposalNotes`: **Optional** (`string | null`). Additional context for the board. Accepted by the API but no longer sent by the frontend after the UX improvement. Maximum 2000 characters.
 - `accommodationCapacity`: Optional; when provided, is also synced to the parent `Camp.accommodationCapacityJson` in the same transaction
 
 **Success Response (201 Created):** Returns the created `CampEditionResponse` (same shape as `GET /api/camps/editions/{id}`) with `status: "Proposed"`.
@@ -2197,3 +2257,471 @@ Soft-deletes a guest (sets `isActive = false`). The record is retained in the da
 
 - **403 Forbidden**: User is not the representative
 - **404 Not Found**: Family unit or guest doesn't exist
+
+---
+
+## Camp Edition Accommodation Endpoints
+
+Manage accommodation options for a camp edition. Accommodations are preference-only (no price) — families rank up to 3 choices during registration.
+
+**Base Path:** `/api/camps/editions`
+
+---
+
+### POST /api/camps/editions/{editionId}/accommodations
+
+Create a new accommodation option for a camp edition.
+
+**Authorization**: Admin or Board
+
+**Request Body:**
+
+```json
+{
+  "name": "Refugio Norte",
+  "accommodationType": "Lodge",
+  "description": "Refugio con capacidad para 20 personas",
+  "capacity": 20,
+  "sortOrder": 0
+}
+```
+
+**Success Response (201 Created):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "...",
+    "campEditionId": "...",
+    "name": "Refugio Norte",
+    "accommodationType": "Lodge",
+    "description": "Refugio con capacidad para 20 personas",
+    "capacity": 20,
+    "isActive": true,
+    "sortOrder": 0,
+    "currentPreferenceCount": 0,
+    "firstChoiceCount": 0,
+    "createdAt": "...",
+    "updatedAt": "..."
+  }
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **404 Not Found**: Camp edition not found
+
+---
+
+### GET /api/camps/editions/{editionId}/accommodations
+
+List accommodation options for a camp edition.
+
+**Authorization**: Any authenticated user (Member+)
+
+**Query Parameters:**
+
+- `activeOnly` (optional, boolean): Filter to active accommodations only
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "...",
+      "campEditionId": "...",
+      "name": "Refugio Norte",
+      "accommodationType": "Lodge",
+      "description": "...",
+      "capacity": 20,
+      "isActive": true,
+      "sortOrder": 0,
+      "currentPreferenceCount": 5,
+      "firstChoiceCount": 3,
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/camps/editions/accommodations/{id}
+
+Get a single accommodation option by ID.
+
+**Authorization**: Any authenticated user (Member+)
+
+**Success Response (200 OK):** Same structure as single item in list response.
+
+---
+
+### PUT /api/camps/editions/accommodations/{id}
+
+Update an accommodation option.
+
+**Authorization**: Admin or Board
+
+**Request Body:**
+
+```json
+{
+  "name": "Refugio Norte Ampliado",
+  "accommodationType": "Lodge",
+  "description": "Refugio ampliado con capacidad para 25 personas",
+  "capacity": 25,
+  "isActive": true,
+  "sortOrder": 0
+}
+```
+
+**Success Response (200 OK):** Returns updated accommodation.
+
+---
+
+### DELETE /api/camps/editions/accommodations/{id}
+
+Delete an accommodation option. Fails if any registration has preferences referencing this accommodation.
+
+**Authorization**: Admin or Board
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **400 Bad Request**: Accommodation has existing preferences (deactivate instead)
+- **404 Not Found**: Accommodation not found
+
+---
+
+### PATCH /api/camps/editions/accommodations/{id}/activate
+
+Activate a deactivated accommodation option.
+
+**Authorization**: Admin or Board
+
+**Success Response (200 OK):** Returns updated accommodation.
+
+---
+
+### PATCH /api/camps/editions/accommodations/{id}/deactivate
+
+Deactivate an accommodation option (soft-disable without deleting).
+
+**Authorization**: Admin or Board
+
+**Success Response (200 OK):** Returns updated accommodation.
+
+---
+
+## Registration Accommodation Preference Endpoints
+
+Families rank up to 3 accommodation preferences per registration.
+
+**Base Path:** `/api/registrations`
+
+---
+
+### PUT /api/registrations/{id}/accommodation-preferences
+
+Set or replace accommodation preferences for a registration. Replaces all existing preferences.
+
+**Authorization**: Family representative or Admin/Board
+
+**Request Body:**
+
+```json
+{
+  "preferences": [
+    { "campEditionAccommodationId": "...", "preferenceOrder": 1 },
+    { "campEditionAccommodationId": "...", "preferenceOrder": 2 },
+    { "campEditionAccommodationId": "...", "preferenceOrder": 3 }
+  ]
+}
+```
+
+**Validation Rules:**
+
+- Maximum 3 preferences
+- No duplicate accommodation IDs
+- No duplicate preference orders
+- Each preference order must be between 1 and 3
+- Each accommodation must belong to the same camp edition and be active
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "campEditionAccommodationId": "...",
+      "accommodationName": "Refugio Norte",
+      "accommodationType": "Lodge",
+      "preferenceOrder": 1
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **403 Forbidden**: User is not the representative
+- **404 Not Found**: Registration or accommodation not found
+- **422 Unprocessable Entity**: Business rule violation (e.g., registration not in Pending status)
+
+---
+
+### GET /api/registrations/{id}/accommodation-preferences
+
+Get accommodation preferences for a registration, ordered by preference rank.
+
+**Authorization**: Any authenticated user
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "campEditionAccommodationId": "...",
+      "accommodationName": "Refugio Norte",
+      "accommodationType": "Lodge",
+      "preferenceOrder": 1
+    },
+    {
+      "campEditionAccommodationId": "...",
+      "accommodationName": "Parcela Caravanas A",
+      "accommodationType": "Caravan",
+      "preferenceOrder": 2
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **404 Not Found**: Registration not found
+
+---
+
+## Blob Storage Endpoints
+
+Blob Storage endpoints manage file uploads to and deletions from the configured S3-compatible object store (Hetzner Object Storage). All upload operations are available to any authenticated user; delete and stats operations require Admin role.
+
+### POST /api/blobs/upload
+
+Uploads a file to object storage. Accepts `multipart/form-data`.
+
+**Authorization**: Any authenticated user (`Bearer` token required)
+
+**Request (multipart/form-data):**
+
+| Field               | Type    | Required | Description                                                                        |
+| ------------------- | ------- | -------- | ---------------------------------------------------------------------------------- |
+| `file`              | File    | Yes      | The file to upload (max 50 MB)                                                     |
+| `folder`            | string  | Yes      | Target folder — one of: `photos`, `media-items`, `camp-locations`, `camp-photos`  |
+| `contextId`         | GUID    | No       | Optional context entity ID scoped to the file path                                 |
+| `generateThumbnail` | boolean | No       | When `true` and the file is an image, a WebP thumbnail is generated (default: `false`) |
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "fileUrl": "https://abuvi-media.fsn1.your-objectstorage.com/photos/abc123/photo.jpg",
+    "thumbnailUrl": "https://abuvi-media.fsn1.your-objectstorage.com/photos/abc123/thumbs/photo.webp",
+    "fileName": "photo.jpg",
+    "contentType": "image/jpeg",
+    "sizeBytes": 204800
+  }
+}
+```
+
+`thumbnailUrl` is `null` when `generateThumbnail` is `false` or the file type does not support thumbnails (audio, video, documents).
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed — invalid folder, disallowed extension for the folder, or file exceeds maximum size.
+- **401 Unauthorized**: No valid Bearer token.
+- **413 Payload Too Large**: File exceeds the server-side body limit (55 MB including multipart headers).
+
+---
+
+### DELETE /api/blobs
+
+Deletes one or more objects from storage by their storage keys.
+
+**Authorization**: Admin role required
+
+**Request Body:**
+
+```json
+{
+  "blobKeys": [
+    "photos/abc123/photo.jpg",
+    "photos/abc123/thumbs/photo.webp"
+  ]
+}
+```
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **400 Bad Request**: `blobKeys` array is empty or null.
+- **401 Unauthorized**: No valid Bearer token.
+- **403 Forbidden**: Authenticated user does not have Admin role.
+
+---
+
+### GET /api/blobs/stats
+
+Returns storage usage statistics. Results are cached server-side for 5 minutes to avoid expensive bucket enumeration on every call.
+
+**Authorization**: Admin role required
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "totalObjects": 27,
+    "totalSizeBytes": 15728640,
+    "totalSizeHumanReadable": "15 MB",
+    "quotaBytes": 53687091200,
+    "usedPct": 0.029,
+    "freeBytes": 53671362560,
+    "byFolder": {
+      "photos": { "objects": 15, "sizeBytes": 8388608 },
+      "media-items": { "objects": 8, "sizeBytes": 5242880 },
+      "camp-locations": { "objects": 3, "sizeBytes": 1572864 },
+      "camp-photos": { "objects": 1, "sizeBytes": 524288 }
+    }
+  }
+}
+```
+
+`quotaBytes`, `usedPct`, and `freeBytes` are `null` when `StorageQuotaBytes` is not configured (set to 0).
+
+**Error Responses:**
+
+- **401 Unauthorized**: No valid Bearer token.
+- **403 Forbidden**: Authenticated user does not have Admin role.
+
+---
+
+## Blob Storage Endpoints
+
+Blob Storage endpoints manage file uploads to and deletions from the configured S3-compatible object store (Hetzner Object Storage). All upload operations are available to any authenticated user; delete and stats operations require Admin role.
+
+### POST /api/blobs/upload
+
+Uploads a file to object storage. Accepts `multipart/form-data`.
+
+**Authorization**: Any authenticated user (`Bearer` token required)
+
+**Request (multipart/form-data):**
+
+| Field               | Type    | Required | Description                                                                        |
+| ------------------- | ------- | -------- | ---------------------------------------------------------------------------------- |
+| `file`              | File    | Yes      | The file to upload (max 50 MB)                                                     |
+| `folder`            | string  | Yes      | Target folder — one of: `photos`, `media-items`, `camp-locations`, `camp-photos`  |
+| `contextId`         | GUID    | No       | Optional context entity ID scoped to the file path                                 |
+| `generateThumbnail` | boolean | No       | When `true` and the file is an image, a WebP thumbnail is generated (default: `false`) |
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "fileUrl": "https://abuvi-media.fsn1.your-objectstorage.com/photos/abc123/photo.jpg",
+    "thumbnailUrl": "https://abuvi-media.fsn1.your-objectstorage.com/photos/abc123/thumbs/photo.webp",
+    "fileName": "photo.jpg",
+    "contentType": "image/jpeg",
+    "sizeBytes": 204800
+  }
+}
+```
+
+`thumbnailUrl` is `null` when `generateThumbnail` is `false` or the file type does not support thumbnails (audio, video, documents).
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed — invalid folder, disallowed extension for the folder, or file exceeds maximum size.
+- **401 Unauthorized**: No valid Bearer token.
+- **413 Payload Too Large**: File exceeds the server-side body limit (55 MB including multipart headers).
+
+---
+
+### DELETE /api/blobs
+
+Deletes one or more objects from storage by their storage keys.
+
+**Authorization**: Admin role required
+
+**Request Body:**
+
+```json
+{
+  "blobKeys": [
+    "photos/abc123/photo.jpg",
+    "photos/abc123/thumbs/photo.webp"
+  ]
+}
+```
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **400 Bad Request**: `blobKeys` array is empty or null.
+- **401 Unauthorized**: No valid Bearer token.
+- **403 Forbidden**: Authenticated user does not have Admin role.
+
+---
+
+### GET /api/blobs/stats
+
+Returns storage usage statistics. Results are cached server-side for 5 minutes to avoid expensive bucket enumeration on every call.
+
+**Authorization**: Admin role required
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "totalObjects": 27,
+    "totalSizeBytes": 15728640,
+    "totalSizeHumanReadable": "15 MB",
+    "quotaBytes": 53687091200,
+    "usedPct": 0.029,
+    "freeBytes": 53671362560,
+    "byFolder": {
+      "photos": { "objects": 15, "sizeBytes": 8388608 },
+      "media-items": { "objects": 8, "sizeBytes": 5242880 },
+      "camp-locations": { "objects": 3, "sizeBytes": 1572864 },
+      "camp-photos": { "objects": 1, "sizeBytes": 524288 }
+    }
+  }
+}
+```
+
+`quotaBytes`, `usedPct`, and `freeBytes` are `null` when `StorageQuotaBytes` is not configured (set to 0).
+
+**Error Responses:**
+
+- **401 Unauthorized**: No valid Bearer token.
+- **403 Forbidden**: Authenticated user does not have Admin role.

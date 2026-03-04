@@ -13,14 +13,67 @@ public class RegistrationBuilder
     private decimal _baseTotalAmount = 300m;
     private decimal _extrasAmount = 0m;
     private RegistrationStatus _status = RegistrationStatus.Pending;
+    private string? _specialNeeds;
+    private string? _campatesPreference;
+
+    // Week pricing
+    private decimal? _pricePerAdultWeek;
+    private decimal? _pricePerChildWeek;
+    private decimal? _pricePerBabyWeek;
+    private DateOnly? _halfDate;
+
+    // Weekend pricing
+    private decimal? _pricePerAdultWeekend;
+    private decimal? _pricePerChildWeekend;
+    private decimal? _pricePerBabyWeekend;
+    private DateOnly? _weekendStartDate;
+    private DateOnly? _weekendEndDate;
+    private int? _maxWeekendCapacity;
 
     public RegistrationBuilder WithId(Guid id) { _id = id; return this; }
     public RegistrationBuilder WithFamilyUnitId(Guid id) { _familyUnitId = id; return this; }
     public RegistrationBuilder WithCampEditionId(Guid id) { _campEditionId = id; return this; }
     public RegistrationBuilder WithRegisteredByUserId(Guid id) { _registeredByUserId = id; return this; }
     public RegistrationBuilder WithStatus(RegistrationStatus status) { _status = status; return this; }
+    public RegistrationBuilder WithSpecialNeeds(string? value) { _specialNeeds = value; return this; }
+    public RegistrationBuilder WithCampatesPreference(string? value) { _campatesPreference = value; return this; }
     public RegistrationBuilder WithBaseTotalAmount(decimal amount) { _baseTotalAmount = amount; return this; }
     public RegistrationBuilder WithExtrasAmount(decimal amount) { _extrasAmount = amount; return this; }
+
+    public RegistrationBuilder WithWeekPricing(decimal adultWeek, decimal childWeek, decimal babyWeek)
+    {
+        _pricePerAdultWeek = adultWeek;
+        _pricePerChildWeek = childWeek;
+        _pricePerBabyWeek = babyWeek;
+        return this;
+    }
+
+    public RegistrationBuilder WithCampEditionHalfDate(DateOnly? halfDate)
+    {
+        _halfDate = halfDate;
+        return this;
+    }
+
+    public RegistrationBuilder WithWeekendPricing(decimal adultWeekend, decimal childWeekend, decimal babyWeekend)
+    {
+        _pricePerAdultWeekend = adultWeekend;
+        _pricePerChildWeekend = childWeekend;
+        _pricePerBabyWeekend = babyWeekend;
+        return this;
+    }
+
+    public RegistrationBuilder WithWeekendDates(DateOnly start, DateOnly end)
+    {
+        _weekendStartDate = start;
+        _weekendEndDate = end;
+        return this;
+    }
+
+    public RegistrationBuilder WithMaxWeekendCapacity(int? capacity)
+    {
+        _maxWeekendCapacity = capacity;
+        return this;
+    }
 
     public Registration Build() => new()
     {
@@ -32,6 +85,8 @@ public class RegistrationBuilder
         ExtrasAmount = _extrasAmount,
         TotalAmount = _baseTotalAmount + _extrasAmount,
         Status = _status,
+        SpecialNeeds = _specialNeeds,
+        CampatesPreference = _campatesPreference,
         CreatedAt = DateTime.UtcNow,
         UpdatedAt = DateTime.UtcNow,
         FamilyUnit = new FamilyUnit
@@ -53,6 +108,16 @@ public class RegistrationBuilder
             PricePerChild = 300m,
             PricePerBaby = 100m,
             Status = CampEditionStatus.Open,
+            HalfDate = _halfDate,
+            PricePerAdultWeek = _pricePerAdultWeek,
+            PricePerChildWeek = _pricePerChildWeek,
+            PricePerBabyWeek = _pricePerBabyWeek,
+            PricePerAdultWeekend = _pricePerAdultWeekend,
+            PricePerChildWeekend = _pricePerChildWeekend,
+            PricePerBabyWeekend = _pricePerBabyWeekend,
+            WeekendStartDate = _weekendStartDate,
+            WeekendEndDate = _weekendEndDate,
+            MaxWeekendCapacity = _maxWeekendCapacity,
             Camp = new Camp
             {
                 Id = Guid.NewGuid(),

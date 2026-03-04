@@ -38,8 +38,10 @@ public class CreateRegistrationValidatorTests
         var request = new CreateRegistrationRequest(
             CampEditionId: editionId,
             FamilyUnitId: Guid.NewGuid(),
-            MemberIds: [Guid.NewGuid()],
-            Notes: null);
+            Members: [new MemberAttendanceRequest(Guid.NewGuid(), AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
 
         var result = await _sut.TestValidateAsync(request);
 
@@ -67,8 +69,10 @@ public class CreateRegistrationValidatorTests
         var request = new CreateRegistrationRequest(
             CampEditionId: editionId,
             FamilyUnitId: Guid.NewGuid(),
-            MemberIds: [Guid.NewGuid()],
-            Notes: null);
+            Members: [new MemberAttendanceRequest(Guid.NewGuid(), AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
 
         var result = await _sut.TestValidateAsync(request);
 
@@ -92,12 +96,14 @@ public class CreateRegistrationValidatorTests
         var request = new CreateRegistrationRequest(
             CampEditionId: editionId,
             FamilyUnitId: Guid.NewGuid(),
-            MemberIds: [],
-            Notes: null);
+            Members: [],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
 
         var result = await _sut.TestValidateAsync(request);
 
-        result.ShouldHaveValidationErrorFor(x => x.MemberIds)
+        result.ShouldHaveValidationErrorFor(x => x.Members)
             .WithErrorMessage("Debe seleccionar al menos un miembro de la familia");
     }
 
@@ -118,12 +124,14 @@ public class CreateRegistrationValidatorTests
         var request = new CreateRegistrationRequest(
             CampEditionId: editionId,
             FamilyUnitId: Guid.NewGuid(),
-            MemberIds: [memberId, memberId],
-            Notes: null);
+            Members: [new MemberAttendanceRequest(memberId, AttendancePeriod.Complete), new MemberAttendanceRequest(memberId, AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
 
         var result = await _sut.TestValidateAsync(request);
 
-        result.ShouldHaveValidationErrorFor(x => x.MemberIds)
+        result.ShouldHaveValidationErrorFor(x => x.Members)
             .WithErrorMessage("No se puede incluir el mismo miembro dos veces");
     }
 
@@ -143,8 +151,10 @@ public class CreateRegistrationValidatorTests
         var request = new CreateRegistrationRequest(
             CampEditionId: editionId,
             FamilyUnitId: Guid.NewGuid(),
-            MemberIds: [Guid.NewGuid()],
-            Notes: new string('A', 1001));
+            Members: [new MemberAttendanceRequest(Guid.NewGuid(), AttendancePeriod.Complete)],
+            Notes: new string('A', 1001),
+            SpecialNeeds: null,
+            CampatesPreference: null);
 
         var result = await _sut.TestValidateAsync(request);
 
@@ -160,8 +170,10 @@ public class CreateRegistrationValidatorTests
         var request = new CreateRegistrationRequest(
             CampEditionId: Guid.Empty,
             FamilyUnitId: Guid.NewGuid(),
-            MemberIds: [Guid.NewGuid()],
-            Notes: null);
+            Members: [new MemberAttendanceRequest(Guid.NewGuid(), AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
 
         var result = await _sut.TestValidateAsync(request);
 
@@ -184,12 +196,128 @@ public class CreateRegistrationValidatorTests
         var request = new CreateRegistrationRequest(
             CampEditionId: editionId,
             FamilyUnitId: Guid.Empty,
-            MemberIds: [Guid.NewGuid()],
-            Notes: null);
+            Members: [new MemberAttendanceRequest(Guid.NewGuid(), AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
 
         var result = await _sut.TestValidateAsync(request);
 
         result.ShouldHaveValidationErrorFor(x => x.FamilyUnitId)
             .WithErrorMessage("La unidad familiar es obligatoria");
+    }
+
+    // ── New tests: SpecialNeeds, CampatesPreference, GuardianName, GuardianDocumentNumber ──
+
+    [Fact]
+    public async Task SpecialNeeds_WhenExceeds2000Chars_ShouldFail()
+    {
+        var editionId = Guid.NewGuid();
+        _editionsRepo.GetByIdAsync(editionId, Arg.Any<CancellationToken>())
+            .Returns(new CampEdition
+            {
+                Id = editionId, CampId = Guid.NewGuid(), Year = 2025,
+                StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddDays(7),
+                PricePerAdult = 500m, PricePerChild = 300m, PricePerBaby = 100m,
+                Status = CampEditionStatus.Open
+            });
+
+        var request = new CreateRegistrationRequest(
+            CampEditionId: editionId,
+            FamilyUnitId: Guid.NewGuid(),
+            Members: [new MemberAttendanceRequest(Guid.NewGuid(), AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: new string('A', 2001),
+            CampatesPreference: null);
+
+        var result = await _sut.TestValidateAsync(request);
+
+        result.ShouldHaveValidationErrorFor(x => x.SpecialNeeds)
+            .WithErrorMessage("Las necesidades especiales no pueden superar los 2000 caracteres");
+    }
+
+    [Fact]
+    public async Task CampatesPreference_WhenExceeds500Chars_ShouldFail()
+    {
+        var editionId = Guid.NewGuid();
+        _editionsRepo.GetByIdAsync(editionId, Arg.Any<CancellationToken>())
+            .Returns(new CampEdition
+            {
+                Id = editionId, CampId = Guid.NewGuid(), Year = 2025,
+                StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddDays(7),
+                PricePerAdult = 500m, PricePerChild = 300m, PricePerBaby = 100m,
+                Status = CampEditionStatus.Open
+            });
+
+        var request = new CreateRegistrationRequest(
+            CampEditionId: editionId,
+            FamilyUnitId: Guid.NewGuid(),
+            Members: [new MemberAttendanceRequest(Guid.NewGuid(), AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: new string('B', 501));
+
+        var result = await _sut.TestValidateAsync(request);
+
+        result.ShouldHaveValidationErrorFor(x => x.CampatesPreference)
+            .WithErrorMessage("La preferencia de acampantes no puede superar los 500 caracteres");
+    }
+
+    [Fact]
+    public async Task GuardianName_WhenExceeds200Chars_ShouldFail()
+    {
+        var editionId = Guid.NewGuid();
+        _editionsRepo.GetByIdAsync(editionId, Arg.Any<CancellationToken>())
+            .Returns(new CampEdition
+            {
+                Id = editionId, CampId = Guid.NewGuid(), Year = 2025,
+                StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddDays(7),
+                PricePerAdult = 500m, PricePerChild = 300m, PricePerBaby = 100m,
+                Status = CampEditionStatus.Open
+            });
+
+        var request = new CreateRegistrationRequest(
+            CampEditionId: editionId,
+            FamilyUnitId: Guid.NewGuid(),
+            Members: [new MemberAttendanceRequest(
+                Guid.NewGuid(), AttendancePeriod.Complete,
+                GuardianName: new string('C', 201))],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
+
+        var result = await _sut.TestValidateAsync(request);
+
+        result.ShouldHaveValidationErrorFor("Members[0].GuardianName")
+            .WithErrorMessage("El nombre del tutor no puede superar los 200 caracteres");
+    }
+
+    [Fact]
+    public async Task GuardianDocumentNumber_WhenExceeds50Chars_ShouldFail()
+    {
+        var editionId = Guid.NewGuid();
+        _editionsRepo.GetByIdAsync(editionId, Arg.Any<CancellationToken>())
+            .Returns(new CampEdition
+            {
+                Id = editionId, CampId = Guid.NewGuid(), Year = 2025,
+                StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddDays(7),
+                PricePerAdult = 500m, PricePerChild = 300m, PricePerBaby = 100m,
+                Status = CampEditionStatus.Open
+            });
+
+        var request = new CreateRegistrationRequest(
+            CampEditionId: editionId,
+            FamilyUnitId: Guid.NewGuid(),
+            Members: [new MemberAttendanceRequest(
+                Guid.NewGuid(), AttendancePeriod.Complete,
+                GuardianDocumentNumber: new string('D', 51))],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
+
+        var result = await _sut.TestValidateAsync(request);
+
+        result.ShouldHaveValidationErrorFor("Members[0].GuardianDocumentNumber")
+            .WithErrorMessage("El documento del tutor no puede superar los 50 caracteres");
     }
 }

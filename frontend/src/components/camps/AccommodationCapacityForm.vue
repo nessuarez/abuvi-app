@@ -9,6 +9,14 @@ import Button from 'primevue/button'
 import Divider from 'primevue/divider'
 import type { AccommodationCapacity, SharedRoomInfo } from '@/types/camp'
 
+const facilityOptions: { key: keyof AccommodationCapacity; label: string; icon: string }[] = [
+  { key: 'hasAdaptedMenu', label: 'Menú adaptado', icon: 'pi pi-apple' },
+  { key: 'hasEnclosedDiningRoom', label: 'Comedor cerrado', icon: 'pi pi-building' },
+  { key: 'hasSwimmingPool', label: 'Piscina', icon: 'pi pi-sun' },
+  { key: 'hasSportsCourt', label: 'Pista polideportiva', icon: 'pi pi-trophy' },
+  { key: 'hasForestArea', label: 'Pinar / zona natural', icon: 'pi pi-leaf' }
+]
+
 interface Props {
   modelValue: AccommodationCapacity | null
 }
@@ -30,7 +38,19 @@ const localValue = reactive<AccommodationCapacity>(
         memberTentAreaSquareMeters: null,
         memberTentCapacityEstimate: null,
         motorhomeSpots: null,
-        notes: null
+        notes: null,
+        // New fields
+        totalCapacity: null,
+        roomsDescription: null,
+        bungalowsDescription: null,
+        tentsDescription: null,
+        tentAreaDescription: null,
+        parkingSpots: null,
+        hasAdaptedMenu: null,
+        hasEnclosedDiningRoom: null,
+        hasSwimmingPool: null,
+        hasSportsCourt: null,
+        hasForestArea: null
       }
 )
 
@@ -46,7 +66,18 @@ watch(
       val.memberTentAreaSquareMeters != null ||
       val.memberTentCapacityEstimate != null ||
       val.motorhomeSpots != null ||
-      (val.notes && val.notes.trim().length > 0)
+      (val.notes && val.notes.trim().length > 0) ||
+      val.totalCapacity != null ||
+      val.roomsDescription != null ||
+      val.bungalowsDescription != null ||
+      val.tentsDescription != null ||
+      val.tentAreaDescription != null ||
+      val.parkingSpots != null ||
+      val.hasAdaptedMenu != null ||
+      val.hasEnclosedDiningRoom != null ||
+      val.hasSwimmingPool != null ||
+      val.hasSportsCourt != null ||
+      val.hasForestArea != null
 
     emit('update:modelValue', hasData ? { ...val, sharedRooms: val.sharedRooms ? [...val.sharedRooms] : null } : null)
   },
@@ -78,6 +109,17 @@ const clearCapacity = () => {
   localValue.memberTentCapacityEstimate = null
   localValue.motorhomeSpots = null
   localValue.notes = null
+  localValue.totalCapacity = null
+  localValue.roomsDescription = null
+  localValue.bungalowsDescription = null
+  localValue.tentsDescription = null
+  localValue.tentAreaDescription = null
+  localValue.parkingSpots = null
+  localValue.hasAdaptedMenu = null
+  localValue.hasEnclosedDiningRoom = null
+  localValue.hasSwimmingPool = null
+  localValue.hasSportsCourt = null
+  localValue.hasForestArea = null
   emit('update:modelValue', null)
 }
 </script>
@@ -237,6 +279,55 @@ const clearCapacity = () => {
           class="mt-2"
           @click="addSharedRoom"
         />
+      </div>
+
+      <!-- CSV Reference Capacity -->
+      <Divider />
+      <h4 class="text-sm font-semibold text-gray-700">Capacidad (referencia CSV)</h4>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-gray-700">Total plazas</label>
+          <InputNumber v-model="localValue.totalCapacity" :min="0" class="w-full" placeholder="0" show-buttons />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-gray-700">Plazas de aparcamiento</label>
+          <InputNumber v-model="localValue.parkingSpots" :min="0" class="w-full" placeholder="0" show-buttons />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-gray-700">Habitaciones (descripción)</label>
+          <InputText v-model="localValue.roomsDescription" class="w-full" placeholder="Ej: 10 dobles + 5 triples" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-gray-700">Cabañas (descripción)</label>
+          <InputText v-model="localValue.bungalowsDescription" class="w-full" placeholder="Ej: 4 cabañas de madera" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-gray-700">Tiendas (descripción)</label>
+          <InputText v-model="localValue.tentsDescription" class="w-full" placeholder="Ej: 20 tiendas de 4 plazas" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-gray-700">Campa para tiendas</label>
+          <InputText v-model="localValue.tentAreaDescription" class="w-full" placeholder="Ej: Zona de acampada libre" />
+        </div>
+      </div>
+
+      <!-- Facilities -->
+      <Divider />
+      <h4 class="text-sm font-semibold text-gray-700">Instalaciones</h4>
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-for="f in facilityOptions"
+          :key="f.key"
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors"
+          :class="localValue[f.key]
+            ? 'border-green-300 bg-green-50 text-green-700'
+            : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50'"
+          @click="(localValue[f.key] as boolean | null) = localValue[f.key] ? null : true"
+        >
+          <i :class="f.icon" class="text-xs"></i>
+          {{ f.label }}
+        </button>
       </div>
 
       <!-- Clear all -->

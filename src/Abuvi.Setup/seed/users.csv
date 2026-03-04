@@ -1,0 +1,4 @@
+email,password,firstName,lastName,phone,role,documentNumber
+board@abuvi.local,Board@123456,Ana,Lopez,+34612345678,Board,12345678A
+member1@abuvi.local,Member@123456,Carlos,Garcia,+34698765432,Member,87654321B
+member2@abuvi.local,Member@123456,Laura,Martin,,Member,

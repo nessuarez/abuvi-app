@@ -1,4 +1,5 @@
 using Abuvi.API.Common.Exceptions;
+using Abuvi.API.Common.Services;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.Registrations;
@@ -6,6 +7,7 @@ using Abuvi.API.Features.Users;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using NSubstitute.ReturnsExtensions;
 
 namespace Abuvi.Tests.Unit.Features.Registrations;
@@ -14,9 +16,12 @@ public class RegistrationsServiceTests
 {
     private readonly IRegistrationsRepository _repo;
     private readonly IRegistrationExtrasRepository _extrasRepo;
+    private readonly IRegistrationAccommodationPreferencesRepository _accommodationPrefsRepo;
     private readonly IFamilyUnitsRepository _familyUnitsRepo;
     private readonly ICampEditionsRepository _editionsRepo;
+    private readonly ICampEditionAccommodationsRepository _accommodationsRepo;
     private readonly IAssociationSettingsRepository _settingsRepo;
+    private readonly IEmailService _emailService;
     private readonly ILogger<RegistrationsService> _logger;
     private readonly RegistrationPricingService _pricingService;
     private readonly RegistrationsService _sut;
@@ -30,13 +35,18 @@ public class RegistrationsServiceTests
     {
         _repo = Substitute.For<IRegistrationsRepository>();
         _extrasRepo = Substitute.For<IRegistrationExtrasRepository>();
+        _accommodationPrefsRepo = Substitute.For<IRegistrationAccommodationPreferencesRepository>();
+        _accommodationPrefsRepo = Substitute.For<IRegistrationAccommodationPreferencesRepository>();
         _familyUnitsRepo = Substitute.For<IFamilyUnitsRepository>();
         _editionsRepo = Substitute.For<ICampEditionsRepository>();
+        _accommodationsRepo = Substitute.For<ICampEditionAccommodationsRepository>();
+        _accommodationsRepo = Substitute.For<ICampEditionAccommodationsRepository>();
         _settingsRepo = Substitute.For<IAssociationSettingsRepository>();
+        _emailService = Substitute.For<IEmailService>();
         _logger = Substitute.For<ILogger<RegistrationsService>>();
         _pricingService = new RegistrationPricingService(_settingsRepo);
         _sut = new RegistrationsService(
-            _repo, _extrasRepo, _familyUnitsRepo, _editionsRepo, _pricingService, _logger);
+            _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo, _editionsRepo, _accommodationsRepo, _pricingService, _emailService, _logger);
     }
 
     // ── CreateAsync ───────────────────────────────────────────────────────────
@@ -53,7 +63,6 @@ public class RegistrationsServiceTests
         _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
         _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
         _repo.ExistsAsync(FamilyUnitId, CampEditionId, Arg.Any<CancellationToken>()).Returns(false);
-        _repo.CountActiveByEditionAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(0);
         _familyUnitsRepo.GetFamilyMemberByIdAsync(MemberId, Arg.Any<CancellationToken>()).Returns(member);
         _repo.AddAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
 
@@ -64,8 +73,10 @@ public class RegistrationsServiceTests
         var request = new CreateRegistrationRequest(
             CampEditionId: CampEditionId,
             FamilyUnitId: FamilyUnitId,
-            MemberIds: [MemberId],
-            Notes: null);
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
 
         // Act
         var result = await _sut.CreateAsync(UserId, request, CancellationToken.None);
@@ -88,8 +99,10 @@ public class RegistrationsServiceTests
         var request = new CreateRegistrationRequest(
             CampEditionId: CampEditionId,
             FamilyUnitId: FamilyUnitId,
-            MemberIds: [MemberId],
-            Notes: null);
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
 
         Func<Task> act = async () => await _sut.CreateAsync(UserId, request, CancellationToken.None);
 
@@ -110,8 +123,10 @@ public class RegistrationsServiceTests
         var request = new CreateRegistrationRequest(
             CampEditionId: CampEditionId,
             FamilyUnitId: FamilyUnitId,
-            MemberIds: [MemberId],
-            Notes: null);
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
 
         Func<Task> act = async () => await _sut.CreateAsync(UserId, request, CancellationToken.None);
 
@@ -124,17 +139,22 @@ public class RegistrationsServiceTests
     {
         var familyUnit = CreateFamilyUnit(UserId);
         var edition = CreateOpenEdition(maxCapacity: 10);
+        var member = CreateFamilyMember(MemberId, FamilyUnitId, dateOfBirth: new DateOnly(2000, 1, 1));
 
+        SetupGlobalAgeRanges();
         _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
         _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
         _repo.ExistsAsync(FamilyUnitId, CampEditionId, Arg.Any<CancellationToken>()).Returns(false);
-        _repo.CountActiveByEditionAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(10);
+        _familyUnitsRepo.GetFamilyMemberByIdAsync(MemberId, Arg.Any<CancellationToken>()).Returns(member);
+        _repo.CountConcurrentAttendeesByPeriodAsync(CampEditionId, Arg.Any<AttendancePeriod>(), Arg.Any<CancellationToken>()).Returns(10);
 
         var request = new CreateRegistrationRequest(
             CampEditionId: CampEditionId,
             FamilyUnitId: FamilyUnitId,
-            MemberIds: [MemberId],
-            Notes: null);
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
 
         Func<Task> act = async () => await _sut.CreateAsync(UserId, request, CancellationToken.None);
 
@@ -153,15 +173,16 @@ public class RegistrationsServiceTests
         _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
         _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
         _repo.ExistsAsync(FamilyUnitId, CampEditionId, Arg.Any<CancellationToken>()).Returns(false);
-        _repo.CountActiveByEditionAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(0);
         _familyUnitsRepo.GetFamilyMemberByIdAsync(MemberId, Arg.Any<CancellationToken>()).Returns(member);
         SetupGlobalAgeRanges();
 
         var request = new CreateRegistrationRequest(
             CampEditionId: CampEditionId,
             FamilyUnitId: FamilyUnitId,
-            MemberIds: [MemberId],
-            Notes: null);
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
 
         Func<Task> act = async () => await _sut.CreateAsync(UserId, request, CancellationToken.None);
 
@@ -180,8 +201,10 @@ public class RegistrationsServiceTests
         var request = new CreateRegistrationRequest(
             CampEditionId: CampEditionId,
             FamilyUnitId: FamilyUnitId,
-            MemberIds: [MemberId],
-            Notes: null);
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
 
         Func<Task> act = async () => await _sut.CreateAsync(UserId, request, CancellationToken.None);
 
@@ -212,7 +235,7 @@ public class RegistrationsServiceTests
         _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>())
             .Returns(BuildFullRegistration(registrationId, familyUnit, edition, [member], edition.PricePerAdult));
 
-        var request = new UpdateRegistrationMembersRequest([MemberId]);
+        var request = new UpdateRegistrationMembersRequest([new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)]);
 
         var result = await _sut.UpdateMembersAsync(registrationId, UserId, request, CancellationToken.None);
 
@@ -233,7 +256,7 @@ public class RegistrationsServiceTests
         _repo.GetByIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
         _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
 
-        var request = new UpdateRegistrationMembersRequest([MemberId]);
+        var request = new UpdateRegistrationMembersRequest([new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)]);
 
         Func<Task> act = async () =>
             await _sut.UpdateMembersAsync(registrationId, UserId, request, CancellationToken.None);
@@ -254,7 +277,7 @@ public class RegistrationsServiceTests
         _repo.GetByIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
         _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
 
-        var request = new UpdateRegistrationMembersRequest([MemberId]);
+        var request = new UpdateRegistrationMembersRequest([new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)]);
 
         Func<Task> act = async () =>
             await _sut.UpdateMembersAsync(registrationId, UserId, request, CancellationToken.None);
@@ -468,7 +491,7 @@ public class RegistrationsServiceTests
         Status = CampEditionStatus.Open,
         UseCustomAgeRanges = false,
         MaxCapacity = maxCapacity,
-        Camp = new Camp { Id = Guid.NewGuid(), Name = "Test Camp", PricePerAdult = 500m, PricePerChild = 300m, PricePerBaby = 100m }
+        Camp = new Camp { Id = Guid.NewGuid(), Name = "Test Camp", Location = "Test Location", PricePerAdult = 500m, PricePerChild = 300m, PricePerBaby = 100m }
     };
 
     private static CampEdition CreateEditionWithStatus(CampEditionStatus status)
@@ -480,81 +503,91 @@ public class RegistrationsServiceTests
 
     private static FamilyMember CreateFamilyMember(Guid id, Guid familyUnitId,
         DateOnly? dateOfBirth = null) => new()
-    {
-        Id = id,
-        FamilyUnitId = familyUnitId,
-        FirstName = "Ana",
-        LastName = "García",
-        DateOfBirth = dateOfBirth ?? new DateOnly(2000, 1, 1),
-        Relationship = FamilyRelationship.Parent,
-        CreatedAt = DateTime.UtcNow,
-        UpdatedAt = DateTime.UtcNow
-    };
+        {
+            Id = id,
+            FamilyUnitId = familyUnitId,
+            FirstName = "Ana",
+            LastName = "García",
+            DateOfBirth = dateOfBirth ?? new DateOnly(2000, 1, 1),
+            Relationship = FamilyRelationship.Parent,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
 
     private static Registration CreateRegistrationWithFamilyUnit(
         Guid id, FamilyUnit familyUnit, CampEdition edition) => new()
-    {
-        Id = id,
-        FamilyUnitId = familyUnit.Id,
-        CampEditionId = edition.Id,
-        RegisteredByUserId = familyUnit.RepresentativeUserId,
-        BaseTotalAmount = 500m,
-        ExtrasAmount = 0m,
-        TotalAmount = 500m,
-        Status = RegistrationStatus.Pending,
-        CreatedAt = DateTime.UtcNow,
-        UpdatedAt = DateTime.UtcNow,
-        FamilyUnit = familyUnit,
-        CampEdition = edition,
-        Members = [],
-        Extras = [],
-        Payments = []
-    };
+        {
+            Id = id,
+            FamilyUnitId = familyUnit.Id,
+            CampEditionId = edition.Id,
+            RegisteredByUserId = familyUnit.RepresentativeUserId,
+            BaseTotalAmount = 500m,
+            ExtrasAmount = 0m,
+            TotalAmount = 500m,
+            Status = RegistrationStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            FamilyUnit = familyUnit,
+            CampEdition = edition,
+            Members = [],
+            Extras = [],
+            Payments = []
+        };
 
     /// <summary>Builds a full Registration entity with navigation properties — used for GetByIdWithDetailsAsync mocks.</summary>
     private static Registration BuildFullRegistration(
         Guid id, FamilyUnit familyUnit, CampEdition edition,
         List<FamilyMember> members, decimal pricePerMember) => new()
-    {
-        Id = id,
-        FamilyUnitId = familyUnit.Id,
-        CampEditionId = edition.Id,
-        RegisteredByUserId = familyUnit.RepresentativeUserId,
-        BaseTotalAmount = members.Count * pricePerMember,
-        ExtrasAmount = 0m,
-        TotalAmount = members.Count * pricePerMember,
-        Status = RegistrationStatus.Pending,
-        CreatedAt = DateTime.UtcNow,
-        UpdatedAt = DateTime.UtcNow,
-        FamilyUnit = familyUnit,
-        CampEdition = edition,
-        Members = members.Select(m => new RegistrationMember
         {
-            Id = Guid.NewGuid(),
-            RegistrationId = id,
-            FamilyMemberId = m.Id,
-            FamilyMember = m,
-            AgeAtCamp = 25,
-            AgeCategory = AgeCategory.Adult,
-            IndividualAmount = pricePerMember,
-            CreatedAt = DateTime.UtcNow
-        }).ToList(),
-        Extras = [],
-        Payments = []
-    };
+            Id = id,
+            FamilyUnitId = familyUnit.Id,
+            CampEditionId = edition.Id,
+            RegisteredByUserId = familyUnit.RepresentativeUserId,
+            BaseTotalAmount = members.Count * pricePerMember,
+            ExtrasAmount = 0m,
+            TotalAmount = members.Count * pricePerMember,
+            Status = RegistrationStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            FamilyUnit = familyUnit,
+            CampEdition = edition,
+            RegisteredByUser = new User
+            {
+                Id = familyUnit.RepresentativeUserId,
+                Email = "representative@example.com",
+                FirstName = "Test",
+                LastName = "User",
+                IsActive = true,
+                EmailVerified = true
+            },
+            Members = members.Select(m => new RegistrationMember
+            {
+                Id = Guid.NewGuid(),
+                RegistrationId = id,
+                FamilyMemberId = m.Id,
+                FamilyMember = m,
+                AgeAtCamp = 25,
+                AgeCategory = AgeCategory.Adult,
+                IndividualAmount = pricePerMember,
+                AttendancePeriod = AttendancePeriod.Complete,
+                CreatedAt = DateTime.UtcNow
+            }).ToList(),
+            Extras = [],
+            Payments = []
+        };
 
     private static CampEditionExtra CreateCampEditionExtra(
         Guid id, Guid campEditionId, decimal price, int? maxQuantity = null) => new()
-    {
-        Id = id,
-        CampEditionId = campEditionId,
-        Name = "Test Extra",
-        Price = price,
-        PricingType = PricingType.PerPerson,
-        PricingPeriod = PricingPeriod.OneTime,
-        IsActive = true,
-        MaxQuantity = maxQuantity
-    };
+        {
+            Id = id,
+            CampEditionId = campEditionId,
+            Name = "Test Extra",
+            Price = price,
+            PricingType = PricingType.PerPerson,
+            PricingPeriod = PricingPeriod.OneTime,
+            IsActive = true,
+            MaxQuantity = maxQuantity
+        };
 
     private void SetupGlobalAgeRanges()
     {
@@ -567,5 +600,301 @@ public class RegistrationsServiceTests
                 SettingValue = json,
                 UpdatedAt = DateTime.UtcNow
             });
+    }
+
+    // ── New field mapping tests ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateAsync_WithSpecialNeeds_PersistsValue()
+    {
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var member = CreateFamilyMember(MemberId, FamilyUnitId, dateOfBirth: new DateOnly(2000, 1, 1));
+
+        SetupGlobalAgeRanges();
+        _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
+        _repo.ExistsAsync(FamilyUnitId, CampEditionId, Arg.Any<CancellationToken>()).Returns(false);
+        _familyUnitsRepo.GetFamilyMemberByIdAsync(MemberId, Arg.Any<CancellationToken>()).Returns(member);
+
+        Registration? captured = null;
+        _repo.AddAsync(Arg.Do<Registration>(r => captured = r), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _repo.GetByIdWithDetailsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(BuildFullRegistration(Guid.NewGuid(), familyUnit, edition, [member], edition.PricePerAdult));
+
+        var request = new CreateRegistrationRequest(
+            CampEditionId: CampEditionId,
+            FamilyUnitId: FamilyUnitId,
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: "Wheelchair access needed",
+            CampatesPreference: null);
+
+        await _sut.CreateAsync(UserId, request, CancellationToken.None);
+
+        captured.Should().NotBeNull();
+        captured!.SpecialNeeds.Should().Be("Wheelchair access needed");
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithCampatesPreference_PersistsValue()
+    {
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var member = CreateFamilyMember(MemberId, FamilyUnitId, dateOfBirth: new DateOnly(2000, 1, 1));
+
+        SetupGlobalAgeRanges();
+        _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
+        _repo.ExistsAsync(FamilyUnitId, CampEditionId, Arg.Any<CancellationToken>()).Returns(false);
+        _familyUnitsRepo.GetFamilyMemberByIdAsync(MemberId, Arg.Any<CancellationToken>()).Returns(member);
+
+        Registration? captured = null;
+        _repo.AddAsync(Arg.Do<Registration>(r => captured = r), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _repo.GetByIdWithDetailsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(BuildFullRegistration(Guid.NewGuid(), familyUnit, edition, [member], edition.PricePerAdult));
+
+        var request = new CreateRegistrationRequest(
+            CampEditionId: CampEditionId,
+            FamilyUnitId: FamilyUnitId,
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: "Near family Garcia");
+
+        await _sut.CreateAsync(UserId, request, CancellationToken.None);
+
+        captured.Should().NotBeNull();
+        captured!.CampatesPreference.Should().Be("Near family Garcia");
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithGuardianInfoOnMember_PersistsGuardianFields()
+    {
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var member = CreateFamilyMember(MemberId, FamilyUnitId, dateOfBirth: new DateOnly(2020, 1, 1)); // minor
+
+        SetupGlobalAgeRanges();
+        _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
+        _repo.ExistsAsync(FamilyUnitId, CampEditionId, Arg.Any<CancellationToken>()).Returns(false);
+        _familyUnitsRepo.GetFamilyMemberByIdAsync(MemberId, Arg.Any<CancellationToken>()).Returns(member);
+
+        Registration? captured = null;
+        _repo.AddAsync(Arg.Do<Registration>(r => captured = r), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _repo.GetByIdWithDetailsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(BuildFullRegistration(Guid.NewGuid(), familyUnit, edition, [member], edition.PricePerBaby));
+
+        var request = new CreateRegistrationRequest(
+            CampEditionId: CampEditionId,
+            FamilyUnitId: FamilyUnitId,
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete,
+                GuardianName: "Maria Garcia", GuardianDocumentNumber: "12345678A")],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
+
+        await _sut.CreateAsync(UserId, request, CancellationToken.None);
+
+        captured.Should().NotBeNull();
+        var capturedMember = captured!.Members.First();
+        capturedMember.GuardianName.Should().Be("Maria Garcia");
+        capturedMember.GuardianDocumentNumber.Should().Be("12345678A");
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithNullOptionalFields_UsesDefaults()
+    {
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var member = CreateFamilyMember(MemberId, FamilyUnitId, dateOfBirth: new DateOnly(2000, 1, 1));
+
+        SetupGlobalAgeRanges();
+        _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
+        _repo.ExistsAsync(FamilyUnitId, CampEditionId, Arg.Any<CancellationToken>()).Returns(false);
+        _familyUnitsRepo.GetFamilyMemberByIdAsync(MemberId, Arg.Any<CancellationToken>()).Returns(member);
+
+        Registration? captured = null;
+        _repo.AddAsync(Arg.Do<Registration>(r => captured = r), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _repo.GetByIdWithDetailsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(BuildFullRegistration(Guid.NewGuid(), familyUnit, edition, [member], edition.PricePerAdult));
+
+        var request = new CreateRegistrationRequest(
+            CampEditionId: CampEditionId,
+            FamilyUnitId: FamilyUnitId,
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null);
+
+        await _sut.CreateAsync(UserId, request, CancellationToken.None);
+
+        captured.Should().NotBeNull();
+        captured!.SpecialNeeds.Should().BeNull();
+        captured.CampatesPreference.Should().BeNull();
+        captured.Members.First().GuardianName.Should().BeNull();
+        captured.Members.First().GuardianDocumentNumber.Should().BeNull();
+    }
+
+    // ── Email Notification Tests ────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateAsync_WhenSuccessful_SendsConfirmationEmail()
+    {
+        // Arrange
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var member = CreateFamilyMember(MemberId, FamilyUnitId, dateOfBirth: new DateOnly(2000, 1, 1));
+
+        SetupGlobalAgeRanges();
+        _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
+        _repo.ExistsAsync(FamilyUnitId, CampEditionId, Arg.Any<CancellationToken>()).Returns(false);
+        _familyUnitsRepo.GetFamilyMemberByIdAsync(MemberId, Arg.Any<CancellationToken>()).Returns(member);
+        _repo.AddAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _repo.GetByIdWithDetailsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(BuildFullRegistration(Guid.NewGuid(), familyUnit, edition, [member], edition.PricePerAdult));
+
+        var request = new CreateRegistrationRequest(
+            CampEditionId: CampEditionId, FamilyUnitId: FamilyUnitId,
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
+            Notes: null, SpecialNeeds: null, CampatesPreference: null);
+
+        // Act
+        await _sut.CreateAsync(UserId, request, CancellationToken.None);
+
+        // Assert
+        await _emailService.Received(1).SendCampRegistrationConfirmationAsync(
+            Arg.Is<CampRegistrationEmailData>(d =>
+                d.ToEmail == "representative@example.com" &&
+                d.CampName == "Test Camp"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenEmailFails_StillReturnsRegistration()
+    {
+        // Arrange
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var member = CreateFamilyMember(MemberId, FamilyUnitId, dateOfBirth: new DateOnly(2000, 1, 1));
+
+        SetupGlobalAgeRanges();
+        _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
+        _repo.ExistsAsync(FamilyUnitId, CampEditionId, Arg.Any<CancellationToken>()).Returns(false);
+        _familyUnitsRepo.GetFamilyMemberByIdAsync(MemberId, Arg.Any<CancellationToken>()).Returns(member);
+        _repo.AddAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _repo.GetByIdWithDetailsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(BuildFullRegistration(Guid.NewGuid(), familyUnit, edition, [member], edition.PricePerAdult));
+
+        _emailService.SendCampRegistrationConfirmationAsync(
+            Arg.Any<CampRegistrationEmailData>(), Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("Email send failed"));
+
+        var request = new CreateRegistrationRequest(
+            CampEditionId: CampEditionId, FamilyUnitId: FamilyUnitId,
+            Members: [new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)],
+            Notes: null, SpecialNeeds: null, CampatesPreference: null);
+
+        // Act
+        var result = await _sut.CreateAsync(UserId, request, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        await _repo.Received(1).AddAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CancelAsync_WhenSuccessful_SendsCancellationEmail()
+    {
+        // Arrange
+        var registrationId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var member = CreateFamilyMember(MemberId, FamilyUnitId);
+        var existing = CreateRegistrationWithFamilyUnit(registrationId, familyUnit, edition);
+        existing.Status = RegistrationStatus.Pending;
+
+        _repo.GetByIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
+        _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
+        _repo.UpdateAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>())
+            .Returns(BuildFullRegistration(registrationId, familyUnit, edition, [member], edition.PricePerAdult));
+
+        // Act
+        await _sut.CancelAsync(registrationId, UserId, isAdminOrBoard: false, CancellationToken.None);
+
+        // Assert
+        await _emailService.Received(1).SendCampRegistrationCancellationAsync(
+            Arg.Any<CampRegistrationEmailData>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CancelAsync_WhenEmailFails_StillCancelsRegistration()
+    {
+        // Arrange
+        var registrationId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var member = CreateFamilyMember(MemberId, FamilyUnitId);
+        var existing = CreateRegistrationWithFamilyUnit(registrationId, familyUnit, edition);
+        existing.Status = RegistrationStatus.Pending;
+
+        _repo.GetByIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
+        _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
+        _repo.UpdateAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>())
+            .Returns(BuildFullRegistration(registrationId, familyUnit, edition, [member], edition.PricePerAdult));
+
+        _emailService.SendCampRegistrationCancellationAsync(
+            Arg.Any<CampRegistrationEmailData>(), Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("Email send failed"));
+
+        // Act
+        var result = await _sut.CancelAsync(registrationId, UserId, isAdminOrBoard: false, CancellationToken.None);
+
+        // Assert
+        result.Message.Should().NotBeNullOrEmpty();
+        await _repo.Received(1).UpdateAsync(
+            Arg.Is<Registration>(r => r.Status == RegistrationStatus.Cancelled),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateMembersAsync_WithGuardianInfo_PersistsOnNewMembers()
+    {
+        var registrationId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var member = CreateFamilyMember(MemberId, FamilyUnitId, dateOfBirth: new DateOnly(2020, 1, 1)); // minor
+
+        var existing = CreateRegistrationWithFamilyUnit(registrationId, familyUnit, edition);
+        existing.Status = RegistrationStatus.Pending;
+
+        SetupGlobalAgeRanges();
+        _repo.GetByIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
+        _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
+        _familyUnitsRepo.GetFamilyMemberByIdAsync(MemberId, Arg.Any<CancellationToken>()).Returns(member);
+        _repo.DeleteMembersByRegistrationIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+
+        Registration? captured = null;
+        _repo.UpdateAsync(Arg.Do<Registration>(r => captured = r), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>())
+            .Returns(BuildFullRegistration(registrationId, familyUnit, edition, [member], edition.PricePerBaby));
+
+        var request = new UpdateRegistrationMembersRequest([
+            new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete,
+                GuardianName: "Juan López", GuardianDocumentNumber: "87654321B")]);
+
+        await _sut.UpdateMembersAsync(registrationId, UserId, request, CancellationToken.None);
+
+        captured.Should().NotBeNull();
+        var capturedMember = captured!.Members.First();
+        capturedMember.GuardianName.Should().Be("Juan López");
+        capturedMember.GuardianDocumentNumber.Should().Be("87654321B");
     }
 }

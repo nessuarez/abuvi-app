@@ -105,12 +105,12 @@ const handleViewDetail = (edition: CampEdition) => {
   router.push({ name: 'camp-edition-detail', params: { id: edition.id } })
 }
 
-const handleStatusConfirm = async (newStatus: CampEditionStatus) => {
+const handleStatusConfirm = async (newStatus: CampEditionStatus, force?: boolean) => {
   if (!selectedEdition.value) return
   statusLoading.value = true
   const result = selectedEdition.value.status === 'Proposed'
     ? await promoteEdition(selectedEdition.value.id)
-    : await changeStatus(selectedEdition.value.id, newStatus)
+    : await changeStatus(selectedEdition.value.id, newStatus, force)
   statusLoading.value = false
   showStatusDialog.value = false
 
@@ -187,7 +187,12 @@ const handleEditionSaved = (_edition: CampEdition) => {
         <DataTable :value="allEditions" striped-rows paginator :rows="10" :loading="loading">
           <Column header="Ubicación" sortable sort-field="camp.name">
             <template #body="{ data }">
-              <span class="font-medium">{{ data.camp?.name ?? '—' }}</span>
+              <router-link
+                :to="{ name: 'camp-edition-detail', params: { id: data.id } }"
+                class="font-medium text-primary hover:underline"
+              >
+                {{ data.camp?.name ?? '—' }}
+              </router-link>
             </template>
           </Column>
 

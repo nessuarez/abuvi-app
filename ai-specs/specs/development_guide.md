@@ -188,6 +188,68 @@ dotnet ef database drop --project src/Abuvi.API --force
 dotnet ef database update --project src/Abuvi.API
 ```
 
+### Database Setup Tool (Abuvi.Setup)
+
+A standalone console application for resetting the database and importing seed data from CSV files. Located at `src/Abuvi.Setup/`.
+
+#### Quick Start (Development)
+
+```bash
+# Full reset + seed with default CSV files (dev mode, no confirmation needed)
+dotnet run --project src/Abuvi.Setup
+
+# Reset only (wipe all data, re-seed admin)
+dotnet run --project src/Abuvi.Setup reset
+
+# Import only (no reset, skips duplicates)
+dotnet run --project src/Abuvi.Setup setup
+
+# Import a single entity
+dotnet run --project src/Abuvi.Setup import users
+
+# Use custom CSV directory
+dotnet run --project src/Abuvi.Setup run-all --dir=./my-data/
+```
+
+#### Production Mode
+
+```bash
+# Safe import: only inserts on empty tables, no reset
+dotnet run --project src/Abuvi.Setup setup \
+  --env=production \
+  --connection="Host=prod-host;Database=abuvi;..." \
+  --dir=./production-data/
+
+# Full reset (requires --confirm flag + interactive "YES")
+dotnet run --project src/Abuvi.Setup run-all \
+  --env=production \
+  --confirm \
+  --connection="Host=prod-host;Database=abuvi;..."
+```
+
+#### CSV File Format
+
+All CSV files use comma separator, UTF-8 encoding, first row as header, ISO 8601 dates. Default seed files are located at `src/Abuvi.Setup/seed/`.
+
+| File | Required Columns |
+| ------ | ----------------- |
+| `users.csv` | email, password, firstName, lastName, role |
+| `family-units.csv` | name, representativeEmail |
+| `family-members.csv` | familyUnitName, firstName, lastName, dateOfBirth, relationship |
+| `camps.csv` | name, pricePerAdult, pricePerChild, pricePerBaby |
+| `camp-editions.csv` | campName, year, startDate, endDate, pricePerAdult, pricePerChild, pricePerBaby, status |
+
+#### Import Order
+
+Files are processed in strict dependency order: Users → FamilyUnits → FamilyMembers → Camps → CampEditions.
+
+#### Safety
+
+- **Dev mode**: Reset and import freely, duplicates are skipped
+- **Production mode**: Reset requires `--confirm` + interactive "YES"; import only allowed on empty tables
+- Sensitive fields (medicalNotes, allergies) are excluded from CSV import
+- Passwords in CSV are plain text; BCrypt-hashed before DB insertion
+
 ### Adding a New Feature (Vertical Slice)
 
 Create the following files in `src/Abuvi.API/Features/[FeatureName]/`:
@@ -221,6 +283,70 @@ dotnet publish src/Abuvi.API -c Release -o publish/
 cd frontend
 npm run build
 ```
+
+## Error Tracking & User Feedback
+
+The application uses **GlitchTip** (Sentry-compatible) for error tracking and **Userback** for visual user feedback.
+
+### GlitchTip (Error Tracking)
+
+GlitchTip is hosted at `app.glitchtip.com` (free tier: 1K events/mo). It captures unhandled exceptions from both frontend and backend.
+
+**Setup:**
+
+1. Register at [app.glitchtip.com](https://app.glitchtip.com) and create an organization
+2. Create two projects: one for frontend (Vue), one for backend (.NET)
+3. Copy the DSN for each project
+
+**Frontend configuration:**
+
+```bash
+# frontend/.env.development (or .env.production)
+VITE_GLITCHTIP_DSN=https://<key>@app.glitchtip.com/<project-id>
+```
+
+**Backend configuration:**
+
+```bash
+# Via user-secrets (recommended)
+dotnet user-secrets set "Sentry:Dsn" "https://<key>@app.glitchtip.com/<project-id>"
+```
+
+Or in `appsettings.json` (for non-secret environments):
+
+```json
+{
+  "Sentry": {
+    "Dsn": "https://<key>@app.glitchtip.com/<project-id>"
+  }
+}
+```
+
+**Notes:**
+- Performance tracing is disabled (`tracesSampleRate: 0`) to conserve the free tier quota
+- Both SDKs are conditional: if the DSN is empty, error tracking is disabled (safe for local dev)
+- Migration to self-hosted GlitchTip only requires changing the DSN
+
+### Userback (Visual Feedback)
+
+Userback provides a widget for users to annotate screenshots and submit visual feedback (free tier: 2 users, 7-day feedback window).
+
+**Setup:**
+
+1. Register at [userback.io](https://www.userback.io) and create a project
+2. Copy the access token
+
+**Configuration:**
+
+```bash
+# frontend/.env.development (or .env.production)
+VITE_USERBACK_TOKEN=<your-userback-access-token>
+```
+
+**Notes:**
+- The widget loads only when `VITE_USERBACK_TOKEN` is set
+- Feedback must be triaged within 7 days on the free tier
+- Dashboard: [app.userback.io](https://app.userback.io)
 
 ## Troubleshooting
 

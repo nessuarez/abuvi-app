@@ -150,5 +150,54 @@ describe('usePasswordReset', () => {
       await resetPassword('good-token', 'newPass123')
       expect(error.value).toBeNull()
     })
+
+    it('should map validation details to fieldErrors', async () => {
+      vi.mocked(api.post).mockRejectedValue({
+        response: {
+          status: 400,
+          data: {
+            error: {
+              message: 'Validation failed',
+              code: 'VALIDATION_ERROR',
+              details: [
+                { field: 'NewPassword', message: 'La contraseña debe contener al menos un carácter especial' }
+              ]
+            }
+          }
+        }
+      })
+
+      const { error, fieldErrors, resetPassword } = usePasswordReset()
+      const result = await resetPassword('valid-token', 'weakpass')
+
+      expect(result).toBe(false)
+      expect(error.value).toBeNull()
+      expect(fieldErrors.value).toEqual({
+        newPassword: 'La contraseña debe contener al menos un carácter especial'
+      })
+    })
+
+    it('should clear fieldErrors on new call', async () => {
+      vi.mocked(api.post)
+        .mockRejectedValueOnce({
+          response: {
+            status: 400,
+            data: {
+              error: {
+                message: 'Validation failed',
+                details: [{ field: 'NewPassword', message: 'error' }]
+              }
+            }
+          }
+        })
+        .mockResolvedValueOnce({ data: { success: true, data: {}, error: null } })
+
+      const { fieldErrors, resetPassword } = usePasswordReset()
+      await resetPassword('token', 'weak')
+      expect(Object.keys(fieldErrors.value).length).toBeGreaterThan(0)
+
+      await resetPassword('token', 'Strong1!')
+      expect(Object.keys(fieldErrors.value).length).toBe(0)
+    })
   })
 })

@@ -1,3 +1,4 @@
+using Abuvi.API.Features.Registrations;
 using FluentValidation;
 
 namespace Abuvi.API.Features.Camps;
@@ -155,6 +156,40 @@ public class ProposeCampEditionRequestValidator : AbstractValidator<ProposeCampE
             .MaximumLength(2000).WithMessage("Notes must not exceed 2000 characters")
             .When(x => !string.IsNullOrWhiteSpace(x.Notes));
 
+        // Optional proposal metadata — no required constraint, only length guard
+        RuleFor(x => x.ProposalReason)
+            .MaximumLength(1000).WithMessage("Proposal reason must not exceed 1000 characters")
+            .When(x => !string.IsNullOrWhiteSpace(x.ProposalReason));
+
+        RuleFor(x => x.ProposalNotes)
+            .MaximumLength(2000).WithMessage("Proposal notes must not exceed 2000 characters")
+            .When(x => !string.IsNullOrWhiteSpace(x.ProposalNotes));
+        // Week pricing: all three prices required together
+        RuleFor(x => x)
+            .Must(x => (x.PricePerAdultWeek.HasValue && x.PricePerChildWeek.HasValue && x.PricePerBabyWeek.HasValue)
+                    || (!x.PricePerAdultWeek.HasValue && !x.PricePerChildWeek.HasValue && !x.PricePerBabyWeek.HasValue))
+            .WithMessage("Si se configura precio semanal, los tres precios (adulto, niño, bebé) son obligatorios")
+            .WithName("PricePerAdultWeek")
+            .When(x => x.PricePerAdultWeek.HasValue || x.PricePerChildWeek.HasValue || x.PricePerBabyWeek.HasValue);
+
+        // Weekend visit: dates and prices required together
+        RuleFor(x => x)
+            .Must(x => x.WeekendStartDate.HasValue && x.WeekendEndDate.HasValue
+                    && x.PricePerAdultWeekend.HasValue && x.PricePerChildWeekend.HasValue && x.PricePerBabyWeekend.HasValue)
+            .WithMessage("Para visitas de fin de semana se deben especificar fechas (inicio y fin) y los tres precios")
+            .WithName("WeekendStartDate")
+            .When(x => x.WeekendStartDate.HasValue || x.WeekendEndDate.HasValue
+                    || x.PricePerAdultWeekend.HasValue || x.PricePerChildWeekend.HasValue || x.PricePerBabyWeekend.HasValue);
+
+        RuleFor(x => x.WeekendEndDate)
+            .GreaterThan(x => x.WeekendStartDate)
+            .WithMessage("La fecha de fin del fin de semana debe ser posterior a la fecha de inicio")
+            .When(x => x.WeekendStartDate.HasValue && x.WeekendEndDate.HasValue);
+
+        RuleFor(x => x.MaxWeekendCapacity)
+            .GreaterThan(0).WithMessage("La capacidad máxima de fin de semana debe ser mayor a 0")
+            .When(x => x.MaxWeekendCapacity.HasValue);
+
         // Custom age ranges validation - if UseCustomAgeRanges is true, all custom age fields are required
         When(x => x.UseCustomAgeRanges, () =>
         {
@@ -245,6 +280,32 @@ public class UpdateCampEditionRequestValidator : AbstractValidator<UpdateCampEdi
                 .WithMessage("La edad máxima de niño debe ser menor a la edad mínima de adulto")
                 .WithName("CustomChildMaxAge");
         });
+
+        // Week pricing: all three prices required together
+        RuleFor(x => x)
+            .Must(x => (x.PricePerAdultWeek.HasValue && x.PricePerChildWeek.HasValue && x.PricePerBabyWeek.HasValue)
+                    || (!x.PricePerAdultWeek.HasValue && !x.PricePerChildWeek.HasValue && !x.PricePerBabyWeek.HasValue))
+            .WithMessage("Si se configura precio semanal, los tres precios (adulto, niño, bebé) son obligatorios")
+            .WithName("PricePerAdultWeek")
+            .When(x => x.PricePerAdultWeek.HasValue || x.PricePerChildWeek.HasValue || x.PricePerBabyWeek.HasValue);
+
+        // Weekend visit: dates and prices required together
+        RuleFor(x => x)
+            .Must(x => x.WeekendStartDate.HasValue && x.WeekendEndDate.HasValue
+                    && x.PricePerAdultWeekend.HasValue && x.PricePerChildWeekend.HasValue && x.PricePerBabyWeekend.HasValue)
+            .WithMessage("Para visitas de fin de semana se deben especificar fechas (inicio y fin) y los tres precios")
+            .WithName("WeekendStartDate")
+            .When(x => x.WeekendStartDate.HasValue || x.WeekendEndDate.HasValue
+                    || x.PricePerAdultWeekend.HasValue || x.PricePerChildWeekend.HasValue || x.PricePerBabyWeekend.HasValue);
+
+        RuleFor(x => x.WeekendEndDate)
+            .GreaterThan(x => x.WeekendStartDate)
+            .WithMessage("La fecha de fin del fin de semana debe ser posterior a la fecha de inicio")
+            .When(x => x.WeekendStartDate.HasValue && x.WeekendEndDate.HasValue);
+
+        RuleFor(x => x.MaxWeekendCapacity)
+            .GreaterThan(0).WithMessage("La capacidad máxima de fin de semana debe ser mayor a 0")
+            .When(x => x.MaxWeekendCapacity.HasValue);
     }
 }
 
@@ -317,6 +378,112 @@ public class ReorderCampPhotosRequestValidator : AbstractValidator<ReorderCampPh
 
             photo.RuleFor(p => p.DisplayOrder)
                 .GreaterThanOrEqualTo(0).WithMessage("Display order must be greater than or equal to 0");
+        });
+    }
+}
+
+/// <summary>
+/// Validator for CreateCampEditionAccommodationRequest
+/// </summary>
+public class CreateCampEditionAccommodationRequestValidator
+    : AbstractValidator<CreateCampEditionAccommodationRequest>
+{
+    public CreateCampEditionAccommodationRequestValidator()
+    {
+        RuleFor(x => x.Name)
+            .NotEmpty().WithMessage("Accommodation name is required")
+            .MaximumLength(200).WithMessage("Accommodation name must not exceed 200 characters");
+
+        RuleFor(x => x.AccommodationType)
+            .IsInEnum().WithMessage("Invalid accommodation type");
+
+        RuleFor(x => x.Description)
+            .MaximumLength(1000).WithMessage("Description must not exceed 1000 characters")
+            .When(x => !string.IsNullOrWhiteSpace(x.Description));
+
+        RuleFor(x => x.Capacity)
+            .GreaterThan(0).WithMessage("Capacity must be greater than 0")
+            .When(x => x.Capacity.HasValue);
+
+        RuleFor(x => x.SortOrder)
+            .GreaterThanOrEqualTo(0).WithMessage("Sort order must be greater than or equal to 0");
+    }
+}
+
+/// <summary>
+/// Validator for UpdateCampEditionAccommodationRequest
+/// </summary>
+public class UpdateCampEditionAccommodationRequestValidator
+    : AbstractValidator<UpdateCampEditionAccommodationRequest>
+{
+    public UpdateCampEditionAccommodationRequestValidator()
+    {
+        RuleFor(x => x.Name)
+            .NotEmpty().WithMessage("Accommodation name is required")
+            .MaximumLength(200).WithMessage("Accommodation name must not exceed 200 characters");
+
+        RuleFor(x => x.AccommodationType)
+            .IsInEnum().WithMessage("Invalid accommodation type");
+
+        RuleFor(x => x.Description)
+            .MaximumLength(1000).WithMessage("Description must not exceed 1000 characters")
+            .When(x => !string.IsNullOrWhiteSpace(x.Description));
+
+        RuleFor(x => x.Capacity)
+            .GreaterThan(0).WithMessage("Capacity must be greater than 0")
+            .When(x => x.Capacity.HasValue);
+
+        RuleFor(x => x.SortOrder)
+            .GreaterThanOrEqualTo(0).WithMessage("Sort order must be greater than or equal to 0");
+    }
+}
+
+/// <summary>
+/// Validator for AddCampObservationRequest
+/// </summary>
+public class AddCampObservationRequestValidator : AbstractValidator<AddCampObservationRequest>
+{
+    public AddCampObservationRequestValidator()
+    {
+        RuleFor(x => x.Text)
+            .NotEmpty().WithMessage("El texto de la observación es obligatorio")
+            .MaximumLength(4000).WithMessage("El texto no puede exceder 4000 caracteres");
+
+        RuleFor(x => x.Season)
+            .MaximumLength(20).When(x => x.Season != null)
+            .WithMessage("La temporada no puede exceder 20 caracteres");
+    }
+}
+
+/// <summary>
+/// Validator for UpdateRegistrationAccommodationPreferencesRequest
+/// </summary>
+public class UpdateRegistrationAccommodationPreferencesRequestValidator
+    : AbstractValidator<UpdateRegistrationAccommodationPreferencesRequest>
+{
+    public UpdateRegistrationAccommodationPreferencesRequestValidator()
+    {
+        RuleFor(x => x.Preferences)
+            .Must(p => p == null || p.Count <= 3)
+            .WithMessage("Maximum 3 accommodation preferences allowed");
+
+        RuleFor(x => x.Preferences)
+            .Must(p => p == null || p.Select(pref => pref.CampEditionAccommodationId).Distinct().Count() == p.Count)
+            .WithMessage("Duplicate accommodation selections are not allowed");
+
+        RuleFor(x => x.Preferences)
+            .Must(p => p == null || p.Select(pref => pref.PreferenceOrder).Distinct().Count() == p.Count)
+            .WithMessage("Duplicate preference orders are not allowed");
+
+        RuleForEach(x => x.Preferences).ChildRules(pref =>
+        {
+            pref.RuleFor(p => p.PreferenceOrder)
+                .InclusiveBetween(1, 3)
+                .WithMessage("Preference order must be between 1 and 3");
+
+            pref.RuleFor(p => p.CampEditionAccommodationId)
+                .NotEmpty()
+                .WithMessage("Accommodation ID is required");
         });
     }
 }

@@ -1,0 +1,270 @@
+# US: Bug Tracking & User Feedback Tooling Setup
+
+## Context
+
+As the sole developer of Abuvi, I need free tooling that:
+
+1. **Automatically captures and reports bugs** (frontend errors, backend exceptions, browser info, stack traces)
+2. **Allows users to leave visual feedback** (annotations, suggestions, pin-on-page comments — similar to BugHerd)
+3. Works within a **free tier** suitable for a small user base
+
+Previous experience: BugHerd, Hotjar.
+
+## Current Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Vue.js 3 + TypeScript + Vite |
+| Backend | .NET 9 Minimal APIs |
+| Database | PostgreSQL 16 |
+| Logging | Serilog → PostgreSQL + Seq |
+| Deployment | Docker Compose |
+| Error Tracking | **None** |
+| Frontend Analytics | **None** |
+
+---
+
+## Tools Analysis
+
+### Comparison Table
+
+| Tool | Free Tier | Visual Feedback / Annotations | Auto Error Capture | Self-Hostable | Integration Effort |
+|---|---|---|---|---|---|
+| **Sentry** | 5K errors/mo, 1 user, 30-day retention | Screenshot + crop only (no annotations yet) | Excellent (Vue + .NET SDKs) | Yes (heavy: 12+ services) | Low |
+| **GlitchTip** | 1K events/mo hosted; **unlimited self-hosted** | No | Yes (Sentry-compatible SDKs) | Yes (lightweight: 4 services, 256MB RAM) | Low |
+| **PostHog** | 1M events, 5K recordings, 100K exceptions/mo | Surveys only (no visual pins) | Yes (exception autocapture) | Yes (Docker, MIT) | Low |
+| **Userback** | 2 users, 2 projects, 7-day feedback visibility | **Yes** (annotated screenshots, recordings) | Yes (browser info, console logs) | No | Low (JS widget) |
+| **Marker.io** | No free tier ($39/mo+) | Excellent | Yes | No | Low |
+| **BugHerd** | No free tier ($39/mo+) | Excellent (gold standard) | Yes | No | Low |
+| **Hotjar** | 35 daily recordings, 3 feedback widgets | Feedback widgets only (no element pinning) | No | No | Low |
+| **OpenReplay** | Free self-hosted; cloud $200/mo+ | No | Session replay only | Yes | Medium |
+| **Highlight.io** | **Shutting down Feb 28, 2026** | N/A | N/A | N/A | N/A |
+| **Instabug/Luciq** | Free trial only | Mobile only | Mobile only | No | N/A |
+| **Better Stack** | 1-3 GB logs, 3-day retention | No | Logging/uptime only | No | Medium |
+
+### Key Insight
+
+No single free tool covers both automatic error tracking AND visual user feedback. The solution requires **combining two tools**.
+
+---
+
+## Recommended Options
+
+### Option A: GlitchTip (cloud free) + Userback (free) — RECOMMENDED
+
+| Aspect | Detail |
+|--------|--------|
+| **Error Tracking** | GlitchTip cloud free tier at `app.glitchtip.com` (1K events/mo, unlimited users & projects) |
+| **Visual Feedback** | Userback free tier (2 users, 7-day feedback window) |
+| **Total Cost** | $0 |
+| **Infra Overhead** | None — both are cloud-hosted |
+| **Trade-off** | 1K events/mo limit; must disable performance tracing to conserve quota; must triage Userback feedback within 7 days |
+
+**Why this is best**: GlitchTip uses Sentry-compatible SDKs (well-documented, mature ecosystem) with zero infrastructure overhead. The 1K events/mo limit is sufficient for a small user base when performance tracing is disabled (errors-only mode). Userback is the only free tool that provides BugHerd-style visual annotations. Migration to self-hosted GlitchTip later requires only changing the DSN environment variable.
+
+**Quota optimization tips:**
+
+- Set `tracesSampleRate: 0` to avoid consuming events on performance transactions
+- Use `beforeSend` to filter noisy/duplicate errors
+- Monitor usage in GlitchTip dashboard to anticipate when self-hosting becomes necessary
+
+### Option A.1: GlitchTip (self-hosted) + Userback (free) — FUTURE UPGRADE PATH
+
+| Aspect | Detail |
+|--------|--------|
+| **Error Tracking** | GlitchTip self-hosted in Docker (unlimited events, zero cost) |
+| **Visual Feedback** | Userback free tier (2 users, 7-day feedback window) |
+| **Total Cost** | $0 |
+| **Infra Overhead** | Low — GlitchTip needs ~256MB RAM, fits in existing Docker Compose |
+| **Trade-off** | Must manage additional Docker services (web, worker, Redis) |
+
+**When to migrate**: If the 1K events/mo cloud limit is exceeded. Migration is trivial — only the DSN environment variable needs to change since GlitchTip uses Sentry-compatible SDKs.
+
+### Option B: PostHog (cloud free) + Userback (free)
+
+| Aspect | Detail |
+|--------|--------|
+| **Error Tracking** | PostHog cloud free (100K exceptions/mo, 5K session recordings, 1M analytics events) |
+| **Visual Feedback** | Userback free tier |
+| **Total Cost** | $0 |
+| **Infra Overhead** | None — both are cloud-hosted |
+| **Trade-off** | Two external dependencies; PostHog error tracking is newer/less mature than Sentry ecosystem |
+
+### Option C: Sentry (cloud free) + Userback (free)
+
+| Aspect | Detail |
+|--------|--------|
+| **Error Tracking** | Sentry cloud free (5K errors/mo, 1 user) |
+| **Visual Feedback** | Userback free tier |
+| **Total Cost** | $0 |
+| **Infra Overhead** | None |
+| **Trade-off** | Sentry free limited to 1 user and 5K errors; less headroom than GlitchTip self-hosted |
+
+---
+
+## Implementation Plan (Option A — GlitchTip Cloud Free + Userback)
+
+### Step 1: Create GlitchTip Cloud Account
+
+1. Register at `app.glitchtip.com`
+2. Create an organization and project (one for frontend, one for backend)
+3. Obtain DSN keys for each project
+
+**No files to modify** — this is a manual setup step.
+
+### Step 2: Integrate Sentry SDK in Vue.js Frontend
+
+Install and configure `@sentry/vue` (GlitchTip is Sentry-compatible).
+
+**Files to modify:**
+
+- `frontend/package.json` — Add `@sentry/vue` dependency
+- `frontend/src/main.ts` — Initialize Sentry with GlitchTip DSN
+- `frontend/vite.config.ts` — Configure source map upload (optional)
+
+**Configuration:**
+
+```typescript
+// main.ts
+import * as Sentry from "@sentry/vue";
+
+Sentry.init({
+  app,
+  dsn: import.meta.env.VITE_GLITCHTIP_DSN,
+  environment: import.meta.env.MODE,
+  tracesSampleRate: 0, // Disabled to conserve GlitchTip free tier quota (1K events/mo)
+  beforeSend(event) {
+    // Scrub PII before sending to external service
+    return event;
+  },
+});
+```
+
+### Step 3: Integrate Sentry SDK in .NET Backend
+
+Install and configure `Sentry.AspNetCore` (GlitchTip-compatible).
+
+**Files to modify:**
+
+- `src/Abuvi.API/Abuvi.API.csproj` — Add `Sentry.AspNetCore` NuGet package
+- `src/Abuvi.API/Program.cs` — Add Sentry middleware
+- `src/Abuvi.API/appsettings.json` — Add Sentry DSN configuration
+
+**Configuration:**
+
+```csharp
+// Program.cs
+builder.WebHost.UseSentry(o =>
+{
+    o.Dsn = builder.Configuration["Sentry:Dsn"];
+    o.TracesSampleRate = 0; // Disabled to conserve GlitchTip free tier quota (1K events/mo)
+    o.Environment = builder.Environment.EnvironmentName;
+});
+```
+
+### Step 4: Embed Userback Widget in Frontend
+
+**Files to modify:**
+
+- `frontend/src/main.ts` — Programmatic initialization (already implemented)
+
+**Current implementation** (already in `main.ts`):
+
+```typescript
+const userbackToken = import.meta.env.VITE_USERBACK_TOKEN;
+if (userbackToken) {
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = "https://static.userback.io/widget/v1.js";
+  script.onload = () => {
+    (window as any).Userback?.init(userbackToken);
+  };
+  document.head.appendChild(script);
+}
+```
+
+**Userback Dashboard Configuration (REQUIRED — manual steps):**
+
+The code integration alone is NOT sufficient. Userback requires additional dashboard-side configuration before the widget appears and integration is confirmed:
+
+1. **Configure allowed domains** in Userback Project Settings:
+   - Add `localhost` (for local development)
+   - Add the production domain (e.g., `app.abuvi.org` or whichever domain is used)
+   - The domain must **exactly match** the URL where the widget is tested
+2. **Activate a feedback widget or survey** on the Userback Overview page — the widget will NOT appear unless at least one widget/survey is set to **Live** status
+3. **Verify installation** using the "Verify Domains" button accessible via the Code menu in Userback dashboard
+4. **Check targeting rules** — ensure the widget is configured to appear for the correct audience and pages
+
+> **Known issue**: After embedding the Userback script in `main.ts`, the Userback dashboard may NOT show integration confirmation until domains are configured and at least one widget is activated. This is **not** related to authentication state — the widget loads globally on all pages (authenticated and unauthenticated). The confirmation depends entirely on Userback dashboard-side setup.
+
+**Optional enhancement — show widget only for authenticated users:**
+
+The current implementation loads the widget globally. If the widget should only appear for authenticated users (matching the acceptance criteria), move initialization to `App.vue` after auth state is restored:
+
+```typescript
+// App.vue — inside onMounted, after auth.restoreSession()
+import { useAuthStore } from "@/stores/auth";
+
+const auth = useAuthStore();
+
+watch(() => auth.isAuthenticated, (isAuth) => {
+  if (isAuth && import.meta.env.VITE_USERBACK_TOKEN) {
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://static.userback.io/widget/v1.js";
+    script.onload = () => {
+      (window as any).Userback?.init(import.meta.env.VITE_USERBACK_TOKEN, {
+        email: auth.user?.email,
+        name: auth.user?.name,
+      });
+    };
+    document.head.appendChild(script);
+  }
+}, { immediate: true });
+```
+
+This approach also passes user identity metadata to Userback, making feedback submissions more actionable.
+
+### Step 5: Verify and Test
+
+1. **Userback dashboard setup** (must be done BEFORE testing):
+   - Go to Userback → Project Settings → Domains → add `localhost` and production domain
+   - Go to Overview → ensure at least one feedback widget is set to **Live**
+   - Go to Code → click **Verify Domains** to confirm installation
+2. Trigger a test error in the frontend → verify it appears in GlitchTip
+3. Trigger a test exception in the backend → verify it appears in GlitchTip
+4. Submit visual feedback via Userback widget → verify it appears in Userback dashboard
+5. Verify source maps are resolving stack traces correctly (optional)
+
+---
+
+## Acceptance Criteria
+
+- [ ] GlitchTip cloud account is configured with projects for frontend and backend
+- [ ] Frontend errors are automatically captured and visible in GlitchTip dashboard
+- [ ] Backend exceptions are automatically captured and visible in GlitchTip dashboard
+- [ ] Performance tracing is disabled (`tracesSampleRate: 0`) to conserve free tier quota
+- [ ] Userback project domains are configured (localhost + production domain)
+- [ ] At least one Userback feedback widget is set to Live status
+- [ ] Userback "Verify Domains" confirms successful installation
+- [ ] Userback widget is visible on the frontend for authenticated users
+- [ ] Users can annotate screenshots and submit visual feedback via Userback
+- [ ] Feedback submissions appear in the Userback dashboard
+- [ ] Error alerts are configured (email notifications from GlitchTip)
+- [ ] Environment variables for DSNs/tokens are properly externalized (not hardcoded)
+
+## Non-Functional Requirements
+
+- **Security**: DSNs and tokens must be stored in environment variables, never committed to source control
+- **Performance**: Sentry SDK must not degrade frontend load time by more than 50ms
+- **Privacy**: No PII should be sent to external services (Userback). Configure Sentry's `beforeSend` to scrub sensitive data. When passing user identity to Userback, only send email and display name — no sensitive data
+- **Availability**: GlitchTip failure must not affect the main application (SDK operates in fire-and-forget mode)
+- **Quota**: Monitor GlitchTip event usage; if 1K events/mo is exceeded, migrate to self-hosted (Option A.1)
+
+## Documentation Updates
+
+- [ ] Update `ai-specs/specs/development_guide.md` with error tracking setup instructions
+- [ ] Add GlitchTip access info to team documentation
+- [ ] Document how to triage Userback feedback within the 7-day window
+- [ ] Document migration path from GlitchTip cloud to self-hosted
+- [ ] Document Userback dashboard setup steps (domain configuration, widget activation, verification)

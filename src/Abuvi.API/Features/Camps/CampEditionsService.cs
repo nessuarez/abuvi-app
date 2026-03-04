@@ -73,7 +73,20 @@ public class CampEditionsService
             Status = CampEditionStatus.Proposed,
             MaxCapacity = request.MaxCapacity,
             Notes = request.Notes,
-            IsArchived = false
+            Description = request.Description,
+            ProposalReason = request.ProposalReason,
+            ProposalNotes  = request.ProposalNotes,
+            IsArchived = false,
+            HalfDate = request.HalfDate,
+            PricePerAdultWeek = request.PricePerAdultWeek,
+            PricePerChildWeek = request.PricePerChildWeek,
+            PricePerBabyWeek = request.PricePerBabyWeek,
+            WeekendStartDate = request.WeekendStartDate,
+            WeekendEndDate = request.WeekendEndDate,
+            PricePerAdultWeekend = request.PricePerAdultWeekend,
+            PricePerChildWeekend = request.PricePerChildWeekend,
+            PricePerBabyWeekend = request.PricePerBabyWeekend,
+            MaxWeekendCapacity = request.MaxWeekendCapacity
         };
 
         edition.SetAccommodationCapacity(request.AccommodationCapacity);
@@ -210,7 +223,16 @@ public class CampEditionsService
                 request.EndDate != edition.EndDate ||
                 request.PricePerAdult != edition.PricePerAdult ||
                 request.PricePerChild != edition.PricePerChild ||
-                request.PricePerBaby != edition.PricePerBaby)
+                request.PricePerBaby != edition.PricePerBaby ||
+                request.HalfDate != edition.HalfDate ||
+                request.PricePerAdultWeek != edition.PricePerAdultWeek ||
+                request.PricePerChildWeek != edition.PricePerChildWeek ||
+                request.PricePerBabyWeek != edition.PricePerBabyWeek ||
+                request.WeekendStartDate != edition.WeekendStartDate ||
+                request.WeekendEndDate != edition.WeekendEndDate ||
+                request.PricePerAdultWeekend != edition.PricePerAdultWeekend ||
+                request.PricePerChildWeekend != edition.PricePerChildWeekend ||
+                request.PricePerBabyWeekend != edition.PricePerBabyWeekend)
             {
                 throw new InvalidOperationException(
                     "No se pueden modificar las fechas ni los precios de una edición abierta");
@@ -229,6 +251,17 @@ public class CampEditionsService
         edition.CustomAdultMinAge = request.CustomAdultMinAge;
         edition.MaxCapacity = request.MaxCapacity;
         edition.Notes = request.Notes;
+        edition.Description = request.Description;
+        edition.HalfDate = request.HalfDate;
+        edition.PricePerAdultWeek = request.PricePerAdultWeek;
+        edition.PricePerChildWeek = request.PricePerChildWeek;
+        edition.PricePerBabyWeek = request.PricePerBabyWeek;
+        edition.WeekendStartDate = request.WeekendStartDate;
+        edition.WeekendEndDate = request.WeekendEndDate;
+        edition.PricePerAdultWeekend = request.PricePerAdultWeekend;
+        edition.PricePerChildWeekend = request.PricePerChildWeekend;
+        edition.PricePerBabyWeekend = request.PricePerBabyWeekend;
+        edition.MaxWeekendCapacity = request.MaxWeekendCapacity;
 
         var updated = await _repository.UpdateAsync(edition, cancellationToken);
         return MapToCampEditionResponse(updated, updated.Camp.Name);
@@ -280,6 +313,24 @@ public class CampEditionsService
             ? edition.MaxCapacity.Value - registrationCount
             : (int?)null;
 
+        // Accommodation: edition override takes priority over camp-level value
+        var accommodationCapacity = edition.GetAccommodationCapacity()
+            ?? edition.Camp.GetAccommodationCapacity();
+
+        var calculatedTotalBedCapacity = accommodationCapacity?.CalculateTotalBedCapacity();
+        int? bedCapacity = calculatedTotalBedCapacity > 0 ? calculatedTotalBedCapacity : null;
+
+        var campPhotos = edition.Camp.Photos
+            .Select(p => new CampPhotoResponse(
+                p.Id, p.PhotoReference, p.PhotoUrl, p.Width, p.Height,
+                p.AttributionName, p.AttributionUrl, p.Description,
+                p.IsPrimary, p.DisplayOrder))
+            .ToList();
+
+        var extras = edition.Extras
+            .Select(x => x.ToResponse(currentQuantitySold: 0))
+            .ToList();
+
         return new CurrentCampEditionResponse(
             Id: edition.Id,
             CampId: edition.CampId,
@@ -304,8 +355,20 @@ public class CampEditionsService
             RegistrationCount: registrationCount,
             AvailableSpots: availableSpots,
             Notes: edition.Notes,
+            Description: edition.Description,
             CreatedAt: edition.CreatedAt,
-            UpdatedAt: edition.UpdatedAt
+            UpdatedAt: edition.UpdatedAt,
+            CampDescription: edition.Camp.Description,
+            CampPhoneNumber: edition.Camp.PhoneNumber,
+            CampNationalPhoneNumber: edition.Camp.NationalPhoneNumber,
+            CampWebsiteUrl: edition.Camp.WebsiteUrl,
+            CampGoogleMapsUrl: edition.Camp.GoogleMapsUrl,
+            CampGoogleRating: edition.Camp.GoogleRating,
+            CampGoogleRatingCount: edition.Camp.GoogleRatingCount,
+            CampPhotos: campPhotos,
+            AccommodationCapacity: accommodationCapacity,
+            CalculatedTotalBedCapacity: bedCapacity,
+            Extras: extras
         );
     }
 
@@ -350,6 +413,7 @@ public class CampEditionsService
             MaxCapacity: edition.MaxCapacity,
             RegistrationCount: 0,
             Notes: edition.Notes,
+            Description: edition.Description,
             CreatedAt: edition.CreatedAt,
             UpdatedAt: edition.UpdatedAt
         );
@@ -405,11 +469,22 @@ public class CampEditionsService
             Status: edition.Status,
             MaxCapacity: edition.MaxCapacity,
             Notes: edition.Notes,
+            Description: edition.Description,
             AccommodationCapacity: accommodation,
             CalculatedTotalBedCapacity: accommodation?.CalculateTotalBedCapacity(),
             IsArchived: edition.IsArchived,
             CreatedAt: edition.CreatedAt,
-            UpdatedAt: edition.UpdatedAt
+            UpdatedAt: edition.UpdatedAt,
+            HalfDate: edition.HalfDate,
+            PricePerAdultWeek: edition.PricePerAdultWeek,
+            PricePerChildWeek: edition.PricePerChildWeek,
+            PricePerBabyWeek: edition.PricePerBabyWeek,
+            WeekendStartDate: edition.WeekendStartDate,
+            WeekendEndDate: edition.WeekendEndDate,
+            PricePerAdultWeekend: edition.PricePerAdultWeekend,
+            PricePerChildWeekend: edition.PricePerChildWeekend,
+            PricePerBabyWeekend: edition.PricePerBabyWeekend,
+            MaxWeekendCapacity: edition.MaxWeekendCapacity
         );
     }
 }

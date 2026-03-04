@@ -6,6 +6,15 @@ import { useGooglePlaces } from '@/composables/useGooglePlaces'
 // Mock the useGooglePlaces composable
 vi.mock('@/composables/useGooglePlaces')
 
+// Mock the auth store
+vi.mock('@/stores/auth', () => ({
+  useAuthStore: () => ({
+    isAdmin: true,
+    isBoard: true,
+    user: { id: '1', role: 'Admin' }
+  })
+}))
+
 // Mock PrimeVue components to simplify testing
 vi.mock('primevue/autocomplete', () => ({
   default: {
@@ -85,6 +94,23 @@ vi.mock('primevue/button', () => ({
   }
 }))
 
+vi.mock('primevue/select', () => ({
+  default: {
+    name: 'Select',
+    props: ['modelValue', 'options', 'optionLabel', 'optionValue', 'placeholder'],
+    emits: ['update:modelValue'],
+    template: '<select :id="$attrs.id"><option>mock</option></select>'
+  }
+}))
+
+// Mock child component to avoid its PrimeVue dependencies
+vi.mock('@/components/camps/CampAbuviTrackingForm.vue', () => ({
+  default: {
+    name: 'CampAbuviTrackingForm',
+    template: '<div data-testid="abuvi-tracking-form"></div>'
+  }
+}))
+
 // Mock VueUse debounce
 vi.mock('@vueuse/core', () => ({
   useDebounceFn: (fn: Function) => fn
@@ -111,10 +137,11 @@ describe('CampLocationForm', () => {
 
       expect(wrapper.find('form').exists()).toBe(true)
       expect(wrapper.find('#name').exists()).toBe(true)
-      expect(wrapper.find('#description').exists()).toBe(true)
-      expect(wrapper.find('#location').exists()).toBe(true)
-      expect(wrapper.find('#latitude').exists()).toBe(true)
-      expect(wrapper.find('#longitude').exists()).toBe(true)
+      // In simplified create mode, detail fields are hidden
+      expect(wrapper.find('#description').exists()).toBe(false)
+      expect(wrapper.find('#location').exists()).toBe(false)
+      expect(wrapper.find('#latitude').exists()).toBe(false)
+      expect(wrapper.find('#longitude').exists()).toBe(false)
     })
 
     it('should not show status checkbox in create mode', () => {
@@ -243,14 +270,26 @@ describe('CampLocationForm', () => {
       expect((wrapper.vm as any).autoFilledFromPlaces).toBe(true)
     })
 
-    it('should auto-generate description from types when description is empty', async () => {
+    it('should populate place details after selecting a place', async () => {
       const mockDetails = {
         placeId: 'ChIJ1',
         name: 'Camp Park',
         formattedAddress: 'Park Address, Madrid',
         latitude: 40.0,
         longitude: -3.0,
-        types: ['campground']
+        types: ['campground'],
+        phoneNumber: null,
+        nationalPhoneNumber: null,
+        website: null,
+        googleMapsUrl: null,
+        rating: 4.5,
+        ratingCount: 120,
+        businessStatus: null,
+        addressComponents: [
+          { longName: 'Madrid', shortName: 'Madrid', types: ['locality'] },
+          { longName: 'Madrid', shortName: 'M', types: ['administrative_area_level_2'] },
+          { longName: 'España', shortName: 'ES', types: ['country'] }
+        ]
       }
 
       vi.mocked(useGooglePlaces).mockReturnValue({
@@ -268,7 +307,10 @@ describe('CampLocationForm', () => {
 
       await flushPromises()
 
-      expect((wrapper.vm as any).formData.description).toContain('Zona de camping')
+      expect((wrapper.vm as any).formData.name).toBe('Camp Park')
+      expect((wrapper.vm as any).formData.latitude).toBe(40.0)
+      expect((wrapper.vm as any).formData.longitude).toBe(-3.0)
+      expect((wrapper.vm as any).formData.province).toBe('Madrid')
     })
   })
 

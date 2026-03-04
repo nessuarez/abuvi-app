@@ -66,6 +66,29 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AbuviContactedAt")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("abuvi_contacted_at");
+
+                    b.Property<bool?>("AbuviHasDataErrors")
+                        .HasColumnType("boolean")
+                        .HasColumnName("abuvi_has_data_errors");
+
+                    b.Property<string>("AbuviLastVisited")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("abuvi_last_visited");
+
+                    b.Property<Guid?>("AbuviManagedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("abuvi_managed_by_user_id");
+
+                    b.Property<string>("AbuviPossibility")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("abuvi_possibility");
+
                     b.Property<string>("AccommodationCapacityJson")
                         .HasColumnType("text")
                         .HasColumnName("accommodation_capacity_json");
@@ -75,10 +98,30 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("administrative_area");
 
+                    b.Property<decimal?>("BasePrice")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("base_price");
+
                     b.Property<string>("BusinessStatus")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("business_status");
+
+                    b.Property<string>("ContactCompany")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("contact_company");
+
+                    b.Property<string>("ContactEmail")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("contact_email");
+
+                    b.Property<string>("ContactPerson")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("contact_person");
 
                     b.Property<string>("Country")
                         .HasMaxLength(100)
@@ -95,6 +138,10 @@ namespace Abuvi.API.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("description");
+
+                    b.Property<int?>("ExternalSourceId")
+                        .HasColumnType("integer")
+                        .HasColumnName("external_source_id");
 
                     b.Property<string>("FormattedAddress")
                         .HasMaxLength(500)
@@ -129,6 +176,10 @@ namespace Abuvi.API.Migrations
                     b.Property<DateTime?>("LastGoogleSyncAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_google_sync_at");
+
+                    b.Property<Guid?>("LastModifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("last_modified_by_user_id");
 
                     b.Property<decimal?>("Latitude")
                         .HasPrecision(9, 6)
@@ -191,6 +242,16 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("price_per_child");
 
+                    b.Property<string>("Province")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("province");
+
+                    b.Property<string>("SecondaryWebsiteUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("secondary_website_url");
+
                     b.Property<string>("StreetAddress")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -202,12 +263,21 @@ namespace Abuvi.API.Migrations
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("NOW()");
 
+                    b.Property<bool?>("VatIncluded")
+                        .HasColumnType("boolean")
+                        .HasColumnName("vat_included");
+
                     b.Property<string>("WebsiteUrl")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("website_url");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AbuviManagedByUserId");
+
+                    b.HasIndex("ExternalSourceId")
+                        .HasDatabaseName("ix_camps_external_source_id");
 
                     b.HasIndex("GooglePlaceId")
                         .HasDatabaseName("ix_camps_google_place_id");
@@ -224,6 +294,54 @@ namespace Abuvi.API.Migrations
 
                             t.HasCheckConstraint("CK_Camps_PricePerChild", "price_per_child >= 0");
                         });
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Camps.CampAuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CampId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("camp_id");
+
+                    b.Property<DateTime>("ChangedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("changed_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("ChangedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("changed_by_user_id");
+
+                    b.Property<string>("FieldName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("field_name");
+
+                    b.Property<string>("NewValue")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("new_value");
+
+                    b.Property<string>("OldValue")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("old_value");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampId")
+                        .HasDatabaseName("ix_camp_audit_logs_camp_id");
+
+                    b.HasIndex("CampId", "ChangedAt")
+                        .HasDatabaseName("ix_camp_audit_logs_camp_id_changed_at");
+
+                    b.ToTable("camp_audit_logs", (string)null);
                 });
 
             modelBuilder.Entity("Abuvi.API.Features.Camps.CampEdition", b =>
@@ -263,9 +381,17 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("custom_child_min_age");
 
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("end_date");
+
+                    b.Property<DateOnly?>("HalfDate")
+                        .HasColumnType("date")
+                        .HasColumnName("half_date");
 
                     b.Property<bool>("IsArchived")
                         .ValueGeneratedOnAdd()
@@ -277,6 +403,10 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("max_capacity");
 
+                    b.Property<int?>("MaxWeekendCapacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_weekend_capacity");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
@@ -287,15 +417,55 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("price_per_adult");
 
+                    b.Property<decimal?>("PricePerAdultWeek")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("price_per_adult_week");
+
+                    b.Property<decimal?>("PricePerAdultWeekend")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("price_per_adult_weekend");
+
                     b.Property<decimal>("PricePerBaby")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("price_per_baby");
 
+                    b.Property<decimal?>("PricePerBabyWeek")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("price_per_baby_week");
+
+                    b.Property<decimal?>("PricePerBabyWeekend")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("price_per_baby_weekend");
+
                     b.Property<decimal>("PricePerChild")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("price_per_child");
+
+                    b.Property<decimal?>("PricePerChildWeek")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("price_per_child_week");
+
+                    b.Property<decimal?>("PricePerChildWeekend")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("price_per_child_weekend");
+
+                    b.Property<string>("ProposalNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("proposal_notes");
+
+                    b.Property<string>("ProposalReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("proposal_reason");
 
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("timestamp with time zone")
@@ -319,6 +489,14 @@ namespace Abuvi.API.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("use_custom_age_ranges");
 
+                    b.Property<DateOnly?>("WeekendEndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("weekend_end_date");
+
+                    b.Property<DateOnly?>("WeekendStartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("weekend_start_date");
+
                     b.Property<int>("Year")
                         .HasColumnType("integer")
                         .HasColumnName("year");
@@ -337,6 +515,74 @@ namespace Abuvi.API.Migrations
                             t.HasCheckConstraint("CK_CampEditions_PricePerBaby", "price_per_baby >= 0");
 
                             t.HasCheckConstraint("CK_CampEditions_PricePerChild", "price_per_child >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Camps.CampEditionAccommodation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccommodationType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("accommodation_type");
+
+                    b.Property<Guid>("CampEditionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("camp_edition_id");
+
+                    b.Property<int?>("Capacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("capacity");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampEditionId");
+
+                    b.ToTable("camp_edition_accommodations", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CampEditionAccommodations_Capacity", "capacity IS NULL OR capacity > 0");
+
+                            t.HasCheckConstraint("CK_CampEditionAccommodations_SortOrder", "sort_order >= 0");
                         });
                 });
 
@@ -417,6 +663,46 @@ namespace Abuvi.API.Migrations
 
                             t.HasCheckConstraint("CK_CampEditionExtras_Price", "price >= 0");
                         });
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Camps.CampObservation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CampId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("camp_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Season")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("season");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampId")
+                        .HasDatabaseName("ix_camp_observations_camp_id");
+
+                    b.ToTable("camp_observations", (string)null);
                 });
 
             modelBuilder.Entity("Abuvi.API.Features.Camps.CampPhoto", b =>
@@ -839,6 +1125,11 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("camp_edition_id");
 
+                    b.Property<string>("CampatesPreference")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("campates_preference");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -864,6 +1155,11 @@ namespace Abuvi.API.Migrations
                     b.Property<Guid>("RegisteredByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("registered_by_user_id");
+
+                    b.Property<string>("SpecialNeeds")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("special_needs");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -899,6 +1195,50 @@ namespace Abuvi.API.Migrations
                     b.ToTable("registrations", null, t =>
                         {
                             t.HasCheckConstraint("CK_Registrations_TotalAmount", "total_amount = base_total_amount + extras_amount");
+                        });
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Registrations.RegistrationAccommodationPreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("CampEditionAccommodationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("camp_edition_accommodation_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<int>("PreferenceOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("preference_order");
+
+                    b.Property<Guid>("RegistrationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampEditionAccommodationId");
+
+                    b.HasIndex("RegistrationId", "CampEditionAccommodationId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RegAccommPrefs_RegistrationId_AccommodationId");
+
+                    b.HasIndex("RegistrationId", "PreferenceOrder")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RegAccommPrefs_RegistrationId_PreferenceOrder");
+
+                    b.ToTable("registration_accommodation_preferences", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_RegAccommPrefs_PreferenceOrder", "preference_order >= 1 AND preference_order <= 3");
                         });
                 });
 
@@ -971,6 +1311,14 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("character varying(10)")
                         .HasColumnName("age_category");
 
+                    b.Property<string>("AttendancePeriod")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasDefaultValue("Complete")
+                        .HasColumnName("attendance_period");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -981,6 +1329,16 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("family_member_id");
 
+                    b.Property<string>("GuardianDocumentNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("guardian_document_number");
+
+                    b.Property<string>("GuardianName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("guardian_name");
+
                     b.Property<decimal>("IndividualAmount")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")
@@ -989,6 +1347,14 @@ namespace Abuvi.API.Migrations
                     b.Property<Guid>("RegistrationId")
                         .HasColumnType("uuid")
                         .HasColumnName("registration_id");
+
+                    b.Property<DateOnly?>("VisitEndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("visit_end_date");
+
+                    b.Property<DateOnly?>("VisitStartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("visit_start_date");
 
                     b.HasKey("Id");
 
@@ -1155,6 +1521,27 @@ namespace Abuvi.API.Migrations
                     b.ToTable("UserRoleChangeLogs");
                 });
 
+            modelBuilder.Entity("Abuvi.API.Features.Camps.Camp", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Users.User", "AbuviManagedByUser")
+                        .WithMany()
+                        .HasForeignKey("AbuviManagedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("AbuviManagedByUser");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Camps.CampAuditLog", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Camps.Camp", "Camp")
+                        .WithMany("AuditLogs")
+                        .HasForeignKey("CampId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Camp");
+                });
+
             modelBuilder.Entity("Abuvi.API.Features.Camps.CampEdition", b =>
                 {
                     b.HasOne("Abuvi.API.Features.Camps.Camp", "Camp")
@@ -1166,6 +1553,17 @@ namespace Abuvi.API.Migrations
                     b.Navigation("Camp");
                 });
 
+            modelBuilder.Entity("Abuvi.API.Features.Camps.CampEditionAccommodation", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Camps.CampEdition", "CampEdition")
+                        .WithMany("Accommodations")
+                        .HasForeignKey("CampEditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CampEdition");
+                });
+
             modelBuilder.Entity("Abuvi.API.Features.Camps.CampEditionExtra", b =>
                 {
                     b.HasOne("Abuvi.API.Features.Camps.CampEdition", "CampEdition")
@@ -1175,6 +1573,17 @@ namespace Abuvi.API.Migrations
                         .IsRequired();
 
                     b.Navigation("CampEdition");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Camps.CampObservation", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Camps.Camp", "Camp")
+                        .WithMany("Observations")
+                        .HasForeignKey("CampId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Camp");
                 });
 
             modelBuilder.Entity("Abuvi.API.Features.Camps.CampPhoto", b =>
@@ -1282,6 +1691,25 @@ namespace Abuvi.API.Migrations
                     b.Navigation("RegisteredByUser");
                 });
 
+            modelBuilder.Entity("Abuvi.API.Features.Registrations.RegistrationAccommodationPreference", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Camps.CampEditionAccommodation", "CampEditionAccommodation")
+                        .WithMany()
+                        .HasForeignKey("CampEditionAccommodationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Abuvi.API.Features.Registrations.Registration", "Registration")
+                        .WithMany("AccommodationPreferences")
+                        .HasForeignKey("RegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CampEditionAccommodation");
+
+                    b.Navigation("Registration");
+                });
+
             modelBuilder.Entity("Abuvi.API.Features.Registrations.RegistrationExtra", b =>
                 {
                     b.HasOne("Abuvi.API.Features.Camps.CampEditionExtra", "CampEditionExtra")
@@ -1337,13 +1765,19 @@ namespace Abuvi.API.Migrations
 
             modelBuilder.Entity("Abuvi.API.Features.Camps.Camp", b =>
                 {
+                    b.Navigation("AuditLogs");
+
                     b.Navigation("Editions");
+
+                    b.Navigation("Observations");
 
                     b.Navigation("Photos");
                 });
 
             modelBuilder.Entity("Abuvi.API.Features.Camps.CampEdition", b =>
                 {
+                    b.Navigation("Accommodations");
+
                     b.Navigation("Extras");
                 });
 
@@ -1354,6 +1788,8 @@ namespace Abuvi.API.Migrations
 
             modelBuilder.Entity("Abuvi.API.Features.Registrations.Registration", b =>
                 {
+                    b.Navigation("AccommodationPreferences");
+
                     b.Navigation("Extras");
 
                     b.Navigation("Members");

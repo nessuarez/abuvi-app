@@ -58,16 +58,94 @@ public class RegistrationPricingService(IAssociationSettingsRepository settingsR
     }
 
     /// <summary>
-    /// Returns the price in euros for a given AgeCategory from the edition pricing.
+    /// Returns the price in euros for a given AgeCategory and AttendancePeriod from the edition pricing.
     /// </summary>
-    public decimal GetPriceForCategory(AgeCategory category, CampEdition edition) =>
-        category switch
+    public decimal GetPriceForCategory(AgeCategory category, AttendancePeriod period, CampEdition edition)
+    {
+        if (period is AttendancePeriod.FirstWeek or AttendancePeriod.SecondWeek)
         {
-            AgeCategory.Baby => edition.PricePerBaby,
+            if (edition.PricePerAdultWeek is null)
+                throw new BusinessRuleException(
+                    "Esta edición no permite inscripción parcial por semanas");
+
+            return category switch
+            {
+                AgeCategory.Adult => edition.PricePerAdultWeek.Value,
+                AgeCategory.Child => edition.PricePerChildWeek!.Value,
+                AgeCategory.Baby  => edition.PricePerBabyWeek!.Value,
+                _ => throw new ArgumentOutOfRangeException(nameof(category))
+            };
+        }
+
+        if (period == AttendancePeriod.WeekendVisit)
+        {
+            if (edition.PricePerAdultWeekend is null)
+                throw new BusinessRuleException(
+                    "Esta edición no permite visitas de fin de semana");
+
+            return category switch
+            {
+                AgeCategory.Adult => edition.PricePerAdultWeekend.Value,
+                AgeCategory.Child => edition.PricePerChildWeekend!.Value,
+                AgeCategory.Baby  => edition.PricePerBabyWeekend!.Value,
+                _ => throw new ArgumentOutOfRangeException(nameof(category))
+            };
+        }
+
+        // Complete: existing logic unchanged
+        return category switch
+        {
+            AgeCategory.Baby  => edition.PricePerBaby,
             AgeCategory.Child => edition.PricePerChild,
             AgeCategory.Adult => edition.PricePerAdult,
             _ => throw new ArgumentOutOfRangeException(nameof(category))
         };
+    }
+
+    /// <summary>
+    /// Overload for edition-level display (AvailableCampEditionResponse).
+    /// Uses the edition's WeekendStartDate/WeekendEndDate as the reference window.
+    /// </summary>
+    public static int GetPeriodDays(AttendancePeriod period, CampEdition edition)
+        => GetPeriodDays(period, edition, visitStart: null, visitEnd: null);
+
+    /// <summary>
+    /// Computes attendance days for a given period.
+    /// CampEdition.StartDate/EndDate are DateTime; converts via DateOnly.FromDateTime.
+    /// FirstWeek    = start → halfDate (exclusive of halfDate)
+    /// SecondWeek   = halfDate → end (exclusive of halfDate)
+    /// Complete     = start → end (full camp duration)
+    /// WeekendVisit = visitStart → visitEnd if provided, else edition.WeekendStartDate → WeekendEndDate; max 3 days
+    /// </summary>
+    public static int GetPeriodDays(
+        AttendancePeriod period, CampEdition edition,
+        DateOnly? visitStart, DateOnly? visitEnd)
+    {
+        var startDate = DateOnly.FromDateTime(edition.StartDate);
+        var endDate   = DateOnly.FromDateTime(edition.EndDate);
+        var totalDays = endDate.DayNumber - startDate.DayNumber;
+        var halfDate  = edition.HalfDate ?? startDate.AddDays(totalDays / 2);
+
+        return period switch
+        {
+            AttendancePeriod.FirstWeek    => halfDate.DayNumber - startDate.DayNumber,
+            AttendancePeriod.SecondWeek   => endDate.DayNumber  - halfDate.DayNumber,
+            AttendancePeriod.Complete     => totalDays,
+            AttendancePeriod.WeekendVisit => ComputeWeekendDays(edition, visitStart, visitEnd),
+            _ => throw new ArgumentOutOfRangeException(nameof(period))
+        };
+    }
+
+    private static int ComputeWeekendDays(
+        CampEdition edition, DateOnly? visitStart, DateOnly? visitEnd)
+    {
+        // Use member-specific dates if provided; fall back to edition defaults
+        var start = visitStart ?? edition.WeekendStartDate;
+        if (start is null) return 0;
+        var end = visitEnd ?? edition.WeekendEndDate ?? start.Value.AddDays(2);
+        var days = end.DayNumber - start.Value.DayNumber;
+        return Math.Min(3, Math.Max(0, days));  // enforce max 3
+    }
 
     /// <summary>
     /// Tries to load global age ranges. Returns null if not configured.

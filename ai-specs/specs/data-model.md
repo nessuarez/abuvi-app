@@ -247,6 +247,20 @@ A reusable camp location template that can have multiple editions per year. Exte
 - `pricePerChild`: Pricing template for children in euros (required, decimal, >= 0)
 - `pricePerBaby`: Pricing template for babies in euros (required, decimal, >= 0)
 - `accommodationCapacityJson`: JSON-serialized `AccommodationCapacity` object describing room types and sleeping capacity (optional, stored as `text`). Use `GetAccommodationCapacity()` / `SetAccommodationCapacity()` helpers; never access the raw JSON directly.
+- `province`: Province/region (optional, max 100 characters)
+- `contactEmail`: Contact email address (optional, valid email format)
+- `contactPerson`: Name of the contact person (optional, max 200 characters)
+- `contactCompany`: Contact company name (optional, max 200 characters)
+- `secondaryWebsiteUrl`: Secondary website URL (optional, max 500 characters)
+- `basePrice`: Base price in euros (optional, decimal >= 0, precision 10,2)
+- `vatIncluded`: Whether VAT is included in the base price (optional, boolean)
+- `externalSourceId`: External source identifier for imported data (optional, max 100 characters, indexed)
+- `abuviManagedByUserId`: User responsible for managing this camp within ABUVI (optional, FK -> User, must be Board or Admin role)
+- `abuviContactedAt`: When ABUVI last contacted this camp (optional, max 100 characters, free-text)
+- `abuviPossibility`: Assessment of partnership possibility (optional, max 100 characters)
+- `abuviLastVisited`: When an ABUVI member last visited (optional, max 200 characters, free-text)
+- `abuviHasDataErrors`: Whether the camp's data has known errors (optional, boolean)
+- `lastModifiedByUserId`: User who last modified this camp (optional, FK -> User)
 - `isActive`: Whether the camp is active (required, default: true)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
@@ -260,17 +274,29 @@ A reusable camp location template that can have multiple editions per year. Exte
 - Latitude, when provided, must be between -90 and 90
 - Longitude, when provided, must be between -180 and 180
 - All prices must be >= 0
+- `basePrice`, when provided, must be >= 0
+- `contactEmail`, when provided, must be a valid email address
+- `abuviManagedByUserId`, when provided, must reference a user with Board or Admin role (throws `BusinessRuleException` otherwise)
 - When `googlePlaceId` is provided at creation, the backend auto-enriches all Google Places fields
+- Google Places data can be re-synced via `POST /api/camps/{id}/refresh-places` (Board+ only). This deletes stale Google-sourced photos (`isOriginal = true`) before re-enriching, preserving user-uploaded photos. Requires the camp to have a `googlePlaceId`.
 - `accommodationCapacityJson` stores camelCase JSON; all numeric accommodation fields must be >= 0
+
+**Audit tracking:**
+
+- 9 fields are automatically tracked for changes: `BasePrice`, `VatIncluded`, `AbuviPossibility`, `AbuviLastVisited`, `AbuviContactedAt`, `AbuviManagedByUserId`, `IsActive`, `ContactPerson`, `ContactEmail`
+- Changes are recorded in the `CampAuditLog` entity with old/new values and the user who made the change
 
 **Relationships:**
 
 - One Camp can have many CampEditions
 - One Camp can have many CampPhotos (cascade delete)
+- One Camp can have many CampObservations (cascade delete)
+- One Camp can have many CampAuditLogs (cascade delete)
 - One Camp can have many Registrations
 - One Camp can have many Faqs (camp-specific FAQs)
 - One Camp can have many PhotoAlbums
 - One Camp can have many CampIdeas
+- One Camp can optionally reference a User as `AbuviManagedByUser` (FK, set null on delete)
 
 ---
 
@@ -309,6 +335,72 @@ A photo associated with a camp. Supports both Google Places-sourced photos (`isO
 
 ---
 
+### CampObservation
+
+An append-only note attached to a camp by a Board or Admin user. Used for internal observations about the camp location.
+
+**Table:** `camp_observations`
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID)
+- `campId`: The camp this observation belongs to (required, FK -> Camp, cascade delete, indexed)
+- `text`: Observation text content (required, max 4000 characters)
+- `season`: Season or time context for the observation (optional, max 20 characters)
+- `createdByUserId`: User who created this observation (required, UUID)
+- `createdAt`: Record creation timestamp (required, auto-generated, default: `NOW()`)
+
+**Validation rules:**
+
+- `text` is required and cannot exceed 4000 characters
+- `season`, when provided, cannot exceed 20 characters
+
+**Relationships:**
+
+- Each CampObservation belongs to one Camp (via `campId`); deleted when the camp is deleted (cascade)
+
+**API endpoints:**
+
+- `POST /api/camps/{campId}/observations` — Add an observation (Board+ only)
+- `GET /api/camps/{campId}/observations` — List observations ordered by `createdAt DESC` (Board+ only)
+
+---
+
+### CampAuditLog
+
+Automatic field-level change tracking for specific Camp fields. Recorded whenever a tracked field changes via `PUT /api/camps/{id}`.
+
+**Table:** `camp_audit_logs`
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID)
+- `campId`: The camp this audit entry belongs to (required, FK -> Camp, cascade delete, indexed)
+- `fieldName`: Name of the field that changed (required, max 100 characters)
+- `oldValue`: Previous value as string (optional, max 500 characters)
+- `newValue`: New value as string (optional, max 500 characters)
+- `changedByUserId`: User who made the change (required, UUID)
+- `changedAt`: When the change occurred (required, auto-generated, default: `NOW()`)
+
+**Indexes:**
+
+- `camp_id` (single column)
+- `(camp_id, changed_at)` (composite, for efficient querying)
+
+**Tracked fields:**
+
+- `BasePrice`, `VatIncluded`, `AbuviPossibility`, `AbuviLastVisited`, `AbuviContactedAt`, `AbuviManagedByUserId`, `IsActive`, `ContactPerson`, `ContactEmail`
+
+**Relationships:**
+
+- Each CampAuditLog belongs to one Camp (via `campId`); deleted when the camp is deleted (cascade)
+
+**API endpoints:**
+
+- `GET /api/camps/{campId}/audit-log` — Get audit log ordered by `changedAt DESC` (Admin only)
+
+---
+
 ### AccommodationCapacity
 
 A value object (not a separate database table) serialized as JSON inside `Camp.accommodationCapacityJson` and `CampEdition.accommodationCapacityJson`. Describes the sleeping and accommodation infrastructure of a camp location.
@@ -323,6 +415,17 @@ A value object (not a separate database table) serialized as JSON inside `Camp.a
 - `memberTentAreaSquareMeters`: Available area in m² for member-brought tents (integer >= 0)
 - `memberTentCapacityEstimate`: Estimated number of people that can fit in the member tent area (integer >= 0)
 - `motorhomeSpots`: Number of motorhome/caravan pitches (integer >= 0)
+- `totalCapacity`: Total person capacity of the camp (integer >= 0, optional)
+- `roomsDescription`: Free-text description of rooms (optional string)
+- `bungalowsDescription`: Free-text description of bungalows (optional string)
+- `tentsDescription`: Free-text description of tents provided by the camp (optional string)
+- `tentAreaDescription`: Free-text description of the tent area for member tents (optional string)
+- `parkingSpots`: Number of parking spots available (integer >= 0, optional)
+- `hasAdaptedMenu`: Whether the camp offers adapted/special dietary menus (optional boolean)
+- `hasEnclosedDiningRoom`: Whether the camp has an enclosed dining room (optional boolean)
+- `hasSwimmingPool`: Whether the camp has a swimming pool (optional boolean)
+- `hasSportsCourt`: Whether the camp has a sports court (optional boolean)
+- `hasForestArea`: Whether the camp has a forest/wooded area (optional boolean)
 - `notes`: Free-text notes about accommodation (optional string)
 
 **SharedRoomInfo fields:**
@@ -371,7 +474,8 @@ A specific annual edition of a camp (e.g., Camp 2026). Defines dates, pricing, c
 - `customAdultMinAge`: Custom minimum age (inclusive) to be priced as adult (optional, integer)
 - `status`: Current lifecycle status (required, enum: `Proposed` | `Draft` | `Open` | `Closed` | `Completed`, default: `Proposed`)
 - `maxCapacity`: Maximum number of participants for this edition (required, integer > 0)
-- `notes`: Free-text notes for internal use (optional)
+- `notes`: Free-text notes for internal use (optional, max 2000 characters)
+- `description`: Long-form public-facing description for the edition — activities overview, highlights, marketing copy, etc. (optional, PostgreSQL `text`, unlimited length)
 - `isArchived`: Whether the edition has been rejected/archived (required, boolean, default: false)
 - `accommodationCapacityJson`: JSON-serialized `AccommodationCapacity` for this specific edition (optional, stored as `text`). When set, auto-syncs to parent `Camp.accommodationCapacityJson`.
 - `proposalReason`: Reason provided when proposing the edition (optional, used in Proposed → Draft flow)
@@ -394,11 +498,44 @@ A specific annual edition of a camp (e.g., Camp 2026). Defines dates, pricing, c
 - Status transitions follow a strict chain: `Proposed → Draft → Open → Closed → Completed`; rejection sets `isArchived = true` (soft delete)
 - `Draft → Open`: `startDate` must not be in the past
 - `Closed → Completed`: `endDate` must be in the past
-- `Open` and `Closed` editions cannot have their dates or prices changed; only `notes` and `maxCapacity` are editable
+- `Open` and `Closed` editions cannot have their dates or prices changed; only `notes`, `description`, and `maxCapacity` are editable
 
 **Relationships:**
 
 - Each CampEdition belongs to one Camp (via `campId`)
+- One CampEdition can have many CampEditionAccommodations
+
+---
+
+### CampEditionAccommodation
+
+An accommodation option available for a specific camp edition (lodge, caravan, tent, etc.). Families rank up to 3 preferences during registration. This is a preference-only system — accommodations have no price; capacity is informational only.
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID)
+- `campEditionId`: The camp edition this accommodation belongs to (required, FK -> CampEdition)
+- `name`: Display name (required, max 200 characters, e.g. "Refugio Norte", "Parcela Caravanas A")
+- `accommodationType`: Type of accommodation (required, enum: `Lodge` | `Caravan` | `Tent` | `Bungalow` | `Motorhome`)
+- `description`: Optional description (max 1000 characters)
+- `capacity`: Maximum capacity in persons/units (optional, integer > 0 when set; informational only)
+- `isActive`: Whether the option is available for selection (required, default: true)
+- `sortOrder`: Display order (required, integer >= 0, default: 0)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- Name is required, max 200 characters
+- AccommodationType must be a valid enum value
+- Capacity must be > 0 when provided
+- SortOrder must be >= 0
+- Cannot delete if any RegistrationAccommodationPreference references this accommodation (deactivate instead)
+
+**Relationships:**
+
+- Each CampEditionAccommodation belongs to one CampEdition (via `campEditionId`, CASCADE delete)
+- One CampEditionAccommodation can be referenced by many RegistrationAccommodationPreferences
 
 ---
 
@@ -487,6 +624,34 @@ A partial or full payment for a registration. Supports multiple payments per reg
 **Relationships:**
 
 - Each Payment belongs to one Registration (via `registrationId`)
+
+---
+
+### RegistrationAccommodationPreference
+
+A family's ranked accommodation preference for a registration (1st, 2nd, or 3rd choice). Up to 3 preferences per registration, each pointing to a different CampEditionAccommodation.
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID, default: `gen_random_uuid()`)
+- `registrationId`: The registration this preference belongs to (required, FK -> Registration)
+- `campEditionAccommodationId`: The accommodation option being ranked (required, FK -> CampEditionAccommodation)
+- `preferenceOrder`: Rank position (required, integer, 1-3)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+
+**Validation rules:**
+
+- PreferenceOrder must be between 1 and 3 (inclusive)
+- A registration can have at most 3 preferences
+- No duplicate CampEditionAccommodationId per registration (unique index)
+- No duplicate PreferenceOrder per registration (unique index)
+- Each referenced accommodation must belong to the same camp edition as the registration
+- Each referenced accommodation must be active
+
+**Relationships:**
+
+- Each RegistrationAccommodationPreference belongs to one Registration (via `registrationId`, CASCADE delete)
+- Each RegistrationAccommodationPreference references one CampEditionAccommodation (via `campEditionAccommodationId`, RESTRICT delete)
 
 ---
 

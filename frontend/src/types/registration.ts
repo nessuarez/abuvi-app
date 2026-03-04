@@ -4,6 +4,29 @@ export type AgeCategory = 'Baby' | 'Child' | 'Adult'
 export type PaymentMethod = 'Card' | 'Transfer' | 'Cash'
 export type PaymentStatus = 'Pending' | 'Completed' | 'Failed' | 'Refunded'
 
+// Complete is first to match the backend enum CLR default (0)
+export type AttendancePeriod = 'Complete' | 'FirstWeek' | 'SecondWeek' | 'WeekendVisit'
+
+// API request shape per member (sent to backend)
+export interface MemberAttendanceRequest {
+  memberId: string
+  attendancePeriod: AttendancePeriod
+  visitStartDate?: string | null // YYYY-MM-DD, required when WeekendVisit
+  visitEndDate?: string | null // YYYY-MM-DD, required when WeekendVisit
+  guardianName?: string | null
+  guardianDocumentNumber?: string | null
+}
+
+// Wizard-local state: richer than MemberAttendanceRequest, not sent directly to API
+export interface WizardMemberSelection {
+  memberId: string
+  attendancePeriod: AttendancePeriod
+  visitStartDate: string | null // ISO date string YYYY-MM-DD
+  visitEndDate: string | null
+  guardianName: string | null
+  guardianDocumentNumber: string | null
+}
+
 // Embedded summaries in RegistrationResponse
 export interface RegistrationFamilyUnitSummary {
   id: string
@@ -26,7 +49,13 @@ export interface MemberPricingDetail {
   fullName: string
   ageAtCamp: number
   ageCategory: AgeCategory
+  attendancePeriod: AttendancePeriod
+  attendanceDays: number
+  visitStartDate: string | null // only populated for WeekendVisit
+  visitEndDate: string | null
   individualAmount: number
+  guardianName: string | null
+  guardianDocumentNumber: string | null
 }
 
 export interface ExtraPricingDetail {
@@ -70,6 +99,8 @@ export interface RegistrationResponse {
   amountRemaining: number
   createdAt: string
   updatedAt: string
+  specialNeeds: string | null
+  campatesPreference: string | null
 }
 
 // Available camp edition for registration wizard
@@ -95,18 +126,38 @@ export interface AvailableCampEditionResponse {
   spotsRemaining: number | null
   status: string
   ageRanges: AgeRangesInfo
+  // Partial attendance (week periods):
+  allowsPartialAttendance: boolean
+  pricePerAdultWeek: number | null
+  pricePerChildWeek: number | null
+  pricePerBabyWeek: number | null
+  halfDate: string | null // YYYY-MM-DD
+  firstWeekDays: number
+  secondWeekDays: number
+  // Weekend visit:
+  allowsWeekendVisit: boolean
+  pricePerAdultWeekend: number | null
+  pricePerChildWeekend: number | null
+  pricePerBabyWeekend: number | null
+  weekendStartDate: string | null // YYYY-MM-DD
+  weekendEndDate: string | null // YYYY-MM-DD
+  weekendDays: number
+  maxWeekendCapacity: number | null
+  weekendSpotsRemaining: number | null
 }
 
 // Request types
 export interface CreateRegistrationRequest {
   campEditionId: string
   familyUnitId: string
-  memberIds: string[]
+  members: MemberAttendanceRequest[]
   notes?: string | null
+  specialNeeds: string | null
+  campatesPreference: string | null
 }
 
 export interface UpdateRegistrationMembersRequest {
-  memberIds: string[]
+  members: MemberAttendanceRequest[]
 }
 
 export interface ExtraSelectionRequest {
@@ -124,4 +175,33 @@ export interface WizardExtrasSelection {
   name: string
   quantity: number
   unitPrice: number
+}
+
+// === Accommodation Preferences ===
+
+import type { AccommodationType } from './camp-edition'
+
+// Wizard-local state for accommodation preferences
+export interface WizardAccommodationPreference {
+  campEditionAccommodationId: string
+  accommodationName: string
+  accommodationType: AccommodationType
+  preferenceOrder: number
+}
+
+// API request/response shapes
+export interface AccommodationPreferenceRequest {
+  campEditionAccommodationId: string
+  preferenceOrder: number
+}
+
+export interface UpdateAccommodationPreferencesRequest {
+  preferences: AccommodationPreferenceRequest[]
+}
+
+export interface AccommodationPreferenceResponse {
+  campEditionAccommodationId: string
+  accommodationName: string
+  accommodationType: AccommodationType
+  preferenceOrder: number
 }

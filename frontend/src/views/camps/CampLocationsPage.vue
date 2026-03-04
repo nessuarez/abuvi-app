@@ -16,18 +16,20 @@ import Select from 'primevue/select'
 import CampLocationCard from '@/components/camps/CampLocationCard.vue'
 import CampLocationForm from '@/components/camps/CampLocationForm.vue'
 import CampLocationMap from '@/components/camps/CampLocationMap.vue'
+import CampCsvImportDialog from '@/components/camps/CampCsvImportDialog.vue'
 import { useCamps } from '@/composables/useCamps'
+import { useAuthStore } from '@/stores/auth'
 import type { Camp, CreateCampRequest } from '@/types/camp'
 
 const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
+const auth = useAuthStore()
 
-const { camps, loading, error, fetchCamps, createCamp, updateCamp, deleteCamp } = useCamps()
+const { camps, loading, error, fetchCamps, createCamp, deleteCamp } = useCamps()
 
 const showCreateDialog = ref(false)
-const showEditDialog = ref(false)
-const selectedCamp = ref<Camp | null>(null)
+const showImportDialog = ref(false)
 const searchQuery = ref('')
 const selectedStatus = ref<boolean | null>(null)
 const viewMode = ref<'table' | 'cards' | 'map'>('table')
@@ -66,7 +68,7 @@ const campLocations = computed(() => {
       latitude: camp.latitude as number,
       longitude: camp.longitude as number,
       name: camp.name,
-      year: undefined
+      location: camp.location ?? undefined
     }))
 })
 
@@ -87,13 +89,11 @@ onMounted(() => {
 })
 
 const handleCreate = () => {
-  selectedCamp.value = null
   showCreateDialog.value = true
 }
 
 const handleEdit = (camp: Camp) => {
-  selectedCamp.value = camp
-  showEditDialog.value = true
+  router.push({ name: 'camp-location-detail', params: { id: camp.id } })
 }
 
 const handleDelete = (camp: Camp) => {
@@ -153,27 +153,6 @@ const handleSubmitCreate = async (data: CreateCampRequest) => {
   }
 }
 
-const handleSubmitEdit = async (data: CreateCampRequest) => {
-  if (!selectedCamp.value) return
-
-  const result = await updateCamp(selectedCamp.value.id, { ...data, id: selectedCamp.value.id })
-  if (result) {
-    toast.add({
-      severity: 'success',
-      summary: 'Éxito',
-      detail: 'Campamento actualizado correctamente',
-      life: 3000
-    })
-    showEditDialog.value = false
-  } else {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: error.value || 'Error al actualizar campamento',
-      life: 5000
-    })
-  }
-}
 </script>
 
 <template>
@@ -306,10 +285,5 @@ const handleSubmitEdit = async (data: CreateCampRequest) => {
       <CampLocationForm mode="create" @submit="handleSubmitCreate" @cancel="showCreateDialog = false" />
     </Dialog>
 
-    <!-- Edit Dialog -->
-    <Dialog v-model:visible="showEditDialog" header="Editar Campamento" modal class="w-full max-w-2xl">
-      <CampLocationForm v-if="selectedCamp" mode="edit" :camp="selectedCamp" @submit="handleSubmitEdit"
-        @cancel="showEditDialog = false" />
-    </Dialog>
   </div>
 </template>

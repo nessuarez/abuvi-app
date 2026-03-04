@@ -35,7 +35,7 @@ const ageRanges = computed<AgeRangeSettings>(() => ({
 const mapLocations = computed<CampLocation[]>(() => {
   const camp = props.campEdition.camp
   if (!camp || camp.latitude == null || camp.longitude == null) return []
-  return [{ latitude: camp.latitude, longitude: camp.longitude, name: camp.name }]
+  return [{ latitude: camp.latitude, longitude: camp.longitude, name: camp.name, location: camp.location ?? undefined }]
 })
 </script>
 

@@ -8,7 +8,8 @@ import type {
   UpdateCampEditionRequest,
   ChangeEditionStatusRequest,
   ActiveCampEditionResponse,
-  CampEditionFilters
+  CampEditionFilters,
+  CurrentCampEditionResponse
 } from '@/types/camp-edition'
 import type { ApiResponse } from '@/types/api'
 
@@ -16,7 +17,7 @@ export function useCampEditions() {
   const editions = ref<CampEdition[]>([])
   const allEditions = ref<CampEdition[]>([])
   const activeEdition = ref<ActiveCampEditionResponse | null>(null)
-  const currentCampEdition = ref<CampEdition | null>(null)
+  const currentCampEdition = ref<CurrentCampEditionResponse | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -223,14 +224,17 @@ export function useCampEditions() {
 
   const changeStatus = async (
     id: string,
-    newStatus: CampEditionStatus
+    newStatus: CampEditionStatus,
+    force?: boolean
   ): Promise<CampEdition | null> => {
     loading.value = true
     error.value = null
     try {
+      const body: ChangeEditionStatusRequest = { status: newStatus }
+      if (force) body.force = true
       const response = await api.patch<ApiResponse<CampEdition>>(
         `/camps/editions/${id}/status`,
-        { status: newStatus } satisfies ChangeEditionStatusRequest
+        body
       )
       if (response.data.success && response.data.data) {
         const updatedEdition = response.data.data
@@ -259,7 +263,7 @@ export function useCampEditions() {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get<ApiResponse<CampEdition>>('/camps/current')
+      const response = await api.get<ApiResponse<CurrentCampEditionResponse>>('/camps/current')
       if (response.data.success && response.data.data) {
         currentCampEdition.value = response.data.data
       } else {

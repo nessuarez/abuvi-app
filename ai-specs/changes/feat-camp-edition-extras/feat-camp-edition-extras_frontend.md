@@ -5,6 +5,7 @@
 This plan covers the frontend implementation of Camp Edition Extras — optional add-ons (t-shirts, meals, insurance, etc.) that board members can define per camp edition. The feature follows Vue 3 Composition API with composable-based API communication, PrimeVue components, and Tailwind CSS for styling. No new routes are needed; extras are embedded within the existing `CampEditionDetailPage.vue` as a dedicated section, following the same pattern as `CampPhotoGallery.vue` within the camp detail page.
 
 **Critical pre-existing scaffold (must update, not create from scratch):**
+
 - `frontend/src/composables/useCampExtras.ts` — **exists with URL bugs and missing methods**
 - `frontend/src/types/camp-edition.ts` — **exists with field name discrepancies**
 
@@ -58,10 +59,12 @@ No new routes are required. The extras management UI is embedded in the existing
 #### 1.1 — Fix `CampEditionExtra` interface (lines 68–83)
 
 Current issues:
+
 - `currentQuantity: number` → rename to `currentQuantitySold: number | null` (nullable, calculated from registrations)
 - `sortOrder: number` → **remove** (not in backend schema — flagged as future enhancement in spec)
 
 Correct interface:
+
 ```typescript
 export interface CampEditionExtra {
   id: string
@@ -83,9 +86,11 @@ export interface CampEditionExtra {
 #### 1.2 — Fix `CreateCampExtraRequest` interface (lines 85–94)
 
 Current issues:
+
 - `sortOrder: number` → **remove**
 
 Correct interface:
+
 ```typescript
 export interface CreateCampExtraRequest {
   name: string
@@ -101,6 +106,7 @@ export interface CreateCampExtraRequest {
 #### 1.3 — Add `UpdateCampExtraRequest` interface (new, after `CreateCampExtraRequest`)
 
 The update request is distinct from create: it allows toggling `isActive` but does NOT allow changing `pricingType` or `pricingPeriod`.
+
 ```typescript
 export interface UpdateCampExtraRequest {
   name: string
@@ -133,7 +139,7 @@ export interface UpdateCampExtraRequest {
 The list endpoint (`fetchExtras`) correctly uses `/camps/editions/${editionId}/extras` — only add the `activeOnly` query param.
 The create endpoint (`createExtra`) correctly uses POST `/camps/editions/${editionId}/extras` — no change needed.
 
-#### Complete rewrite of `useCampExtras.ts`:
+#### Complete rewrite of `useCampExtras.ts`
 
 ```typescript
 import { ref } from 'vue'
@@ -333,6 +339,7 @@ export function useCampExtras(editionId: string) {
 - **File**: `frontend/src/components/camps/CampEditionExtrasFormDialog.vue`
 - **Action**: Create a Dialog-based form for creating and editing camp edition extras.
 - **Component Signature**:
+
   ```typescript
   interface Props {
     visible: boolean
@@ -345,7 +352,7 @@ export function useCampExtras(editionId: string) {
   }
   ```
 
-#### Implementation Steps:
+#### Implementation Steps
 
 1. Use `<Dialog v-model:visible="dialogVisible" :header="..." modal>` (PrimeVue Dialog)
 2. Manage `dialogVisible` as a computed wrapping `props.visible` / emitting `update:visible`
@@ -368,11 +375,13 @@ export function useCampExtras(editionId: string) {
 8. Reset form state when dialog opens (watch `visible`)
 9. Use `data-testid` attributes on key elements: `extra-form-dialog`, `extra-name-input`, `extra-price-input`, `extra-submit-button`
 
-#### PrimeVue Components Used:
+#### PrimeVue Components Used
+
 - `Dialog`, `InputText`, `Textarea`, `InputNumber`, `Select`, `Checkbox`, `Button`
 - `useToast()` for notifications
 
-#### Notes:
+#### Notes
+
 - All labels in **Spanish**
 - No `<style>` block — Tailwind only
 - `pricingType` and `pricingPeriod` are **not editable** in edit mode (render as read-only display text) since changing them could cause calculation inconsistencies for already-sold extras
@@ -384,6 +393,7 @@ export function useCampExtras(editionId: string) {
 - **File**: `frontend/src/components/camps/CampEditionExtrasList.vue`
 - **Action**: Create the main extras management UI — a DataTable of extras with create/edit/delete/activate/deactivate actions, visible only to authenticated users; write actions restricted to Board+.
 - **Component Signature**:
+
   ```typescript
   interface Props {
     editionId: string
@@ -391,7 +401,7 @@ export function useCampExtras(editionId: string) {
   }
   ```
 
-#### Implementation Steps:
+#### Implementation Steps
 
 1. Import `useCampExtras(props.editionId)`, `useAuthStore`, `useToast`, `useConfirm`
 2. Call `fetchExtras()` in `onMounted`
@@ -423,7 +433,8 @@ export function useCampExtras(editionId: string) {
 12. Include `<ConfirmDialog />` at the bottom
 13. `data-testid` attributes: `extras-list`, `extras-table`, `add-extra-button`
 
-#### Helper Display Functions:
+#### Helper Display Functions
+
 ```typescript
 const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 }).format(amount)
@@ -435,7 +446,8 @@ const pricingPeriodLabel = (period: 'OneTime' | 'PerDay'): string =>
   period === 'OneTime' ? 'Una vez' : 'Por día'
 ```
 
-#### PrimeVue Components Used:
+#### PrimeVue Components Used
+
 - `DataTable`, `Column`, `Button`, `Tag`, `ProgressSpinner`, `Message`, `ConfirmDialog`
 - `useConfirm`, `useToast`
 
@@ -446,11 +458,12 @@ const pricingPeriodLabel = (period: 'OneTime' | 'PerDay'): string =>
 - **File**: `frontend/src/views/camps/CampEditionDetailPage.vue`
 - **Action**: Add the `CampEditionExtrasList` section at the bottom of the edition detail view.
 
-#### Implementation Steps:
+#### Implementation Steps
 
 1. Import `CampEditionExtrasList` from `@/components/camps/CampEditionExtrasList.vue`
 2. Import `CampEditionStatus` type from `@/types/camp-edition` (already imported indirectly through `CampEdition`)
 3. In the template, after the description section, add a new section:
+
    ```html
    <!-- Camp Edition Extras -->
    <div v-if="edition" class="mt-6 rounded-lg border border-gray-200 bg-white p-6">
@@ -461,6 +474,7 @@ const pricingPeriodLabel = (period: 'OneTime' | 'PerDay'): string =>
      />
    </div>
    ```
+
 4. Place the extras section **inside** the `v-else-if="edition"` block, after the description card.
 
 - **Implementation Notes**: The section is wrapped in a conditional so it only renders when the edition is loaded. No other changes to the page are needed. Member users will see the extras list (read-only); Board users will see action buttons.
@@ -472,7 +486,7 @@ const pricingPeriodLabel = (period: 'OneTime' | 'PerDay'): string =>
 - **File**: `frontend/src/composables/__tests__/useCampExtras.test.ts`
 - **Action**: Create comprehensive unit tests covering all composable methods, including the URL fixes and new methods.
 
-#### Test Structure Pattern (follow `useCampPhotos.test.ts`):
+#### Test Structure Pattern (follow `useCampPhotos.test.ts`)
 
 ```typescript
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -510,9 +524,10 @@ const makeExtra = (overrides: Partial<CampEditionExtra> = {}): CampEditionExtra 
 })
 ```
 
-#### Required Test Cases:
+#### Required Test Cases
 
 **`fetchExtras`:**
+
 - `fetchExtras_WithNoFilter_CallsEditionScopedEndpoint` — verify URL `/camps/editions/${editionId}/extras` without params
 - `fetchExtras_WithActiveOnlyTrue_PassesQueryParam` — verify `{ params: { activeOnly: true } }`
 - `fetchExtras_OnSuccess_PopulatesExtrasArray`
@@ -520,31 +535,37 @@ const makeExtra = (overrides: Partial<CampEditionExtra> = {}): CampEditionExtra 
 - `fetchExtras_SetsLoadingFalseAfterCompletion`
 
 **`getExtraById` (URL fix):**
+
 - `getExtraById_CallsGlobalExtrasEndpointWithoutEditionId` — verify URL is `/camps/editions/extras/${extraId}` (no editionId prefix)
 - `getExtraById_OnSuccess_ReturnsExtra`
 - `getExtraById_OnFailure_ReturnsNull`
 
 **`createExtra`:**
+
 - `createExtra_OnSuccess_AddsExtraToLocalArray`
 - `createExtra_OnSuccess_ReturnsCreatedExtra`
 - `createExtra_OnFailure_ReturnsNullAndSetsError`
 
 **`updateExtra` (URL fix + type fix):**
+
 - `updateExtra_CallsGlobalExtrasEndpointWithoutEditionId` — verify PUT URL is `/camps/editions/extras/${extraId}`
 - `updateExtra_OnSuccess_UpdatesLocalArrayAtCorrectIndex`
 - `updateExtra_OnFailure_ReturnsNullAndSetsError`
 
 **`deleteExtra` (URL fix):**
+
 - `deleteExtra_CallsGlobalExtrasEndpointWithoutEditionId` — verify DELETE URL is `/camps/editions/extras/${extraId}`
 - `deleteExtra_OnSuccess_RemovesExtraFromLocalArray`
 - `deleteExtra_OnFailure_ReturnsFalseAndSetsError`
 
 **`activateExtra` (new):**
+
 - `activateExtra_CallsActivateEndpoint` — verify PATCH URL is `/camps/editions/extras/${extraId}/activate`
 - `activateExtra_OnSuccess_UpdatesExtraInLocalArray`
 - `activateExtra_OnFailure_ReturnsNullAndSetsError`
 
 **`deactivateExtra` (new):**
+
 - `deactivateExtra_CallsDeactivateEndpoint` — verify PATCH URL is `/camps/editions/extras/${extraId}/deactivate`
 - `deactivateExtra_OnSuccess_UpdatesExtraInLocalArray`
 - `deactivateExtra_OnFailure_ReturnsNullAndSetsError`
@@ -558,7 +579,7 @@ const makeExtra = (overrides: Partial<CampEditionExtra> = {}): CampEditionExtra 
 - **File**: `frontend/cypress/e2e/camps/camp-edition-extras.cy.ts`
 - **Action**: Write E2E tests for the critical user flows of Camp Edition Extras management.
 
-#### Test Setup Pattern (follow `camp-photos.cy.ts`):
+#### Test Setup Pattern (follow `camp-photos.cy.ts`)
 
 ```typescript
 const EDITION_ID = 'edition-test-1'
@@ -583,29 +604,34 @@ const setAuthState = (user: typeof boardUser | typeof memberUser) => {
 }
 ```
 
-#### Required Test Suites:
+#### Required Test Suites
 
 **Role-based visibility:**
+
 - Board user sees extras section with "Añadir extra" button
 - Member user sees extras section but NOT "Añadir extra" button and NOT action buttons
 - Empty state shown when no extras exist (Board user)
 
 **Create extra (Board):**
+
 - Opens form dialog when clicking "Añadir extra"
 - Submits form and shows newly created extra in the list
 - Shows validation error when name is missing
 - Shows validation error when price is negative
 
 **Edit extra (Board):**
+
 - Opens edit dialog with pre-filled values when clicking edit button
 - Submits updated values and reflects in the list
 
 **Delete extra (Board):**
+
 - Shows confirmation dialog before deleting
 - Deletes extra and removes from list after confirmation
 - Shows error toast when API returns 400 (extra has sales)
 
 **Activate/Deactivate (Board):**
+
 - Clicking deactivate on active extra shows "Inactivo" state
 - Clicking activate on inactive extra shows "Activo" state
 
@@ -641,6 +667,7 @@ const setAuthState = (user: typeof boardUser | typeof memberUser) => {
 ## Testing Checklist
 
 ### Vitest Unit Tests
+
 - [ ] `useCampExtras.test.ts` created with 18+ test cases
 - [ ] `fetchExtras` with/without `activeOnly` param tested
 - [ ] `getExtraById` URL fix tested (no `editionId` prefix)
@@ -652,6 +679,7 @@ const setAuthState = (user: typeof boardUser | typeof memberUser) => {
 - [ ] All tests pass: `npm run test -- useCampExtras`
 
 ### Cypress E2E Tests
+
 - [ ] Board role sees full management UI (create/edit/delete/toggle)
 - [ ] Member role sees read-only view (no action buttons)
 - [ ] Create flow: form opens, validates, submits, shows success toast
@@ -661,6 +689,7 @@ const setAuthState = (user: typeof boardUser | typeof memberUser) => {
 - [ ] Error flow: API error shown as toast
 
 ### Component Functionality
+
 - [ ] `CampEditionExtrasList` renders in `CampEditionDetailPage`
 - [ ] Extras are loaded on mount via `fetchExtras()`
 - [ ] Empty state shows when no extras
@@ -669,6 +698,7 @@ const setAuthState = (user: typeof boardUser | typeof memberUser) => {
 - [ ] `pricingType`/`pricingPeriod` are read-only in edit mode
 
 ### Integration Verification
+
 - [ ] All API calls use the correct base URL (no duplicated `editionId` for by-ID endpoints)
 - [ ] `createExtra` POST to `/camps/editions/${editionId}/extras` (edition-scoped)
 - [ ] `fetchExtras` GET from `/camps/editions/${editionId}/extras` (edition-scoped)
@@ -683,12 +713,14 @@ const setAuthState = (user: typeof boardUser | typeof memberUser) => {
 ## Error Handling Patterns
 
 ### In Composable (`useCampExtras.ts`)
+
 - Each method wraps API calls in `try/catch/finally`
 - `error.value` is populated with API error message (from `response.data.error.message`) or a Spanish fallback string
 - `loading.value` is always reset to `false` in `finally`
 - Fallback messages in Spanish: "Error al cargar extras", "Error al crear extra", "Error al actualizar extra", "Error al eliminar extra", "Error al activar extra", "Error al desactivar extra"
 
 ### In Components
+
 - Display `<Message severity="error">{{ error }}</Message>` for persistent errors (list failed to load)
 - Use `useToast()` for transient operation feedback (success/error after create, update, delete, activate, deactivate)
 - Show toast on success: `{ severity: 'success', summary: 'Éxito', detail: '...', life: 3000 }`
@@ -699,6 +731,7 @@ const setAuthState = (user: typeof boardUser | typeof memberUser) => {
 ## UI/UX Considerations
 
 ### PrimeVue Components
+
 - `DataTable` + `Column` for the extras list (vs. card grid for photos — extras have tabular data)
 - `Dialog` for create/edit form
 - `ConfirmDialog` + `useConfirm` for delete confirmation
@@ -708,15 +741,18 @@ const setAuthState = (user: typeof boardUser | typeof memberUser) => {
 - `Checkbox` for `isRequired` and `isActive` (edit mode only)
 
 ### Layout
+
 - Extras section is a card (`rounded-lg border border-gray-200 bg-white p-6`) within `CampEditionDetailPage`, below the description card
 - Full-width section (not in 2-column grid like General Info / Pricing cards)
 - DataTable is not paginated (extras per edition expected to be < 20)
 
 ### Responsive Design
+
 - DataTable uses `scrollable` with horizontal scroll on mobile
 - Hide less important columns (`description`, `maxQuantity`) on small screens using PrimeVue column `hidden sm:table-cell` pattern
 
 ### Accessibility
+
 - All buttons have descriptive labels or `aria-label`
 - Form inputs have associated `<label>` elements with `for` attribute
 - Error messages are announced via PrimeVue Toast (aria-live)
@@ -726,9 +762,11 @@ const setAuthState = (user: typeof boardUser | typeof memberUser) => {
 ## Dependencies
 
 ### npm Packages Required
+
 No new npm packages required. All dependencies are already in the project:
 
 ### PrimeVue Components Used
+
 - `DataTable`, `Column` — extras list
 - `Dialog` — create/edit form
 - `InputText` — name field
@@ -770,6 +808,7 @@ No new npm packages required. All dependencies are already in the project:
 ## Implementation Verification
 
 ### Code Quality
+
 - [ ] No TypeScript `any` usage
 - [ ] All components use `<script setup lang="ts">`
 - [ ] No `<style>` blocks (Tailwind only)
@@ -778,6 +817,7 @@ No new npm packages required. All dependencies are already in the project:
 - [ ] TypeScript checks pass: `npm run type-check`
 
 ### Functionality
+
 - [ ] `CampEditionExtrasList` renders correctly within `CampEditionDetailPage`
 - [ ] All 7 API endpoints are called with the correct URLs
 - [ ] Create/Edit/Delete/Activate/Deactivate operations work end-to-end (with mocked API in tests)
@@ -785,14 +825,17 @@ No new npm packages required. All dependencies are already in the project:
 - [ ] Edition status gating: "Añadir extra" hidden for Completed/Closed editions
 
 ### Testing
+
 - [ ] Vitest: 18+ unit tests for `useCampExtras`, all passing
 - [ ] Cypress: 10+ E2E scenarios for critical user flows, all passing
 
 ### Integration
+
 - [ ] `useCampExtras` composable connects to backend API correctly (URL verification)
 - [ ] Types in `camp-edition.ts` match backend DTOs (`currentQuantitySold`, no `sortOrder`)
 - [ ] `UpdateCampExtraRequest` does not include `pricingType`/`pricingPeriod`
 
 ### Documentation
+
 - [ ] API spec updated with new extras endpoints (if `api-spec.yml` covers them)
 - [ ] No documentation regressions
