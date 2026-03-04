@@ -475,7 +475,7 @@ const progressBarColor = computed(() => {
 </Tab>
 ```
 
-  - Add to `<TabPanels>`:
+- Add to `<TabPanels>`:
 
 ```html
 <TabPanel v-if="auth.isAdmin" value="3" data-testid="panel-storage">
@@ -647,6 +647,7 @@ const progressBarColor = computed(() => {
 ### No new npm packages required
 
 All required capabilities are already present in the project:
+
 - `axios` — HTTP client via existing `@/utils/api`
 - `primevue` — `Button`, `ProgressBar`, `ProgressSpinner`, `DataTable`, `Column`, `Message` are already registered
 - `vitest` + `@vue/test-utils` — existing test infrastructure

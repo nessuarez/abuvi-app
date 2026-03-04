@@ -278,6 +278,7 @@ A reusable camp location template that can have multiple editions per year. Exte
 - `contactEmail`, when provided, must be a valid email address
 - `abuviManagedByUserId`, when provided, must reference a user with Board or Admin role (throws `BusinessRuleException` otherwise)
 - When `googlePlaceId` is provided at creation, the backend auto-enriches all Google Places fields
+- Google Places data can be re-synced via `POST /api/camps/{id}/refresh-places` (Board+ only). This deletes stale Google-sourced photos (`isOriginal = true`) before re-enriching, preserving user-uploaded photos. Requires the camp to have a `googlePlaceId`.
 - `accommodationCapacityJson` stores camelCase JSON; all numeric accommodation fields must be >= 0
 
 **Audit tracking:**
