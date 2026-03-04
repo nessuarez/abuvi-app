@@ -17,7 +17,7 @@ const makeCamp = (overrides: Partial<Camp> = {}): Camp => ({
 	id: "1",
 	name: "Mountain Camp",
 	description: "Beautiful mountain location",
-	rawAddress: "Pyrenees, Spain",
+	location: "Pyrenees, Spain",
 	latitude: 46.5833,
 	longitude: 7.9833,
 	googlePlaceId: null,
@@ -149,7 +149,7 @@ describe("useCamps", () => {
 			const result = await createCamp({
 				name: "New Camp",
 				description: null,
-				rawAddress: null,
+				location: null,
 				latitude: null,
 				longitude: null,
 				googlePlaceId: null,
@@ -174,7 +174,7 @@ describe("useCamps", () => {
 			const result = await createCamp({
 				name: "New Camp",
 				description: null,
-				rawAddress: null,
+				location: null,
 				latitude: null,
 				longitude: null,
 				googlePlaceId: null,

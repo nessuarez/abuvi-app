@@ -9,6 +9,12 @@ export interface PlaceAutocomplete {
   secondaryText: string
 }
 
+export interface GoogleAddressComponent {
+  longName: string
+  shortName: string
+  types: string[]
+}
+
 export interface PlaceDetails {
   placeId: string
   name: string
@@ -16,6 +22,14 @@ export interface PlaceDetails {
   latitude: number
   longitude: number
   types: string[]
+  phoneNumber: string | null
+  nationalPhoneNumber: string | null
+  website: string | null
+  googleMapsUrl: string | null
+  rating: number | null
+  ratingCount: number | null
+  businessStatus: string | null
+  addressComponents: GoogleAddressComponent[] | null
 }
 
 export function useGooglePlaces() {
@@ -42,8 +56,8 @@ export function useGooglePlaces() {
 
       error.value = response.data.error?.message || 'Error al buscar lugares'
       return []
-    } catch (err: any) {
-      error.value = err.response?.data?.error?.message || 'Error al buscar lugares'
+    } catch (err: unknown) {
+      error.value = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || 'Error al buscar lugares'
       return []
     } finally {
       loading.value = false
@@ -66,8 +80,8 @@ export function useGooglePlaces() {
 
       error.value = response.data.error?.message || 'Error al obtener detalles del lugar'
       return null
-    } catch (err: any) {
-      error.value = err.response?.data?.error?.message || 'Error al obtener detalles del lugar'
+    } catch (err: unknown) {
+      error.value = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || 'Error al obtener detalles del lugar'
       return null
     } finally {
       loading.value = false

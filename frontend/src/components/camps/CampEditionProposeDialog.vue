@@ -78,7 +78,7 @@ watch(() => props.visible, (val) => {
       year: targetYear,
       startDate: null,
       endDate: null,
-      location: props.camp?.rawAddress ?? props.camp?.name ?? '',
+      location: props.camp?.location ?? props.camp?.name ?? '',
       pricePerAdult: props.camp?.pricePerAdult ?? 0,
       pricePerChild: props.camp?.pricePerChild ?? 0,
       pricePerBaby: props.camp?.pricePerBaby ?? 0,

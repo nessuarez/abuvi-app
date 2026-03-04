@@ -155,6 +155,31 @@ export function useCamps() {
 		}
 	};
 
+	const refreshGooglePlaces = async (
+		id: string
+	): Promise<CampDetailResponse | null> => {
+		loading.value = true;
+		error.value = null;
+		try {
+			const response = await api.post<ApiResponse<CampDetailResponse>>(
+				`/camps/${id}/refresh-places`
+			);
+			if (response.data.success && response.data.data) {
+				return response.data.data;
+			}
+			return null;
+		} catch (err: unknown) {
+			error.value = extractError(
+				err,
+				"Error al actualizar datos de Google Places"
+			);
+			console.error("Failed to refresh Google Places:", err);
+			return null;
+		} finally {
+			loading.value = false;
+		}
+	};
+
 	const fetchCampObservations = async (campId: string) => {
 		observationsLoading.value = true;
 		observationsError.value = null;
@@ -231,6 +256,7 @@ export function useCamps() {
 		createCamp,
 		updateCamp,
 		deleteCamp,
+		refreshGooglePlaces,
 		// Observations
 		campObservations,
 		observationsLoading,

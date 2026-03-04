@@ -59,7 +59,7 @@ Organizational statutes that define ABUVI's structure, governance, objectives, a
 - **CIF/NIF**: G-79013322
 - **Registered address**: C/BUTRÓN 27, 28022 Madrid
 - **Registration**: [Registry number and location]
-- **Email**: <juntaabuvi@gmail.com>
+- **Email**: <junta.abuvi@gmail.com>
 
 ##### 1.2 Website Information
 
@@ -214,7 +214,7 @@ El presente sitio web tiene como objeto...
 ## 1. Responsable del Tratamiento
 
 Asociación ABUVI
-- **Correo electrónico:** juntaabuvi@gmail.com
+- **Correo electrónico:** junta.abuvi@gmail.com
 - **Dirección:** C/BUTRÓN 27, 28022 Madrid
 
 ## 2. Datos Personales que Recopilamos
