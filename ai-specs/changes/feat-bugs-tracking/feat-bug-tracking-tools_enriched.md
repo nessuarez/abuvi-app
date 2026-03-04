@@ -63,6 +63,7 @@ No single free tool covers both automatic error tracking AND visual user feedbac
 **Why this is best**: GlitchTip uses Sentry-compatible SDKs (well-documented, mature ecosystem) with zero infrastructure overhead. The 1K events/mo limit is sufficient for a small user base when performance tracing is disabled (errors-only mode). Userback is the only free tool that provides BugHerd-style visual annotations. Migration to self-hosted GlitchTip later requires only changing the DSN environment variable.
 
 **Quota optimization tips:**
+
 - Set `tracesSampleRate: 0` to avoid consuming events on performance transactions
 - Use `beforeSend` to filter noisy/duplicate errors
 - Monitor usage in GlitchTip dashboard to anticipate when self-hosting becomes necessary
@@ -165,31 +166,75 @@ builder.WebHost.UseSentry(o =>
 
 **Files to modify:**
 
-- `frontend/index.html` — Add Userback script tag
-- OR `frontend/src/main.ts` — Programmatic initialization
+- `frontend/src/main.ts` — Programmatic initialization (already implemented)
 
-**Configuration:**
+**Current implementation** (already in `main.ts`):
 
-```html
-<!-- index.html -->
-<script>
-  Userback = window.Userback || {};
-  Userback.access_token = '<YOUR_USERBACK_TOKEN>';
-  (function(d) {
-    var s = d.createElement('script');
-    s.async = true;
-    s.src = 'https://static.userback.io/widget/v1.js';
-    (d.head || d.body).appendChild(s);
-  })(document);
-</script>
+```typescript
+const userbackToken = import.meta.env.VITE_USERBACK_TOKEN;
+if (userbackToken) {
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = "https://static.userback.io/widget/v1.js";
+  script.onload = () => {
+    (window as any).Userback?.init(userbackToken);
+  };
+  document.head.appendChild(script);
+}
 ```
+
+**Userback Dashboard Configuration (REQUIRED — manual steps):**
+
+The code integration alone is NOT sufficient. Userback requires additional dashboard-side configuration before the widget appears and integration is confirmed:
+
+1. **Configure allowed domains** in Userback Project Settings:
+   - Add `localhost` (for local development)
+   - Add the production domain (e.g., `app.abuvi.org` or whichever domain is used)
+   - The domain must **exactly match** the URL where the widget is tested
+2. **Activate a feedback widget or survey** on the Userback Overview page — the widget will NOT appear unless at least one widget/survey is set to **Live** status
+3. **Verify installation** using the "Verify Domains" button accessible via the Code menu in Userback dashboard
+4. **Check targeting rules** — ensure the widget is configured to appear for the correct audience and pages
+
+> **Known issue**: After embedding the Userback script in `main.ts`, the Userback dashboard may NOT show integration confirmation until domains are configured and at least one widget is activated. This is **not** related to authentication state — the widget loads globally on all pages (authenticated and unauthenticated). The confirmation depends entirely on Userback dashboard-side setup.
+
+**Optional enhancement — show widget only for authenticated users:**
+
+The current implementation loads the widget globally. If the widget should only appear for authenticated users (matching the acceptance criteria), move initialization to `App.vue` after auth state is restored:
+
+```typescript
+// App.vue — inside onMounted, after auth.restoreSession()
+import { useAuthStore } from "@/stores/auth";
+
+const auth = useAuthStore();
+
+watch(() => auth.isAuthenticated, (isAuth) => {
+  if (isAuth && import.meta.env.VITE_USERBACK_TOKEN) {
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://static.userback.io/widget/v1.js";
+    script.onload = () => {
+      (window as any).Userback?.init(import.meta.env.VITE_USERBACK_TOKEN, {
+        email: auth.user?.email,
+        name: auth.user?.name,
+      });
+    };
+    document.head.appendChild(script);
+  }
+}, { immediate: true });
+```
+
+This approach also passes user identity metadata to Userback, making feedback submissions more actionable.
 
 ### Step 5: Verify and Test
 
-1. Trigger a test error in the frontend → verify it appears in GlitchTip
-2. Trigger a test exception in the backend → verify it appears in GlitchTip
-3. Submit visual feedback via Userback widget → verify it appears in Userback dashboard
-4. Verify source maps are resolving stack traces correctly (optional)
+1. **Userback dashboard setup** (must be done BEFORE testing):
+   - Go to Userback → Project Settings → Domains → add `localhost` and production domain
+   - Go to Overview → ensure at least one feedback widget is set to **Live**
+   - Go to Code → click **Verify Domains** to confirm installation
+2. Trigger a test error in the frontend → verify it appears in GlitchTip
+3. Trigger a test exception in the backend → verify it appears in GlitchTip
+4. Submit visual feedback via Userback widget → verify it appears in Userback dashboard
+5. Verify source maps are resolving stack traces correctly (optional)
 
 ---
 
@@ -209,7 +254,7 @@ builder.WebHost.UseSentry(o =>
 
 - **Security**: DSNs and tokens must be stored in environment variables, never committed to source control
 - **Performance**: Sentry SDK must not degrade frontend load time by more than 50ms
-- **Privacy**: No PII should be sent to external services (Userback). Configure Sentry's `beforeSend` to scrub sensitive data
+- **Privacy**: No PII should be sent to external services (Userback). Configure Sentry's `beforeSend` to scrub sensitive data. When passing user identity to Userback, only send email and display name — no sensitive data
 - **Availability**: GlitchTip failure must not affect the main application (SDK operates in fire-and-forget mode)
 - **Quota**: Monitor GlitchTip event usage; if 1K events/mo is exceeded, migrate to self-hosted (Option A.1)
 

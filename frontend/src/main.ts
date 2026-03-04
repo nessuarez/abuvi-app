@@ -35,16 +35,8 @@ if (glitchtipDsn) {
 }
 
 // Userback visual feedback widget
-const userbackToken = import.meta.env.VITE_USERBACK_TOKEN;
-if (userbackToken) {
-	const script = document.createElement("script");
-	script.async = true;
-	script.src = "https://static.userback.io/widget/v1.js";
-	script.onload = () => {
-		(window as any).Userback?.init(userbackToken);
-	};
-	document.head.appendChild(script);
-}
+// Script is loaded via index.html (static tag for domain verification).
+// Auth-aware init with user identity is done in App.vue after login.
 
 app.use(createPinia());
 app.use(router);
