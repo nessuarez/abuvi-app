@@ -18,6 +18,22 @@ export interface RegisterRequest {
   phone?: string | null
 }
 
+export interface RegisterUserRequest {
+  email: string
+  password: string
+  firstName: string
+  lastName: string
+  documentNumber?: string | null
+  phone?: string | null
+  acceptedTerms: boolean
+}
+
+export interface RegisterResult {
+  success: boolean
+  email?: string
+  error?: string
+}
+
 export interface LoginResponse {
   token: string
   user: UserInfo

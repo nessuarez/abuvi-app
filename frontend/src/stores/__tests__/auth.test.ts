@@ -1,7 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
+import { api } from '@/utils/api'
 import type { UserInfo } from '@/types/auth'
+
+vi.mock('@/utils/api', () => ({
+  api: {
+    post: vi.fn()
+  }
+}))
 
 const mockUser: UserInfo = {
   id: '1',
@@ -444,6 +451,94 @@ describe('Auth Store', () => {
       expect(store2.token).toBe('persistent-token')
       expect(store2.user).toEqual(mockUser)
       expect(store2.isAuthenticated).toBe(true)
+    })
+  })
+
+  describe('register', () => {
+    const registerData = {
+      email: 'test@example.com',
+      password: 'Password123!',
+      firstName: 'John',
+      lastName: 'Doe',
+      acceptedTerms: true
+    }
+
+    it('should call register-user endpoint', async () => {
+      vi.mocked(api.post).mockResolvedValue({
+        data: { success: true, data: {}, error: null }
+      })
+
+      const store = useAuthStore()
+      await store.register(registerData)
+
+      expect(api.post).toHaveBeenCalledWith('/auth/register-user', registerData)
+    })
+
+    it('should not modify user or token state after registration', async () => {
+      vi.mocked(api.post).mockResolvedValue({
+        data: { success: true, data: {}, error: null }
+      })
+
+      const store = useAuthStore()
+      await store.register(registerData)
+
+      expect(store.user).toBeNull()
+      expect(store.token).toBeNull()
+      expect(store.isAuthenticated).toBe(false)
+    })
+
+    it('should not save to localStorage after registration', async () => {
+      vi.mocked(api.post).mockResolvedValue({
+        data: { success: true, data: {}, error: null }
+      })
+
+      const store = useAuthStore()
+      await store.register(registerData)
+
+      expect(localStorage.getItem('abuvi_auth_token')).toBeNull()
+      expect(localStorage.getItem('abuvi_user')).toBeNull()
+    })
+
+    it('should return success with email on successful registration', async () => {
+      vi.mocked(api.post).mockResolvedValue({
+        data: { success: true, data: {}, error: null }
+      })
+
+      const store = useAuthStore()
+      const result = await store.register(registerData)
+
+      expect(result).toEqual({ success: true, email: 'test@example.com' })
+    })
+
+    it('should return error on failed registration', async () => {
+      vi.mocked(api.post).mockResolvedValue({
+        data: {
+          success: false,
+          data: null,
+          error: { message: 'Email already exists' }
+        }
+      })
+
+      const store = useAuthStore()
+      const result = await store.register(registerData)
+
+      expect(result).toEqual({ success: false, error: 'Email already exists' })
+    })
+
+    it('should handle network error during registration', async () => {
+      vi.mocked(api.post).mockRejectedValue({
+        response: {
+          data: { error: { message: 'Este correo electrónico ya está registrado.' } }
+        }
+      })
+
+      const store = useAuthStore()
+      const result = await store.register(registerData)
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Este correo electrónico ya está registrado.'
+      })
     })
   })
 })
