@@ -196,6 +196,32 @@ public class CampsService
         return await _repository.DeleteAsync(id, cancellationToken);
     }
 
+    /// <summary>
+    /// Re-syncs Google Places data (address, phone, rating, photos) for an existing camp.
+    /// Requires the camp to have a GooglePlaceId.
+    /// </summary>
+    public async Task<CampDetailResponse?> RefreshGooglePlacesAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var camp = await _repository.GetByIdWithPhotosAsync(id, cancellationToken);
+        if (camp is null) return null;
+
+        if (string.IsNullOrWhiteSpace(camp.GooglePlaceId))
+            throw new BusinessRuleException(
+                "Camp does not have a Google Place ID. Cannot refresh Google Places data.");
+
+        // Clear stale Google-sourced photos before re-enriching
+        await _repository.DeleteGooglePhotosAsync(id, cancellationToken);
+
+        // Re-enrich from Google Places (updates fields + adds fresh photos)
+        await EnrichFromGooglePlacesAsync(camp, cancellationToken);
+
+        // Re-fetch to get updated photos navigation property
+        var refreshed = await _repository.GetByIdWithPhotosAsync(id, cancellationToken);
+        return refreshed is null ? null : MapToCampDetailResponse(refreshed, refreshed.Photos);
+    }
+
     // --- Private helpers ---
 
     private static List<CampAuditLog> BuildAuditEntries(
@@ -287,7 +313,8 @@ public class CampsService
         PricePerBaby: camp.PricePerBaby,
         IsActive: camp.IsActive,
         CreatedAt: camp.CreatedAt,
-        UpdatedAt: camp.UpdatedAt
+        UpdatedAt: camp.UpdatedAt,
+        EditionCount: camp.Editions.Count
     );
 
     internal static CampDetailResponse MapToCampDetailResponse(Camp camp, IEnumerable<CampPhoto> photos)
