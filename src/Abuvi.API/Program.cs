@@ -10,8 +10,6 @@ using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.Guests;
 using Abuvi.API.Features.Memberships;
 using Abuvi.API.Features.Registrations;
-using Abuvi.API.Features.Memories;
-using Abuvi.API.Features.MediaItems;
 using Abuvi.API.Features.BlobStorage;
 using Abuvi.API.Common.Services;
 using FluentValidation;
@@ -189,12 +187,6 @@ builder.Services.AddScoped<RegistrationsService>();
 
 // Blob Storage
 builder.Services.AddBlobStorage(builder.Configuration);
-
-// Memories
-builder.Services.AddMemories();
-
-// Media Items
-builder.Services.AddMediaItems();
 
 // Encryption Service
 builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
@@ -393,8 +385,6 @@ app.MapMembershipsEndpoints();
 app.MapMembershipFeeEndpoints();
 app.MapRegistrationsEndpoints();
 app.MapBlobStorageEndpoints();
-app.MapMemoriesEndpoints();
-app.MapMediaItemsEndpoints();
 
 app.Run();
 
