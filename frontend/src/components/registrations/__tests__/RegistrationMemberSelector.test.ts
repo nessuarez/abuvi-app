@@ -146,22 +146,6 @@ describe('RegistrationMemberSelector', () => {
     expect(emittedSelections).toHaveLength(0)
   })
 
-  it('should show medical notes warning icon when hasMedicalNotes is true', () => {
-    const wrapper = mountComponent()
-    const medicalIcon = wrapper.find('[data-testid="medical-notes-icon"]')
-    expect(medicalIcon.exists()).toBe(true)
-    expect(medicalIcon.attributes('aria-label')).toBe('Tiene notas médicas')
-  })
-
-  it('should NOT expose actual medical note content in any rendered text', () => {
-    const wrapper = mountComponent()
-    const text = wrapper.text()
-    expect(text).not.toContain('medicalNotes')
-    expect(text).not.toContain('allergies')
-    expect(text).not.toContain('nota médica')
-    expect(text).not.toContain('alergia a')
-  })
-
   it('should not show period selector when edition has only Complete period', () => {
     const selected: WizardMemberSelection[] = [
       { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }

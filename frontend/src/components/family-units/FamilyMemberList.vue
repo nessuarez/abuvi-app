@@ -118,28 +118,6 @@ const handleDelete = (member: FamilyMemberResponse) => {
         </template>
       </Column>
 
-      <Column header="Salud">
-        <template #body="{ data }">
-          <div class="flex gap-2">
-            <Tag
-              v-if="data.hasMedicalNotes"
-              value="Notas médicas"
-              severity="warning"
-              class="text-xs"
-            />
-            <Tag
-              v-if="data.hasAllergies"
-              value="Alergias"
-              severity="danger"
-              class="text-xs"
-            />
-            <span v-if="!data.hasMedicalNotes && !data.hasAllergies" class="text-gray-400 italic text-sm">
-              Sin info
-            </span>
-          </div>
-        </template>
-      </Column>
-
       <Column header="Acciones" :exportable="false" class="text-right">
         <template #body="{ data }">
           <div class="flex justify-end gap-2">
