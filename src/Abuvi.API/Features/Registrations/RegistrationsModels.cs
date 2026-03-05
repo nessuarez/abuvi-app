@@ -22,6 +22,7 @@ public class Registration
     public string? CampatesPreference { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public DateTime? AdminModifiedAt { get; set; }
 
     // Navigation properties
     public FamilyUnit FamilyUnit { get; set; } = null!;
@@ -96,7 +97,7 @@ public class Payment
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
-public enum RegistrationStatus { Pending, Confirmed, Cancelled }
+public enum RegistrationStatus { Pending, Confirmed, Cancelled, Draft }
 public enum AgeCategory { Baby, Child, Adult }
 public enum PaymentMethod { Card, Transfer, Cash }
 public enum PaymentStatus { Pending, Completed, Failed, Refunded }
@@ -193,7 +194,8 @@ public record RegistrationResponse(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     string? SpecialNeeds,
-    string? CampatesPreference
+    string? CampatesPreference,
+    bool IsAdminModified
 );
 
 public record RegistrationFamilyUnitSummary(Guid Id, string Name);
@@ -241,6 +243,68 @@ public record AccommodationPreferenceResponse(
     int PreferenceOrder
 );
 
+// ── Admin DTOs ───────────────────────────────────────────────────────────────
+
+public record AdminRegistrationListResponse(
+    List<AdminRegistrationListItem> Items,
+    int TotalCount,
+    int Page,
+    int PageSize,
+    int TotalPages,
+    AdminRegistrationTotals Totals
+);
+
+public record AdminRegistrationListItem(
+    Guid Id,
+    RegistrationFamilyUnitSummary FamilyUnit,
+    RepresentativeSummary Representative,
+    RegistrationStatus Status,
+    int MemberCount,
+    decimal TotalAmount,
+    decimal AmountPaid,
+    decimal AmountRemaining,
+    DateTime CreatedAt
+);
+
+public record RepresentativeSummary(
+    Guid Id,
+    string FirstName,
+    string LastName,
+    string Email
+);
+
+public record AdminRegistrationTotals(
+    int TotalRegistrations,
+    int TotalMembers,
+    decimal TotalAmount,
+    decimal TotalPaid,
+    decimal TotalRemaining
+);
+
+public record AdminRegistrationProjection(
+    Guid Id,
+    Guid FamilyUnitId,
+    string FamilyUnitName,
+    Guid RepresentativeUserId,
+    string RepresentativeFirstName,
+    string RepresentativeLastName,
+    string RepresentativeEmail,
+    RegistrationStatus Status,
+    int MemberCount,
+    decimal TotalAmount,
+    decimal AmountPaid,
+    DateTime CreatedAt
+);
+
+public record AdminEditRegistrationRequest(
+    List<MemberAttendanceRequest>? Members,
+    List<ExtraSelectionRequest>? Extras,
+    List<AccommodationPreferenceRequest>? Preferences,
+    string? Notes,
+    string? SpecialNeeds,
+    string? CampatesPreference
+);
+
 // ── Mapping Extensions ────────────────────────────────────────────────────────
 
 public static class RegistrationMappingExtensions
@@ -285,7 +349,8 @@ public static class RegistrationMappingExtensions
         r.CreatedAt,
         r.UpdatedAt,
         r.SpecialNeeds,
-        r.CampatesPreference
+        r.CampatesPreference,
+        r.AdminModifiedAt != null && r.Status == RegistrationStatus.Draft
     );
 
     private static string BuildCalculation(RegistrationExtra e)

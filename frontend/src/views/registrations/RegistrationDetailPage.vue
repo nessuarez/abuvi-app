@@ -47,8 +47,15 @@ const isRepresentative = computed(
   () => registration.value?.familyUnit.representativeUserId === auth.user?.id
 )
 
+const isAdminOrBoard = computed(() => auth.isAdmin || auth.isBoard)
+
+const isDraft = computed(() => registration.value?.status === 'Draft')
+
 const canCancel = computed(
-  () => registration.value?.status === 'Pending' || registration.value?.status === 'Confirmed'
+  () =>
+    registration.value?.status === 'Pending' ||
+    registration.value?.status === 'Confirmed' ||
+    registration.value?.status === 'Draft'
 )
 
 const formatDate = (dateStr: string): string =>
@@ -142,6 +149,11 @@ onMounted(async () => {
             </p>
           </div>
         </div>
+
+        <!-- Draft banner -->
+        <Message v-if="isDraft" severity="warn" :closable="false" class="mb-6" data-testid="draft-banner">
+          Esta inscripción fue modificada por un administrador. El representante familiar debe volver a confirmarla.
+        </Message>
 
         <!-- Notes -->
         <div v-if="registration.notes" class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
