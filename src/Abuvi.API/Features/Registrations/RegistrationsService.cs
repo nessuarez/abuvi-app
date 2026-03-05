@@ -341,8 +341,7 @@ public class RegistrationsService(
                 Quantity = extraReq.Quantity,
                 UnitPrice = extra.Price,              // price snapshot
                 CampDurationDays = campDurationDays,  // duration snapshot
-                TotalAmount = totalAmount,
-                UserInput = extraReq.UserInput
+                TotalAmount = totalAmount
             });
         }
 

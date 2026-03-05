@@ -62,7 +62,6 @@ public class RegistrationExtra
     public decimal UnitPrice { get; set; }         // price snapshot at selection time
     public int CampDurationDays { get; set; }      // camp duration snapshot
     public decimal TotalAmount { get; set; }
-    public string? UserInput { get; set; }
     public DateTime CreatedAt { get; set; }
     public Registration Registration { get; set; } = null!;
     public CampEditionExtra CampEditionExtra { get; set; } = null!;
@@ -134,7 +133,7 @@ public record UpdateRegistrationMembersRequest(List<MemberAttendanceRequest> Mem
 
 public record UpdateRegistrationExtrasRequest(List<ExtraSelectionRequest> Extras);
 
-public record ExtraSelectionRequest(Guid CampEditionExtraId, int Quantity, string? UserInput = null);
+public record ExtraSelectionRequest(Guid CampEditionExtraId, int Quantity);
 
 public record AccommodationPreferenceRequest(Guid CampEditionAccommodationId, int PreferenceOrder);
 
@@ -219,7 +218,7 @@ public record MemberPricingDetail(
     string? GuardianName,
     string? GuardianDocumentNumber
 );
-public record ExtraPricingDetail(Guid CampEditionExtraId, string Name, decimal UnitPrice, string PricingType, string PricingPeriod, int Quantity, int? CampDurationDays, string Calculation, decimal TotalAmount, string? UserInput);
+public record ExtraPricingDetail(Guid CampEditionExtraId, string Name, decimal UnitPrice, string PricingType, string PricingPeriod, int Quantity, int? CampDurationDays, string Calculation, decimal TotalAmount);
 public record PaymentSummary(Guid Id, decimal Amount, DateTime PaymentDate, string Method, string Status);
 
 public record RegistrationListResponse(
@@ -276,7 +275,7 @@ public static class RegistrationMappingExtensions
                 e.CampEditionExtra.PricingType.ToString(),
                 e.CampEditionExtra.PricingPeriod.ToString(),
                 e.Quantity, e.CampDurationDays,
-                BuildCalculation(e), e.TotalAmount, e.UserInput)).ToList(),
+                BuildCalculation(e), e.TotalAmount)).ToList(),
             r.ExtrasAmount,
             r.TotalAmount),
         r.Payments.Select(p => new PaymentSummary(

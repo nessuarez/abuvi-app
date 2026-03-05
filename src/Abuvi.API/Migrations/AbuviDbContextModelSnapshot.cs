@@ -647,22 +647,11 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("pricing_type");
 
-                    b.Property<bool>("RequiresUserInput")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("requires_user_input");
-
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("NOW()");
-
-                    b.Property<string>("UserInputLabel")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("user_input_label");
 
                     b.HasKey("Id");
 
@@ -1465,11 +1454,6 @@ namespace Abuvi.API.Migrations
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("unit_price");
-
-                    b.Property<string>("UserInput")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("user_input");
 
                     b.HasKey("Id");
 

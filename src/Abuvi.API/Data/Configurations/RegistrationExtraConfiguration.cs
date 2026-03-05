@@ -18,8 +18,6 @@ public class RegistrationExtraConfiguration : IEntityTypeConfiguration<Registrat
         builder.Property(e => e.CampDurationDays).IsRequired().HasColumnName("camp_duration_days");
         builder.Property(e => e.TotalAmount)
             .HasPrecision(10, 2).IsRequired().HasColumnName("total_amount");
-        builder.Property(e => e.UserInput)
-            .HasMaxLength(500).HasColumnName("user_input");
         builder.Property(e => e.CreatedAt).IsRequired().HasColumnName("created_at")
             .HasDefaultValueSql("NOW()");
 
