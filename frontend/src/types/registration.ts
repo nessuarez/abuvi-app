@@ -68,6 +68,7 @@ export interface ExtraPricingDetail {
   campDurationDays: number | null
   calculation: string
   totalAmount: number
+  userInput?: string
 }
 
 export interface PricingBreakdown {
@@ -163,6 +164,7 @@ export interface UpdateRegistrationMembersRequest {
 export interface ExtraSelectionRequest {
   campEditionExtraId: string
   quantity: number
+  userInput?: string
 }
 
 export interface UpdateRegistrationExtrasRequest {
@@ -175,6 +177,7 @@ export interface WizardExtrasSelection {
   name: string
   quantity: number
   unitPrice: number
+  userInput?: string
 }
 
 // === Accommodation Preferences ===

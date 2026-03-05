@@ -97,6 +97,8 @@ export interface CampEditionExtra {
   pricingType: 'PerPerson' | 'PerFamily'
   pricingPeriod: 'OneTime' | 'PerDay'
   isRequired: boolean
+  requiresUserInput: boolean
+  userInputLabel?: string
   maxQuantity?: number
   currentQuantitySold: number | null
   isActive: boolean
@@ -111,6 +113,8 @@ export interface CreateCampExtraRequest {
   pricingType: 'PerPerson' | 'PerFamily'
   pricingPeriod: 'OneTime' | 'PerDay'
   isRequired: boolean
+  requiresUserInput?: boolean
+  userInputLabel?: string
   maxQuantity?: number
 }
 
@@ -120,6 +124,8 @@ export interface UpdateCampExtraRequest {
   price: number
   isRequired: boolean
   isActive: boolean
+  requiresUserInput?: boolean
+  userInputLabel?: string
   maxQuantity?: number
 }
 
