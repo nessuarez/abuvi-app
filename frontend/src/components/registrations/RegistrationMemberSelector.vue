@@ -162,11 +162,12 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
 
 <template>
   <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-    <label v-for="member in members" :key="member.id"
+    <div v-for="member in members" :key="member.id"
       class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 transition hover:border-blue-300 hover:bg-blue-50"
-      :class="{ 'border-blue-400 bg-blue-50': isSelected(member.id) }" :data-testid="`member-label-${member.id}`">
-      <Checkbox :model-value="isSelected(member.id)" :binary="true" @update:model-value="toggleMember(member.id)"
-        :input-id="`member-${member.id}`" data-testid="member-checkbox" />
+      :class="{ 'border-blue-400 bg-blue-50': isSelected(member.id) }" :data-testid="`member-label-${member.id}`"
+      @click="toggleMember(member.id)">
+      <Checkbox :model-value="isSelected(member.id)" :binary="true"
+        :input-id="`member-${member.id}`" data-testid="member-checkbox" @click.stop />
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
           <span class="font-medium text-gray-900">
@@ -238,6 +239,6 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
             @update:model-value="(v: string) => updateGuardianField(member.id, 'guardianDocumentNumber', v)" />
         </div>
       </div>
-    </label>
+    </div>
   </div>
 </template>

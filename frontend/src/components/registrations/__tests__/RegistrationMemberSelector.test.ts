@@ -118,8 +118,8 @@ describe('RegistrationMemberSelector', () => {
 
   it('should emit update:modelValue with WizardMemberSelection when member is checked', async () => {
     const wrapper = mountComponent([])
-    const input = wrapper.find('input[type="checkbox"]')
-    await input.trigger('change')
+    const card = wrapper.find('[data-testid="member-label-member-1"]')
+    await card.trigger('click')
     const emitted = wrapper.emitted('update:modelValue') as WizardMemberSelection[][]
     expect(emitted).toBeTruthy()
     const emittedSelections = emitted[emitted.length - 1][0]
@@ -139,8 +139,8 @@ describe('RegistrationMemberSelector', () => {
       { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
     ]
     const wrapper = mountComponent(preSelected)
-    const input = wrapper.find('input[type="checkbox"]')
-    await input.trigger('change')
+    const card = wrapper.find('[data-testid="member-label-member-1"]')
+    await card.trigger('click')
     const emitted = wrapper.emitted('update:modelValue') as WizardMemberSelection[][]
     const emittedSelections = emitted[emitted.length - 1][0]
     expect(emittedSelections).toHaveLength(0)
@@ -207,6 +207,21 @@ describe('RegistrationMemberSelector', () => {
     expect(wrapper.find('[data-testid="visit-start-member-1"]').exists()).toBe(false)
   })
 
+  it('should not deselect member when clicking on the period selector area', async () => {
+    const selected: WizardMemberSelection[] = [
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
+    ]
+    const wrapper = mountComponent(selected, mockEditionWithPeriods)
+
+    // Click on the period selector wrapper (has @click.stop)
+    const periodSelect = wrapper.find('[data-testid="period-select-member-1"]')
+    expect(periodSelect.exists()).toBe(true)
+    await periodSelect.trigger('click')
+
+    // Should NOT emit update:modelValue (member should remain selected)
+    expect(wrapper.emitted('update:modelValue')).toBeFalsy()
+  })
+
   describe('guardian pre-fill from first selected adult', () => {
     it('should pre-fill guardian fields when selecting a minor after an adult is already selected', async () => {
       // Adult (member-1) is already selected
@@ -215,9 +230,9 @@ describe('RegistrationMemberSelector', () => {
       ]
       const wrapper = mountComponent(preSelected, mockEditionComplete)
 
-      // Click minor (member-2) checkbox
-      const inputs = wrapper.findAll('input[type="checkbox"]')
-      await inputs[1].trigger('change')
+      // Click minor (member-2) card
+      const card = wrapper.find('[data-testid="member-label-member-2"]')
+      await card.trigger('click')
 
       const emitted = wrapper.emitted('update:modelValue') as WizardMemberSelection[][]
       const lastEmit = emitted[emitted.length - 1][0]
@@ -233,9 +248,9 @@ describe('RegistrationMemberSelector', () => {
     it('should NOT pre-fill guardian fields when no adult is selected', async () => {
       const wrapper = mountComponent([], mockEditionComplete)
 
-      // Click minor (member-2) checkbox directly
-      const inputs = wrapper.findAll('input[type="checkbox"]')
-      await inputs[1].trigger('change')
+      // Click minor (member-2) card directly
+      const card = wrapper.find('[data-testid="member-label-member-2"]')
+      await card.trigger('click')
 
       const emitted = wrapper.emitted('update:modelValue') as WizardMemberSelection[][]
       const lastEmit = emitted[emitted.length - 1][0]
@@ -255,9 +270,9 @@ describe('RegistrationMemberSelector', () => {
       ]
       const wrapper = mountComponent(preSelected, mockEditionComplete)
 
-      // Click adult (member-1) checkbox
-      const inputs = wrapper.findAll('input[type="checkbox"]')
-      await inputs[0].trigger('change')
+      // Click adult (member-1) card
+      const card = wrapper.find('[data-testid="member-label-member-1"]')
+      await card.trigger('click')
 
       const emitted = wrapper.emitted('update:modelValue') as WizardMemberSelection[][]
       const lastEmit = emitted[emitted.length - 1][0]
@@ -279,9 +294,9 @@ describe('RegistrationMemberSelector', () => {
       // Use extended members (includes member-3 as second adult)
       const wrapper = mountComponent(preSelected, mockEditionComplete, mockMembersExtended)
 
-      // Select second adult (member-3)
-      const inputs = wrapper.findAll('input[type="checkbox"]')
-      await inputs[2].trigger('change')
+      // Select second adult (member-3) card
+      const card = wrapper.find('[data-testid="member-label-member-3"]')
+      await card.trigger('click')
 
       const emitted = wrapper.emitted('update:modelValue') as WizardMemberSelection[][]
       const lastEmit = emitted[emitted.length - 1][0]
@@ -303,9 +318,9 @@ describe('RegistrationMemberSelector', () => {
       ]
       const wrapper = mountComponent(preSelected, mockEditionComplete, mockMembersExtended)
 
-      // Select minor (member-4)
-      const inputs = wrapper.findAll('input[type="checkbox"]')
-      await inputs[3].trigger('change')
+      // Select minor (member-4) card
+      const card = wrapper.find('[data-testid="member-label-member-4"]')
+      await card.trigger('click')
 
       const emitted = wrapper.emitted('update:modelValue') as WizardMemberSelection[][]
       const lastEmit = emitted[emitted.length - 1][0]
@@ -327,9 +342,9 @@ describe('RegistrationMemberSelector', () => {
       ]
       const wrapper = mountComponent(preSelected, mockEditionComplete, mockMembersExtended)
 
-      // Select first adult (member-1)
-      const inputs = wrapper.findAll('input[type="checkbox"]')
-      await inputs[0].trigger('change')
+      // Select first adult (member-1) card
+      const card = wrapper.find('[data-testid="member-label-member-1"]')
+      await card.trigger('click')
 
       const emitted = wrapper.emitted('update:modelValue') as WizardMemberSelection[][]
       const lastEmit = emitted[emitted.length - 1][0] as unknown as WizardMemberSelection[]
