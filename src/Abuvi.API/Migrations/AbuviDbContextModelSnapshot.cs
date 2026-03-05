@@ -968,6 +968,111 @@ namespace Abuvi.API.Migrations
                     b.ToTable("Guests");
                 });
 
+            modelBuilder.Entity("Abuvi.API.Features.MediaItems.MediaItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CampLocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("camp_location_id");
+
+                    b.Property<string>("Context")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("context");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Decade")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("decade");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FileUrl")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("file_url");
+
+                    b.Property<bool>("IsApproved")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_approved");
+
+                    b.Property<bool>("IsPublished")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_published");
+
+                    b.Property<Guid?>("MemoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("memory_id");
+
+                    b.Property<string>("ThumbnailUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("thumbnail_url");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("type");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("UploadedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by_user_id");
+
+                    b.Property<int?>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Context")
+                        .HasDatabaseName("ix_media_items_context");
+
+                    b.HasIndex("MemoryId")
+                        .HasDatabaseName("ix_media_items_memory_id");
+
+                    b.HasIndex("UploadedByUserId")
+                        .HasDatabaseName("ix_media_items_uploaded_by_user_id");
+
+                    b.HasIndex("Year")
+                        .HasDatabaseName("ix_media_items_year");
+
+                    b.HasIndex("IsApproved", "IsPublished")
+                        .HasDatabaseName("ix_media_items_approved_published");
+
+                    b.ToTable("media_items", (string)null);
+                });
+
             modelBuilder.Entity("Abuvi.API.Features.Memberships.Membership", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1042,6 +1147,74 @@ namespace Abuvi.API.Migrations
                         .IsUnique();
 
                     b.ToTable("membership_fees", (string)null);
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Memories.Memory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AuthorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_user_id");
+
+                    b.Property<Guid?>("CampLocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("camp_location_id");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<bool>("IsApproved")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_approved");
+
+                    b.Property<bool>("IsPublished")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_published");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<int?>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorUserId")
+                        .HasDatabaseName("ix_memories_author_user_id");
+
+                    b.HasIndex("Year")
+                        .HasDatabaseName("ix_memories_year");
+
+                    b.HasIndex("IsApproved", "IsPublished")
+                        .HasDatabaseName("ix_memories_approved_published");
+
+                    b.ToTable("memories", (string)null);
                 });
 
             modelBuilder.Entity("Abuvi.API.Features.Registrations.Payment", b =>
@@ -1631,6 +1804,24 @@ namespace Abuvi.API.Migrations
                     b.Navigation("FamilyUnit");
                 });
 
+            modelBuilder.Entity("Abuvi.API.Features.MediaItems.MediaItem", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Memories.Memory", "Memory")
+                        .WithMany("MediaItems")
+                        .HasForeignKey("MemoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Abuvi.API.Features.Users.User", "UploadedBy")
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Memory");
+
+                    b.Navigation("UploadedBy");
+                });
+
             modelBuilder.Entity("Abuvi.API.Features.Memberships.Membership", b =>
                 {
                     b.HasOne("Abuvi.API.Features.FamilyUnits.FamilyMember", "FamilyMember")
@@ -1651,6 +1842,17 @@ namespace Abuvi.API.Migrations
                         .IsRequired();
 
                     b.Navigation("Membership");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Memories.Memory", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Users.User", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Author");
                 });
 
             modelBuilder.Entity("Abuvi.API.Features.Registrations.Payment", b =>
@@ -1784,6 +1986,11 @@ namespace Abuvi.API.Migrations
             modelBuilder.Entity("Abuvi.API.Features.Memberships.Membership", b =>
                 {
                     b.Navigation("Fees");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.Memories.Memory", b =>
+                {
+                    b.Navigation("MediaItems");
                 });
 
             modelBuilder.Entity("Abuvi.API.Features.Registrations.Registration", b =>

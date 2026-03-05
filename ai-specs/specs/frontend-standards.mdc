@@ -28,6 +28,7 @@ alwaysApply: true
 - [Service Layer Architecture](#service-layer-architecture)
   - [API Composables](#api-composables)
   - [Axios Configuration](#axios-configuration)
+- [Onboarding System](#onboarding-system)
 - [UI and UX Standards](#ui-and-ux-standards)
   - [PrimeVue Integration](#primevue-integration)
   - [Tailwind CSS Usage](#tailwind-css-usage)
@@ -78,6 +79,7 @@ For core principles (TDD, incremental changes, type safety) and language standar
 - **PrimeVue**: Rich component library (tables, dialogs, calendars, forms)
 - **Tailwind CSS**: Utility-first CSS framework for styling
 - **Leaflet.js**: Lightweight interactive maps (historical camp locations)
+- **Driver.js** (`^1.3.x`): Lightweight (~5 KB gzipped) in-app onboarding/tour library with zero dependencies
 
 ### State Management and Data Flow
 
@@ -986,6 +988,49 @@ api.interceptors.response.use(
   }
 )
 ```
+
+## Onboarding System
+
+The app includes an in-app onboarding system using **Driver.js** wrapped in a Vue 3 composable.
+
+### Architecture
+
+| Layer | File | Purpose |
+|---|---|---|
+| Composable | `frontend/src/composables/useOnboarding.ts` | Core Driver.js wrapper: tour registry, progress tracking, auto-trigger |
+| Types | `frontend/src/types/onboarding.ts` | TypeScript interfaces for tours, steps, media |
+| Tour Registry | `frontend/src/onboarding/index.ts` | Registers all tours (side-effect module imported in `main.ts`) |
+| Tour Definitions | `frontend/src/onboarding/tours/*.tour.ts` | Individual tour step configurations |
+| UI Component | `frontend/src/components/ui/OnboardingButton.vue` | Floating help button with tour menu |
+
+### Key Conventions
+
+- **`data-onboarding` attributes**: Use `data-onboarding="descriptive-name"` on DOM elements targeted by tour steps. These are separate from `data-testid` attributes and both can coexist.
+- **Tour definitions**: Each tour is a separate `*.tour.ts` file exporting an `OnboardingTour` object.
+- **Progress persistence**: Completed tours are stored in `localStorage` under key `abuvi:onboarding:completed`.
+- **Role-based tours**: Tours can set `requiresBoard: true` to restrict visibility to Board/Admin users.
+- **Media support**: Steps can include `media: { type: 'image' | 'video' | 'audio', src: '/onboarding/...' }` — assets live in `frontend/public/onboarding/`.
+
+### `useOnboarding` API
+
+```typescript
+const {
+  startTour,        // (tourId: string) => void
+  hasCompletedTour, // (tourId: string) => boolean
+  resetTour,        // (tourId: string) => void
+  resetAllTours,    // () => void
+  getAvailableTours,// () => OnboardingTour[]
+  autoTrigger,      // () => void — starts first uncompleted tour for current route
+  isActive,         // Ref<boolean>
+} = useOnboarding()
+```
+
+### Adding a New Tour
+
+1. Create `frontend/src/onboarding/tours/my-feature.tour.ts`
+2. Define steps targeting `[data-onboarding="..."]` selectors
+3. Register in `frontend/src/onboarding/index.ts`
+4. Add `data-onboarding` attributes to target elements in the relevant components
 
 ## UI and UX Standards
 

@@ -8,6 +8,7 @@ import Step from 'primevue/step'
 import StepPanels from 'primevue/steppanels'
 import StepPanel from 'primevue/steppanel'
 import Button from 'primevue/button'
+import Checkbox from 'primevue/checkbox'
 import Textarea from 'primevue/textarea'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -46,6 +47,7 @@ const notes = ref<string>('')
 const specialNeeds = ref<string>('')
 const campatesPreference = ref<string>('')
 const edition = ref<CampEdition | null>(null)
+const acceptTerms = ref(false)
 const pageLoading = ref(true)
 
 const isRepresentative = computed(
@@ -228,7 +230,7 @@ onMounted(async () => {
         </Message>
 
         <div class="mx-auto max-w-2xl">
-          <Stepper v-model:value="currentStep" linear>
+          <Stepper v-model:value="currentStep" linear data-onboarding="registration-stepper">
             <StepList>
               <Step :value="1">Participantes</Step>
               <Step :value="2">Extras</Step>
@@ -652,6 +654,49 @@ onMounted(async () => {
                         </div>
                       </dl>
                     </div>
+
+                    <!-- Legal notice -->
+                    <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                      <h3 class="mb-2 text-sm font-semibold text-amber-800">
+                        <i class="pi pi-exclamation-triangle mr-1"></i>
+                        Aviso legal
+                      </h3>
+                      <p class="mb-2 text-sm text-amber-700">
+                        Al confirmar esta inscripción, declaro que:
+                      </p>
+                      <ul class="mb-4 list-inside list-disc space-y-1 text-sm text-amber-700">
+                        <li>He leído y acepto las normas del campamento.</li>
+                        <li>
+                          Autorizo el tratamiento de los datos personales según la
+                          <a
+                            href="/legal/privacy"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="font-medium text-amber-900 underline"
+                          >política de privacidad</a>.
+                        </li>
+                        <li>
+                          Acepto las condiciones de pago y cancelación establecidas en el
+                          <a
+                            href="/legal/notice"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="font-medium text-amber-900 underline"
+                          >aviso legal</a>.
+                        </li>
+                      </ul>
+                      <div class="flex items-start gap-2">
+                        <Checkbox
+                          v-model="acceptTerms"
+                          :binary="true"
+                          input-id="accept-terms"
+                          data-testid="accept-terms-checkbox"
+                        />
+                        <label for="accept-terms" class="cursor-pointer text-sm text-amber-800">
+                          He leído y acepto los términos y condiciones del campamento
+                        </label>
+                      </div>
+                    </div>
                   </div>
 
                   <div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
@@ -665,7 +710,7 @@ onMounted(async () => {
                       label="Confirmar inscripción"
                       icon="pi pi-check"
                       :loading="loading"
-                      :disabled="selectedMembers.length === 0"
+                      :disabled="selectedMembers.length === 0 || !acceptTerms"
                       @click="handleConfirm"
                       data-testid="confirm-registration-btn"
                     />

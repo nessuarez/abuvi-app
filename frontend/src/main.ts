@@ -11,8 +11,11 @@ import Aura from "@primeuix/themes/aura";
 
 import "primeicons/primeicons.css";
 import "leaflet/dist/leaflet.css";
+import "driver.js/dist/driver.css";
 import "./assets/styles/global.css";
 import "./assets/main.css";
+
+import "./onboarding";
 
 const app = createApp(App);
 
@@ -35,16 +38,8 @@ if (glitchtipDsn) {
 }
 
 // Userback visual feedback widget
-const userbackToken = import.meta.env.VITE_USERBACK_TOKEN;
-if (userbackToken) {
-	const script = document.createElement("script");
-	script.async = true;
-	script.src = "https://static.userback.io/widget/v1.js";
-	script.onload = () => {
-		(window as any).Userback?.init(userbackToken);
-	};
-	document.head.appendChild(script);
-}
+// Script is loaded via index.html (static tag for domain verification).
+// Auth-aware init with user identity is done in App.vue after login.
 
 app.use(createPinia());
 app.use(router);

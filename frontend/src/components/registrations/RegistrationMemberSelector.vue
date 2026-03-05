@@ -162,23 +162,16 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
 
 <template>
   <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-    <label v-for="member in members" :key="member.id"
+    <div v-for="member in members" :key="member.id"
       class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 transition hover:border-blue-300 hover:bg-blue-50"
-      :class="{ 'border-blue-400 bg-blue-50': isSelected(member.id) }" :data-testid="`member-label-${member.id}`">
-      <Checkbox :model-value="isSelected(member.id)" :binary="true" @update:model-value="toggleMember(member.id)"
-        :input-id="`member-${member.id}`" data-testid="member-checkbox" />
+      :class="{ 'border-blue-400 bg-blue-50': isSelected(member.id) }" :data-testid="`member-label-${member.id}`"
+      @click="toggleMember(member.id)">
+      <Checkbox :model-value="isSelected(member.id)" :binary="true"
+        :input-id="`member-${member.id}`" data-testid="member-checkbox" @click.stop />
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
           <span class="font-medium text-gray-900">
             {{ member.firstName }} {{ member.lastName }}
-          </span>
-          <span v-if="member.hasMedicalNotes" class="inline-flex items-center text-amber-500"
-            aria-label="Tiene notas médicas" title="Tiene notas médicas" data-testid="medical-notes-icon">
-            <i class="pi pi-exclamation-triangle text-xs" />
-          </span>
-          <span v-if="member.hasAllergies" class="inline-flex items-center text-orange-500" aria-label="Tiene alergias"
-            title="Tiene alergias" data-testid="allergies-icon">
-            <i class="pi pi-exclamation-circle text-xs" />
           </span>
         </div>
         <p class="mt-0.5 text-xs text-gray-500">
@@ -238,6 +231,6 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
             @update:model-value="(v: string) => updateGuardianField(member.id, 'guardianDocumentNumber', v)" />
         </div>
       </div>
-    </label>
+    </div>
   </div>
 </template>
