@@ -27,7 +27,7 @@ const cards = [
 </script>
 
 <template>
-  <section class="py-12">
+  <section class="py-12" data-onboarding="quick-access-cards">
     <h2 class="mb-8 text-center text-3xl font-bold text-gray-900">Acceso Rápido</h2>
     <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
       <QuickAccessCard

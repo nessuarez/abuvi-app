@@ -11,8 +11,11 @@ import Aura from "@primeuix/themes/aura";
 
 import "primeicons/primeicons.css";
 import "leaflet/dist/leaflet.css";
+import "driver.js/dist/driver.css";
 import "./assets/styles/global.css";
 import "./assets/main.css";
+
+import "./onboarding";
 
 const app = createApp(App);
 
