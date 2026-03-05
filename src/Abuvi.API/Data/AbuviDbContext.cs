@@ -3,6 +3,8 @@ using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.Guests;
 using Abuvi.API.Features.Memberships;
+using Abuvi.API.Features.Memories;
+using Abuvi.API.Features.MediaItems;
 using Abuvi.API.Features.Registrations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -32,6 +34,8 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     public DbSet<RegistrationExtra> RegistrationExtras => Set<RegistrationExtra>();
     public DbSet<RegistrationAccommodationPreference> RegistrationAccommodationPreferences => Set<RegistrationAccommodationPreference>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<Memory> Memories => Set<Memory>();
+    public DbSet<MediaItem> MediaItems => Set<MediaItem>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
