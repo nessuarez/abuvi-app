@@ -147,7 +147,7 @@ const handleEditionSaved = (_edition: CampEdition) => {
   <Container>
     <Toast />
 
-    <div class="py-8">
+    <div class="py-8" data-onboarding="camp-editions-table">
       <!-- Header -->
       <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 class="text-3xl font-bold text-gray-900">Gestión de Ediciones de Campamento</h1>

@@ -156,7 +156,7 @@ const handleSubmitCreate = async (data: CreateCampRequest) => {
 </script>
 
 <template>
-  <div class="container mx-auto p-4">
+  <div class="container mx-auto p-4" data-onboarding="camp-locations-table">
     <Toast />
     <ConfirmDialog />
 

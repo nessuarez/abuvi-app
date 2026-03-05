@@ -228,7 +228,7 @@ onMounted(async () => {
         </Message>
 
         <div class="mx-auto max-w-2xl">
-          <Stepper v-model:value="currentStep" linear>
+          <Stepper v-model:value="currentStep" linear data-onboarding="registration-stepper">
             <StepList>
               <Step :value="1">Participantes</Step>
               <Step :value="2">Extras</Step>
