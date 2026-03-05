@@ -9,6 +9,7 @@ import CampsAdminPanel from '@/components/admin/CampsAdminPanel.vue'
 import FamilyUnitsAdminPanel from '@/components/admin/FamilyUnitsAdminPanel.vue'
 import UsersAdminPanel from '@/components/admin/UsersAdminPanel.vue'
 import BlobStorageAdminPanel from '@/components/admin/BlobStorageAdminPanel.vue'
+import MediaItemsReviewPanel from '@/components/admin/MediaItemsReviewPanel.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -37,6 +38,10 @@ const auth = useAuthStore()
             <i class="pi pi-database mr-2" />
             Almacenamiento
           </Tab>
+          <Tab v-if="auth.isBoard" value="4" data-testid="tab-media-review">
+            <i class="pi pi-images mr-2" />
+            Revisión de medios
+          </Tab>
         </TabList>
 
         <TabPanels>
@@ -61,6 +66,12 @@ const auth = useAuthStore()
           <TabPanel v-if="auth.isAdmin" value="3" data-testid="panel-storage">
             <div class="py-4">
               <BlobStorageAdminPanel />
+            </div>
+          </TabPanel>
+
+          <TabPanel v-if="auth.isBoard" value="4" data-testid="panel-media-review">
+            <div class="py-4">
+              <MediaItemsReviewPanel />
             </div>
           </TabPanel>
         </TabPanels>
