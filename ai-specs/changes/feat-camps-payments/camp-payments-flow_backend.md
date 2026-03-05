@@ -2,7 +2,9 @@
 
 ## Overview
 
-Implement a bank-transfer-based payment system for camp registrations. When a user creates a registration, two payment installments are auto-generated (50/50 split). Users see bank transfer instructions (IBAN, concept, amount) and upload proof of transfer. Admins review proofs and confirm/reject payments. Once both installments are confirmed, the registration transitions to `Confirmed`.
+Implement a bank-transfer-based payment system for camp registrations. When a user creates a registration, two payment installments are auto-generated (50/50 split). Extras are only included in the second installment. Users see bank transfer instructions (IBAN, concept, amount) and upload proof of transfer. Admins review proofs and confirm/reject payments. Once both installments are confirmed, the registration transitions to `Confirmed`.
+
+Each payment has a due date (e.g. 15 days before camp start) and a transfer concept that includes the family name (maybe shortened), family ID or code, and installment number (e.g. `PEREZLOPEZ-123-1`). Payment settings are stored in `AssociationSettings` as JSON.
 
 This feature follows **Vertical Slice Architecture**, creating a new `Features/Payments/` slice since payments are a distinct domain concern with their own endpoints, service, repository, and models. The existing `PaymentsRepository` in `Features/Registrations/` will be moved to the new slice.
 
@@ -39,7 +41,7 @@ This feature follows **Vertical Slice Architecture**, creating a new `Features/P
 - **Action**: Create and switch to a new feature branch
 - **Branch Naming**: `feature/feat-camps-payments-backend`
 - **Implementation Steps**:
-  1. Ensure on latest `main`: `git checkout main && git pull origin main`
+  1. Ensure on latest `dev`: `git checkout dev && git pull origin dev`
   2. Create branch: `git checkout -b feature/feat-camps-payments-backend`
   3. Verify: `git branch`
 
@@ -168,10 +170,12 @@ builder.HasIndex(p => p.TransferConcept)
 
 - **Action**: Generate EF Core migration for new columns
 - **Command**:
+
   ```bash
   cd src/Abuvi.API
   dotnet ef migrations add AddPaymentInstallmentAndProofFields
   ```
+
 - **Implementation Steps**:
   1. Run migration command
   2. Review generated migration — verify it adds all new columns with correct types and defaults
@@ -534,6 +538,7 @@ public class PaymentsService(
    - Installment 1: `DateTime.UtcNow`
    - Installment 2: `registration.CampEdition.StartDate - settings.SecondInstallmentDaysBefore days`
 8. Create two `Payment` entities:
+
    ```csharp
    new Payment
    {
@@ -547,6 +552,7 @@ public class PaymentsService(
        TransferConcept = concept1
    }
    ```
+
 9. Save via `paymentsRepo.AddRangeAsync(payments, ct)`.
 10. Log: `logger.LogInformation("Created {Count} installments for registration {RegistrationId}", 2, registrationId)`.
 11. Return mapped `List<PaymentResponse>`.
@@ -558,6 +564,7 @@ public class PaymentsService(
 3. **Authorization**: Verify `payment.Registration.RegisteredByUserId == userId`. Throw `BusinessRuleException` if not.
 4. **Status check**: Only `Pending` status allows proof upload. Throw `BusinessRuleException` if status is not `Pending`.
 5. Upload file via blob storage:
+
    ```csharp
    var uploadRequest = new UploadBlobRequest
    {
@@ -568,6 +575,7 @@ public class PaymentsService(
    };
    var result = await blobStorageService.UploadAsync(uploadRequest, ct);
    ```
+
 6. Update payment fields:
    - `ProofFileUrl = result.FileUrl`
    - `ProofFileName = file.FileName`
@@ -723,6 +731,7 @@ public static class PaymentsEndpoints
 **Endpoint handler methods** (static methods in the same class):
 
 Each handler follows the pattern from `RegistrationsEndpoints.cs`:
+
 - Extract `userId` and `userRole` from `ClaimsPrincipal`
 - Call service method
 - Wrap result in `ApiResponse<T>.Ok(data)`
@@ -953,55 +962,55 @@ public class PaymentsServiceTests
 
 #### Proof Upload
 
-8. `UploadProofAsync_PendingPayment_UpdatesProofFieldsAndStatus`
+1. `UploadProofAsync_PendingPayment_UpdatesProofFieldsAndStatus`
    - Arrange: Payment with Status = Pending, valid file, matching userId
    - Assert: Status → PendingReview, ProofFileUrl set, ProofUploadedAt set
 
-9. `UploadProofAsync_CompletedPayment_ThrowsBusinessRuleException`
+2. `UploadProofAsync_CompletedPayment_ThrowsBusinessRuleException`
    - Arrange: Payment with Status = Completed
    - Assert: Throws BusinessRuleException
 
-10. `UploadProofAsync_WrongUser_ThrowsBusinessRuleException`
+3. `UploadProofAsync_WrongUser_ThrowsBusinessRuleException`
     - Arrange: Payment owned by user A, called with user B
     - Assert: Throws BusinessRuleException
 
-11. `UploadProofAsync_PaymentNotFound_ThrowsNotFoundException`
+4. `UploadProofAsync_PaymentNotFound_ThrowsNotFoundException`
 
 #### Remove Proof
 
-12. `RemoveProofAsync_PendingReviewPayment_ClearsProofAndResetsStatus`
+1. `RemoveProofAsync_PendingReviewPayment_ClearsProofAndResetsStatus`
     - Assert: ProofFileUrl = null, Status → Pending, blob deleted
 
-13. `RemoveProofAsync_CompletedPayment_ThrowsBusinessRuleException`
+2. `RemoveProofAsync_CompletedPayment_ThrowsBusinessRuleException`
 
 #### Confirm Payment
 
-14. `ConfirmPaymentAsync_PendingReviewPayment_MarksCompleted`
+1. `ConfirmPaymentAsync_PendingReviewPayment_MarksCompleted`
     - Assert: Status → Completed, ConfirmedByUserId set, ConfirmedAt set
 
-15. `ConfirmPaymentAsync_PendingWithoutProof_ThrowsBusinessRuleException`
+2. `ConfirmPaymentAsync_PendingWithoutProof_ThrowsBusinessRuleException`
     - Arrange: Status = Pending (no proof uploaded)
     - Assert: Throws BusinessRuleException
 
-16. `ConfirmPaymentAsync_BothInstallmentsCompleted_ConfirmsRegistration`
+3. `ConfirmPaymentAsync_BothInstallmentsCompleted_ConfirmsRegistration`
     - Arrange: Confirm second installment, first already Completed
     - Assert: `registrationsRepo.UpdateAsync` called with Status = Confirmed
 
-17. `ConfirmPaymentAsync_OnlyOneInstallmentCompleted_RegistrationStaysPending`
+4. `ConfirmPaymentAsync_OnlyOneInstallmentCompleted_RegistrationStaysPending`
     - Assert: Registration status NOT changed
 
 #### Reject Payment
 
-18. `RejectPaymentAsync_PendingReviewPayment_ResetsToPending`
+1. `RejectPaymentAsync_PendingReviewPayment_ResetsToPending`
     - Assert: Status → Pending, AdminNotes set with rejection reason
 
-19. `RejectPaymentAsync_NotPendingReview_ThrowsBusinessRuleException`
+2. `RejectPaymentAsync_NotPendingReview_ThrowsBusinessRuleException`
 
 #### Payment Settings
 
-20. `GetPaymentSettingsAsync_SettingsExist_ReturnsDeserialized`
-21. `GetPaymentSettingsAsync_NoSettings_ReturnsDefaults`
-22. `UpdatePaymentSettingsAsync_ValidRequest_SavesAndReturns`
+1. `GetPaymentSettingsAsync_SettingsExist_ReturnsDeserialized`
+2. `GetPaymentSettingsAsync_NoSettings_ReturnsDefaults`
+3. `UpdatePaymentSettingsAsync_ValidRequest_SavesAndReturns`
 
 ---
 
@@ -1094,6 +1103,7 @@ All responses wrapped in `ApiResponse<T>`.
 
 - **No new NuGet packages required** — all functionality uses existing dependencies (EF Core, FluentValidation, blob storage).
 - **EF Core Migration**:
+
   ```bash
   cd src/Abuvi.API
   dotnet ef migrations add AddPaymentInstallmentAndProofFields
