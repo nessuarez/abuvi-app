@@ -4,7 +4,6 @@ import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
 import DatePicker from 'primevue/datepicker'
 import Select from 'primevue/select'
-import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import type {
   FamilyMemberResponse,
@@ -41,9 +40,6 @@ const relationship = ref<FamilyRelationship | null>(props.member?.relationship |
 const documentNumber = ref(props.member?.documentNumber || '')
 const email = ref(props.member?.email || '')
 const phone = ref(props.member?.phone || '')
-const medicalNotes = ref('')  // Never pre-fill sensitive data
-const allergies = ref('')      // Never pre-fill sensitive data
-
 // Validation errors
 const firstNameError = ref<string | null>(null)
 const lastNameError = ref<string | null>(null)
@@ -54,10 +50,6 @@ const emailError = ref<string | null>(null)
 const phoneError = ref<string | null>(null)
 
 const isEditing = computed(() => !!props.member)
-
-// Show sensitive data info for editing
-const hasMedicalNotesInfo = computed(() => isEditing.value && props.member?.hasMedicalNotes)
-const hasAllergiesInfo = computed(() => isEditing.value && props.member?.hasAllergies)
 
 // Validation functions
 const validateFirstName = () => {
@@ -195,8 +187,6 @@ const handleSubmit = () => {
     documentNumber: documentNumber.value.trim() || null,
     email: email.value.trim() || null,
     phone: phone.value.trim() || null,
-    medicalNotes: medicalNotes.value.trim() || null,
-    allergies: allergies.value.trim() || null
   }
 
   emit('submit', request)
@@ -323,42 +313,6 @@ const handleCancel = () => {
       />
       <small v-if="phoneError" class="text-red-500">{{ phoneError }}</small>
       <small class="text-gray-500">Formato E.164 con código de país (ej. +34)</small>
-    </div>
-
-    <!-- Medical Notes (optional, sensitive) -->
-    <div class="flex flex-col gap-2">
-      <label for="medical-notes" class="font-medium text-sm">Notas Médicas</label>
-      <div v-if="hasMedicalNotesInfo" class="p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
-        ℹ️ Este miembro tiene notas médicas guardadas. Déjalo en blanco para mantener las notas existentes, o escribe nuevas notas para reemplazarlas.
-      </div>
-      <Textarea
-        id="medical-notes"
-        v-model="medicalNotes"
-        placeholder="Ej: Asma - requiere inhalador"
-        :disabled="loading"
-        rows="3"
-        :maxlength="2000"
-        class="w-full"
-      />
-      <small class="text-gray-500">Información sensible, encriptada. Máximo 2000 caracteres.</small>
-    </div>
-
-    <!-- Allergies (optional, sensitive) -->
-    <div class="flex flex-col gap-2">
-      <label for="allergies" class="font-medium text-sm">Alergias</label>
-      <div v-if="hasAllergiesInfo" class="p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
-        ℹ️ Este miembro tiene alergias guardadas. Déjalo en blanco para mantener las alergias existentes, o escribe nuevas alergias para reemplazarlas.
-      </div>
-      <Textarea
-        id="allergies"
-        v-model="allergies"
-        placeholder="Ej: Cacahuetes, mariscos"
-        :disabled="loading"
-        rows="2"
-        :maxlength="1000"
-        class="w-full"
-      />
-      <small class="text-gray-500">Información sensible, encriptada. Máximo 1000 caracteres.</small>
     </div>
 
     <div class="flex justify-end gap-2 pt-4">

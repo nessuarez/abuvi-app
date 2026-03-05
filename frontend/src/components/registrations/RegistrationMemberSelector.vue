@@ -173,14 +173,6 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
           <span class="font-medium text-gray-900">
             {{ member.firstName }} {{ member.lastName }}
           </span>
-          <span v-if="member.hasMedicalNotes" class="inline-flex items-center text-amber-500"
-            aria-label="Tiene notas médicas" title="Tiene notas médicas" data-testid="medical-notes-icon">
-            <i class="pi pi-exclamation-triangle text-xs" />
-          </span>
-          <span v-if="member.hasAllergies" class="inline-flex items-center text-orange-500" aria-label="Tiene alergias"
-            title="Tiene alergias" data-testid="allergies-icon">
-            <i class="pi pi-exclamation-circle text-xs" />
-          </span>
         </div>
         <p class="mt-0.5 text-xs text-gray-500">
           {{ relationshipLabel(member.relationship) }} · {{ formatDate(member.dateOfBirth) }}

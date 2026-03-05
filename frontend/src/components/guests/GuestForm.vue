@@ -3,7 +3,6 @@ import { ref, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
 import DatePicker from 'primevue/datepicker'
-import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import type { GuestResponse, CreateGuestRequest } from '@/types/guest'
 
@@ -28,9 +27,6 @@ const dateOfBirth = ref<Date | null>(
 const documentNumber = ref(props.guest?.documentNumber || '')
 const email = ref(props.guest?.email || '')
 const phone = ref(props.guest?.phone || '')
-const medicalNotes = ref('') // Never pre-fill sensitive data
-const allergies = ref('') // Never pre-fill sensitive data
-
 // Validation errors
 const firstNameError = ref<string | null>(null)
 const lastNameError = ref<string | null>(null)
@@ -40,10 +36,6 @@ const emailError = ref<string | null>(null)
 const phoneError = ref<string | null>(null)
 
 const isEditing = computed(() => !!props.guest)
-
-// Show sensitive data info for editing
-const hasMedicalNotesInfo = computed(() => isEditing.value && props.guest?.hasMedicalNotes)
-const hasAllergiesInfo = computed(() => isEditing.value && props.guest?.hasAllergies)
 
 // Validation functions
 const validateFirstName = () => {
@@ -171,8 +163,6 @@ const handleSubmit = () => {
     documentNumber: documentNumber.value.trim() || null,
     email: email.value.trim() || null,
     phone: phone.value.trim() || null,
-    medicalNotes: medicalNotes.value.trim() || null,
-    allergies: allergies.value.trim() || null,
   }
 
   emit('submit', request)
@@ -279,56 +269,6 @@ const handleCancel = () => {
       />
       <small v-if="phoneError" class="text-red-500">{{ phoneError }}</small>
       <small class="text-gray-500">Formato E.164 con código de país (ej. +34)</small>
-    </div>
-
-    <!-- Medical Notes (optional, sensitive) -->
-    <div class="flex flex-col gap-2">
-      <label for="guest-medical-notes" class="font-medium text-sm">Notas Médicas</label>
-      <div
-        v-if="hasMedicalNotesInfo"
-        class="p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800"
-      >
-        ℹ️ Este invitado tiene notas médicas guardadas. Déjalo en blanco para mantener las notas
-        existentes, o escribe nuevas notas para reemplazarlas.
-      </div>
-      <Textarea
-        id="guest-medical-notes"
-        v-model="medicalNotes"
-        placeholder="Ej: Asma - requiere inhalador"
-        :disabled="loading"
-        rows="3"
-        :maxlength="2000"
-        class="w-full"
-      />
-      <small class="text-gray-500 italic">
-        Esta información se almacena de forma encriptada y no es visible por el sistema. Máximo 2000
-        caracteres.
-      </small>
-    </div>
-
-    <!-- Allergies (optional, sensitive) -->
-    <div class="flex flex-col gap-2">
-      <label for="guest-allergies" class="font-medium text-sm">Alergias</label>
-      <div
-        v-if="hasAllergiesInfo"
-        class="p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800"
-      >
-        ℹ️ Este invitado tiene alergias guardadas. Déjalo en blanco para mantener las alergias
-        existentes, o escribe nuevas alergias para reemplazarlas.
-      </div>
-      <Textarea
-        id="guest-allergies"
-        v-model="allergies"
-        placeholder="Ej: Cacahuetes, mariscos"
-        :disabled="loading"
-        rows="2"
-        :maxlength="1000"
-        class="w-full"
-      />
-      <small class="text-gray-500 italic">
-        Esta información se almacena de forma encriptada y no es visible por el sistema. Máximo 1000
-        caracteres.
-      </small>
     </div>
 
     <div class="flex justify-end gap-2 pt-4">
