@@ -10,7 +10,8 @@ const statusConfig = computed(() => {
   const configs: Record<RegistrationStatus, { label: string; colorClass: string }> = {
     Pending: { label: 'Pendiente', colorClass: 'bg-yellow-100 text-yellow-800' },
     Confirmed: { label: 'Confirmada', colorClass: 'bg-green-100 text-green-800' },
-    Cancelled: { label: 'Cancelada', colorClass: 'bg-gray-100 text-gray-600' }
+    Cancelled: { label: 'Cancelada', colorClass: 'bg-gray-100 text-gray-600' },
+    Draft: { label: 'Borrador', colorClass: 'bg-blue-100 text-blue-800' }
   }
   return configs[props.status]
 })
