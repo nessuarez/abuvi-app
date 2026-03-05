@@ -73,6 +73,16 @@ public class CampEditionExtraConfiguration : IEntityTypeConfiguration<CampEditio
 
         builder.ToTable(t => t.HasCheckConstraint("CK_CampEditionExtras_MaxQuantity", "max_quantity IS NULL OR max_quantity > 0"));
 
+        // User input configuration
+        builder.Property(e => e.RequiresUserInput)
+            .IsRequired()
+            .HasDefaultValue(false)
+            .HasColumnName("requires_user_input");
+
+        builder.Property(e => e.UserInputLabel)
+            .HasMaxLength(200)
+            .HasColumnName("user_input_label");
+
         // Timestamps: required, default NOW()
         builder.Property(e => e.CreatedAt)
             .IsRequired()

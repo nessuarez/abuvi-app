@@ -28,6 +28,10 @@ public class CreateCampEditionExtraRequestValidator
         RuleFor(x => x.MaxQuantity)
             .GreaterThan(0).WithMessage("La cantidad máxima debe ser mayor que 0")
             .When(x => x.MaxQuantity.HasValue);
+
+        RuleFor(x => x.UserInputLabel)
+            .MaximumLength(200).WithMessage("La etiqueta de entrada no puede superar los 200 caracteres")
+            .When(x => x.UserInputLabel != null);
     }
 }
 
@@ -51,5 +55,9 @@ public class UpdateCampEditionExtraRequestValidator
         RuleFor(x => x.MaxQuantity)
             .GreaterThan(0).WithMessage("La cantidad máxima debe ser mayor que 0")
             .When(x => x.MaxQuantity.HasValue);
+
+        RuleFor(x => x.UserInputLabel)
+            .MaximumLength(200).WithMessage("La etiqueta de entrada no puede superar los 200 caracteres")
+            .When(x => x.UserInputLabel != null);
     }
 }
