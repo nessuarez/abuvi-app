@@ -74,10 +74,12 @@ Two issues in the current Camp Extras registration flow:
 **New migration file**: `src/Abuvi.API/Migrations/XXXXXXXX_AddExtraUserInputFields.cs`
 
 Add columns to `camp_edition_extras`:
+
 - `requires_user_input` (boolean, NOT NULL, default false)
 - `user_input_label` (varchar(200), NULL)
 
 Add column to `registration_extras`:
+
 - `user_input` (varchar(500), NULL)
 
 ### 2. `CampsModels.cs` — Update entity and DTOs
@@ -136,6 +138,7 @@ Add column to `registration_extras`:
 **File**: `frontend/src/components/registrations/RegistrationExtrasSelector.vue`
 
 Changes to `pricingLabel()`:
+
 ```typescript
 const pricingLabel = (extra: CampEditionExtra): string => {
   if (extra.price === 0) return 'Incluido'
@@ -148,6 +151,7 @@ const pricingLabel = (extra: CampEditionExtra): string => {
 Add `userInput` handling in `updateQuantity` and add a new `updateUserInput` function.
 
 In the template, below each extra card (inside the `v-for` loop), add a `Textarea` when `extra.requiresUserInput && getQuantity(extra) > 0`:
+
 ```html
 <div v-if="extra.requiresUserInput && getQuantity(extra) > 0" class="mt-2">
   <label class="mb-1 block text-xs font-medium text-gray-600">
@@ -173,6 +177,7 @@ Props `modelValue` type (`WizardExtrasSelection[]`) already includes `userInput`
 
 - **Remove** the entire "Precios de referencia" section (lines ~467–586) from the confirm step
 - In `handleConfirm`, include `userInput` when mapping `extrasSelections` to the API request:
+
   ```typescript
   .map((e) => ({
     campEditionExtraId: e.campEditionExtraId,
@@ -180,6 +185,7 @@ Props `modelValue` type (`WizardExtrasSelection[]`) already includes `userInput`
     userInput: e.userInput || null
   }))
   ```
+
 - In the "Extras seleccionados" summary in the confirm step, show the user input text below each extra if provided
 
 ### 5. `RegistrationPricingBreakdown.vue` — Hide 0€ extras
@@ -187,9 +193,11 @@ Props `modelValue` type (`WizardExtrasSelection[]`) already includes `userInput`
 **File**: `frontend/src/components/registrations/RegistrationPricingBreakdown.vue`
 
 - Filter out extras with `totalAmount === 0` from the extras table:
+
   ```typescript
   const paidExtras = computed(() => props.pricing.extras.filter(e => e.totalAmount > 0))
   ```
+
 - Use `paidExtras` in the template instead of `pricing.extras`
 - Update the `v-if` condition: show the extras section only when `paidExtras.length > 0`
 
