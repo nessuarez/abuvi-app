@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
+import OnboardingButton from '@/components/ui/OnboardingButton.vue'
 </script>
 
 <template>
@@ -12,5 +13,6 @@ import AppFooter from '@/components/layout/AppFooter.vue'
     </main>
 
     <AppFooter />
+    <OnboardingButton />
   </div>
 </template>

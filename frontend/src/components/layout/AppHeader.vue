@@ -32,16 +32,23 @@ const toggleMobileMenu = () => {
       <div class="flex h-16 items-center justify-between">
         <!-- Logo -->
         <router-link to="/home" class="flex items-center gap-3">
+          <!-- Desktop: full horizontal logo -->
+          <img
+            src="@/assets/images/logo.svg"
+            alt="ABUVI"
+            class="hidden h-10 lg:block"
+          />
+          <!-- Mobile: compact icon + text -->
           <img
             src="@/assets/images/logo.svg"
             alt="ABUVI Logo"
-            class="h-10 w-10"
+            class="h-10 w-10 lg:hidden"
           />
-          <span class="text-xl font-bold text-primary-600">ABUVI</span>
+          <span class="text-xl font-bold text-primary-600 lg:hidden">ABUVI</span>
         </router-link>
 
         <!-- Desktop Navigation -->
-        <nav class="hidden items-center gap-1 lg:flex">
+        <nav class="hidden items-center gap-1 lg:flex" data-onboarding="main-nav">
           <router-link
             v-for="link in navigationLinks"
             :key="link.path"
@@ -72,18 +79,19 @@ const toggleMobileMenu = () => {
         </nav>
 
         <!-- User Menu (Desktop) -->
-        <div class="hidden lg:block">
+        <div class="hidden lg:block" data-onboarding="user-menu">
           <UserMenu />
         </div>
 
         <!-- Mobile Menu Button -->
-        <Button
-          icon="pi pi-bars"
-          text
-          rounded
-          class="lg:hidden"
-          @click="toggleMobileMenu"
-        />
+        <div class="lg:hidden">
+          <Button
+            icon="pi pi-bars"
+            text
+            rounded
+            @click="toggleMobileMenu"
+          />
+        </div>
       </div>
 
       <!-- Mobile Navigation -->
