@@ -1,5 +1,5 @@
 // Registration status and related enums
-export type RegistrationStatus = 'Pending' | 'Confirmed' | 'Cancelled'
+export type RegistrationStatus = 'Pending' | 'Confirmed' | 'Cancelled' | 'Draft'
 export type AgeCategory = 'Baby' | 'Child' | 'Adult'
 export type PaymentMethod = 'Card' | 'Transfer' | 'Cash'
 export type PaymentStatus = 'Pending' | 'Completed' | 'Failed' | 'Refunded'
@@ -68,6 +68,7 @@ export interface ExtraPricingDetail {
   campDurationDays: number | null
   calculation: string
   totalAmount: number
+  userInput?: string
 }
 
 export interface PricingBreakdown {
@@ -101,6 +102,33 @@ export interface RegistrationResponse {
   updatedAt: string
   specialNeeds: string | null
   campatesPreference: string | null
+}
+
+// Admin registration list types
+export interface AdminRegistrationListItem {
+  id: string
+  familyUnit: { id: string; name: string }
+  representative: { id: string; firstName: string; lastName: string; email: string }
+  status: RegistrationStatus
+  memberCount: number
+  totalAmount: number
+  amountPaid: number
+  amountRemaining: number
+  createdAt: string
+}
+
+export interface AdminRegistrationTotals {
+  totalRegistrations: number
+  totalMembers: number
+  totalAmount: number
+  totalPaid: number
+  totalRemaining: number
+}
+
+export interface AdminRegistrationListResponse {
+  items: AdminRegistrationListItem[]
+  totalCount: number
+  totals: AdminRegistrationTotals
 }
 
 // Available camp edition for registration wizard
@@ -163,6 +191,7 @@ export interface UpdateRegistrationMembersRequest {
 export interface ExtraSelectionRequest {
   campEditionExtraId: string
   quantity: number
+  userInput?: string
 }
 
 export interface UpdateRegistrationExtrasRequest {
@@ -175,6 +204,7 @@ export interface WizardExtrasSelection {
   name: string
   quantity: number
   unitPrice: number
+  userInput?: string
 }
 
 // === Accommodation Preferences ===

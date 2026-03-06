@@ -503,7 +503,48 @@ A specific annual edition of a camp (e.g., Camp 2026). Defines dates, pricing, c
 **Relationships:**
 
 - Each CampEdition belongs to one Camp (via `campId`)
+- One CampEdition can have many CampEditionExtras
 - One CampEdition can have many CampEditionAccommodations
+
+---
+
+### CampEditionExtra
+
+An extra service or product available for purchase during a camp edition (e.g., t-shirt, excursion, insurance). Families select extras and quantities during registration.
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID)
+- `campEditionId`: The camp edition this extra belongs to (required, FK -> CampEdition)
+- `name`: Display name (required, max 200 characters)
+- `description`: Optional description (max 1000 characters)
+- `price`: Unit price in euros (required, decimal >= 0, precision 10,2)
+- `pricingType`: How the price is applied (required, enum: `PerPerson` | `PerFamily`)
+- `pricingPeriod`: How often the price is charged (required, enum: `OneTime` | `PerDay`)
+- `isRequired`: Whether this extra is mandatory for all registrations (required, default: false)
+- `isActive`: Whether the extra is available for selection (required, default: true)
+- `maxQuantity`: Maximum quantity available (optional, integer > 0 when set; null = unlimited)
+- `requiresUserInput`: Whether this extra requires free-text input from the registrant (required, default: false)
+- `userInputLabel`: Custom label/prompt for the text input field (optional, max 200 characters, e.g. "Indica tu talla")
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- Name is required, max 200 characters
+- Price must be >= 0, max 2 decimal places
+- PricingType and PricingPeriod must be valid enum values
+- MaxQuantity must be > 0 when provided
+- UserInputLabel max 200 characters when provided
+- Cannot change price if already sold (quantity > 0)
+- Cannot reduce MaxQuantity below already-sold quantity
+- Cannot delete if any RegistrationExtra references this extra (deactivate instead)
+- Cannot add extras to Closed or Completed editions
+
+**Relationships:**
+
+- Each CampEditionExtra belongs to one CampEdition (via `campEditionId`, CASCADE delete)
+- One CampEditionExtra can be referenced by many RegistrationExtras
 
 ---
 
@@ -550,8 +591,9 @@ A family's registration to a specific camp. One registration per family per camp
 - `campId`: The camp being registered for (required, FK -> Camp)
 - `registeredByUserId`: User who created the registration (required, FK -> User)
 - `totalAmount`: Calculated total amount for all members in euros (required, decimal, >= 0)
-- `status`: Current registration status (required, enum: `Pending` | `Confirmed` | `Cancelled`)
+- `status`: Current registration status (required, enum: `Pending` | `Confirmed` | `Cancelled` | `Draft`)
 - `notes`: Additional notes from the registering user (optional, max 1000 characters)
+- `adminModifiedAt`: Timestamp of last admin modification (optional, set when admin edits the registration)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
@@ -559,7 +601,7 @@ A family's registration to a specific camp. One registration per family per camp
 
 - Unique constraint on (familyUnitId, campId): one registration per family per camp
 - TotalAmount is calculated as the sum of all RegistrationMember.individualAmount
-- Status transitions: Pending -> Confirmed (when fully paid) or Pending -> Cancelled. Confirmed -> Cancelled is also allowed
+- Status transitions: Pending -> Confirmed (when fully paid) or Pending -> Cancelled. Confirmed -> Cancelled is also allowed. Any non-Cancelled status -> Draft (when admin edits the registration). Draft -> Pending (when representative re-confirms)
 - Camp must have status Open to accept new registrations
 
 **Relationships:**
@@ -595,6 +637,39 @@ Links specific family members to a registration. Tracks which members of a famil
 
 - Each RegistrationMember belongs to one Registration (via `registrationId`)
 - Each RegistrationMember references one FamilyMember (via `familyMemberId`)
+
+---
+
+### RegistrationExtra
+
+An extra selected by a family during registration. Stores a snapshot of pricing at selection time and optional free-text input.
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID, default: `gen_random_uuid()`)
+- `registrationId`: The registration this extra belongs to (required, FK -> Registration)
+- `campEditionExtraId`: The camp edition extra being selected (required, FK -> CampEditionExtra)
+- `quantity`: Number of units selected (required, integer > 0)
+- `unitPrice`: Price snapshot at selection time (required, decimal, precision 10,2)
+- `campDurationDays`: Camp duration snapshot at selection time (required, integer)
+- `totalAmount`: Calculated total for this extra (required, decimal, precision 10,2)
+- `userInput`: Free-text input provided by the family (optional, max 500 characters)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+
+**Validation rules:**
+
+- Unique constraint on (registrationId, campEditionExtraId): each extra can only appear once per registration
+- Quantity must be > 0
+- UserInput max 500 characters when provided
+- The CampEditionExtra must belong to the same camp edition as the registration
+- The CampEditionExtra must be active
+- Quantity must not exceed MaxQuantity when set on the extra
+- Can only be modified while registration status is Pending
+
+**Relationships:**
+
+- Each RegistrationExtra belongs to one Registration (via `registrationId`, CASCADE delete)
+- Each RegistrationExtra references one CampEditionExtra (via `campEditionExtraId`, RESTRICT delete)
 
 ---
 
@@ -960,11 +1035,14 @@ erDiagram
 
     Camp ||--o{ CampEdition : "has"
     Camp ||--o{ Registration : "has"
+    CampEdition ||--o{ CampEditionExtra : "has"
     CampEdition ||--o{ Registration : "has"
     FamilyUnit ||--o{ Registration : "registers"
     User ||--o{ Registration : "creates"
     Registration ||--|{ RegistrationMember : "includes"
     FamilyMember ||--o{ RegistrationMember : "participates in"
+    Registration ||--o{ RegistrationExtra : "selects"
+    CampEditionExtra ||--o{ RegistrationExtra : "purchased as"
     Registration ||--o{ Payment : "paid by"
 
     Camp ||--o{ Faq : "has"
@@ -1096,6 +1174,23 @@ erDiagram
         datetime updatedAt
     }
 
+    CampEditionExtra {
+        UUID id PK
+        UUID campEditionId FK
+        string name
+        string description
+        decimal price
+        enum pricingType
+        enum pricingPeriod
+        boolean isRequired
+        boolean isActive
+        integer maxQuantity
+        boolean requiresUserInput
+        string userInputLabel
+        datetime createdAt
+        datetime updatedAt
+    }
+
     Registration {
         UUID id PK
         UUID familyUnitId FK
@@ -1105,6 +1200,7 @@ erDiagram
         decimal discountApplied
         enum status
         string notes
+        datetime adminModifiedAt
         datetime createdAt
         datetime updatedAt
     }
@@ -1114,6 +1210,18 @@ erDiagram
         UUID registrationId FK
         UUID familyMemberId FK
         decimal individualAmount
+        datetime createdAt
+    }
+
+    RegistrationExtra {
+        UUID id PK
+        UUID registrationId FK
+        UUID campEditionExtraId FK
+        integer quantity
+        decimal unitPrice
+        integer campDurationDays
+        decimal totalAmount
+        string userInput
         datetime createdAt
     }
 

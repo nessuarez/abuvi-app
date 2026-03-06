@@ -301,6 +301,10 @@ public class CampEditionExtra
     public bool IsActive { get; set; } = true;
     public int? MaxQuantity { get; set; }
 
+    // User input configuration
+    public bool RequiresUserInput { get; set; } = false;
+    public string? UserInputLabel { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
@@ -408,6 +412,8 @@ public record CampEditionExtraResponse(
     bool IsRequired,
     bool IsActive,
     int? MaxQuantity,
+    bool RequiresUserInput,
+    string? UserInputLabel,
     int CurrentQuantitySold,
     DateTime CreatedAt,
     DateTime UpdatedAt
@@ -420,7 +426,9 @@ public record CreateCampEditionExtraRequest(
     PricingType PricingType,
     PricingPeriod PricingPeriod,
     bool IsRequired,
-    int? MaxQuantity
+    int? MaxQuantity,
+    bool RequiresUserInput = false,
+    string? UserInputLabel = null
 );
 
 public record UpdateCampEditionExtraRequest(
@@ -429,7 +437,9 @@ public record UpdateCampEditionExtraRequest(
     decimal Price,
     bool IsRequired,
     bool IsActive,
-    int? MaxQuantity
+    int? MaxQuantity,
+    bool RequiresUserInput = false,
+    string? UserInputLabel = null
 );
 
 /// <summary>
