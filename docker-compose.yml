@@ -21,8 +21,12 @@ services:
     container_name: abuvi-seq
     environment:
       ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_ADMINPASSWORD: "SeqDev123!"
     ports:
-      - "5341:80"
+      - "5341:5341"
+      - "8081:80"
+    volumes:
+      - seq-data:/data
     restart: unless-stopped
 
   minio:
@@ -60,3 +64,4 @@ services:
 volumes:
   postgres-data:
   minio-data:
+  seq-data:
