@@ -3,6 +3,8 @@ import { ref, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
+import Checkbox from 'primevue/checkbox'
+import Message from 'primevue/message'
 import type { FamilyUnitResponse, CreateFamilyUnitRequest, UpdateFamilyUnitRequest } from '@/types/family-unit'
 
 const props = defineProps<{
@@ -19,9 +21,11 @@ const toast = useToast()
 
 // Form data
 const name = ref(props.familyUnit?.name || '')
+const consentAccepted = ref(false)
 
 // Validation
 const nameError = ref<string | null>(null)
+const consentError = ref<string | null>(null)
 
 const isValid = computed(() => {
   return name.value.trim().length > 0 && name.value.length <= 200
@@ -42,8 +46,20 @@ const validateName = () => {
   return true
 }
 
+const validateConsent = () => {
+  if (!isEditing.value && !consentAccepted.value) {
+    consentError.value = 'Debes aceptar las condiciones para crear la familia'
+    return false
+  }
+  consentError.value = null
+  return true
+}
+
 const handleSubmit = () => {
-  if (!validateName()) {
+  const isNameValid = validateName()
+  const isConsentValid = validateConsent()
+
+  if (!isNameValid || !isConsentValid) {
     toast.add({
       severity: 'error',
       summary: 'Validación',
@@ -84,6 +100,33 @@ const handleCancel = () => {
       <small class="text-gray-500">Máximo 200 caracteres</small>
     </div>
 
+    <!-- Duplicate warning and consent (only when creating) -->
+    <template v-if="!isEditing">
+      <Message severity="warn" :closable="false">
+        Antes de crear una familia, asegúrate de que otro miembro de tu familia no la haya creado ya.
+        Si es así, contacta con la directiva para que te asocien a ella.
+      </Message>
+
+      <div class="flex flex-col gap-2">
+        <div class="flex items-start gap-2">
+          <Checkbox
+            id="consent-accepted"
+            v-model="consentAccepted"
+            :binary="true"
+            :invalid="!!consentError"
+            :disabled="loading"
+            data-testid="consent-checkbox"
+          />
+          <label for="consent-accepted" class="text-sm text-gray-700">
+            Actuaré como representante de la familia y seré quien realice la inscripción de la familia
+            al campamento. Además, confirmo que tengo el consentimiento de todos los miembros de la
+            familia para darles de alta en la plataforma.
+          </label>
+        </div>
+        <small v-if="consentError" class="text-red-500">{{ consentError }}</small>
+      </div>
+    </template>
+
     <div class="flex justify-end gap-2 pt-4">
       <Button
         type="button"
@@ -96,7 +139,7 @@ const handleCancel = () => {
         type="submit"
         :label="isEditing ? 'Actualizar' : 'Crear'"
         :loading="loading"
-        :disabled="!isValid || loading"
+        :disabled="!isValid || (!isEditing && !consentAccepted) || loading"
       />
     </div>
   </form>

@@ -51,6 +51,18 @@ const phoneError = ref<string | null>(null)
 
 const isEditing = computed(() => !!props.member)
 
+const isAdult = computed(() => {
+  if (!dateOfBirth.value) return false
+  const today = new Date()
+  const birth = new Date(dateOfBirth.value)
+  let age = today.getFullYear() - birth.getFullYear()
+  const monthDiff = today.getMonth() - birth.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--
+  }
+  return age >= 18
+})
+
 // Validation functions
 const validateFirstName = () => {
   if (!firstName.value.trim()) {
@@ -101,6 +113,10 @@ const validateRelationship = () => {
 }
 
 const validateDocumentNumber = () => {
+  if (isAdult.value && !documentNumber.value.trim()) {
+    documentNumberError.value = 'El DNI/documento es obligatorio para mayores de edad'
+    return false
+  }
   if (documentNumber.value && documentNumber.value.trim()) {
     const uppercaseAlphanumeric = /^[A-Z0-9]+$/
     if (!uppercaseAlphanumeric.test(documentNumber.value)) {
@@ -270,9 +286,11 @@ const handleCancel = () => {
       <small v-if="relationshipError" class="text-red-500">{{ relationshipError }}</small>
     </div>
 
-    <!-- Document Number (optional) -->
+    <!-- Document Number (required for adults) -->
     <div class="flex flex-col gap-2">
-      <label for="document-number" class="font-medium text-sm">Número de Documento</label>
+      <label for="document-number" class="font-medium text-sm">
+        Número de Documento <span v-if="isAdult" class="text-red-500">*</span>
+      </label>
       <InputText
         id="document-number"
         v-model="documentNumber"
@@ -282,6 +300,7 @@ const handleCancel = () => {
         @blur="validateDocumentNumber"
       />
       <small v-if="documentNumberError" class="text-red-500">{{ documentNumberError }}</small>
+      <small v-if="isAdult" class="text-gray-500" data-testid="dni-required-hint">Obligatorio para mayores de edad.</small>
       <small class="text-gray-500">Solo letras mayúsculas y números</small>
     </div>
 
@@ -298,6 +317,10 @@ const handleCancel = () => {
         @blur="validateEmail"
       />
       <small v-if="emailError" class="text-red-500">{{ emailError }}</small>
+      <small class="text-gray-500" data-testid="email-hint">
+        Si este miembro quiere registrarse en la plataforma para acceder al contenido de la web,
+        indica aquí el email con el que se registrará posteriormente.
+      </small>
     </div>
 
     <!-- Phone (optional) -->
