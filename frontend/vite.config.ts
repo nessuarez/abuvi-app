@@ -1,10 +1,24 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
+import { execSync } from 'child_process'
+
+const commitHash = (() => {
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim()
+  } catch {
+    return 'unknown'
+  }
+})()
+const packageVersion = process.env.npm_package_version || '0.0.0'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue()],
+  define: {
+    __APP_VERSION__: JSON.stringify(packageVersion),
+    __COMMIT_HASH__: JSON.stringify(commitHash)
+  },
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src')
