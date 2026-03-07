@@ -19,6 +19,7 @@ Add a `SortOrder` field to `CampEditionExtra` and provide API + UI support for m
 ### Reference Pattern
 
 `CampEditionAccommodation` already implements `SortOrder` — use it as the reference:
+
 - Entity: `src/Abuvi.API/Features/Camps/CampsModels.cs:360` — `public int SortOrder { get; set; } = 0;`
 - Repository: `CampEditionAccommodationsRepository.cs:26` — `.OrderBy(e => e.SortOrder)`
 - Service: `CampEditionAccommodationsService.cs:57,80` — maps `SortOrder` on create/update
@@ -27,23 +28,29 @@ Add a `SortOrder` field to `CampEditionExtra` and provide API + UI support for m
 ### Backend Changes
 
 #### 1. Entity Model
+
 **File:** `src/Abuvi.API/Features/Camps/CampsModels.cs`
 
 Add to `CampEditionExtra` class:
+
 ```csharp
 public int SortOrder { get; set; } = 0;
 ```
 
 #### 2. Database Configuration
+
 **File:** `src/Abuvi.API/Data/Configurations/CampEditionExtraConfiguration.cs`
 
 Add column mapping:
+
 ```csharp
 builder.Property(e => e.SortOrder).HasColumnName("sort_order").HasDefaultValue(0);
 ```
 
 #### 3. Migration
+
 Create a new migration to add `sort_order` column to `camp_edition_extras` table:
+
 ```sql
 ALTER TABLE camp_edition_extras ADD COLUMN sort_order integer NOT NULL DEFAULT 0;
 ```
@@ -51,19 +58,24 @@ ALTER TABLE camp_edition_extras ADD COLUMN sort_order integer NOT NULL DEFAULT 0
 Consider a data migration to set initial `sort_order` values based on current `created_at` ordering so existing extras maintain their current display order.
 
 #### 4. Repository
+
 **File:** `src/Abuvi.API/Features/Camps/CampEditionExtrasRepository.cs`
 
 Change ordering from:
+
 ```csharp
 .OrderBy(e => e.CreatedAt)
 ```
+
 To:
+
 ```csharp
 .OrderBy(e => e.SortOrder)
 .ThenBy(e => e.CreatedAt)
 ```
 
 #### 5. Request/Response DTOs
+
 **File:** `src/Abuvi.API/Features/Camps/CampsModels.cs`
 
 - Add `SortOrder` to `CreateCampEditionExtraRequest` (default 0)
@@ -71,23 +83,28 @@ To:
 - Add `SortOrder` to `CampEditionExtraResponse`
 
 #### 6. Service
+
 **File:** `src/Abuvi.API/Features/Camps/CampEditionExtrasService.cs`
 
 - Map `SortOrder` in create and update methods
 - Include `SortOrder` in response mapping
 
 #### 7. Validators
+
 **File:** `src/Abuvi.API/Features/Camps/CampsValidators.cs`
 
 Add validation for `SortOrder`:
+
 ```csharp
 RuleFor(x => x.SortOrder).GreaterThanOrEqualTo(0);
 ```
 
 #### 8. Reorder Endpoint (Optional Enhancement)
+
 **File:** `src/Abuvi.API/Features/Camps/CampsEndpoints.cs`
 
 Add a bulk reorder endpoint:
+
 ```
 PUT /api/camps/editions/{editionId}/extras/reorder
 Body: { "orderedIds": ["id1", "id2", "id3"] }
@@ -98,27 +115,33 @@ This assigns `SortOrder` values (0, 1, 2, ...) based on array position. This is 
 ### Frontend Changes
 
 #### 1. TypeScript Types
+
 **File:** `frontend/src/types/camp-edition.ts`
 
 Add to `CampEditionExtra` interface:
+
 ```typescript
 sortOrder: number
 ```
 
 Add to create/update request types:
+
 ```typescript
 sortOrder?: number
 ```
 
 #### 2. Composable
+
 **File:** `frontend/src/composables/useCampExtras.ts`
 
 Add reorder method:
+
 ```typescript
 async function reorderExtras(orderedIds: string[]): Promise<void>
 ```
 
 #### 3. UI Component
+
 **File:** `frontend/src/components/camps/CampEditionExtrasList.vue`
 
 - Add drag-and-drop reordering to the DataTable (PrimeVue DataTable supports `reorderableRows`)
