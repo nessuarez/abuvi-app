@@ -34,6 +34,7 @@ public sealed class BlobStorageRepository : IBlobStorageRepository, IDisposable
             InputStream = stream,
             ContentType = contentType,
             CannedACL = S3CannedACL.PublicRead, // Bucket is configured for public read
+            AutoCloseStream = false, // Caller manages stream lifetime
         };
         await _s3.PutObjectAsync(request, ct);
     }

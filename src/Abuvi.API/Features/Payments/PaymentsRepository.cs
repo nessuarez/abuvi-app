@@ -40,7 +40,6 @@ public class PaymentsRepository(AbuviDbContext db) : IPaymentsRepository
     public async Task UpdateAsync(Payment payment, CancellationToken ct)
     {
         payment.UpdatedAt = DateTime.UtcNow;
-        db.Payments.Update(payment);
         await db.SaveChangesAsync(ct);
     }
 
