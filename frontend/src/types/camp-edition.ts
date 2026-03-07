@@ -15,10 +15,10 @@ export interface CampEdition {
   pricePerChild: number
   pricePerBaby: number
   useCustomAgeRanges: boolean
-  babyMaxAge?: number
-  childMinAge?: number
-  childMaxAge?: number
-  adultMinAge?: number
+  customBabyMaxAge?: number
+  customChildMinAge?: number
+  customChildMaxAge?: number
+  customAdultMinAge?: number
   maxCapacity: number
   contactEmail?: string
   contactPhone?: string
@@ -62,10 +62,10 @@ export interface CreateCampEditionRequest {
   pricePerChild: number
   pricePerBaby: number
   useCustomAgeRanges?: boolean
-  babyMaxAge?: number
-  childMinAge?: number
-  childMaxAge?: number
-  adultMinAge?: number
+  customBabyMaxAge?: number
+  customChildMinAge?: number
+  customChildMaxAge?: number
+  customAdultMinAge?: number
   maxCapacity?: number | null
   contactEmail?: string
   contactPhone?: string

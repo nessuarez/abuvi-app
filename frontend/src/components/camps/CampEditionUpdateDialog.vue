@@ -92,11 +92,10 @@ const initializeForm = () => {
   form.pricePerChild = props.edition.pricePerChild
   form.pricePerBaby = props.edition.pricePerBaby
   form.useCustomAgeRanges = props.edition.useCustomAgeRanges
-  // Map from existing CampEdition field names (without 'custom' prefix) to form fields
-  form.customBabyMaxAge = props.edition.babyMaxAge ?? null
-  form.customChildMinAge = props.edition.childMinAge ?? null
-  form.customChildMaxAge = props.edition.childMaxAge ?? null
-  form.customAdultMinAge = props.edition.adultMinAge ?? null
+  form.customBabyMaxAge = props.edition.customBabyMaxAge ?? null
+  form.customChildMinAge = props.edition.customChildMinAge ?? null
+  form.customChildMaxAge = props.edition.customChildMaxAge ?? null
+  form.customAdultMinAge = props.edition.customAdultMinAge ?? null
   form.maxCapacity = props.edition.maxCapacity > 0 ? props.edition.maxCapacity : null
   form.notes = ''
   form.allowPartialAttendance = props.edition.pricePerAdultWeek != null
