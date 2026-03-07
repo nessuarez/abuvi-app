@@ -6,6 +6,7 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import { FamilyRelationshipLabels } from '@/types/family-unit'
 import type { FamilyMemberResponse } from '@/types/family-unit'
+import { parseDateLocal } from '@/utils/date'
 
 const props = defineProps<{
   members: FamilyMemberResponse[]
@@ -27,7 +28,7 @@ const membersWithAge = computed(() => {
 })
 
 const calculateAge = (dateOfBirth: string): number => {
-  const birthDate = new Date(dateOfBirth)
+  const birthDate = parseDateLocal(dateOfBirth)
   const today = new Date()
   let age = today.getFullYear() - birthDate.getFullYear()
   const monthDiff = today.getMonth() - birthDate.getMonth()
@@ -40,7 +41,7 @@ const calculateAge = (dateOfBirth: string): number => {
 }
 
 const formatDate = (dateString: string): string => {
-  const date = new Date(dateString)
+  const date = parseDateLocal(dateString)
   return new Intl.DateTimeFormat('es-ES', {
     day: '2-digit',
     month: '2-digit',
