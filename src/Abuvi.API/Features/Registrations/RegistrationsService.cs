@@ -15,6 +15,7 @@ public class RegistrationsService(
     ICampEditionAccommodationsRepository accommodationsRepo,
     RegistrationPricingService pricingService,
     IEmailService emailService,
+    Payments.IPaymentsService paymentsService,
     ILogger<RegistrationsService> logger)
 {
     public async Task<RegistrationResponse> CreateAsync(
@@ -150,11 +151,14 @@ public class RegistrationsService(
             "Registration {RegistrationId} created for family {FamilyUnitId} in edition {EditionId}",
             registration.Id, request.FamilyUnitId, request.CampEditionId);
 
-        // 12. Reload and return
+        // 12. Create payment installments
+        await paymentsService.CreateInstallmentsAsync(registration.Id, ct);
+
+        // 13. Reload and return (includes newly created payments)
         var detailed = await registrationsRepo.GetByIdWithDetailsAsync(registration.Id, ct)
             ?? throw new NotFoundException("Inscripción", registration.Id);
 
-        // 13. Send confirmation email (non-blocking on failure)
+        // 14. Send confirmation email (non-blocking on failure)
         try
         {
             var emailData = BuildRegistrationEmailData(detailed, edition);

@@ -89,6 +89,15 @@ public class Payment
     public PaymentMethod Method { get; set; }
     public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
     public string? ExternalReference { get; set; }
+    public int InstallmentNumber { get; set; }
+    public DateTime? DueDate { get; set; }
+    public string? TransferConcept { get; set; }
+    public string? ProofFileUrl { get; set; }
+    public string? ProofFileName { get; set; }
+    public DateTime? ProofUploadedAt { get; set; }
+    public string? AdminNotes { get; set; }
+    public Guid? ConfirmedByUserId { get; set; }
+    public DateTime? ConfirmedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public Registration Registration { get; set; } = null!;
@@ -99,7 +108,7 @@ public class Payment
 public enum RegistrationStatus { Pending, Confirmed, Cancelled }
 public enum AgeCategory { Baby, Child, Adult }
 public enum PaymentMethod { Card, Transfer, Cash }
-public enum PaymentStatus { Pending, Completed, Failed, Refunded }
+public enum PaymentStatus { Pending, PendingReview, Completed, Failed, Refunded }
 
 public enum AttendancePeriod
 {
@@ -219,7 +228,19 @@ public record MemberPricingDetail(
     string? GuardianDocumentNumber
 );
 public record ExtraPricingDetail(Guid CampEditionExtraId, string Name, decimal UnitPrice, string PricingType, string PricingPeriod, int Quantity, int? CampDurationDays, string Calculation, decimal TotalAmount);
-public record PaymentSummary(Guid Id, decimal Amount, DateTime PaymentDate, string Method, string Status);
+public record PaymentSummary(
+    Guid Id,
+    int InstallmentNumber,
+    decimal Amount,
+    DateTime? DueDate,
+    string Method,
+    string Status,
+    string? TransferConcept,
+    string? ProofFileUrl,
+    string? ProofFileName,
+    DateTime? ProofUploadedAt,
+    string? AdminNotes
+);
 
 public record RegistrationListResponse(
     Guid Id,
@@ -279,7 +300,10 @@ public static class RegistrationMappingExtensions
             r.ExtrasAmount,
             r.TotalAmount),
         r.Payments.Select(p => new PaymentSummary(
-            p.Id, p.Amount, p.PaymentDate, p.Method.ToString(), p.Status.ToString())).ToList(),
+            p.Id, p.InstallmentNumber, p.Amount, p.DueDate,
+            p.Method.ToString(), p.Status.ToString(),
+            p.TransferConcept, p.ProofFileUrl, p.ProofFileName,
+            p.ProofUploadedAt, p.AdminNotes)).ToList(),
         amountPaid,
         r.TotalAmount - amountPaid,
         r.CreatedAt,

@@ -1,4 +1,4 @@
-export type BlobFolder = 'photos' | 'media-items' | 'camp-locations' | 'camp-photos'
+export type BlobFolder = 'photos' | 'media-items' | 'camp-locations' | 'camp-photos' | 'payment-proofs'
 
 export interface UploadBlobRequest {
   file: File

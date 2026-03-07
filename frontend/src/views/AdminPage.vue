@@ -10,6 +10,7 @@ import FamilyUnitsAdminPanel from '@/components/admin/FamilyUnitsAdminPanel.vue'
 import UsersAdminPanel from '@/components/admin/UsersAdminPanel.vue'
 import BlobStorageAdminPanel from '@/components/admin/BlobStorageAdminPanel.vue'
 import MediaItemsReviewPanel from '@/components/admin/MediaItemsReviewPanel.vue'
+import PaymentsAdminPanel from '@/components/admin/PaymentsAdminPanel.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -42,6 +43,10 @@ const auth = useAuthStore()
             <i class="pi pi-images mr-2" />
             Revisión de medios
           </Tab>
+          <Tab v-if="auth.isBoard" value="5" data-testid="tab-payments">
+            <i class="pi pi-credit-card mr-2" />
+            Pagos
+          </Tab>
         </TabList>
 
         <TabPanels>
@@ -72,6 +77,12 @@ const auth = useAuthStore()
           <TabPanel v-if="auth.isBoard" value="4" data-testid="panel-media-review">
             <div class="py-4">
               <MediaItemsReviewPanel />
+            </div>
+          </TabPanel>
+
+          <TabPanel v-if="auth.isBoard" value="5" data-testid="panel-payments">
+            <div class="py-4">
+              <PaymentsAdminPanel />
             </div>
           </TabPanel>
         </TabPanels>
