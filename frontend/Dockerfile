@@ -6,6 +6,10 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+
+ARG VITE_APP_ENV=production
+ENV VITE_APP_ENV=${VITE_APP_ENV}
+
 RUN npm run build
 
 # Serve stage

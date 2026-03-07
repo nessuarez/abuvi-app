@@ -1,6 +1,10 @@
 <script setup lang="ts">
 const currentYear = new Date().getFullYear()
 
+const appVersion = __APP_VERSION__
+const commitHash = __COMMIT_HASH__
+const environment = import.meta.env.VITE_APP_ENV === 'production' ? 'Production' : 'Development'
+
 const linkGroups = [
   {
     title: 'Enlaces',
@@ -123,6 +127,11 @@ const contactInfo = {
         </div>
         <p class="mt-3 text-center text-xs text-gray-500">
           Software de código abierto: libre para usar, modificar y compartir
+        </p>
+
+        <!-- Version & Environment Info -->
+        <p class="mt-3 text-center text-xs text-gray-400">
+          v{{ appVersion }} ({{ commitHash }}) · {{ environment }}
         </p>
       </div>
     </div>

@@ -5,6 +5,14 @@ import landingBackground from '@/assets/images/landing-background.png'
 
 <template>
   <div class="relative flex min-h-screen items-center justify-center">
+    <!-- DEMO badge (non-production only) -->
+    <div
+      v-if="import.meta.env.VITE_APP_ENV !== 'production'"
+      class="fixed top-4 right-4 z-50 rounded-full bg-amber-500 px-4 py-1 text-sm font-bold text-white shadow-lg"
+    >
+      DEMO
+    </div>
+
     <!-- Blurred background image -->
     <div
       class="absolute inset-0 bg-cover bg-center bg-no-repeat"
