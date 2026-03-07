@@ -72,16 +72,6 @@ const router = createRouter({
 			}
 		},
 		{
-			path: "/family-unit/:id",
-			name: "family-unit-detail",
-			component: () => import("@/views/FamilyUnitPage.vue"),
-			meta: {
-				requiresAuth: true,
-				requiresBoard: true,
-				title: "ABUVI | Unidad Familiar"
-			}
-		},
-		{
 			path: "/family-unit/me",
 			redirect: "/family-unit"
 		},

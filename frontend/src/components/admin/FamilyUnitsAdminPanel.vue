@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useDebounceFn } from '@vueuse/core'
 import { useFamilyUnits } from '@/composables/useFamilyUnits'
 import DataTable from 'primevue/datatable'
@@ -11,7 +10,6 @@ import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import type { DataTablePageEvent } from 'primevue/datatable'
 
-const router = useRouter()
 const { allFamilyUnits, familyUnitsPagination, loading, error, fetchAllFamilyUnits } =
   useFamilyUnits()
 
@@ -101,15 +99,14 @@ const formatDate = (dateStr: string) =>
         </template>
       </Column>
       <Column header="Acciones">
-        <template #body="{ data }">
+        <template #body>
           <Button
             icon="pi pi-eye"
             text
             rounded
             severity="info"
             aria-label="Ver detalle"
-            v-tooltip.top="'Ver detalle'"
-            @click="router.push(`/family-unit/${data.id}`)"
+            disabled
           />
         </template>
       </Column>

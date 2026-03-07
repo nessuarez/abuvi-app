@@ -13,7 +13,6 @@ import Message from 'primevue/message'
 import { useMemberships } from '@/composables/useMemberships'
 import PayFeeDialog from './PayFeeDialog.vue'
 import type { MembershipFeeResponse, PayFeeRequest } from '@/types/membership'
-import { parseDateSafe } from '@/utils/date'
 import { FeeStatusLabels, FeeStatusSeverity, FeeStatus } from '@/types/membership'
 
 const props = defineProps<{
@@ -49,7 +48,7 @@ watch(
 )
 
 const formatDate = (dateString: string): string => {
-  const date = parseDateSafe(dateString)
+  const date = new Date(dateString)
   return new Intl.DateTimeFormat('es-ES', {
     day: '2-digit',
     month: '2-digit',

@@ -6,7 +6,6 @@ import DatePicker from 'primevue/datepicker'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import type { MembershipFeeResponse, PayFeeRequest } from '@/types/membership'
-import { formatDateLocal } from '@/utils/date'
 
 const props = defineProps<{
   visible: boolean
@@ -77,7 +76,7 @@ const handleSubmit = () => {
   }
 
   const request: PayFeeRequest = {
-    paidDate: formatDateLocal(paidDate.value),
+    paidDate: paidDate.value.toISOString().split('T')[0],
     paymentReference: paymentReference.value.trim() || null,
   }
 

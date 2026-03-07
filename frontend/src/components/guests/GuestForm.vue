@@ -5,7 +5,6 @@ import InputText from 'primevue/inputtext'
 import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import type { GuestResponse, CreateGuestRequest } from '@/types/guest'
-import { formatDateLocal, parseDateLocal } from '@/utils/date'
 
 const props = defineProps<{
   guest?: GuestResponse | null
@@ -23,7 +22,7 @@ const toast = useToast()
 const firstName = ref(props.guest?.firstName || '')
 const lastName = ref(props.guest?.lastName || '')
 const dateOfBirth = ref<Date | null>(
-  props.guest?.dateOfBirth ? parseDateLocal(props.guest.dateOfBirth) : null,
+  props.guest?.dateOfBirth ? new Date(props.guest.dateOfBirth) : null,
 )
 const documentNumber = ref(props.guest?.documentNumber || '')
 const email = ref(props.guest?.email || '')
@@ -160,7 +159,7 @@ const handleSubmit = () => {
   const request: CreateGuestRequest = {
     firstName: firstName.value.trim(),
     lastName: lastName.value.trim(),
-    dateOfBirth: formatDateLocal(dateOfBirth.value!),
+    dateOfBirth: dateOfBirth.value!.toISOString().split('T')[0], // YYYY-MM-DD
     documentNumber: documentNumber.value.trim() || null,
     email: email.value.trim() || null,
     phone: phone.value.trim() || null,

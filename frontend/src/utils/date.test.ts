@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatDateLocal, parseDateLocal, parseDateSafe } from './date'
+import { formatDateLocal, parseDateLocal } from './date'
 
 describe('formatDateLocal', () => {
   it('should format date using local timezone components, not UTC', () => {
@@ -37,27 +37,6 @@ describe('parseDateLocal', () => {
   it('should round-trip correctly with formatDateLocal', () => {
     const original = '2020-09-20'
     const parsed = parseDateLocal(original)
-    expect(formatDateLocal(parsed)).toBe(original)
-  })
-})
-
-describe('parseDateSafe', () => {
-  it('should parse date-only strings as local midnight (like parseDateLocal)', () => {
-    const date = parseDateSafe('2020-09-20')
-    expect(date.getFullYear()).toBe(2020)
-    expect(date.getMonth()).toBe(8)
-    expect(date.getDate()).toBe(20)
-  })
-
-  it('should parse full ISO timestamps with new Date()', () => {
-    const date = parseDateSafe('2020-09-20T14:30:00Z')
-    expect(date.getFullYear()).toBeDefined()
-    expect(date.getTime()).toBe(new Date('2020-09-20T14:30:00Z').getTime())
-  })
-
-  it('should round-trip date-only strings correctly with formatDateLocal', () => {
-    const original = '2020-09-20'
-    const parsed = parseDateSafe(original)
     expect(formatDateLocal(parsed)).toBe(original)
   })
 })

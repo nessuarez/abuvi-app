@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, nextTick } from 'vue'
-import HomeHeroCarousel from '@/components/home/HomeHeroCarousel.vue'
+import Container from '@/components/ui/Container.vue'
+import QuickAccessCards from '@/components/home/QuickAccessCards.vue'
+import AnniversarySection from '@/components/home/AnniversarySection.vue'
 import { useOnboarding } from '@/composables/useOnboarding'
 
 const { autoTrigger } = useOnboarding()
@@ -14,8 +16,11 @@ onMounted(() => {
 
 <template>
   <div class="bg-gray-50">
-    <div data-onboarding="hero-carousel">
-      <HomeHeroCarousel />
-    </div>
+    <Container>
+      <div class="py-8" data-onboarding="welcome-heading">
+        <QuickAccessCards />
+        <AnniversarySection />
+      </div>
+    </Container>
   </div>
 </template>

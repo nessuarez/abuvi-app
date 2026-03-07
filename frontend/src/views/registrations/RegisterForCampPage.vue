@@ -16,20 +16,15 @@ import Container from '@/components/ui/Container.vue'
 import RegistrationMemberSelector from '@/components/registrations/RegistrationMemberSelector.vue'
 import RegistrationExtrasSelector from '@/components/registrations/RegistrationExtrasSelector.vue'
 import RegistrationAccommodationSelector from '@/components/registrations/RegistrationAccommodationSelector.vue'
-import BankTransferInstructions from '@/components/payments/BankTransferInstructions.vue'
-import PaymentInstallmentCard from '@/components/payments/PaymentInstallmentCard.vue'
 import { useCampEditions } from '@/composables/useCampEditions'
 import { useCampExtras } from '@/composables/useCampExtras'
 import { useCampAccommodations } from '@/composables/useCampAccommodations'
 import { useFamilyUnits } from '@/composables/useFamilyUnits'
 import { useRegistrations } from '@/composables/useRegistrations'
-import { usePayments } from '@/composables/usePayments'
 import { useAuthStore } from '@/stores/auth'
 import type { CampEdition } from '@/types/camp-edition'
 import type { WizardMemberSelection, WizardExtrasSelection, WizardAccommodationPreference } from '@/types/registration'
-import type { PaymentResponse, PaymentSettings } from '@/types/payment'
 import { ATTENDANCE_PERIOD_LABELS, computePeriodDays } from '@/utils/registration'
-import { parseDateSafe } from '@/utils/date'
 
 const route = useRoute()
 const router = useRouter()
@@ -43,7 +38,6 @@ const { familyUnit, familyMembers, getCurrentUserFamilyUnit, getFamilyMembers } 
 const { extras: campExtras, fetchExtras } = useCampExtras(editionId.value)
 const { accommodations: campAccommodations, fetchAccommodations } = useCampAccommodations(editionId.value)
 const { createRegistration, setExtras, setAccommodationPreferences, loading, error } = useRegistrations()
-const { getRegistrationPayments, getPaymentSettings } = usePayments()
 
 const currentStep = ref(1)
 const selectedMembers = ref<WizardMemberSelection[]>([])
@@ -55,9 +49,6 @@ const campatesPreference = ref<string>('')
 const edition = ref<CampEdition | null>(null)
 const acceptTerms = ref(false)
 const pageLoading = ref(true)
-const createdRegistrationId = ref<string | null>(null)
-const installments = ref<PaymentResponse[]>([])
-const paymentSettings = ref<PaymentSettings | null>(null)
 
 const isRepresentative = computed(
   () => !!familyUnit.value && familyUnit.value.representativeUserId === auth.user?.id
@@ -75,8 +66,20 @@ const hasActiveAccommodations = computed(() =>
 )
 const accommodationStepValue = 3
 const confirmStepValue = computed(() => (hasActiveAccommodations.value ? 4 : 3))
-const paymentStepValue = computed(() => confirmStepValue.value + 1)
 const stepAfterExtras = computed(() => (hasActiveAccommodations.value ? accommodationStepValue : confirmStepValue.value))
+
+const allowsPartialAttendance = computed(() => !!edition.value?.pricePerAdultWeek)
+
+const allowsWeekendVisit = computed(() => !!edition.value?.weekendStartDate)
+
+const periodDays = computed(() => {
+  if (!edition.value) return { firstWeekDays: 0, secondWeekDays: 0, totalDays: 0 }
+  return computePeriodDays(
+    edition.value.startDate,
+    edition.value.endDate,
+    edition.value.halfDate ?? null
+  )
+})
 
 const weekendVisitIsValid = computed(() =>
   selectedMembers.value
@@ -93,7 +96,7 @@ const formatCurrency = (amount: number): string =>
 
 const formatDate = (dateStr: string): string =>
   new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(
-    parseDateSafe(dateStr)
+    new Date(dateStr)
   )
 
 const handleConfirm = async () => {
@@ -124,7 +127,7 @@ const handleConfirm = async () => {
     const extrasResult = await setExtras(created.id, {
       extras: extrasSelections.value
         .filter((e) => e.quantity > 0)
-        .map((e) => ({ campEditionExtraId: e.campEditionExtraId, quantity: e.quantity, userInput: e.userInput || undefined }))
+        .map((e) => ({ campEditionExtraId: e.campEditionExtraId, quantity: e.quantity }))
     })
     if (!extrasResult) {
       toast.add({
@@ -157,27 +160,13 @@ const handleConfirm = async () => {
     }
   }
 
-  // Fetch payment data and advance to payment step
-  createdRegistrationId.value = created.id
-  const [paymentsResult, settingsResult] = await Promise.all([
-    getRegistrationPayments(created.id),
-    getPaymentSettings()
-  ])
-  installments.value = paymentsResult
-  paymentSettings.value = settingsResult
-
   toast.add({
     severity: 'success',
     summary: '¡Inscripción realizada!',
-    detail: 'Tu inscripción ha sido creada. A continuación, las instrucciones de pago.',
+    detail: 'Tu inscripción ha sido creada correctamente.',
     life: 4000
   })
-  currentStep.value = paymentStepValue.value
-}
-
-const handleInstallmentUpdated = (updated: PaymentResponse) => {
-  const index = installments.value.findIndex((p) => p.id === updated.id)
-  if (index !== -1) installments.value[index] = updated
+  router.push({ name: 'registration-detail', params: { id: created.id } })
 }
 
 onMounted(async () => {
@@ -247,7 +236,6 @@ onMounted(async () => {
               <Step :value="2">Extras</Step>
               <Step v-if="hasActiveAccommodations" :value="3">Alojamiento</Step>
               <Step :value="confirmStepValue">Confirmar</Step>
-              <Step v-if="createdRegistrationId" :value="paymentStepValue">Pago</Step>
             </StepList>
 
             <StepPanels>
@@ -338,6 +326,36 @@ onMounted(async () => {
                         data-testid="campates-preference"
                       />
                     </div>
+                  </div>
+
+                  <!-- Special needs -->
+                  <div class="mb-5">
+                    <label class="mb-1 block text-sm font-medium text-gray-700">
+                      Necesidades especiales
+                    </label>
+                    <Textarea
+                      v-model="specialNeeds"
+                      :rows="2"
+                      :maxlength="2000"
+                      placeholder="Dietas especiales, necesidades de movilidad, etc."
+                      class="w-full"
+                      data-testid="special-needs"
+                    />
+                  </div>
+
+                  <!-- Campmates preference -->
+                  <div class="mb-5">
+                    <label class="mb-1 block text-sm font-medium text-gray-700">
+                      Preferencia de acampantes
+                    </label>
+                    <Textarea
+                      v-model="campatesPreference"
+                      :rows="2"
+                      :maxlength="500"
+                      placeholder="Con quien te gustaria acampar cerca..."
+                      class="w-full"
+                      data-testid="campates-preference"
+                    />
                   </div>
 
                   <div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
@@ -447,6 +465,128 @@ onMounted(async () => {
                       </ul>
                     </div>
 
+                    <!-- Price reference -->
+                    <div v-if="edition" class="mb-4 rounded-lg border border-blue-100 bg-blue-50 p-4">
+                      <h3 class="mb-2 text-sm font-semibold text-blue-800">
+                        Precios de referencia
+                      </h3>
+                      <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-blue-700">
+                          <thead>
+                            <tr>
+                              <th class="pb-1 text-left font-medium">Categoría</th>
+                              <th class="pb-1 text-right font-medium">Completo</th>
+                              <th
+                                v-if="allowsPartialAttendance"
+                                class="pb-1 text-right font-medium"
+                              >
+                                1ª sem. ({{ periodDays.firstWeekDays }}d)
+                              </th>
+                              <th
+                                v-if="allowsPartialAttendance"
+                                class="pb-1 text-right font-medium"
+                              >
+                                2ª sem. ({{ periodDays.secondWeekDays }}d)
+                              </th>
+                              <th
+                                v-if="allowsWeekendVisit"
+                                class="pb-1 text-right font-medium"
+                              >
+                                Fin de semana
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td class="py-0.5">Adulto/a</td>
+                              <td class="py-0.5 text-right">
+                                {{ formatCurrency(edition.pricePerAdult) }}
+                              </td>
+                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerAdultWeek
+                                    ? formatCurrency(edition.pricePerAdultWeek)
+                                    : '—'
+                                }}
+                              </td>
+                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerAdultWeek
+                                    ? formatCurrency(edition.pricePerAdultWeek)
+                                    : '—'
+                                }}
+                              </td>
+                              <td v-if="allowsWeekendVisit" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerAdultWeekend
+                                    ? formatCurrency(edition.pricePerAdultWeekend)
+                                    : '—'
+                                }}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td class="py-0.5">Niño/Niña</td>
+                              <td class="py-0.5 text-right">
+                                {{ formatCurrency(edition.pricePerChild) }}
+                              </td>
+                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerChildWeek
+                                    ? formatCurrency(edition.pricePerChildWeek)
+                                    : '—'
+                                }}
+                              </td>
+                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerChildWeek
+                                    ? formatCurrency(edition.pricePerChildWeek)
+                                    : '—'
+                                }}
+                              </td>
+                              <td v-if="allowsWeekendVisit" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerChildWeekend
+                                    ? formatCurrency(edition.pricePerChildWeekend)
+                                    : '—'
+                                }}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td class="py-0.5">Bebé</td>
+                              <td class="py-0.5 text-right">
+                                {{ formatCurrency(edition.pricePerBaby) }}
+                              </td>
+                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerBabyWeek
+                                    ? formatCurrency(edition.pricePerBabyWeek)
+                                    : '—'
+                                }}
+                              </td>
+                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerBabyWeek
+                                    ? formatCurrency(edition.pricePerBabyWeek)
+                                    : '—'
+                                }}
+                              </td>
+                              <td v-if="allowsWeekendVisit" class="py-0.5 text-right">
+                                {{
+                                  edition.pricePerBabyWeekend
+                                    ? formatCurrency(edition.pricePerBabyWeekend)
+                                    : '—'
+                                }}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <p class="mt-2 text-xs text-blue-600">
+                        El precio final se calculará al confirmar según las categorías de edad de
+                        cada persona.
+                      </p>
+                    </div>
+
                     <!-- Extras summary -->
                     <div v-if="hasExtrasSelected" class="mb-4 rounded-lg border border-gray-200 p-4">
                       <h3 class="mb-2 text-sm font-semibold text-gray-700">Extras seleccionados</h3>
@@ -457,9 +597,6 @@ onMounted(async () => {
                           class="text-sm text-gray-800"
                         >
                           {{ extra.name }} × {{ extra.quantity }}
-                          <p v-if="extra.userInput" class="mt-0.5 text-xs text-gray-500 italic">
-                            {{ extra.userInput }}
-                          </p>
                         </li>
                       </ul>
                     </div>
@@ -576,51 +713,6 @@ onMounted(async () => {
                       :disabled="selectedMembers.length === 0 || !acceptTerms"
                       @click="handleConfirm"
                       data-testid="confirm-registration-btn"
-                    />
-                  </div>
-                </div>
-              </StepPanel>
-
-              <!-- Step: Payment Instructions -->
-              <StepPanel v-if="createdRegistrationId" :value="paymentStepValue">
-                <div class="flex flex-col gap-6 py-4">
-                  <div>
-                    <h2 class="mb-1 text-base font-semibold text-gray-900">
-                      Instrucciones de pago
-                    </h2>
-                    <p class="mb-4 text-sm text-gray-500">
-                      Realiza una transferencia bancaria con los datos indicados y sube el justificante.
-                    </p>
-                  </div>
-
-                  <BankTransferInstructions
-                    v-if="paymentSettings"
-                    :iban="paymentSettings.iban"
-                    :bank-name="paymentSettings.bankName"
-                    :account-holder="paymentSettings.accountHolder"
-                  />
-
-                  <div class="space-y-4">
-                    <PaymentInstallmentCard
-                      v-for="payment in installments"
-                      :key="payment.id"
-                      :payment="payment"
-                      @updated="handleInstallmentUpdated"
-                    />
-                  </div>
-
-                  <Message v-if="installments.length > 1 && installments[1].dueDate" severity="info" :closable="false">
-                    El segundo plazo vence el {{ formatDate(installments[1].dueDate!) }}.
-                    Puedes subir el justificante ahora o más tarde desde el detalle de tu inscripción.
-                  </Message>
-
-                  <div class="flex justify-end">
-                    <Button
-                      label="Ir a mi inscripción"
-                      icon="pi pi-arrow-right"
-                      icon-pos="right"
-                      @click="router.push({ name: 'registration-detail', params: { id: createdRegistrationId! } })"
-                      data-testid="go-to-registration-btn"
                     />
                   </div>
                 </div>

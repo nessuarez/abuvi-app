@@ -9,9 +9,9 @@ public class SeqHealthCheck(IConfiguration configuration, IHttpClientFactory htt
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
-        var healthUrl = configuration["Seq:HealthUrl"] ?? configuration["Seq:ServerUrl"];
+        var serverUrl = configuration["Seq:ServerUrl"];
 
-        if (string.IsNullOrWhiteSpace(healthUrl))
+        if (string.IsNullOrWhiteSpace(serverUrl))
             return HealthCheckResult.Degraded("Seq server URL is not configured");
 
         try
@@ -19,7 +19,7 @@ public class SeqHealthCheck(IConfiguration configuration, IHttpClientFactory htt
             using var client = httpClientFactory.CreateClient();
             client.Timeout = TimeSpan.FromSeconds(5);
 
-            var response = await client.GetAsync($"{healthUrl.TrimEnd('/')}/health", cancellationToken);
+            var response = await client.GetAsync($"{serverUrl.TrimEnd('/')}/health", cancellationToken);
 
             return response.IsSuccessStatusCode
                 ? HealthCheckResult.Healthy("Seq is reachable")
