@@ -6,6 +6,25 @@ vi.mock('@/utils/api', () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() }
 }))
 
+const mockListItem = {
+  id: 'reg-1',
+  familyUnit: { id: 'fu-1', name: 'Familia García', representativeUserId: 'user-1' },
+  campEdition: {
+    id: 'edition-1',
+    campName: 'Campamento ABUVI',
+    year: 2026,
+    startDate: '2026-07-01',
+    endDate: '2026-07-15',
+    location: 'Montaña Norte',
+    duration: 14
+  },
+  status: 'Pending',
+  totalAmount: 450,
+  amountPaid: 0,
+  amountRemaining: 450,
+  createdAt: '2026-02-01T00:00:00Z'
+}
+
 const mockRegistration = {
   id: 'reg-1',
   familyUnit: { id: 'fu-1', name: 'Familia García', representativeUserId: 'user-1' },
@@ -15,7 +34,8 @@ const mockRegistration = {
     year: 2026,
     startDate: '2026-07-01',
     endDate: '2026-07-15',
-    location: 'Montaña Norte'
+    location: 'Montaña Norte',
+    duration: 14
   },
   status: 'Pending',
   notes: null,
@@ -40,7 +60,7 @@ describe('useRegistrations - fetchMyRegistrations', () => {
 
   it('should load registrations successfully', async () => {
     vi.mocked(api.get).mockResolvedValueOnce({
-      data: { success: true, data: [mockRegistration], error: null }
+      data: { success: true, data: [mockListItem], error: null }
     })
 
     const { registrations, loading, error, fetchMyRegistrations } = useRegistrations()
@@ -48,6 +68,7 @@ describe('useRegistrations - fetchMyRegistrations', () => {
 
     expect(registrations.value).toHaveLength(1)
     expect(registrations.value[0].id).toBe('reg-1')
+    expect(registrations.value[0].totalAmount).toBe(450)
     expect(loading.value).toBe(false)
     expect(error.value).toBeNull()
     expect(api.get).toHaveBeenCalledWith('/registrations')
@@ -132,6 +153,7 @@ describe('useRegistrations - createRegistration', () => {
     expect(result).toEqual(mockRegistration)
     expect(registrations.value).toHaveLength(1)
     expect(registrations.value[0].id).toBe('reg-1')
+    expect(registrations.value[0].totalAmount).toBe(450)
     expect(error.value).toBeNull()
     expect(api.post).toHaveBeenCalledWith('/registrations', createRequest)
   })
@@ -208,12 +230,12 @@ describe('useRegistrations - setExtras', () => {
     })
 
     const { registrations, registration, setExtras } = useRegistrations()
-    registrations.value = [mockRegistration as never]
+    registrations.value = [mockListItem as never]
     registration.value = mockRegistration as never
 
     await setExtras('reg-1', extrasRequest)
 
-    expect(registrations.value[0].pricing.extrasAmount).toBe(30)
+    expect(registrations.value[0].totalAmount).toBe(480)
     expect(registration.value?.pricing.extrasAmount).toBe(30)
   })
 

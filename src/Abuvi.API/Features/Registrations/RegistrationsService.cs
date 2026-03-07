@@ -534,11 +534,12 @@ public class RegistrationsService(
 
             return new RegistrationListResponse(
                 Id: r.Id,
-                FamilyUnit: new RegistrationFamilyUnitSummary(r.FamilyUnit.Id, r.FamilyUnit.Name),
+                FamilyUnit: new RegistrationFamilyUnitSummary(r.FamilyUnit.Id, r.FamilyUnit.Name, r.FamilyUnit.RepresentativeUserId),
                 CampEdition: new RegistrationCampEditionSummary(
                     r.CampEdition.Id, r.CampEdition.Camp.Name, r.CampEdition.Year,
                     r.CampEdition.StartDate, r.CampEdition.EndDate,
-                    (r.CampEdition.EndDate - r.CampEdition.StartDate).Days),
+                    (r.CampEdition.EndDate - r.CampEdition.StartDate).Days,
+                    r.CampEdition.Camp.Location),
                 Status: r.Status,
                 TotalAmount: r.TotalAmount,
                 AmountPaid: amountPaid,
@@ -625,7 +626,7 @@ public class RegistrationsService(
         return new AdminRegistrationListResponse(
             Items: items.Select(p => new AdminRegistrationListItem(
                 p.Id,
-                new RegistrationFamilyUnitSummary(p.FamilyUnitId, p.FamilyUnitName),
+                new RegistrationFamilyUnitSummary(p.FamilyUnitId, p.FamilyUnitName, p.RepresentativeUserId),
                 new RepresentativeSummary(p.RepresentativeUserId, p.RepresentativeFirstName, p.RepresentativeLastName, p.RepresentativeEmail),
                 p.Status,
                 p.MemberCount,
