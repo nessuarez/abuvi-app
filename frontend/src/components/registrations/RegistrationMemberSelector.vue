@@ -10,6 +10,7 @@ import { FamilyRelationshipLabels } from '@/types/family-unit'
 import type { CampEdition } from '@/types/camp-edition'
 import type { WizardMemberSelection, AttendancePeriod } from '@/types/registration'
 import { ATTENDANCE_PERIOD_LABELS, getAllowedPeriods } from '@/utils/registration'
+import { formatDateLocal, parseDateLocal } from '@/utils/date'
 
 const props = defineProps<{
   members: FamilyMemberResponse[]
@@ -33,10 +34,10 @@ const periodOptions = computed(() =>
 )
 
 const weekendMinDate = computed(() =>
-  props.edition.weekendStartDate ? new Date(props.edition.weekendStartDate) : undefined
+  props.edition.weekendStartDate ? parseDateLocal(props.edition.weekendStartDate) : undefined
 )
 const weekendMaxDate = computed(() =>
-  props.edition.weekendEndDate ? new Date(props.edition.weekendEndDate) : undefined
+  props.edition.weekendEndDate ? parseDateLocal(props.edition.weekendEndDate) : undefined
 )
 
 const isSelected = (memberId: string): boolean =>
@@ -109,9 +110,7 @@ const updateVisitDate = (
   field: 'visitStartDate' | 'visitEndDate',
   value: Date | null
 ) => {
-  const dateStr = value
-    ? `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`
-    : null
+  const dateStr = value ? formatDateLocal(value) : null
   emit(
     'update:modelValue',
     props.modelValue.map((s) => (s.memberId === memberId ? { ...s, [field]: dateStr } : s))
@@ -120,11 +119,11 @@ const updateVisitDate = (
 
 const formatDate = (dateStr: string): string =>
   new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(
-    new Date(dateStr)
+    parseDateLocal(dateStr)
   )
 
 const isMinor = (member: FamilyMemberResponse): boolean => {
-  const dob = new Date(member.dateOfBirth)
+  const dob = parseDateLocal(member.dateOfBirth)
   const today = new Date()
   let age = today.getFullYear() - dob.getFullYear()
   const monthDiff = today.getMonth() - dob.getMonth()
@@ -191,7 +190,7 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
               <div class="flex-1">
                 <label class="mb-1 block text-xs text-gray-500">Llegada</label>
                 <DatePicker :model-value="getSelection(member.id)?.visitStartDate
-                  ? new Date(getSelection(member.id)!.visitStartDate!)
+                  ? parseDateLocal(getSelection(member.id)!.visitStartDate!)
                   : null
                   " :min-date="weekendMinDate" :max-date="weekendMaxDate" date-format="dd/mm/yy" show-icon
                   class="w-full text-sm" :data-testid="`visit-start-${member.id}`"
@@ -200,10 +199,10 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
               <div class="flex-1">
                 <label class="mb-1 block text-xs text-gray-500">Salida</label>
                 <DatePicker :model-value="getSelection(member.id)?.visitEndDate
-                  ? new Date(getSelection(member.id)!.visitEndDate!)
+                  ? parseDateLocal(getSelection(member.id)!.visitEndDate!)
                   : null
                   " :min-date="getSelection(member.id)?.visitStartDate
-                    ? new Date(getSelection(member.id)!.visitStartDate!)
+                    ? parseDateLocal(getSelection(member.id)!.visitStartDate!)
                     : weekendMinDate
                     " :max-date="weekendMaxDate" date-format="dd/mm/yy" show-icon class="w-full text-sm"
                   :data-testid="`visit-end-${member.id}`"

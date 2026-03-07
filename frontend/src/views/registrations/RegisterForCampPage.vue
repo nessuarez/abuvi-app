@@ -29,6 +29,7 @@ import type { CampEdition } from '@/types/camp-edition'
 import type { WizardMemberSelection, WizardExtrasSelection, WizardAccommodationPreference } from '@/types/registration'
 import type { PaymentResponse, PaymentSettings } from '@/types/payment'
 import { ATTENDANCE_PERIOD_LABELS, computePeriodDays } from '@/utils/registration'
+import { parseDateSafe } from '@/utils/date'
 
 const route = useRoute()
 const router = useRouter()
@@ -92,7 +93,7 @@ const formatCurrency = (amount: number): string =>
 
 const formatDate = (dateStr: string): string =>
   new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(
-    new Date(dateStr)
+    parseDateSafe(dateStr)
   )
 
 const handleConfirm = async () => {

@@ -1,4 +1,5 @@
 import type { AttendancePeriod } from '@/types/registration'
+import { parseDateSafe } from '@/utils/date'
 
 export const ATTENDANCE_PERIOD_LABELS: Record<AttendancePeriod, string> = {
   Complete: 'Campamento completo',
@@ -19,12 +20,12 @@ export function computePeriodDays(
   endDate: string,
   halfDate: string | null | undefined
 ): { firstWeekDays: number; secondWeekDays: number; totalDays: number } {
-  const start = new Date(startDate)
-  const end = new Date(endDate)
+  const start = parseDateSafe(startDate)
+  const end = parseDateSafe(endDate)
   const totalDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
 
   if (halfDate) {
-    const half = new Date(halfDate)
+    const half = parseDateSafe(halfDate)
     const firstWeekDays = Math.round((half.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
     const secondWeekDays = totalDays - firstWeekDays
     return { firstWeekDays, secondWeekDays, totalDays }
