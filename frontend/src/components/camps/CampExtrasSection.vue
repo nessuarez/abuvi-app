@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import Badge from 'primevue/badge'
 import type { CampEditionExtra } from '@/types/camp-edition'
 
-defineProps<{
+const props = defineProps<{
   extras: CampEditionExtra[]
 }>()
+
+const sortedExtras = computed(() =>
+  [...props.extras].sort((a, b) => a.sortOrder - b.sortOrder)
+)
 
 const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
@@ -21,7 +26,7 @@ const pricingLabel = (extra: CampEditionExtra): string => {
     <h2 class="mb-4 text-lg font-semibold text-gray-900">Servicios adicionales</h2>
     <ul class="space-y-4">
       <li
-        v-for="extra in extras"
+        v-for="extra in sortedExtras"
         :key="extra.id"
         class="flex items-start justify-between gap-4 rounded-md border border-gray-100 bg-gray-50 p-4"
         :data-testid="`extra-item-${extra.id}`"

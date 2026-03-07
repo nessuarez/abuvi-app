@@ -299,6 +299,17 @@ public static class CampsEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
 
+        // PUT /api/camps/editions/{editionId}/extras/reorder - Reorder extras
+        extrasWriteGroup.MapPut("/reorder", ReorderExtras)
+            .WithName("ReorderCampEditionExtras")
+            .WithSummary("Reorder extras for a camp edition")
+            .AddEndpointFilter<ValidationFilter<ReorderCampEditionExtrasRequest>>()
+            .Produces<ApiResponse<string>>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
+
         // ── Camp Edition Extras (Member+ read — edition-scoped) ───────────────
         var extrasReadGroup = app.MapGroup("/api/camps/editions/{editionId:guid}/extras")
             .WithTags("Camp Edition Extras")
@@ -1018,6 +1029,15 @@ public static class CampsEndpoints
             return Results.BadRequest(
                 ApiResponse<CampEditionExtraResponse>.Fail(ex.Message, "OPERATION_ERROR"));
         }
+    }
+
+    private static async Task<IResult> ReorderExtras(
+        Guid editionId,
+        ReorderCampEditionExtrasRequest request,
+        [FromServices] CampEditionExtrasService service,
+        CancellationToken ct)
+    {
+        return await service.ReorderAsync(editionId, request, ct);
     }
 
     private static async Task<IResult> UpdateExtra(

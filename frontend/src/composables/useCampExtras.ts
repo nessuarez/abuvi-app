@@ -1,6 +1,11 @@
 import { ref } from 'vue'
 import { api } from '@/utils/api'
-import type { CampEditionExtra, CreateCampExtraRequest, UpdateCampExtraRequest } from '@/types/camp-edition'
+import type {
+  CampEditionExtra,
+  CreateCampExtraRequest,
+  UpdateCampExtraRequest,
+  ReorderCampExtrasRequest
+} from '@/types/camp-edition'
 import type { ApiResponse } from '@/types/api'
 
 export function useCampExtras(editionId: string) {
@@ -167,6 +172,22 @@ export function useCampExtras(editionId: string) {
     }
   }
 
+  const reorderExtras = async (request: ReorderCampExtrasRequest): Promise<boolean> => {
+    loading.value = true
+    error.value = null
+    try {
+      await api.put(`/camps/editions/${editionId}/extras/reorder`, request)
+      return true
+    } catch (err: unknown) {
+      error.value = (err as { response?: { data?: { error?: { message?: string } } } })
+        ?.response?.data?.error?.message || 'Error al reordenar extras'
+      console.error('Failed to reorder extras:', err)
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     extras,
     loading,
@@ -177,6 +198,7 @@ export function useCampExtras(editionId: string) {
     updateExtra,
     deleteExtra,
     activateExtra,
-    deactivateExtra
+    deactivateExtra,
+    reorderExtras
   }
 }
