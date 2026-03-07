@@ -11,6 +11,7 @@ import Message from 'primevue/message'
 import type { Camp } from '@/types/camp'
 import type { CampEdition } from '@/types/camp-edition'
 import { useCampEditions } from '@/composables/useCampEditions'
+import { formatDateLocal } from '@/utils/date'
 
 interface Props {
   visible: boolean
@@ -147,7 +148,7 @@ const validate = (): boolean => {
   return Object.keys(errors.value).length === 0
 }
 
-const toISODate = (date: Date): string => date.toISOString().split('T')[0]
+const toISODate = (date: Date): string => formatDateLocal(date)
 
 const handleSubmit = async () => {
   if (!validate()) return

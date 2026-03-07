@@ -12,6 +12,7 @@ import { usePayments } from '@/composables/usePayments'
 import { useCampEditions } from '@/composables/useCampEditions'
 import type { AdminPaymentResponse, PaymentFilterParams } from '@/types/payment'
 import type { PaymentStatus } from '@/types/registration'
+import { formatDateLocal } from '@/utils/date'
 
 const { getAllPayments, loading, error } = usePayments()
 const { allEditions, fetchAllEditions } = useCampEditions()
@@ -45,7 +46,7 @@ const formatDate = (dateStr: string): string =>
     new Date(dateStr)
   )
 
-const toIsoDate = (d: Date): string => d.toISOString().split('T')[0]
+const toIsoDate = (d: Date): string => formatDateLocal(d)
 
 const isImage = (fileName: string | null): boolean => {
   if (!fileName) return false
