@@ -526,6 +526,7 @@ An extra service or product available for purchase during a camp edition (e.g., 
 - `maxQuantity`: Maximum quantity available (optional, integer > 0 when set; null = unlimited)
 - `requiresUserInput`: Whether this extra requires free-text input from the registrant (required, default: false)
 - `userInputLabel`: Custom label/prompt for the text input field (optional, max 200 characters, e.g. "Indica tu talla")
+- `sortOrder`: Display order for the extra within its camp edition (required, integer >= 0, default: 0)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
@@ -536,6 +537,7 @@ An extra service or product available for purchase during a camp edition (e.g., 
 - PricingType and PricingPeriod must be valid enum values
 - MaxQuantity must be > 0 when provided
 - UserInputLabel max 200 characters when provided
+- SortOrder must be >= 0
 - Cannot change price if already sold (quantity > 0)
 - Cannot reduce MaxQuantity below already-sold quantity
 - Cannot delete if any RegistrationExtra references this extra (deactivate instead)
@@ -1188,6 +1190,7 @@ erDiagram
         integer maxQuantity
         boolean requiresUserInput
         string userInputLabel
+        integer sortOrder
         datetime createdAt
         datetime updatedAt
     }

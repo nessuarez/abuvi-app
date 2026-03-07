@@ -79,6 +79,7 @@ public class AdminRegistrationServiceTests
         result.Totals.TotalRegistrations.Should().Be(1);
         result.Totals.TotalMembers.Should().Be(3);
         result.Items[0].FamilyUnit.Name.Should().Be("García Family");
+        result.Items[0].FamilyUnit.RepresentativeUserId.Should().Be(UserId);
         result.Items[0].Representative.Email.Should().Be("juan@test.com");
         result.Items[0].AmountRemaining.Should().Be(700m);
     }
