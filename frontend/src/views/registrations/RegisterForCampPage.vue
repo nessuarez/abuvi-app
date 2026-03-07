@@ -77,19 +77,6 @@ const confirmStepValue = computed(() => (hasActiveAccommodations.value ? 4 : 3))
 const paymentStepValue = computed(() => confirmStepValue.value + 1)
 const stepAfterExtras = computed(() => (hasActiveAccommodations.value ? accommodationStepValue : confirmStepValue.value))
 
-const allowsPartialAttendance = computed(() => !!edition.value?.pricePerAdultWeek)
-
-const allowsWeekendVisit = computed(() => !!edition.value?.weekendStartDate)
-
-const periodDays = computed(() => {
-  if (!edition.value) return { firstWeekDays: 0, secondWeekDays: 0, totalDays: 0 }
-  return computePeriodDays(
-    edition.value.startDate,
-    edition.value.endDate,
-    edition.value.halfDate ?? null
-  )
-})
-
 const weekendVisitIsValid = computed(() =>
   selectedMembers.value
     .filter((s) => s.attendancePeriod === 'WeekendVisit')
@@ -136,7 +123,7 @@ const handleConfirm = async () => {
     const extrasResult = await setExtras(created.id, {
       extras: extrasSelections.value
         .filter((e) => e.quantity > 0)
-        .map((e) => ({ campEditionExtraId: e.campEditionExtraId, quantity: e.quantity }))
+        .map((e) => ({ campEditionExtraId: e.campEditionExtraId, quantity: e.quantity, userInput: e.userInput || undefined }))
     })
     if (!extrasResult) {
       toast.add({
@@ -352,36 +339,6 @@ onMounted(async () => {
                     </div>
                   </div>
 
-                  <!-- Special needs -->
-                  <div class="mb-5">
-                    <label class="mb-1 block text-sm font-medium text-gray-700">
-                      Necesidades especiales
-                    </label>
-                    <Textarea
-                      v-model="specialNeeds"
-                      :rows="2"
-                      :maxlength="2000"
-                      placeholder="Dietas especiales, necesidades de movilidad, etc."
-                      class="w-full"
-                      data-testid="special-needs"
-                    />
-                  </div>
-
-                  <!-- Campmates preference -->
-                  <div class="mb-5">
-                    <label class="mb-1 block text-sm font-medium text-gray-700">
-                      Preferencia de acampantes
-                    </label>
-                    <Textarea
-                      v-model="campatesPreference"
-                      :rows="2"
-                      :maxlength="500"
-                      placeholder="Con quien te gustaria acampar cerca..."
-                      class="w-full"
-                      data-testid="campates-preference"
-                    />
-                  </div>
-
                   <div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
                     <Button
                       label="Atrás"
@@ -489,128 +446,6 @@ onMounted(async () => {
                       </ul>
                     </div>
 
-                    <!-- Price reference -->
-                    <div v-if="edition" class="mb-4 rounded-lg border border-blue-100 bg-blue-50 p-4">
-                      <h3 class="mb-2 text-sm font-semibold text-blue-800">
-                        Precios de referencia
-                      </h3>
-                      <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-blue-700">
-                          <thead>
-                            <tr>
-                              <th class="pb-1 text-left font-medium">Categoría</th>
-                              <th class="pb-1 text-right font-medium">Completo</th>
-                              <th
-                                v-if="allowsPartialAttendance"
-                                class="pb-1 text-right font-medium"
-                              >
-                                1ª sem. ({{ periodDays.firstWeekDays }}d)
-                              </th>
-                              <th
-                                v-if="allowsPartialAttendance"
-                                class="pb-1 text-right font-medium"
-                              >
-                                2ª sem. ({{ periodDays.secondWeekDays }}d)
-                              </th>
-                              <th
-                                v-if="allowsWeekendVisit"
-                                class="pb-1 text-right font-medium"
-                              >
-                                Fin de semana
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td class="py-0.5">Adulto/a</td>
-                              <td class="py-0.5 text-right">
-                                {{ formatCurrency(edition.pricePerAdult) }}
-                              </td>
-                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
-                                {{
-                                  edition.pricePerAdultWeek
-                                    ? formatCurrency(edition.pricePerAdultWeek)
-                                    : '—'
-                                }}
-                              </td>
-                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
-                                {{
-                                  edition.pricePerAdultWeek
-                                    ? formatCurrency(edition.pricePerAdultWeek)
-                                    : '—'
-                                }}
-                              </td>
-                              <td v-if="allowsWeekendVisit" class="py-0.5 text-right">
-                                {{
-                                  edition.pricePerAdultWeekend
-                                    ? formatCurrency(edition.pricePerAdultWeekend)
-                                    : '—'
-                                }}
-                              </td>
-                            </tr>
-                            <tr>
-                              <td class="py-0.5">Niño/Niña</td>
-                              <td class="py-0.5 text-right">
-                                {{ formatCurrency(edition.pricePerChild) }}
-                              </td>
-                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
-                                {{
-                                  edition.pricePerChildWeek
-                                    ? formatCurrency(edition.pricePerChildWeek)
-                                    : '—'
-                                }}
-                              </td>
-                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
-                                {{
-                                  edition.pricePerChildWeek
-                                    ? formatCurrency(edition.pricePerChildWeek)
-                                    : '—'
-                                }}
-                              </td>
-                              <td v-if="allowsWeekendVisit" class="py-0.5 text-right">
-                                {{
-                                  edition.pricePerChildWeekend
-                                    ? formatCurrency(edition.pricePerChildWeekend)
-                                    : '—'
-                                }}
-                              </td>
-                            </tr>
-                            <tr>
-                              <td class="py-0.5">Bebé</td>
-                              <td class="py-0.5 text-right">
-                                {{ formatCurrency(edition.pricePerBaby) }}
-                              </td>
-                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
-                                {{
-                                  edition.pricePerBabyWeek
-                                    ? formatCurrency(edition.pricePerBabyWeek)
-                                    : '—'
-                                }}
-                              </td>
-                              <td v-if="allowsPartialAttendance" class="py-0.5 text-right">
-                                {{
-                                  edition.pricePerBabyWeek
-                                    ? formatCurrency(edition.pricePerBabyWeek)
-                                    : '—'
-                                }}
-                              </td>
-                              <td v-if="allowsWeekendVisit" class="py-0.5 text-right">
-                                {{
-                                  edition.pricePerBabyWeekend
-                                    ? formatCurrency(edition.pricePerBabyWeekend)
-                                    : '—'
-                                }}
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                      <p class="mt-2 text-xs text-blue-600">
-                        El precio final se calculará al confirmar según las categorías de edad de
-                        cada persona.
-                      </p>
-                    </div>
-
                     <!-- Extras summary -->
                     <div v-if="hasExtrasSelected" class="mb-4 rounded-lg border border-gray-200 p-4">
                       <h3 class="mb-2 text-sm font-semibold text-gray-700">Extras seleccionados</h3>
@@ -621,6 +456,9 @@ onMounted(async () => {
                           class="text-sm text-gray-800"
                         >
                           {{ extra.name }} × {{ extra.quantity }}
+                          <p v-if="extra.userInput" class="mt-0.5 text-xs text-gray-500 italic">
+                            {{ extra.userInput }}
+                          </p>
                         </li>
                       </ul>
                     </div>

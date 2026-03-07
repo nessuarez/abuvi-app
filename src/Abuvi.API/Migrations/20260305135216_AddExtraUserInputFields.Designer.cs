@@ -3,6 +3,7 @@ using System;
 using Abuvi.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Abuvi.API.Migrations
 {
     [DbContext(typeof(AbuviDbContext))]
-    partial class AbuviDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260305135216_AddExtraUserInputFields")]
+    partial class AddExtraUserInputFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1236,22 +1239,10 @@ namespace Abuvi.API.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
-                    b.Property<string>("AdminNotes")
-                        .HasColumnType("text")
-                        .HasColumnName("admin_notes");
-
                     b.Property<decimal>("Amount")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("amount");
-
-                    b.Property<DateTime?>("ConfirmedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("confirmed_at");
-
-                    b.Property<Guid?>("ConfirmedByUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("confirmed_by_user_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -1259,20 +1250,10 @@ namespace Abuvi.API.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("NOW()");
 
-                    b.Property<DateTime?>("DueDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("due_date");
-
                     b.Property<string>("ExternalReference")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("external_reference");
-
-                    b.Property<int>("InstallmentNumber")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1)
-                        .HasColumnName("installment_number");
 
                     b.Property<string>("Method")
                         .IsRequired()
@@ -1284,20 +1265,6 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("payment_date");
 
-                    b.Property<string>("ProofFileName")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("proof_file_name");
-
-                    b.Property<string>("ProofFileUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("proof_file_url");
-
-                    b.Property<DateTime?>("ProofUploadedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("proof_uploaded_at");
-
                     b.Property<Guid>("RegistrationId")
                         .HasColumnType("uuid")
                         .HasColumnName("registration_id");
@@ -1307,11 +1274,6 @@ namespace Abuvi.API.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("status");
-
-                    b.Property<string>("TransferConcept")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("transfer_concept");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
@@ -1327,9 +1289,6 @@ namespace Abuvi.API.Migrations
                     b.HasIndex("Status")
                         .HasDatabaseName("IX_Payments_Status");
 
-                    b.HasIndex("TransferConcept")
-                        .HasDatabaseName("IX_Payments_TransferConcept");
-
                     b.ToTable("payments", null, t =>
                         {
                             t.HasCheckConstraint("CK_Payments_Amount", "amount > 0");
@@ -1343,10 +1302,6 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<DateTime?>("AdminModifiedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("admin_modified_at");
 
                     b.Property<decimal>("BaseTotalAmount")
                         .HasPrecision(10, 2)

@@ -44,6 +44,8 @@ const price = ref<number | null>(0)
 const pricingType = ref<'PerPerson' | 'PerFamily'>('PerPerson')
 const pricingPeriod = ref<'OneTime' | 'PerDay'>('OneTime')
 const isRequired = ref(false)
+const requiresUserInput = ref(false)
+const userInputLabel = ref('')
 const maxQuantity = ref<number | null>(null)
 const isActive = ref(true)
 const validationErrors = ref<Record<string, string>>({})
@@ -68,6 +70,8 @@ watch(
         pricingType.value = props.extra.pricingType
         pricingPeriod.value = props.extra.pricingPeriod
         isRequired.value = props.extra.isRequired
+        requiresUserInput.value = props.extra.requiresUserInput
+        userInputLabel.value = props.extra.userInputLabel ?? ''
         maxQuantity.value = props.extra.maxQuantity ?? null
         isActive.value = props.extra.isActive
       } else {
@@ -77,6 +81,8 @@ watch(
         pricingType.value = 'PerPerson'
         pricingPeriod.value = 'OneTime'
         isRequired.value = false
+        requiresUserInput.value = false
+        userInputLabel.value = ''
         maxQuantity.value = null
         isActive.value = true
       }
@@ -106,6 +112,8 @@ const handleSave = async () => {
       price: price.value ?? 0,
       isRequired: isRequired.value,
       isActive: isActive.value,
+      requiresUserInput: requiresUserInput.value,
+      userInputLabel: requiresUserInput.value ? userInputLabel.value.trim() || undefined : undefined,
       maxQuantity: maxQuantity.value ?? undefined
     })
     if (result) {
@@ -121,6 +129,8 @@ const handleSave = async () => {
       pricingType: pricingType.value,
       pricingPeriod: pricingPeriod.value,
       isRequired: isRequired.value,
+      requiresUserInput: requiresUserInput.value,
+      userInputLabel: requiresUserInput.value ? userInputLabel.value.trim() || undefined : undefined,
       maxQuantity: maxQuantity.value ?? undefined
     })
     if (result) {
@@ -229,6 +239,25 @@ const handleSave = async () => {
       <div class="flex items-center gap-3">
         <ToggleSwitch v-model="isRequired" />
         <label class="text-sm text-gray-700">Obligatorio</label>
+      </div>
+
+      <!-- Requires User Input -->
+      <div class="flex items-center gap-3">
+        <ToggleSwitch v-model="requiresUserInput" data-testid="requires-user-input-toggle" />
+        <label class="text-sm text-gray-700">Requiere información adicional</label>
+      </div>
+
+      <!-- User Input Label (conditional) -->
+      <div v-if="requiresUserInput">
+        <label class="mb-1 block text-sm font-medium text-gray-700">Etiqueta del campo</label>
+        <InputText
+          v-model="userInputLabel"
+          :maxlength="200"
+          class="w-full"
+          placeholder="Ej: Indica tu talla"
+          data-testid="user-input-label-input"
+        />
+        <small class="text-gray-400">Texto que verá el usuario (máx. 200 caracteres)</small>
       </div>
 
       <!-- Max Quantity -->
