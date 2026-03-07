@@ -258,3 +258,48 @@ describe('useRegistrations - cancelRegistration', () => {
     expect(error.value).toBe('La inscripción no se puede modificar en su estado actual')
   })
 })
+
+describe('useRegistrations - deleteRegistration', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('should return true on successful deletion (204)', async () => {
+    vi.mocked(api.delete).mockResolvedValueOnce({ status: 204, data: null })
+
+    const { registration, registrations, deleteRegistration } = useRegistrations()
+    registration.value = { ...mockRegistration } as never
+    registrations.value = [{ ...mockRegistration } as never]
+
+    const result = await deleteRegistration('reg-1')
+
+    expect(result).toBe(true)
+    expect(registration.value).toBeNull()
+    expect(registrations.value).toHaveLength(0)
+    expect(api.delete).toHaveBeenCalledWith('/registrations/reg-1')
+  })
+
+  it('should return false and set error on API failure', async () => {
+    vi.mocked(api.delete).mockRejectedValueOnce({
+      response: { data: { error: { message: 'Cannot delete registration with existing payments. Please contact an administrator.', code: 'REGISTRATION_HAS_PAYMENTS' } } }
+    })
+
+    const { error, deleteRegistration } = useRegistrations()
+    const result = await deleteRegistration('reg-1')
+
+    expect(result).toBe(false)
+    expect(error.value).toBe('Cannot delete registration with existing payments. Please contact an administrator.')
+  })
+
+  it('should set loading during the API call', async () => {
+    let resolvePromise!: (value: unknown) => void
+    vi.mocked(api.delete).mockReturnValueOnce(
+      new Promise((r) => { resolvePromise = r })
+    )
+
+    const { loading, deleteRegistration } = useRegistrations()
+    const promise = deleteRegistration('reg-1')
+    expect(loading.value).toBe(true)
+    resolvePromise({ status: 204, data: null })
+    await promise
+    expect(loading.value).toBe(false)
+  })
+})

@@ -66,6 +66,16 @@ public static class RegistrationsEndpoints
             .Produces<ApiResponse<CancelRegistrationResponse>>()
             .Produces(403).Produces(404).Produces(422);
 
+        group.MapDelete("/{id:guid}", DeleteRegistration)
+            .WithName("DeleteRegistration")
+            .WithSummary("Permanently delete a registration (representative within 24h or Admin/Board)")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status409Conflict)
+            .Produces(StatusCodes.Status422UnprocessableEntity);
+
         group.MapPut("/{id:guid}/accommodation-preferences", SetAccommodationPreferences)
             .WithName("SetAccommodationPreferences")
             .WithSummary("Set accommodation preferences ranked 1-3 (representative or Admin/Board)")
@@ -253,6 +263,39 @@ public static class RegistrationsEndpoints
         {
             return TypedResults.UnprocessableEntity(
                 ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
+        }
+    }
+
+    private static async Task<IResult> DeleteRegistration(
+        Guid id,
+        RegistrationsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
+        var isAdminOrBoard = userRole is "Admin" or "Board";
+
+        try
+        {
+            await service.DeleteAsync(id, userId, isAdminOrBoard, ct);
+            return Results.NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+        catch (BusinessRuleException ex)
+        {
+            if (ex.Message.Contains("payments", StringComparison.OrdinalIgnoreCase))
+                return TypedResults.Conflict(ApiResponse<object>.Fail(ex.Message, "REGISTRATION_HAS_PAYMENTS"));
+
+            return TypedResults.UnprocessableEntity(ApiResponse<object>.Fail(ex.Message, "REGISTRATION_DELETE_BLOCKED"));
         }
     }
 
