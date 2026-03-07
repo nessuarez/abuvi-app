@@ -12,16 +12,23 @@ The home page hero carousel (`HomeHeroCarousel.vue`) currently displays 3 static
 
 This new slide requires an **external link** (WhatsApp community URL), which means the component must be updated to support both internal routes and external URLs.
 
+## Final Specifications
+
+- **WhatsApp URL**: `https://chat.whatsapp.com/EBsp8GfXGPEB6PM8u3HUGu`
+- **Image**: `frontend/src/assets/images/swello-IRWj0hdSbM4-unsplash.jpg` (already exists)
+- **Slide position**: 2nd (between "50 Anos de Buena Vida" and "Campamento 2026")
+- **Headline**: "Unete a la Comunidad de Whatsapp"
+
 ## Requirements
 
 ### Functional
 
-1. Add a 4th slide to the hero carousel with WhatsApp community content:
-   - **Headline**: "Unete a nuestra Comunidad" (or similar, in Spanish)
+1. Add a new slide in **2nd position** to the hero carousel with WhatsApp community content:
+   - **Headline**: "Unete a la Comunidad de Whatsapp"
    - **Description**: Short invitation text encouraging users to join the ABUVI WhatsApp community
    - **CTA Label**: "Unirse a WhatsApp" (or similar)
-   - **CTA Link**: External WhatsApp community invitation URL (to be provided by the user)
-   - **Image**: A relevant image (to be provided or sourced by the user)
+   - **CTA Link**: `https://chat.whatsapp.com/EBsp8GfXGPEB6PM8u3HUGu`
+   - **Image**: `swello-IRWj0hdSbM4-unsplash.jpg` (already in assets)
 
 2. The CTA button must open the WhatsApp link in a **new tab** (`target="_blank"`, `rel="noopener noreferrer"`)
 
@@ -68,16 +75,16 @@ Replace the single `<router-link>` with conditional rendering:
 </router-link>
 ```
 
-#### New Slide Data
+#### New Slide Data (2nd position in array)
 
 ```typescript
 {
-  image: imgWhatsapp, // new image asset
+  image: imgWhatsapp, // import from '@/assets/images/swello-IRWj0hdSbM4-unsplash.jpg'
   imageAlt: 'Comunidad WhatsApp ABUVI',
-  headline: 'Unete a nuestra Comunidad',
+  headline: 'Unete a la Comunidad de Whatsapp',
   description: 'Mantente al dia con las novedades, eventos y actividades de ABUVI. Unete a nuestro grupo de WhatsApp.',
   ctaLabel: 'Unirse a WhatsApp',
-  ctaPath: '<WHATSAPP_COMMUNITY_URL>', // TO BE PROVIDED
+  ctaPath: 'https://chat.whatsapp.com/EBsp8GfXGPEB6PM8u3HUGu',
   external: true,
 }
 ```
@@ -86,35 +93,19 @@ Replace the single `<router-link>` with conditional rendering:
 
 | File | Change |
 |------|--------|
-| `frontend/src/components/home/HomeHeroCarousel.vue` | Add `external?` to interface, add new slide data, conditional CTA rendering |
+| `frontend/src/components/home/HomeHeroCarousel.vue` | Add `external?` to interface, add new slide data at index 1, conditional CTA rendering |
 | `frontend/src/components/home/__tests__/HomeHeroCarousel.test.ts` | Update test to expect 4 slides, add test for external link rendering |
-| `frontend/src/assets/images/` | Add new WhatsApp/community image |
-
-### Image Asset
-
-The user needs to provide:
-1. **A background image** for the slide (suggested: a photo of the community, a WhatsApp-themed image, or a social gathering photo). Should be optimized for web (compressed JPEG, reasonable resolution for full-width hero display).
-2. **The WhatsApp community invitation URL** (e.g., `https://chat.whatsapp.com/...`)
 
 ## Acceptance Criteria
 
-- [ ] A 4th slide appears in the hero carousel with WhatsApp community content
+- [ ] A 4th slide appears in the hero carousel in 2nd position with WhatsApp community content
 - [ ] The CTA button opens the WhatsApp community link in a new tab
 - [ ] External link uses `target="_blank"` and `rel="noopener noreferrer"` for security
 - [ ] The slide visually matches the existing carousel style
 - [ ] Existing slides and navigation (dots, autoplay) continue working correctly
 - [ ] Unit tests updated to cover 4 slides and external link behavior
-- [ ] Image is optimized and stored in `frontend/src/assets/images/`
-
-## Blockers / Questions for the User
-
-1. **WhatsApp community URL**: What is the invitation link?
-2. **Image**: Do you have a specific image to use, or should a placeholder/stock image be used?
-3. **Slide position**: Should this be the last slide (4th), or placed at a specific position in the rotation?
-4. **Copy**: Are the suggested headline/description acceptable, or do you have preferred text?
 
 ## Non-Functional Requirements
 
 - **Security**: External links must use `rel="noopener noreferrer"`
-- **Performance**: Image should be optimized (compressed JPEG, max ~200KB)
 - **Accessibility**: Image alt text must be descriptive; CTA link should be clearly labeled
