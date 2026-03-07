@@ -9,12 +9,8 @@ import Container from '@/components/ui/Container.vue'
 import RegistrationStatusBadge from '@/components/registrations/RegistrationStatusBadge.vue'
 import RegistrationPricingBreakdown from '@/components/registrations/RegistrationPricingBreakdown.vue'
 import RegistrationCancelDialog from '@/components/registrations/RegistrationCancelDialog.vue'
-import BankTransferInstructions from '@/components/payments/BankTransferInstructions.vue'
-import PaymentInstallmentCard from '@/components/payments/PaymentInstallmentCard.vue'
 import { useRegistrations } from '@/composables/useRegistrations'
-import { usePayments } from '@/composables/usePayments'
 import { useAuthStore } from '@/stores/auth'
-import type { PaymentResponse, PaymentSettings } from '@/types/payment'
 
 const route = useRoute()
 const router = useRouter()
@@ -29,11 +25,8 @@ const {
   cancelRegistration,
   getAccommodationPreferences
 } = useRegistrations()
-const { getRegistrationPayments, getPaymentSettings } = usePayments()
 const showCancelDialog = ref(false)
 const cancelling = ref(false)
-const installments = ref<PaymentResponse[]>([])
-const paymentSettingsData = ref<PaymentSettings | null>(null)
 
 import type { AccommodationPreferenceResponse } from '@/types/registration'
 import type { AccommodationType } from '@/types/camp-edition'
@@ -54,15 +47,8 @@ const isRepresentative = computed(
   () => registration.value?.familyUnit.representativeUserId === auth.user?.id
 )
 
-const isAdminOrBoard = computed(() => auth.isAdmin || auth.isBoard)
-
-const isDraft = computed(() => registration.value?.status === 'Draft')
-
 const canCancel = computed(
-  () =>
-    registration.value?.status === 'Pending' ||
-    registration.value?.status === 'Confirmed' ||
-    registration.value?.status === 'Draft'
+  () => registration.value?.status === 'Pending' || registration.value?.status === 'Confirmed'
 )
 
 const formatDate = (dateStr: string): string =>
@@ -112,23 +98,12 @@ const handleCancel = async () => {
   }
 }
 
-const handleInstallmentUpdated = (updated: PaymentResponse) => {
-  const index = installments.value.findIndex((p) => p.id === updated.id)
-  if (index !== -1) installments.value[index] = updated
-}
-
 onMounted(async () => {
   await getRegistrationById(registrationId.value)
-  const [prefs, paymentsResult, settingsResult] = await Promise.all([
-    getAccommodationPreferences(registrationId.value),
-    getRegistrationPayments(registrationId.value),
-    getPaymentSettings()
-  ])
+  const prefs = await getAccommodationPreferences(registrationId.value)
   if (prefs) {
     accommodationPrefs.value = prefs.sort((a, b) => a.preferenceOrder - b.preferenceOrder)
   }
-  installments.value = paymentsResult
-  paymentSettingsData.value = settingsResult
 })
 </script>
 
@@ -167,11 +142,6 @@ onMounted(async () => {
             </p>
           </div>
         </div>
-
-        <!-- Draft banner -->
-        <Message v-if="isDraft" severity="warn" :closable="false" class="mb-6" data-testid="draft-banner">
-          Esta inscripción fue modificada por un administrador. El representante familiar debe volver a confirmarla.
-        </Message>
 
         <!-- Notes -->
         <div v-if="registration.notes" class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -218,24 +188,20 @@ onMounted(async () => {
         <div class="mb-6">
           <h2 class="mb-3 text-base font-semibold text-gray-900">Pagos</h2>
 
-          <!-- Bank transfer instructions (collapsible) -->
-          <div v-if="paymentSettingsData" class="mb-4">
-            <BankTransferInstructions
-              :iban="paymentSettingsData.iban"
-              :bank-name="paymentSettingsData.bankName"
-              :account-holder="paymentSettingsData.accountHolder"
-              collapsible
-            />
-          </div>
-
-          <!-- Installment cards -->
-          <div v-if="installments.length > 0" class="space-y-4">
-            <PaymentInstallmentCard
-              v-for="payment in installments"
-              :key="payment.id"
-              :payment="payment"
-              @updated="handleInstallmentUpdated"
-            />
+          <div v-if="registration.payments.length > 0" class="space-y-2">
+            <div v-for="payment in registration.payments" :key="payment.id"
+              class="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3">
+              <div>
+                <span class="text-sm font-medium text-gray-900">
+                  {{ PAYMENT_METHOD_LABELS[payment.method] ?? payment.method }}
+                </span>
+                <span class="ml-2 text-xs text-gray-400">{{ formatPaymentDate(payment.paymentDate) }}</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-gray-500">{{ PAYMENT_STATUS_LABELS[payment.status] ?? payment.status }}</span>
+                <span class="font-semibold text-gray-900">{{ formatCurrency(payment.amount) }}</span>
+              </div>
+            </div>
           </div>
 
           <div v-else

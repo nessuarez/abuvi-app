@@ -22,7 +22,6 @@ public class Registration
     public string? CampatesPreference { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public DateTime? AdminModifiedAt { get; set; }
 
     // Navigation properties
     public FamilyUnit FamilyUnit { get; set; } = null!;
@@ -63,7 +62,6 @@ public class RegistrationExtra
     public decimal UnitPrice { get; set; }         // price snapshot at selection time
     public int CampDurationDays { get; set; }      // camp duration snapshot
     public decimal TotalAmount { get; set; }
-    public string? UserInput { get; set; }
     public DateTime CreatedAt { get; set; }
     public Registration Registration { get; set; } = null!;
     public CampEditionExtra CampEditionExtra { get; set; } = null!;
@@ -91,15 +89,6 @@ public class Payment
     public PaymentMethod Method { get; set; }
     public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
     public string? ExternalReference { get; set; }
-    public int InstallmentNumber { get; set; }
-    public DateTime? DueDate { get; set; }
-    public string? TransferConcept { get; set; }
-    public string? ProofFileUrl { get; set; }
-    public string? ProofFileName { get; set; }
-    public DateTime? ProofUploadedAt { get; set; }
-    public string? AdminNotes { get; set; }
-    public Guid? ConfirmedByUserId { get; set; }
-    public DateTime? ConfirmedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public Registration Registration { get; set; } = null!;
@@ -107,10 +96,10 @@ public class Payment
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
-public enum RegistrationStatus { Pending, Confirmed, Cancelled, Draft }
+public enum RegistrationStatus { Pending, Confirmed, Cancelled }
 public enum AgeCategory { Baby, Child, Adult }
 public enum PaymentMethod { Card, Transfer, Cash }
-public enum PaymentStatus { Pending, PendingReview, Completed, Failed, Refunded }
+public enum PaymentStatus { Pending, Completed, Failed, Refunded }
 
 public enum AttendancePeriod
 {
@@ -144,7 +133,7 @@ public record UpdateRegistrationMembersRequest(List<MemberAttendanceRequest> Mem
 
 public record UpdateRegistrationExtrasRequest(List<ExtraSelectionRequest> Extras);
 
-public record ExtraSelectionRequest(Guid CampEditionExtraId, int Quantity, string? UserInput = null);
+public record ExtraSelectionRequest(Guid CampEditionExtraId, int Quantity);
 
 public record AccommodationPreferenceRequest(Guid CampEditionAccommodationId, int PreferenceOrder);
 
@@ -204,8 +193,7 @@ public record RegistrationResponse(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     string? SpecialNeeds,
-    string? CampatesPreference,
-    bool IsAdminModified
+    string? CampatesPreference
 );
 
 public record RegistrationFamilyUnitSummary(Guid Id, string Name);
@@ -230,31 +218,8 @@ public record MemberPricingDetail(
     string? GuardianName,
     string? GuardianDocumentNumber
 );
-
-public record PaymentSummary(
-    Guid Id,
-    int InstallmentNumber,
-    decimal Amount,
-    DateTime? DueDate,
-    string Method,
-    string Status,
-    string? TransferConcept,
-    string? ProofFileUrl,
-    string? ProofFileName,
-    DateTime? ProofUploadedAt,
-    string? AdminNotes
-);
-public record ExtraPricingDetail(
-  Guid CampEditionExtraId,
-  string Name, 
-  decimal UnitPrice, 
-  string PricingType, 
-  string PricingPeriod, 
-  int Quantity, 
-  int? CampDurationDays, 
-  string Calculation, 
-  decimal TotalAmount, 
-  string? UserInput);
+public record ExtraPricingDetail(Guid CampEditionExtraId, string Name, decimal UnitPrice, string PricingType, string PricingPeriod, int Quantity, int? CampDurationDays, string Calculation, decimal TotalAmount);
+public record PaymentSummary(Guid Id, decimal Amount, DateTime PaymentDate, string Method, string Status);
 
 public record RegistrationListResponse(
     Guid Id,
@@ -274,68 +239,6 @@ public record AccommodationPreferenceResponse(
     string AccommodationName,
     AccommodationType AccommodationType,
     int PreferenceOrder
-);
-
-// ── Admin DTOs ───────────────────────────────────────────────────────────────
-
-public record AdminRegistrationListResponse(
-    List<AdminRegistrationListItem> Items,
-    int TotalCount,
-    int Page,
-    int PageSize,
-    int TotalPages,
-    AdminRegistrationTotals Totals
-);
-
-public record AdminRegistrationListItem(
-    Guid Id,
-    RegistrationFamilyUnitSummary FamilyUnit,
-    RepresentativeSummary Representative,
-    RegistrationStatus Status,
-    int MemberCount,
-    decimal TotalAmount,
-    decimal AmountPaid,
-    decimal AmountRemaining,
-    DateTime CreatedAt
-);
-
-public record RepresentativeSummary(
-    Guid Id,
-    string FirstName,
-    string LastName,
-    string Email
-);
-
-public record AdminRegistrationTotals(
-    int TotalRegistrations,
-    int TotalMembers,
-    decimal TotalAmount,
-    decimal TotalPaid,
-    decimal TotalRemaining
-);
-
-public record AdminRegistrationProjection(
-    Guid Id,
-    Guid FamilyUnitId,
-    string FamilyUnitName,
-    Guid RepresentativeUserId,
-    string RepresentativeFirstName,
-    string RepresentativeLastName,
-    string RepresentativeEmail,
-    RegistrationStatus Status,
-    int MemberCount,
-    decimal TotalAmount,
-    decimal AmountPaid,
-    DateTime CreatedAt
-);
-
-public record AdminEditRegistrationRequest(
-    List<MemberAttendanceRequest>? Members,
-    List<ExtraSelectionRequest>? Extras,
-    List<AccommodationPreferenceRequest>? Preferences,
-    string? Notes,
-    string? SpecialNeeds,
-    string? CampatesPreference
 );
 
 // ── Mapping Extensions ────────────────────────────────────────────────────────
@@ -372,21 +275,17 @@ public static class RegistrationMappingExtensions
                 e.CampEditionExtra.PricingType.ToString(),
                 e.CampEditionExtra.PricingPeriod.ToString(),
                 e.Quantity, e.CampDurationDays,
-                BuildCalculation(e), e.TotalAmount, e.UserInput)).ToList(),
+                BuildCalculation(e), e.TotalAmount)).ToList(),
             r.ExtrasAmount,
             r.TotalAmount),
         r.Payments.Select(p => new PaymentSummary(
-            p.Id, p.InstallmentNumber, p.Amount, p.DueDate,
-            p.Method.ToString(), p.Status.ToString(),
-            p.TransferConcept, p.ProofFileUrl, p.ProofFileName,
-            p.ProofUploadedAt, p.AdminNotes)).ToList(),
+            p.Id, p.Amount, p.PaymentDate, p.Method.ToString(), p.Status.ToString())).ToList(),
         amountPaid,
         r.TotalAmount - amountPaid,
         r.CreatedAt,
         r.UpdatedAt,
         r.SpecialNeeds,
-        r.CampatesPreference,
-        r.AdminModifiedAt != null && r.Status == RegistrationStatus.Draft
+        r.CampatesPreference
     );
 
     private static string BuildCalculation(RegistrationExtra e)

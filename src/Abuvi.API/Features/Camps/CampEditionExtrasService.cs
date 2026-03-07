@@ -55,8 +55,6 @@ public class CampEditionExtrasService(
             IsRequired = request.IsRequired,
             IsActive = true,
             MaxQuantity = request.MaxQuantity,
-            RequiresUserInput = request.RequiresUserInput,
-            UserInputLabel = request.UserInputLabel,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -92,8 +90,6 @@ public class CampEditionExtrasService(
         extra.IsRequired = request.IsRequired;
         extra.IsActive = request.IsActive;
         extra.MaxQuantity = request.MaxQuantity;
-        extra.RequiresUserInput = request.RequiresUserInput;
-        extra.UserInputLabel = request.UserInputLabel;
         extra.UpdatedAt = DateTime.UtcNow;
 
         await repository.UpdateAsync(extra, ct);
@@ -175,8 +171,6 @@ internal static class CampEditionExtraExtensions
             extra.IsRequired,
             extra.IsActive,
             extra.MaxQuantity,
-            extra.RequiresUserInput,
-            extra.UserInputLabel,
             currentQuantitySold,
             extra.CreatedAt,
             extra.UpdatedAt

@@ -264,45 +264,6 @@ FrontendUrl=https://abuvi.org
 
 ---
 
-## Local Development with MinIO
-
-The `docker-compose.yml` includes a [MinIO](https://min.io/) service — a lightweight, S3-compatible object storage server. This allows developers to test the full blob storage pipeline locally without Hetzner credentials.
-
-### Starting MinIO
-
-```bash
-docker-compose up -d minio
-```
-
-The `minio-init` container runs automatically on first startup to create the `abuvi-media` bucket and set it to public-read access.
-
-### Accessing MinIO
-
-| Service | URL | Credentials |
-|---|---|---|
-| S3 API | `http://localhost:9000` | `minioadmin` / `minioadmin` |
-| Web Console | `http://localhost:9001` | `minioadmin` / `minioadmin` |
-
-### How files are served
-
-Uploaded files are publicly accessible at:
-
-```
-http://localhost:9000/abuvi-media/{key}
-```
-
-No code changes are needed — `appsettings.Development.json` overrides `BlobStorage:Endpoint` and `BlobStorage:PublicBaseUrl` to point to the local MinIO instance.
-
-### Data persistence
-
-MinIO data is stored in a Docker volume (`minio-data`) and survives `docker-compose down` / `up` cycles. To clear all stored files:
-
-```bash
-docker volume rm abuvi-app_minio-data
-```
-
----
-
 ## Production Docker Configuration
 
 .NET maps the `__` (double underscore) separator to `:` in the configuration hierarchy, so `Jwt__Secret` equals `Jwt:Secret`.

@@ -2,7 +2,6 @@ using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Common.Services;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
-using Abuvi.API.Features.Payments;
 using Abuvi.API.Features.Registrations;
 using Abuvi.API.Features.Users;
 using FluentAssertions;
@@ -23,7 +22,6 @@ public class RegistrationsServiceTests
     private readonly ICampEditionAccommodationsRepository _accommodationsRepo;
     private readonly IAssociationSettingsRepository _settingsRepo;
     private readonly IEmailService _emailService;
-    private readonly IPaymentsService _paymentsService;
     private readonly ILogger<RegistrationsService> _logger;
     private readonly RegistrationPricingService _pricingService;
     private readonly RegistrationsService _sut;
@@ -45,11 +43,10 @@ public class RegistrationsServiceTests
         _accommodationsRepo = Substitute.For<ICampEditionAccommodationsRepository>();
         _settingsRepo = Substitute.For<IAssociationSettingsRepository>();
         _emailService = Substitute.For<IEmailService>();
-        _paymentsService = Substitute.For<IPaymentsService>();
         _logger = Substitute.For<ILogger<RegistrationsService>>();
         _pricingService = new RegistrationPricingService(_settingsRepo);
         _sut = new RegistrationsService(
-            _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo, _editionsRepo, _accommodationsRepo, _pricingService, _emailService, _paymentsService, _logger);
+            _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo, _editionsRepo, _accommodationsRepo, _pricingService, _emailService, _logger);
     }
 
     // ── CreateAsync ───────────────────────────────────────────────────────────

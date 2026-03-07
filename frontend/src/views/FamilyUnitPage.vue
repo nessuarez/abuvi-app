@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import Card from 'primevue/card'
@@ -22,8 +21,6 @@ import type {
   FamilyMemberResponse
 } from '@/types/family-unit'
 
-const route = useRoute()
-const router = useRouter()
 const confirm = useConfirm()
 const toast = useToast()
 
@@ -34,7 +31,6 @@ const {
   error,
   createFamilyUnit,
   getCurrentUserFamilyUnit,
-  getFamilyUnitById,
   updateFamilyUnit,
   deleteFamilyUnit,
   createFamilyMember,
@@ -44,11 +40,6 @@ const {
 } = useFamilyUnits()
 
 const auth = useAuthStore()
-
-// Read-only mode when viewing another user's family unit
-const isViewingOther = computed(() =>
-  !!route.params.id && familyUnit.value?.representativeUserId !== auth.user?.id
-)
 
 // UI State
 const showFamilyUnitDialog = ref(false)
@@ -66,10 +57,7 @@ onMounted(async () => {
 })
 
 const loadFamilyUnit = async () => {
-  const familyUnitId = route.params.id as string | undefined
-  const unit = familyUnitId
-    ? await getFamilyUnitById(familyUnitId)
-    : await getCurrentUserFamilyUnit()
+  const unit = await getCurrentUserFamilyUnit()
   if (unit) {
     await getFamilyMembers(unit.id)
   }
@@ -246,17 +234,9 @@ const handleManageMembership = (member: FamilyMemberResponse) => {
     <ConfirmDialog />
 
     <div class="mb-6">
-      <Button
-        v-if="isViewingOther"
-        icon="pi pi-arrow-left"
-        label="Volver a Administración"
-        text
-        class="mb-3"
-        @click="router.push('/admin')"
-      />
-      <h1 class="text-3xl font-bold mb-2">{{ isViewingOther ? 'Unidad Familiar' : 'Mi Unidad Familiar' }}</h1>
+      <h1 class="text-3xl font-bold mb-2">Mi Unidad Familiar</h1>
       <p class="text-gray-600">
-        {{ isViewingOther ? 'Detalle de la unidad familiar y sus miembros' : 'Gestiona tu unidad familiar y los miembros que la componen' }}
+        Gestiona tu unidad familiar y los miembros que la componen
       </p>
     </div>
 
@@ -287,7 +267,7 @@ const handleManageMembership = (member: FamilyMemberResponse) => {
         <template #title>
           <div class="flex justify-between items-center">
             <span>{{ familyUnit.name }}</span>
-            <div v-if="!isViewingOther" class="flex gap-2">
+            <div class="flex gap-2">
               <Button
                 icon="pi pi-pencil"
                 label="Editar"
@@ -329,7 +309,6 @@ const handleManageMembership = (member: FamilyMemberResponse) => {
                 @click="showBulkMembershipDialog = true"
               />
               <Button
-                v-if="!isViewingOther"
                 icon="pi pi-plus"
                 label="Añadir Miembro"
                 @click="openCreateMemberDialog"
@@ -342,7 +321,6 @@ const handleManageMembership = (member: FamilyMemberResponse) => {
             :members="familyMembers"
             :loading="loading"
             :can-manage-memberships="auth.isBoard"
-            :read-only="isViewingOther"
             @edit="openEditMemberDialog"
             @delete="handleDeleteMember"
             @manage-membership="handleManageMembership"

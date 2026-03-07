@@ -22,7 +22,8 @@ const linkGroups = [
 ]
 
 const contactInfo = {
-  email: 'junta.abuvi@gmail.com'
+  email: 'info@abuvi.org',
+  phone: '+34 600 000 000'
 }
 </script>
 
@@ -80,10 +81,9 @@ const contactInfo = {
               </a>
             </p>
             <p>
-              <i class="pi pi-whatsapp mr-2" />
-              <a :href="`https://chat.whatsapp.com/EBsp8GfXGPEB6PM8u3HUGu`" target="_blank" rel="noopener noreferrer"
-                class="hover:text-primary-600">
-                Comunidad de WhatsApp
+              <i class="pi pi-phone mr-2" />
+              <a :href="`tel:${contactInfo.phone}`" class="hover:text-primary-600">
+                {{ contactInfo.phone }}
               </a>
             </p>
           </div>

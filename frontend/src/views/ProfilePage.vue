@@ -17,7 +17,6 @@ import { useFamilyUnits } from '@/composables/useFamilyUnits'
 import { useMemberships } from '@/composables/useMemberships'
 import { getRoleLabel } from '@/utils/user'
 import { FamilyRelationshipLabels, type FamilyMemberResponse } from '@/types/family-unit'
-import { parseDateSafe } from '@/utils/date'
 import { FeeStatus, FeeStatusLabels, FeeStatusSeverity, type MembershipFeeResponse, type PayFeeRequest, type MemberMembershipData } from '@/types/membership'
 
 const auth = useAuthStore()
@@ -49,11 +48,11 @@ const showBulkMembershipDialog = ref(false)
 
 // Helpers
 const formatDate = (iso: string) =>
-  new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(parseDateSafe(iso))
+  new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso))
 
 const calculateAge = (dateOfBirth: string): number => {
   const today = new Date()
-  const birth = parseDateSafe(dateOfBirth)
+  const birth = new Date(dateOfBirth)
   let age = today.getFullYear() - birth.getFullYear()
   const m = today.getMonth() - birth.getMonth()
   if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--

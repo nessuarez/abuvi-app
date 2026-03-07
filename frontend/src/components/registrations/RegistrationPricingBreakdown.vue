@@ -17,8 +17,6 @@ const showPeriodColumn = computed(() =>
   props.pricing.members.some((m) => m.attendancePeriod && m.attendancePeriod !== 'Complete')
 )
 
-const paidExtras = computed(() => props.pricing.extras.filter((e) => e.totalAmount > 0))
-
 const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
 </script>
@@ -96,7 +94,7 @@ const formatCurrency = (amount: number): string =>
     </div>
 
     <!-- Extras breakdown -->
-    <div v-if="paidExtras.length > 0">
+    <div v-if="pricing.extras.length > 0">
       <h3 class="mb-2 text-sm font-semibold text-gray-700">Extras</h3>
       <div class="overflow-hidden rounded-lg border border-gray-200">
         <table class="w-full text-sm">
@@ -109,14 +107,11 @@ const formatCurrency = (amount: number): string =>
           </thead>
           <tbody>
             <tr
-              v-for="extra in paidExtras"
+              v-for="extra in pricing.extras"
               :key="extra.campEditionExtraId"
               class="border-t border-gray-100"
             >
-              <td class="px-4 py-2 text-gray-900">
-                {{ extra.name }}
-                <p v-if="extra.userInput" class="mt-0.5 text-xs text-gray-500 italic">{{ extra.userInput }}</p>
-              </td>
+              <td class="px-4 py-2 text-gray-900">{{ extra.name }}</td>
               <td class="px-4 py-2 text-gray-500 text-xs">{{ extra.calculation }}</td>
               <td class="px-4 py-2 text-right text-gray-900">
                 {{ formatCurrency(extra.totalAmount) }}

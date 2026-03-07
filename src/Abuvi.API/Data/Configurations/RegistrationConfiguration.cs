@@ -32,10 +32,6 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
         builder.Property(r => r.CampatesPreference)
             .HasMaxLength(500).HasColumnName("campates_preference");
 
-        builder.Property(r => r.AdminModifiedAt)
-            .HasColumnName("admin_modified_at")
-            .IsRequired(false);
-
         builder.Property(r => r.CreatedAt).IsRequired().HasColumnName("created_at")
             .HasDefaultValueSql("NOW()");
         builder.Property(r => r.UpdatedAt).IsRequired().HasColumnName("updated_at")

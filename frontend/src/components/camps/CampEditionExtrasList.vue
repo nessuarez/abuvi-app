@@ -159,10 +159,6 @@ onMounted(() => fetchExtras())
         <template #body="{ data }">
           <div>
             <span class="font-medium text-gray-900">{{ data.name }}</span>
-            <span v-if="data.requiresUserInput" class="ml-2 inline-flex items-center gap-1 text-xs text-blue-600">
-              <i class="pi pi-pencil text-xs" />
-              Requiere info
-            </span>
             <p v-if="data.description" class="mt-0.5 text-xs text-gray-500">
               {{ data.description }}
             </p>

@@ -18,10 +18,6 @@ public class UpdateRegistrationExtrasValidator : AbstractValidator<UpdateRegistr
             extra.RuleFor(e => e.Quantity)
                 .GreaterThan(0)
                 .WithMessage("La cantidad debe ser mayor que cero");
-            extra.RuleFor(e => e.UserInput)
-                .MaximumLength(500)
-                .WithMessage("El texto de entrada no puede superar los 500 caracteres")
-                .When(e => e.UserInput != null);
         });
     }
 }
