@@ -87,15 +87,8 @@ const handleCancel = () => {
       <label for="family-unit-name" class="font-medium text-sm">
         Nombre de la Unidad Familiar <span class="text-red-500">*</span>
       </label>
-      <InputText
-        id="family-unit-name"
-        v-model="name"
-        placeholder="Ej: Familia García"
-        :invalid="!!nameError"
-        :disabled="loading"
-        @blur="validateName"
-        class="w-full"
-      />
+      <InputText id="family-unit-name" v-model="name" placeholder="Ej: Familia García" :invalid="!!nameError"
+        :disabled="loading" @blur="validateName" class="w-full" />
       <small v-if="nameError" class="text-red-500">{{ nameError }}</small>
       <small class="text-gray-500">Máximo 200 caracteres</small>
     </div>
@@ -103,20 +96,14 @@ const handleCancel = () => {
     <!-- Duplicate warning and consent (only when creating) -->
     <template v-if="!isEditing">
       <Message severity="warn" :closable="false">
-        Antes de crear una familia, asegúrate de que otro miembro de tu familia no la haya creado ya.
-        Si es así, contacta con la directiva para que te asocien a ella.
+        Antes de crear una familia, asegúrate de que ningún otro miembro de tu familia la haya creado ya.
+        Si es así, indícale tu email de registro para que aparezcas en ella.
       </Message>
 
       <div class="flex flex-col gap-2">
         <div class="flex items-start gap-2">
-          <Checkbox
-            id="consent-accepted"
-            v-model="consentAccepted"
-            :binary="true"
-            :invalid="!!consentError"
-            :disabled="loading"
-            data-testid="consent-checkbox"
-          />
+          <Checkbox id="consent-accepted" v-model="consentAccepted" :binary="true" :invalid="!!consentError"
+            :disabled="loading" data-testid="consent-checkbox" />
           <label for="consent-accepted" class="text-sm text-gray-700">
             Actuaré como representante de la familia y seré quien realice la inscripción de la familia
             al campamento. Además, confirmo que tengo el consentimiento de todos los miembros de la
@@ -128,19 +115,9 @@ const handleCancel = () => {
     </template>
 
     <div class="flex justify-end gap-2 pt-4">
-      <Button
-        type="button"
-        label="Cancelar"
-        severity="secondary"
-        :disabled="loading"
-        @click="handleCancel"
-      />
-      <Button
-        type="submit"
-        :label="isEditing ? 'Actualizar' : 'Crear'"
-        :loading="loading"
-        :disabled="!isValid || (!isEditing && !consentAccepted) || loading"
-      />
+      <Button type="button" label="Cancelar" severity="secondary" :disabled="loading" @click="handleCancel" />
+      <Button type="submit" :label="isEditing ? 'Actualizar' : 'Crear'" :loading="loading"
+        :disabled="!isValid || (!isEditing && !consentAccepted) || loading" />
     </div>
   </form>
 </template>
