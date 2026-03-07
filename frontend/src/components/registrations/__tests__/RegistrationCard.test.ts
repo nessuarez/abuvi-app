@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
 import RegistrationCard from '@/components/registrations/RegistrationCard.vue'
-import type { RegistrationResponse } from '@/types/registration'
+import type { RegistrationListItem } from '@/types/registration'
 
-const mockRegistration: RegistrationResponse = {
+const mockRegistration: RegistrationListItem = {
   id: 'reg-1',
   familyUnit: { id: 'fu-1', name: 'Familia García', representativeUserId: 'user-1' },
   campEdition: {
@@ -13,27 +13,17 @@ const mockRegistration: RegistrationResponse = {
     year: 2026,
     startDate: '2026-07-01',
     endDate: '2026-07-15',
-    location: 'Montaña Norte'
+    location: 'Montaña Norte',
+    duration: 14
   },
   status: 'Pending',
-  notes: null,
-  pricing: {
-    members: [
-      { familyMemberId: 'member-1', fullName: 'Juan García', ageAtCamp: 35, ageCategory: 'Adult', individualAmount: 450 }
-    ],
-    baseTotalAmount: 450,
-    extras: [],
-    extrasAmount: 0,
-    totalAmount: 450
-  },
-  payments: [],
+  totalAmount: 450,
   amountPaid: 0,
   amountRemaining: 450,
-  createdAt: '2026-02-01T00:00:00Z',
-  updatedAt: '2026-02-01T00:00:00Z'
+  createdAt: '2026-02-01T00:00:00Z'
 }
 
-const mountComponent = (props: { registration: RegistrationResponse }) =>
+const mountComponent = (props: { registration: RegistrationListItem }) =>
   mount(RegistrationCard, {
     props,
     global: { plugins: [PrimeVue] }
@@ -59,5 +49,21 @@ describe('RegistrationCard', () => {
     await btn.trigger('click')
     expect(wrapper.emitted('view')).toHaveLength(1)
     expect(wrapper.emitted('view')![0]).toEqual(['reg-1'])
+  })
+
+  it('should display the total amount', () => {
+    const wrapper = mountComponent({ registration: mockRegistration })
+    expect(wrapper.text()).toContain('450')
+  })
+
+  it('should display the camp location when available', () => {
+    const wrapper = mountComponent({ registration: mockRegistration })
+    expect(wrapper.text()).toContain('Montaña Norte')
+  })
+
+  it('should not display location when null', () => {
+    const reg = { ...mockRegistration, campEdition: { ...mockRegistration.campEdition, location: null } }
+    const wrapper = mountComponent({ registration: reg })
+    expect(wrapper.find('.pi-map-marker').exists()).toBe(false)
   })
 })

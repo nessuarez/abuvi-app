@@ -23,7 +23,8 @@ public class CampEditionExtrasRepository(AbuviDbContext db) : ICampEditionExtras
             query = query.Where(e => e.IsActive == activeOnly.Value);
 
         return await query
-            .OrderBy(e => e.CreatedAt)
+            .OrderBy(e => e.SortOrder)
+            .ThenBy(e => e.CreatedAt)
             .ToListAsync(ct);
     }
 
@@ -55,5 +56,20 @@ public class CampEditionExtrasRepository(AbuviDbContext db) : ICampEditionExtras
             db.CampEditionExtras.Remove(extra);
             await db.SaveChangesAsync(ct);
         }
+    }
+
+    public async Task<List<CampEditionExtra>> GetByCampEditionTrackedAsync(
+        Guid campEditionId,
+        CancellationToken ct = default)
+    {
+        return await db.CampEditionExtras
+            .Where(e => e.CampEditionId == campEditionId)
+            .ToListAsync(ct);
+    }
+
+    public async Task UpdateManyAsync(List<CampEditionExtra> extras, CancellationToken ct = default)
+    {
+        db.CampEditionExtras.UpdateRange(extras);
+        await db.SaveChangesAsync(ct);
     }
 }

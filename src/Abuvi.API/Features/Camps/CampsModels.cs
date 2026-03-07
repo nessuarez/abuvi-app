@@ -305,6 +305,8 @@ public class CampEditionExtra
     public bool RequiresUserInput { get; set; } = false;
     public string? UserInputLabel { get; set; }
 
+    public int SortOrder { get; set; } = 0;
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
@@ -414,6 +416,7 @@ public record CampEditionExtraResponse(
     int? MaxQuantity,
     bool RequiresUserInput,
     string? UserInputLabel,
+    int SortOrder,
     int CurrentQuantitySold,
     DateTime CreatedAt,
     DateTime UpdatedAt
@@ -428,7 +431,8 @@ public record CreateCampEditionExtraRequest(
     bool IsRequired,
     int? MaxQuantity,
     bool RequiresUserInput = false,
-    string? UserInputLabel = null
+    string? UserInputLabel = null,
+    int SortOrder = 0
 );
 
 public record UpdateCampEditionExtraRequest(
@@ -439,7 +443,12 @@ public record UpdateCampEditionExtraRequest(
     bool IsActive,
     int? MaxQuantity,
     bool RequiresUserInput = false,
-    string? UserInputLabel = null
+    string? UserInputLabel = null,
+    int SortOrder = 0
+);
+
+public record ReorderCampEditionExtrasRequest(
+    List<Guid> OrderedIds
 );
 
 /// <summary>
