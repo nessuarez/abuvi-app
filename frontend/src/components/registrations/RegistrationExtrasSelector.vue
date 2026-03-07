@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import InputNumber from 'primevue/inputnumber'
+import Textarea from 'primevue/textarea'
 import type { CampEditionExtra } from '@/types/camp-edition'
 import type { WizardExtrasSelection } from '@/types/registration'
 
@@ -30,12 +31,31 @@ const getQuantity = (extra: CampEditionExtra): number => {
   return found?.quantity ?? (extra.isRequired ? 1 : 0)
 }
 
+const getUserInput = (extra: CampEditionExtra): string => {
+  const selection = props.modelValue.find((s) => s.campEditionExtraId === extra.id)
+  return selection?.userInput ?? ''
+}
+
 const updateQuantity = (extra: CampEditionExtra, quantity: number) => {
   const current = props.modelValue.filter((s) => s.campEditionExtraId !== extra.id)
+  const existingSelection = props.modelValue.find((s) => s.campEditionExtraId === extra.id)
   const updated: WizardExtrasSelection[] = [
     ...current,
-    { campEditionExtraId: extra.id, name: extra.name, quantity, unitPrice: extra.price }
+    {
+      campEditionExtraId: extra.id,
+      name: extra.name,
+      quantity,
+      unitPrice: extra.price,
+      userInput: quantity > 0 ? existingSelection?.userInput : undefined
+    }
   ]
+  emit('update:modelValue', updated)
+}
+
+const updateUserInput = (extra: CampEditionExtra, value: string) => {
+  const updated = props.modelValue.map((s) =>
+    s.campEditionExtraId === extra.id ? { ...s, userInput: value } : s
+  )
   emit('update:modelValue', updated)
 }
 
@@ -43,6 +63,7 @@ const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
 
 const pricingLabel = (extra: CampEditionExtra): string => {
+  if (extra.price === 0) return 'Incluido'
   const type = PRICING_TYPE_LABELS[extra.pricingType]
   const period = PRICING_PERIOD_LABELS[extra.pricingPeriod]
   return `${formatCurrency(extra.price)} ${type}${period}`
@@ -89,6 +110,19 @@ const pricingLabel = (extra: CampEditionExtra): string => {
             data-testid="extra-quantity-input"
           />
         </div>
+      </div>
+      <div v-if="extra.requiresUserInput && getQuantity(extra) > 0" class="mt-2" data-testid="extra-user-input">
+        <label class="mb-1 block text-xs font-medium text-gray-600">
+          {{ extra.userInputLabel || 'Información adicional' }}
+        </label>
+        <Textarea
+          :model-value="getUserInput(extra)"
+          @update:model-value="updateUserInput(extra, $event)"
+          :rows="2"
+          :maxlength="500"
+          class="w-full"
+          :placeholder="extra.userInputLabel || 'Escribe aquí...'"
+        />
       </div>
     </div>
 

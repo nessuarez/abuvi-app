@@ -10,6 +10,7 @@ using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.Guests;
 using Abuvi.API.Features.Memberships;
 using Abuvi.API.Features.Registrations;
+using Abuvi.API.Features.Payments;
 using Abuvi.API.Features.Memories;
 using Abuvi.API.Features.MediaItems;
 using Abuvi.API.Features.BlobStorage;
@@ -183,9 +184,12 @@ builder.Services.AddScoped<MembershipsService>();
 builder.Services.AddScoped<IRegistrationsRepository, RegistrationsRepository>();
 builder.Services.AddScoped<IRegistrationExtrasRepository, RegistrationExtrasRepository>();
 builder.Services.AddScoped<IRegistrationAccommodationPreferencesRepository, RegistrationAccommodationPreferencesRepository>();
-builder.Services.AddScoped<IPaymentsRepository, PaymentsRepository>();
 builder.Services.AddScoped<RegistrationPricingService>();
 builder.Services.AddScoped<RegistrationsService>();
+
+// Payments feature
+builder.Services.AddScoped<Abuvi.API.Features.Payments.IPaymentsRepository, Abuvi.API.Features.Payments.PaymentsRepository>();
+builder.Services.AddScoped<IPaymentsService, PaymentsService>();
 
 // Blob Storage
 builder.Services.AddBlobStorage(builder.Configuration);
@@ -392,6 +396,7 @@ app.MapGuestsEndpoints();
 app.MapMembershipsEndpoints();
 app.MapMembershipFeeEndpoints();
 app.MapRegistrationsEndpoints();
+app.MapPaymentsEndpoints();
 app.MapBlobStorageEndpoints();
 app.MapMemoriesEndpoints();
 app.MapMediaItemsEndpoints();
