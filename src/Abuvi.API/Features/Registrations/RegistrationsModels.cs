@@ -246,14 +246,14 @@ public record PaymentSummary(
 );
 public record ExtraPricingDetail(
   Guid CampEditionExtraId,
-  string Name, 
-  decimal UnitPrice, 
-  string PricingType, 
-  string PricingPeriod, 
-  int Quantity, 
-  int? CampDurationDays, 
-  string Calculation, 
-  decimal TotalAmount, 
+  string Name,
+  decimal UnitPrice,
+  string PricingType,
+  string PricingPeriod,
+  int Quantity,
+  int? CampDurationDays,
+  string Calculation,
+  decimal TotalAmount,
   string? UserInput);
 
 public record RegistrationListResponse(

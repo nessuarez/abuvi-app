@@ -100,6 +100,7 @@ export interface CampEditionExtra {
   requiresUserInput: boolean
   userInputLabel?: string
   maxQuantity?: number
+  sortOrder: number
   currentQuantitySold: number | null
   isActive: boolean
   createdAt: string
@@ -116,6 +117,7 @@ export interface CreateCampExtraRequest {
   requiresUserInput?: boolean
   userInputLabel?: string
   maxQuantity?: number
+  sortOrder?: number
 }
 
 export interface UpdateCampExtraRequest {
@@ -127,6 +129,11 @@ export interface UpdateCampExtraRequest {
   requiresUserInput?: boolean
   userInputLabel?: string
   maxQuantity?: number
+  sortOrder?: number
+}
+
+export interface ReorderCampExtrasRequest {
+  orderedIds: string[]
 }
 
 // === Accommodation Types ===
