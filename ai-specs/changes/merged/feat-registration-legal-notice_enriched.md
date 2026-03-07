@@ -1,17 +1,21 @@
 # User Story: Add Legal Notice with Terms Acceptance to Camp Registration
 
 ## ID
+
 `feat-registration-legal-notice`
 
 ## Summary
+
 Add a mandatory legal notice with a checkbox to the camp registration wizard so that users must explicitly accept the camp's terms and conditions before confirming their enrollment.
 
 ## User Story
+
 **As a** family representative registering for a camp,
 **I want to** see and accept the camp's terms and conditions during enrollment,
 **So that** I am informed of the legal conditions and the organization has a record of my consent.
 
 ## Context
+
 - The camp registration wizard (`RegisterForCampPage.vue`) currently has a multi-step flow: Participantes > Extras > Alojamiento (optional) > Confirmar.
 - The user registration form (`RegisterForm.vue`) already has a terms acceptance checkbox linked to `/legal/privacy`, but this covers account creation only — not camp enrollment.
 - Camp enrollment is a separate legal action (financial commitment, liability, health/safety rules) that requires its own terms acceptance.
@@ -22,33 +26,39 @@ Add a mandatory legal notice with a checkbox to the camp registration wizard so 
 ### Frontend Changes
 
 #### 1. Add legal notice and checkbox to the confirmation step
+
 **File:** `frontend/src/views/registrations/RegisterForCampPage.vue`
 
 - Add a legal notice block in the **Confirm step** (`StepPanel :value="confirmStepValue"`), between the review information and the action buttons.
 - The block should include:
   - A bordered container with a warning/info style (similar to the price reference block).
   - A brief legal text explaining what the user is accepting. Example:
+
     ```
     Al confirmar esta inscripción, declaro que:
     - He leído y acepto las normas del campamento.
     - Autorizo el tratamiento de los datos personales según la política de privacidad.
     - Acepto las condiciones de pago y cancelación.
     ```
+
   - Links to the relevant legal pages: `/legal/privacy` (Política de Privacidad) and `/legal/notice` (Aviso Legal).
   - A PrimeVue `Checkbox` component bound to a new reactive variable `acceptTerms` (boolean, default `false`).
   - Label text: `"He leído y acepto los términos y condiciones del campamento"`
   - A validation error message (red text below checkbox) shown if the user tries to confirm without checking the box.
 
 #### 2. Disable confirmation until terms are accepted
+
 **File:** `frontend/src/views/registrations/RegisterForCampPage.vue`
 
 - The "Confirmar inscripción" button should be disabled when `acceptTerms` is `false`.
 - Update the `:disabled` condition on the confirm button:
+
   ```
   :disabled="selectedMembers.length === 0 || !acceptTerms"
   ```
 
 #### 3. New reactive state
+
 **File:** `frontend/src/views/registrations/RegisterForCampPage.vue`
 
 - Add: `const acceptTerms = ref<boolean>(false)`
@@ -57,10 +67,13 @@ Add a mandatory legal notice with a checkbox to the camp registration wizard so 
 ### Backend Changes
 
 #### Option A: Frontend-only (Recommended for MVP)
+
 No backend changes. The checkbox is a UI gate that prevents submission without acceptance. The act of completing the registration implies acceptance.
 
 #### Option B: Backend tracking (Future enhancement)
+
 If the organization later requires explicit consent records per registration:
+
 - Add `acceptedTermsAt: DateTime?` field to the `Registration` entity.
 - Add `acceptedTerms: boolean` to `CreateRegistrationRequest`.
 - Add FluentValidation rule: `RuleFor(x => x.AcceptedTerms).Equal(true)`.
@@ -74,6 +87,7 @@ If the organization later requires explicit consent records per registration:
 | `frontend/src/views/registrations/RegisterForCampPage.vue` | Add `acceptTerms` ref, legal notice block with checkbox in confirm step, update button disabled condition |
 
 ### No new files needed
+
 This change is contained within the existing registration wizard page.
 
 ## UI Mockup (Confirm Step)
@@ -140,13 +154,16 @@ This change is contained within the existing registration wizard page.
 - **Data attribute**: Add `data-testid="accept-terms-checkbox"` for E2E testing.
 
 ## Out of Scope
+
 - Creating a new legal page specific to camp registration terms (can use existing `/legal/notice` and `/legal/privacy`).
 - Backend consent tracking (future enhancement).
 - Customizable terms per camp edition (future enhancement).
 - PDF download of terms and conditions.
 
 ## Dependencies
+
 - None. All required components and pages already exist.
 
 ## Estimated Complexity
+
 **Low** — Single file change, UI-only, no API or data model changes.
