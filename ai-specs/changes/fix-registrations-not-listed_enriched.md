@@ -25,6 +25,7 @@ const sortedRegistrations = computed<RegistrationResponse[]>(() => {
 Este computed **solo incluye** `Pending`, `Confirmed` y `Cancelled`. Si las inscripciones estan en status `Draft` (por ejemplo, porque un Admin las edito via `PUT /api/registrations/{id}/admin-edit`), quedan excluidas de la lista.
 
 **Efecto adicional:** El empty state (linea 56) verifica `registrations.value.length === 0` (datos crudos de la API), pero la lista renderiza `sortedRegistrations`. Si las 2 inscripciones son Draft:
+
 - `registrations.length = 2` -> no muestra el mensaje "Todavia no tienes inscripciones"
 - `sortedRegistrations.length = 0` -> no renderiza ninguna tarjeta
 - **Resultado:** el usuario ve un area vacia sin mensaje explicativo
@@ -39,17 +40,20 @@ if (familyUnit is null) return [];
 ```
 
 Si el usuario autenticado no es el representante de la family unit asociada a las inscripciones, la API devuelve una lista vacia. Esto podria pasar si:
+
 - El usuario logueado no es el representante de la unidad familiar
 - La relacion entre usuario y family unit se rompio o nunca se establecio correctamente
 
 ## Pasos de verificacion
 
 1. **Verificar el status de las 2 inscripciones en BD:**
+
    ```sql
    SELECT id, family_unit_id, status, created_at FROM registrations ORDER BY created_at DESC LIMIT 5;
    ```
 
 2. **Verificar que el usuario logueado es representante de la family unit:**
+
    ```sql
    SELECT fu.id, fu.name, fu.representative_user_id, u.email
    FROM family_units fu
