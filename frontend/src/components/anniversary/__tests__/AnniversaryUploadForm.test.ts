@@ -162,6 +162,28 @@ describe('AnniversaryUploadForm', () => {
     )
   })
 
+  it('should show coming soon state with disabled submit button', () => {
+    const wrapper = mountForm()
+    const button = wrapper.find('button[type="submit"]')
+    expect(button.text()).toBe('Próximamente')
+    expect(button.attributes('disabled')).toBeDefined()
+  })
+
+  it('should show coming soon info message', () => {
+    const wrapper = mountForm()
+    expect(wrapper.text()).toContain(
+      'La subida de recuerdos estará disponible próximamente',
+    )
+  })
+
+  it('should not submit form when coming soon is active', async () => {
+    const wrapper = mountForm()
+    await wrapper.find('form').trigger('submit')
+    expect(mockCreateMemory).not.toHaveBeenCalled()
+    expect(mockCreateMediaItem).not.toHaveBeenCalled()
+    expect(mockUploadFile).not.toHaveBeenCalled()
+  })
+
   it('should reset form after successful submission', async () => {
     mockCreateMemory.mockResolvedValue({ id: 'memory-1', title: 'Test' })
 

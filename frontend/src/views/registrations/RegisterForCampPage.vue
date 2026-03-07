@@ -16,15 +16,20 @@ import Container from '@/components/ui/Container.vue'
 import RegistrationMemberSelector from '@/components/registrations/RegistrationMemberSelector.vue'
 import RegistrationExtrasSelector from '@/components/registrations/RegistrationExtrasSelector.vue'
 import RegistrationAccommodationSelector from '@/components/registrations/RegistrationAccommodationSelector.vue'
+import BankTransferInstructions from '@/components/payments/BankTransferInstructions.vue'
+import PaymentInstallmentCard from '@/components/payments/PaymentInstallmentCard.vue'
 import { useCampEditions } from '@/composables/useCampEditions'
 import { useCampExtras } from '@/composables/useCampExtras'
 import { useCampAccommodations } from '@/composables/useCampAccommodations'
 import { useFamilyUnits } from '@/composables/useFamilyUnits'
 import { useRegistrations } from '@/composables/useRegistrations'
+import { usePayments } from '@/composables/usePayments'
 import { useAuthStore } from '@/stores/auth'
 import type { CampEdition } from '@/types/camp-edition'
 import type { WizardMemberSelection, WizardExtrasSelection, WizardAccommodationPreference } from '@/types/registration'
-import { ATTENDANCE_PERIOD_LABELS } from '@/utils/registration'
+import type { PaymentResponse, PaymentSettings } from '@/types/payment'
+import { ATTENDANCE_PERIOD_LABELS, computePeriodDays } from '@/utils/registration'
+import { parseDateSafe } from '@/utils/date'
 
 const route = useRoute()
 const router = useRouter()
@@ -38,6 +43,7 @@ const { familyUnit, familyMembers, getCurrentUserFamilyUnit, getFamilyMembers } 
 const { extras: campExtras, fetchExtras } = useCampExtras(editionId.value)
 const { accommodations: campAccommodations, fetchAccommodations } = useCampAccommodations(editionId.value)
 const { createRegistration, setExtras, setAccommodationPreferences, loading, error } = useRegistrations()
+const { getRegistrationPayments, getPaymentSettings } = usePayments()
 
 const currentStep = ref(1)
 const selectedMembers = ref<WizardMemberSelection[]>([])
@@ -49,6 +55,9 @@ const campatesPreference = ref<string>('')
 const edition = ref<CampEdition | null>(null)
 const acceptTerms = ref(false)
 const pageLoading = ref(true)
+const createdRegistrationId = ref<string | null>(null)
+const installments = ref<PaymentResponse[]>([])
+const paymentSettings = ref<PaymentSettings | null>(null)
 
 const isRepresentative = computed(
   () => !!familyUnit.value && familyUnit.value.representativeUserId === auth.user?.id
@@ -66,6 +75,7 @@ const hasActiveAccommodations = computed(() =>
 )
 const accommodationStepValue = 3
 const confirmStepValue = computed(() => (hasActiveAccommodations.value ? 4 : 3))
+const paymentStepValue = computed(() => confirmStepValue.value + 1)
 const stepAfterExtras = computed(() => (hasActiveAccommodations.value ? accommodationStepValue : confirmStepValue.value))
 
 const weekendVisitIsValid = computed(() =>
@@ -83,7 +93,7 @@ const formatCurrency = (amount: number): string =>
 
 const formatDate = (dateStr: string): string =>
   new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(
-    new Date(dateStr)
+    parseDateSafe(dateStr)
   )
 
 const handleConfirm = async () => {
@@ -147,13 +157,27 @@ const handleConfirm = async () => {
     }
   }
 
+  // Fetch payment data and advance to payment step
+  createdRegistrationId.value = created.id
+  const [paymentsResult, settingsResult] = await Promise.all([
+    getRegistrationPayments(created.id),
+    getPaymentSettings()
+  ])
+  installments.value = paymentsResult
+  paymentSettings.value = settingsResult
+
   toast.add({
     severity: 'success',
     summary: '¡Inscripción realizada!',
-    detail: 'Tu inscripción ha sido creada correctamente.',
+    detail: 'Tu inscripción ha sido creada. A continuación, las instrucciones de pago.',
     life: 4000
   })
-  router.push({ name: 'registration-detail', params: { id: created.id } })
+  currentStep.value = paymentStepValue.value
+}
+
+const handleInstallmentUpdated = (updated: PaymentResponse) => {
+  const index = installments.value.findIndex((p) => p.id === updated.id)
+  if (index !== -1) installments.value[index] = updated
 }
 
 onMounted(async () => {
@@ -189,13 +213,8 @@ onMounted(async () => {
 
       <template v-else>
         <div class="mb-6 flex items-center gap-3">
-          <Button
-            icon="pi pi-arrow-left"
-            severity="secondary"
-            text
-            @click="router.push({ name: 'camp' })"
-            aria-label="Volver"
-          />
+          <Button icon="pi pi-arrow-left" severity="secondary" text @click="router.push({ name: 'camp' })"
+            aria-label="Volver" />
           <div>
             <h1 class="text-2xl font-bold text-gray-900">Nueva inscripción</h1>
             <p v-if="edition" class="text-sm text-gray-500">
@@ -206,12 +225,7 @@ onMounted(async () => {
         </div>
 
         <!-- Non-representative warning -->
-        <Message
-          v-if="!isRepresentative && familyUnit"
-          severity="warn"
-          :closable="false"
-          class="mb-6"
-        >
+        <Message v-if="!isRepresentative && familyUnit" severity="warn" :closable="false" class="mb-6">
           Solo el representante de la unidad familiar puede inscribirse. Si quieres registrar a tu
           familia, contacta con el representante.
         </Message>
@@ -223,6 +237,7 @@ onMounted(async () => {
               <Step :value="2">Extras</Step>
               <Step v-if="hasActiveAccommodations" :value="3">Alojamiento</Step>
               <Step :value="confirmStepValue">Confirmar</Step>
+              <Step v-if="createdRegistrationId" :value="paymentStepValue">Pago</Step>
             </StepList>
 
             <StepPanels>
@@ -237,33 +252,18 @@ onMounted(async () => {
                       Elige qué miembros de tu unidad familiar se inscriben al campamento.
                     </p>
 
-                    <div
-                      v-if="familyMembers.length === 0"
-                      class="py-4 text-center text-sm text-gray-400"
-                    >
+                    <div v-if="familyMembers.length === 0" class="py-4 text-center text-sm text-gray-400">
                       No hay miembros en tu unidad familiar. Añádelos desde
-                      <RouterLink to="/family-unit" class="text-blue-600 underline"
-                        >Mi Unidad Familiar</RouterLink
-                      >.
+                      <RouterLink to="/family-unit" class="text-blue-600 underline">Mi Unidad Familiar</RouterLink>.
                     </div>
 
-                    <RegistrationMemberSelector
-                      v-else
-                      v-model="selectedMembers"
-                      :members="familyMembers"
-                      :edition="edition!"
-                    />
+                    <RegistrationMemberSelector v-else v-model="selectedMembers" :members="familyMembers"
+                      :edition="edition!" />
                   </div>
 
                   <div class="flex justify-end">
-                    <Button
-                      label="Siguiente"
-                      icon="pi pi-arrow-right"
-                      icon-pos="right"
-                      :disabled="!canProceedFromStep1"
-                      @click="currentStep = 2"
-                      data-testid="next-step-btn"
-                    />
+                    <Button label="Siguiente" icon="pi pi-arrow-right" icon-pos="right" :disabled="!canProceedFromStep1"
+                      @click="currentStep = 2" data-testid="next-step-btn" />
                   </div>
                 </div>
               </StepPanel>
@@ -279,24 +279,16 @@ onMounted(async () => {
                       Añade servicios o artículos adicionales para tu familia.
                     </p>
 
-                    <RegistrationExtrasSelector
-                      v-model="extrasSelections"
-                      :extras="campExtras"
-                    />
+                    <RegistrationExtrasSelector v-model="extrasSelections" :extras="campExtras" />
 
                     <!-- Special needs -->
                     <div class="mb-5 mt-6">
                       <label class="mb-1 block text-sm font-medium text-gray-700">
                         Necesidades especiales
                       </label>
-                      <Textarea
-                        v-model="specialNeeds"
-                        :rows="2"
-                        :maxlength="2000"
-                        placeholder="Dietas especiales, necesidades de movilidad, etc."
-                        class="w-full"
-                        data-testid="special-needs"
-                      />
+                      <Textarea v-model="specialNeeds" :rows="2" :maxlength="2000"
+                        placeholder="Dietas especiales, necesidades de movilidad, etc." class="w-full"
+                        data-testid="special-needs" />
                     </div>
 
                     <!-- Campmates preference -->
@@ -304,39 +296,19 @@ onMounted(async () => {
                       <label class="mb-1 block text-sm font-medium text-gray-700">
                         Preferencia de acampantes
                       </label>
-                      <Textarea
-                        v-model="campatesPreference"
-                        :rows="2"
-                        :maxlength="500"
-                        placeholder="Con quien te gustaria acampar cerca..."
-                        class="w-full"
-                        data-testid="campates-preference"
-                      />
+                      <Textarea v-model="campatesPreference" :rows="2" :maxlength="500"
+                        placeholder="Con quien te gustaria acampar cerca..." class="w-full"
+                        data-testid="campates-preference" />
                     </div>
                   </div>
 
                   <div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
-                    <Button
-                      label="Atrás"
-                      icon="pi pi-arrow-left"
-                      severity="secondary"
-                      @click="currentStep = 1"
-                    />
+                    <Button label="Atrás" icon="pi pi-arrow-left" severity="secondary" @click="currentStep = 1" />
                     <div class="flex gap-2">
-                      <Button
-                        label="Saltar este paso"
-                        severity="secondary"
-                        text
-                        @click="currentStep = stepAfterExtras"
-                        data-testid="skip-extras-btn"
-                      />
-                      <Button
-                        label="Siguiente"
-                        icon="pi pi-arrow-right"
-                        icon-pos="right"
-                        @click="currentStep = stepAfterExtras"
-                        data-testid="next-step-btn"
-                      />
+                      <Button label="Saltar este paso" severity="secondary" text @click="currentStep = stepAfterExtras"
+                        data-testid="skip-extras-btn" />
+                      <Button label="Siguiente" icon="pi pi-arrow-right" icon-pos="right"
+                        @click="currentStep = stepAfterExtras" data-testid="next-step-btn" />
                     </div>
                   </div>
                 </div>
@@ -353,34 +325,17 @@ onMounted(async () => {
                       Selecciona hasta 3 opciones de alojamiento ordenadas por preferencia.
                     </p>
 
-                    <RegistrationAccommodationSelector
-                      v-model="accommodationPreferences"
-                      :accommodations="campAccommodations"
-                    />
+                    <RegistrationAccommodationSelector v-model="accommodationPreferences"
+                      :accommodations="campAccommodations" />
                   </div>
 
                   <div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
-                    <Button
-                      label="Atrás"
-                      icon="pi pi-arrow-left"
-                      severity="secondary"
-                      @click="currentStep = 2"
-                    />
+                    <Button label="Atrás" icon="pi pi-arrow-left" severity="secondary" @click="currentStep = 2" />
                     <div class="flex gap-2">
-                      <Button
-                        label="Saltar este paso"
-                        severity="secondary"
-                        text
-                        @click="currentStep = confirmStepValue"
-                        data-testid="skip-accommodation-btn"
-                      />
-                      <Button
-                        label="Siguiente"
-                        icon="pi pi-arrow-right"
-                        icon-pos="right"
-                        @click="currentStep = confirmStepValue"
-                        data-testid="next-step-btn"
-                      />
+                      <Button label="Saltar este paso" severity="secondary" text @click="currentStep = confirmStepValue"
+                        data-testid="skip-accommodation-btn" />
+                      <Button label="Siguiente" icon="pi pi-arrow-right" icon-pos="right"
+                        @click="currentStep = confirmStepValue" data-testid="next-step-btn" />
                     </div>
                   </div>
                 </div>
@@ -403,18 +358,14 @@ onMounted(async () => {
                         Participantes seleccionados
                       </h3>
                       <ul class="space-y-1">
-                        <li
-                          v-for="member in selectedMemberDetails"
-                          :key="member.id"
-                          class="text-sm text-gray-800"
-                        >
+                        <li v-for="member in selectedMemberDetails" :key="member.id" class="text-sm text-gray-800">
                           {{ member.firstName }} {{ member.lastName }}
                           <span class="ml-1 text-xs text-gray-500">
                             ·
                             {{
                               ATTENDANCE_PERIOD_LABELS[
-                                selectedMembers.find((s) => s.memberId === member.id)!
-                                  .attendancePeriod
+                              selectedMembers.find((s) => s.memberId === member.id)!
+                                .attendancePeriod
                               ]
                             }}
                           </span>
@@ -426,11 +377,8 @@ onMounted(async () => {
                     <div v-if="hasExtrasSelected" class="mb-4 rounded-lg border border-gray-200 p-4">
                       <h3 class="mb-2 text-sm font-semibold text-gray-700">Extras seleccionados</h3>
                       <ul class="space-y-1">
-                        <li
-                          v-for="extra in extrasSelections.filter((e) => e.quantity > 0)"
-                          :key="extra.campEditionExtraId"
-                          class="text-sm text-gray-800"
-                        >
+                        <li v-for="extra in extrasSelections.filter((e) => e.quantity > 0)"
+                          :key="extra.campEditionExtraId" class="text-sm text-gray-800">
                           {{ extra.name }} × {{ extra.quantity }}
                           <p v-if="extra.userInput" class="mt-0.5 text-xs text-gray-500 italic">
                             {{ extra.userInput }}
@@ -440,21 +388,14 @@ onMounted(async () => {
                     </div>
 
                     <!-- Accommodation preferences summary -->
-                    <div
-                      v-if="accommodationPreferences.length > 0"
-                      class="mb-4 rounded-lg border border-gray-200 p-4"
-                    >
+                    <div v-if="accommodationPreferences.length > 0" class="mb-4 rounded-lg border border-gray-200 p-4">
                       <h3 class="mb-2 text-sm font-semibold text-gray-700">
                         Preferencias de alojamiento
                       </h3>
                       <ol class="list-inside list-decimal space-y-1">
-                        <li
-                          v-for="pref in [...accommodationPreferences].sort(
-                            (a, b) => a.preferenceOrder - b.preferenceOrder
-                          )"
-                          :key="pref.campEditionAccommodationId"
-                          class="text-sm text-gray-800"
-                        >
+                        <li v-for="pref in [...accommodationPreferences].sort(
+                          (a, b) => a.preferenceOrder - b.preferenceOrder
+                        )" :key="pref.campEditionAccommodationId" class="text-sm text-gray-800">
                           {{ pref.accommodationName }}
                         </li>
                       </ol>
@@ -465,21 +406,13 @@ onMounted(async () => {
                       <label class="mb-1 block text-sm font-medium text-gray-700">
                         Notas adicionales (opcional)
                       </label>
-                      <Textarea
-                        v-model="notes"
-                        :rows="3"
-                        :maxlength="1000"
-                        placeholder="Cualquier información adicional que quieras comunicar..."
-                        class="w-full"
-                        data-testid="notes-textarea"
-                      />
+                      <Textarea v-model="notes" :rows="3" :maxlength="1000"
+                        placeholder="Cualquier información adicional que quieras comunicar..." class="w-full"
+                        data-testid="notes-textarea" />
                     </div>
 
                     <!-- Preference fields summary -->
-                    <div
-                      v-if="specialNeeds || campatesPreference"
-                      class="mb-4 rounded-lg border border-gray-200 p-4"
-                    >
+                    <div v-if="specialNeeds || campatesPreference" class="mb-4 rounded-lg border border-gray-200 p-4">
                       <h3 class="mb-2 text-sm font-semibold text-gray-700">Informacion adicional</h3>
                       <dl class="space-y-1 text-sm">
                         <div v-if="specialNeeds" class="flex gap-2">
@@ -506,30 +439,18 @@ onMounted(async () => {
                         <li>He leído y acepto las normas del campamento.</li>
                         <li>
                           Autorizo el tratamiento de los datos personales según la
-                          <a
-                            href="/legal/privacy"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="font-medium text-amber-900 underline"
-                          >política de privacidad</a>.
+                          <a href="/legal/privacy" target="_blank" rel="noopener noreferrer"
+                            class="font-medium text-amber-900 underline">política de privacidad</a>.
                         </li>
                         <li>
                           Acepto las condiciones de pago y cancelación establecidas en el
-                          <a
-                            href="/legal/notice"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="font-medium text-amber-900 underline"
-                          >aviso legal</a>.
+                          <a href="/legal/notice" target="_blank" rel="noopener noreferrer"
+                            class="font-medium text-amber-900 underline">aviso legal</a>.
                         </li>
                       </ul>
                       <div class="flex items-start gap-2">
-                        <Checkbox
-                          v-model="acceptTerms"
-                          :binary="true"
-                          input-id="accept-terms"
-                          data-testid="accept-terms-checkbox"
-                        />
+                        <Checkbox v-model="acceptTerms" :binary="true" input-id="accept-terms"
+                          data-testid="accept-terms-checkbox" />
                         <label for="accept-terms" class="cursor-pointer text-sm text-amber-800">
                           He leído y acepto los términos y condiciones del campamento
                         </label>
@@ -538,20 +459,44 @@ onMounted(async () => {
                   </div>
 
                   <div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
-                    <Button
-                      label="Atrás"
-                      icon="pi pi-arrow-left"
-                      severity="secondary"
-                      @click="currentStep = hasActiveAccommodations ? accommodationStepValue : 2"
-                    />
-                    <Button
-                      label="Confirmar inscripción"
-                      icon="pi pi-check"
-                      :loading="loading"
-                      :disabled="selectedMembers.length === 0 || !acceptTerms"
-                      @click="handleConfirm"
-                      data-testid="confirm-registration-btn"
-                    />
+                    <Button label="Atrás" icon="pi pi-arrow-left" severity="secondary"
+                      @click="currentStep = hasActiveAccommodations ? accommodationStepValue : 2" />
+                    <Button label="Confirmar inscripción" icon="pi pi-check" :loading="loading"
+                      :disabled="selectedMembers.length === 0 || !acceptTerms" @click="handleConfirm"
+                      data-testid="confirm-registration-btn" />
+                  </div>
+                </div>
+              </StepPanel>
+
+              <!-- Step: Payment Instructions -->
+              <StepPanel v-if="createdRegistrationId" :value="paymentStepValue">
+                <div class="flex flex-col gap-6 py-4">
+                  <div>
+                    <h2 class="mb-1 text-base font-semibold text-gray-900">
+                      Instrucciones de pago
+                    </h2>
+                    <p class="mb-4 text-sm text-gray-500">
+                      Realiza una transferencia bancaria con los datos indicados y sube el justificante.
+                    </p>
+                  </div>
+
+                  <BankTransferInstructions v-if="paymentSettings" :iban="paymentSettings.iban"
+                    :bank-name="paymentSettings.bankName" :account-holder="paymentSettings.accountHolder" />
+
+                  <div class="space-y-4">
+                    <PaymentInstallmentCard v-for="payment in installments" :key="payment.id" :payment="payment"
+                      @updated="handleInstallmentUpdated" />
+                  </div>
+
+                  <Message v-if="installments.length > 1 && installments[1].dueDate" severity="info" :closable="false">
+                    El segundo plazo vence el {{ formatDate(installments[1].dueDate!) }}.
+                    Puedes subir el justificante ahora o más tarde desde el detalle de tu inscripción.
+                  </Message>
+
+                  <div class="flex justify-end">
+                    <Button label="Ir a mi inscripción" icon="pi pi-arrow-right" icon-pos="right"
+                      @click="router.push({ name: 'registration-detail', params: { id: createdRegistrationId! } })"
+                      data-testid="go-to-registration-btn" />
                   </div>
                 </div>
               </StepPanel>

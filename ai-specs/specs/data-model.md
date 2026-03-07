@@ -591,8 +591,9 @@ A family's registration to a specific camp. One registration per family per camp
 - `campId`: The camp being registered for (required, FK -> Camp)
 - `registeredByUserId`: User who created the registration (required, FK -> User)
 - `totalAmount`: Calculated total amount for all members in euros (required, decimal, >= 0)
-- `status`: Current registration status (required, enum: `Pending` | `Confirmed` | `Cancelled`)
+- `status`: Current registration status (required, enum: `Pending` | `Confirmed` | `Cancelled` | `Draft`)
 - `notes`: Additional notes from the registering user (optional, max 1000 characters)
+- `adminModifiedAt`: Timestamp of last admin modification (optional, set when admin edits the registration)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
@@ -600,7 +601,7 @@ A family's registration to a specific camp. One registration per family per camp
 
 - Unique constraint on (familyUnitId, campId): one registration per family per camp
 - TotalAmount is calculated as the sum of all RegistrationMember.individualAmount
-- Status transitions: Pending -> Confirmed (when fully paid) or Pending -> Cancelled. Confirmed -> Cancelled is also allowed
+- Status transitions: Pending -> Confirmed (when fully paid) or Pending -> Cancelled. Confirmed -> Cancelled is also allowed. Any non-Cancelled status -> Draft (when admin edits the registration). Draft -> Pending (when representative re-confirms)
 - Camp must have status Open to accept new registrations
 
 **Relationships:**
@@ -1199,6 +1200,7 @@ erDiagram
         decimal discountApplied
         enum status
         string notes
+        datetime adminModifiedAt
         datetime createdAt
         datetime updatedAt
     }
