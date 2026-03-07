@@ -605,6 +605,74 @@ public class RegistrationsServiceTests
             });
     }
 
+    // ── DTO field mapping tests ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetByIdAsync_ValidId_ResponseIncludesRepresentativeUserId()
+    {
+        var registrationId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var member = CreateFamilyMember(MemberId, FamilyUnitId);
+
+        var registration = BuildFullRegistration(registrationId, familyUnit, edition, [member], edition.PricePerAdult);
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>()).Returns(registration);
+
+        var result = await _sut.GetByIdAsync(registrationId, UserId, isAdminOrBoard: false, CancellationToken.None);
+
+        result.FamilyUnit.RepresentativeUserId.Should().Be(UserId);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_ValidId_ResponseIncludesCampLocation()
+    {
+        var registrationId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var member = CreateFamilyMember(MemberId, FamilyUnitId);
+
+        var registration = BuildFullRegistration(registrationId, familyUnit, edition, [member], edition.PricePerAdult);
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>()).Returns(registration);
+
+        var result = await _sut.GetByIdAsync(registrationId, UserId, isAdminOrBoard: false, CancellationToken.None);
+
+        result.CampEdition.Location.Should().Be("Test Location");
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_CampWithNullLocation_ResponseLocationIsNull()
+    {
+        var registrationId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        edition.Camp.Location = null;
+        var member = CreateFamilyMember(MemberId, FamilyUnitId);
+
+        var registration = BuildFullRegistration(registrationId, familyUnit, edition, [member], edition.PricePerAdult);
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>()).Returns(registration);
+
+        var result = await _sut.GetByIdAsync(registrationId, UserId, isAdminOrBoard: false, CancellationToken.None);
+
+        result.CampEdition.Location.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetByFamilyUnitAsync_HasRegistrations_ResponsesIncludeRepresentativeUserIdAndLocation()
+    {
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var registration = CreateRegistrationWithFamilyUnit(Guid.NewGuid(), familyUnit, edition);
+
+        _familyUnitsRepo.GetFamilyUnitByRepresentativeIdAsync(UserId, Arg.Any<CancellationToken>()).Returns(familyUnit);
+        _repo.GetByFamilyUnitAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns([registration]);
+
+        var result = await _sut.GetByFamilyUnitAsync(UserId, CancellationToken.None);
+
+        result.Should().HaveCount(1);
+        result[0].FamilyUnit.RepresentativeUserId.Should().Be(UserId);
+        result[0].CampEdition.Location.Should().Be("Test Location");
+    }
+
     // ── New field mapping tests ───────────────────────────────────────────────
 
     [Fact]

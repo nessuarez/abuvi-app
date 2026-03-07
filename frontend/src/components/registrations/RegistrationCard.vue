@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { RegistrationResponse } from '@/types/registration'
+import type { RegistrationListItem } from '@/types/registration'
 import RegistrationStatusBadge from './RegistrationStatusBadge.vue'
 import Button from 'primevue/button'
 
 defineProps<{
-  registration: RegistrationResponse
+  registration: RegistrationListItem
 }>()
 
 const emit = defineEmits<{
@@ -43,9 +43,7 @@ const formatCurrency = (amount: number): string =>
 
     <div class="mt-3 flex items-center justify-between">
       <span class="text-sm font-medium text-gray-700">
-        <template v-if="registration.pricing">
-          Total: {{ formatCurrency(registration.pricing.totalAmount) }}
-        </template>
+        Total: {{ formatCurrency(registration.totalAmount) }}
       </span>
       <Button
         label="Ver detalles"

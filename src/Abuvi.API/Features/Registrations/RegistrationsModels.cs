@@ -208,8 +208,8 @@ public record RegistrationResponse(
     bool IsAdminModified
 );
 
-public record RegistrationFamilyUnitSummary(Guid Id, string Name);
-public record RegistrationCampEditionSummary(Guid Id, string CampName, int Year, DateTime StartDate, DateTime EndDate, int Duration);
+public record RegistrationFamilyUnitSummary(Guid Id, string Name, Guid RepresentativeUserId);
+public record RegistrationCampEditionSummary(Guid Id, string CampName, int Year, DateTime StartDate, DateTime EndDate, int Duration, string? Location);
 public record PricingBreakdown(
     List<MemberPricingDetail> Members,
     decimal BaseTotalAmount,
@@ -346,10 +346,11 @@ public static class RegistrationMappingExtensions
         this Registration r,
         decimal amountPaid) => new(
         r.Id,
-        new(r.FamilyUnit.Id, r.FamilyUnit.Name),
+        new(r.FamilyUnit.Id, r.FamilyUnit.Name, r.FamilyUnit.RepresentativeUserId),
         new(r.CampEdition.Id, r.CampEdition.Camp.Name, r.CampEdition.Year,
             r.CampEdition.StartDate, r.CampEdition.EndDate,
-            (r.CampEdition.EndDate - r.CampEdition.StartDate).Days),
+            (r.CampEdition.EndDate - r.CampEdition.StartDate).Days,
+            r.CampEdition.Camp.Location),
         r.Status,
         r.Notes,
         new PricingBreakdown(
