@@ -12,6 +12,7 @@ vi.mock('primevue/galleria', () => ({
 }))
 
 vi.mock('@/assets/images/grupo-abuvi.jpg', () => ({ default: '/mock-grupo.jpg' }))
+vi.mock('@/assets/images/swello-IRWj0hdSbM4-unsplash.jpg', () => ({ default: '/mock-whatsapp.jpg' }))
 vi.mock('@/assets/images/camping-tents-generic.jpg', () => ({ default: '/mock-tents.jpg' }))
 vi.mock('@/assets/images/camping-friends.jpg', () => ({ default: '/mock-friends.jpg' }))
 
@@ -31,10 +32,10 @@ describe('HomeHeroCarousel', () => {
       },
     })
 
-  it('should render 3 slides', () => {
+  it('should render 4 slides', () => {
     const wrapper = createWrapper()
     const images = wrapper.findAll('img')
-    expect(images).toHaveLength(3)
+    expect(images).toHaveLength(4)
   })
 
   it('should display headline for the active slide', () => {
@@ -50,10 +51,10 @@ describe('HomeHeroCarousel', () => {
     expect(anniversaryLink?.attributes('href')).toBe('/anniversary')
   })
 
-  it('should render 3 dot indicator buttons', () => {
+  it('should render 4 dot indicator buttons', () => {
     const wrapper = createWrapper()
     const dots = wrapper.findAll('button')
-    expect(dots).toHaveLength(3)
+    expect(dots).toHaveLength(4)
   })
 
   it('should have correct alt text on images', () => {
@@ -61,6 +62,7 @@ describe('HomeHeroCarousel', () => {
     const images = wrapper.findAll('img')
     const altTexts = images.map((img) => img.attributes('alt'))
     expect(altTexts).toContain('Comunidad ABUVI reunida')
+    expect(altTexts).toContain('Comunidad WhatsApp ABUVI')
     expect(altTexts).toContain('Carpas en la naturaleza')
     expect(altTexts).toContain('Amigos en el campamento')
   })
@@ -78,5 +80,17 @@ describe('HomeHeroCarousel', () => {
     const wrapper = createWrapper()
     const link = wrapper.find('a')
     expect(link.attributes('href')).toBe('/anniversary')
+  })
+
+  it('should render external link for WhatsApp slide', async () => {
+    const wrapper = createWrapper()
+    const dots = wrapper.findAll('button')
+    await dots[1].trigger('click')
+
+    const externalLink = wrapper.find('a[target="_blank"]')
+    expect(externalLink.exists()).toBe(true)
+    expect(externalLink.attributes('href')).toBe('https://chat.whatsapp.com/EBsp8GfXGPEB6PM8u3HUGu')
+    expect(externalLink.attributes('rel')).toBe('noopener noreferrer')
+    expect(externalLink.text()).toContain('Unirse a WhatsApp')
   })
 })
