@@ -210,6 +210,26 @@ export function useRegistrations() {
     }
   }
 
+  const deleteRegistration = async (id: string): Promise<boolean> => {
+    loading.value = true
+    error.value = null
+    try {
+      await api.delete(`/registrations/${id}`)
+      if (registration.value?.id === id) {
+        registration.value = null
+      }
+      registrations.value = registrations.value.filter((r) => r.id !== id)
+      return true
+    } catch (err: unknown) {
+      error.value = (err as { response?: { data?: { error?: { message?: string } } } })
+        ?.response?.data?.error?.message || 'Could not delete the registration.'
+      console.error('Failed to delete registration:', err)
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     registrations,
     registration,
@@ -222,6 +242,7 @@ export function useRegistrations() {
     setExtras,
     setAccommodationPreferences,
     getAccommodationPreferences,
-    cancelRegistration
+    cancelRegistration,
+    deleteRegistration
   }
 }

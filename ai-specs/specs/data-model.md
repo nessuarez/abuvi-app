@@ -604,6 +604,7 @@ A family's registration to a specific camp. One registration per family per camp
 - Unique constraint on (familyUnitId, campId): one registration per family per camp
 - TotalAmount is calculated as the sum of all RegistrationMember.individualAmount
 - Status transitions: Pending -> Confirmed (when fully paid) or Pending -> Cancelled. Confirmed -> Cancelled is also allowed. Any non-Cancelled status -> Draft (when admin edits the registration). Draft -> Pending (when representative re-confirms)
+- Hard delete: Pending/Draft registrations with no payments can be permanently deleted. Representatives have a 24-hour grace period; admins can delete anytime. Cascade deletes RegistrationMembers, RegistrationExtras, and RegistrationAccommodationPreferences. Payments FK is Restrict — registrations with payments cannot be deleted.
 - Camp must have status Open to accept new registrations
 
 **Relationships:**

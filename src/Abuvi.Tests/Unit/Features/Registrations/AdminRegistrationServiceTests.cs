@@ -46,7 +46,8 @@ public class AdminRegistrationServiceTests
         _pricingService = new RegistrationPricingService(_settingsRepo);
         _sut = new RegistrationsService(
             _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo,
-            _editionsRepo, _accommodationsRepo, _pricingService, _emailService, _paymentsService, _logger);
+            _editionsRepo, _accommodationsRepo, _pricingService, _emailService,
+            _paymentsService, _logger);
     }
 
     // ── GetAdminListAsync ─────────────────────────────────────────────────────
