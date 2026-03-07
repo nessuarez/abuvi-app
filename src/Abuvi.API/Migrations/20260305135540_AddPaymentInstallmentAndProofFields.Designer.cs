@@ -3,6 +3,7 @@ using System;
 using Abuvi.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Abuvi.API.Migrations
 {
     [DbContext(typeof(AbuviDbContext))]
-    partial class AbuviDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260305135540_AddPaymentInstallmentAndProofFields")]
+    partial class AddPaymentInstallmentAndProofFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -647,22 +650,11 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("pricing_type");
 
-                    b.Property<bool>("RequiresUserInput")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("requires_user_input");
-
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("NOW()");
-
-                    b.Property<string>("UserInputLabel")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("user_input_label");
 
                     b.HasKey("Id");
 
@@ -1344,10 +1336,6 @@ namespace Abuvi.API.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
-                    b.Property<DateTime?>("AdminModifiedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("admin_modified_at");
-
                     b.Property<decimal>("BaseTotalAmount")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")
@@ -1513,11 +1501,6 @@ namespace Abuvi.API.Migrations
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("unit_price");
-
-                    b.Property<string>("UserInput")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("user_input");
 
                     b.HasKey("Id");
 

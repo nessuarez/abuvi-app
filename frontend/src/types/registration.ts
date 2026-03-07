@@ -2,7 +2,7 @@
 export type RegistrationStatus = 'Pending' | 'Confirmed' | 'Cancelled' | 'Draft'
 export type AgeCategory = 'Baby' | 'Child' | 'Adult'
 export type PaymentMethod = 'Card' | 'Transfer' | 'Cash'
-export type PaymentStatus = 'Pending' | 'Completed' | 'Failed' | 'Refunded'
+export type PaymentStatus = 'Pending' | 'PendingReview' | 'Completed' | 'Failed' | 'Refunded'
 
 // Complete is first to match the backend enum CLR default (0)
 export type AttendancePeriod = 'Complete' | 'FirstWeek' | 'SecondWeek' | 'WeekendVisit'
