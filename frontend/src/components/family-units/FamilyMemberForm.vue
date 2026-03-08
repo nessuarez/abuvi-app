@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
-import DatePicker from 'primevue/datepicker'
+import DateInput from '@/components/shared/DateInput.vue'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import type {
@@ -252,16 +252,13 @@ const handleCancel = () => {
       <label for="date-of-birth" class="font-medium text-sm">
         Fecha de Nacimiento <span class="text-red-500">*</span>
       </label>
-      <DatePicker
+      <DateInput
         id="date-of-birth"
         v-model="dateOfBirth"
-        dateFormat="dd/mm/yy"
         :maxDate="new Date()"
         :invalid="!!dateOfBirthError"
         :disabled="loading"
-        showIcon
         @blur="validateDateOfBirth"
-        class="w-full"
       />
       <small v-if="dateOfBirthError" class="text-red-500">{{ dateOfBirthError }}</small>
     </div>

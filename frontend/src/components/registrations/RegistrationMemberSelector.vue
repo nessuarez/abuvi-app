@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue'
 import Checkbox from 'primevue/checkbox'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
-import DatePicker from 'primevue/datepicker'
+import DateInput from '@/components/shared/DateInput.vue'
 
 import type { FamilyMemberResponse, FamilyRelationship } from '@/types/family-unit'
 import { FamilyRelationshipLabels } from '@/types/family-unit'
@@ -285,16 +285,16 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
         <div class="flex gap-2">
           <div class="flex-1">
             <label class="mb-1 block text-xs text-gray-500">Llegada</label>
-            <DatePicker :model-value="globalVisitStartDate ? parseDateLocal(globalVisitStartDate) : null"
-              :min-date="weekendMinDate" :max-date="weekendMaxDate" date-format="dd/mm/yy" show-icon
-              class="w-full text-sm" data-testid="global-visit-start"
+            <DateInput :model-value="globalVisitStartDate ? parseDateLocal(globalVisitStartDate) : null"
+              :min-date="weekendMinDate" :max-date="weekendMaxDate"
+              data-testid="global-visit-start"
               @update:model-value="(d: Date | null) => updateGlobalVisitDate('visitStartDate', d)" />
           </div>
           <div class="flex-1">
             <label class="mb-1 block text-xs text-gray-500">Salida</label>
-            <DatePicker :model-value="globalVisitEndDate ? parseDateLocal(globalVisitEndDate) : null"
+            <DateInput :model-value="globalVisitEndDate ? parseDateLocal(globalVisitEndDate) : null"
               :min-date="globalVisitStartDate ? parseDateLocal(globalVisitStartDate) : weekendMinDate"
-              :max-date="weekendMaxDate" date-format="dd/mm/yy" show-icon class="w-full text-sm"
+              :max-date="weekendMaxDate"
               data-testid="global-visit-end"
               @update:model-value="(d: Date | null) => updateGlobalVisitDate('visitEndDate', d)" />
           </div>
@@ -331,16 +331,16 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
             <div class="ml-[132px] flex gap-2">
               <div class="flex-1">
                 <label class="mb-1 block text-xs text-gray-500">Llegada</label>
-                <DatePicker :model-value="sel.visitStartDate ? parseDateLocal(sel.visitStartDate) : null"
-                  :min-date="weekendMinDate" :max-date="weekendMaxDate" date-format="dd/mm/yy" show-icon
-                  class="w-full text-sm" :data-testid="`visit-start-${sel.memberId}`"
+                <DateInput :model-value="sel.visitStartDate ? parseDateLocal(sel.visitStartDate) : null"
+                  :min-date="weekendMinDate" :max-date="weekendMaxDate"
+                  :data-testid="`visit-start-${sel.memberId}`"
                   @update:model-value="(d: Date | null) => updateVisitDate(sel.memberId, 'visitStartDate', d)" />
               </div>
               <div class="flex-1">
                 <label class="mb-1 block text-xs text-gray-500">Salida</label>
-                <DatePicker :model-value="sel.visitEndDate ? parseDateLocal(sel.visitEndDate) : null"
+                <DateInput :model-value="sel.visitEndDate ? parseDateLocal(sel.visitEndDate) : null"
                   :min-date="sel.visitStartDate ? parseDateLocal(sel.visitStartDate) : weekendMinDate"
-                  :max-date="weekendMaxDate" date-format="dd/mm/yy" show-icon class="w-full text-sm"
+                  :max-date="weekendMaxDate"
                   :data-testid="`visit-end-${sel.memberId}`"
                   @update:model-value="(d: Date | null) => updateVisitDate(sel.memberId, 'visitEndDate', d)" />
               </div>
