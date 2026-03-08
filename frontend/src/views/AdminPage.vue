@@ -1,114 +1,51 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import Container from '@/components/ui/Container.vue'
-import Tabs from 'primevue/tabs'
-import TabList from 'primevue/tablist'
-import Tab from 'primevue/tab'
-import TabPanels from 'primevue/tabpanels'
-import TabPanel from 'primevue/tabpanel'
-import CampsAdminPanel from '@/components/admin/CampsAdminPanel.vue'
-import FamilyUnitsAdminPanel from '@/components/admin/FamilyUnitsAdminPanel.vue'
-import UsersAdminPanel from '@/components/admin/UsersAdminPanel.vue'
-import BlobStorageAdminPanel from '@/components/admin/BlobStorageAdminPanel.vue'
-import MediaItemsReviewPanel from '@/components/admin/MediaItemsReviewPanel.vue'
-import PaymentsAdminPanel from '@/components/admin/PaymentsAdminPanel.vue'
-import RegistrationsAdminPanel from '@/components/admin/RegistrationsAdminPanel.vue'
-import AssociationSettingsPanel from '@/components/admin/AssociationSettingsPanel.vue'
-import { useAuthStore } from '@/stores/auth'
+import AdminSidebar from '@/components/admin/AdminSidebar.vue'
+import Button from 'primevue/button'
+import Drawer from 'primevue/drawer'
 
-const auth = useAuthStore()
+const drawerVisible = ref(false)
 </script>
 
 <template>
   <Container>
     <div class="py-8">
-      <h1 class="mb-6 text-3xl font-bold text-gray-900">Panel de Administración</h1>
+      <div class="mb-6 flex items-center justify-between">
+        <h1 class="text-3xl font-bold text-gray-900">Panel de Administración</h1>
+        <!-- Mobile menu toggle -->
+        <Button
+          icon="pi pi-bars"
+          text
+          rounded
+          class="md:hidden"
+          data-testid="admin-menu-toggle"
+          @click="drawerVisible = true"
+        />
+      </div>
 
-      <Tabs value="0" data-testid="admin-tabs">
-        <TabList>
-          <Tab value="0" data-testid="tab-camps">
-            <i class="pi pi-map mr-2" />
-            Campamentos
-          </Tab>
-          <Tab value="1" data-testid="tab-registrations">
-            <i class="pi pi-list-check mr-2" />
-            Inscripciones
-          </Tab>
-          <Tab value="2" data-testid="tab-family-units">
-            <i class="pi pi-users mr-2" />
-            Unidades Familiares
-          </Tab>
-          <Tab value="3" data-testid="tab-users">
-            <i class="pi pi-user-edit mr-2" />
-            Usuarios
-          </Tab>
-          <Tab v-if="auth.isAdmin" value="4" data-testid="tab-storage">
-            <i class="pi pi-database mr-2" />
-            Almacenamiento
-          </Tab>
-          <Tab v-if="auth.isBoard" value="5" data-testid="tab-media-review">
-            <i class="pi pi-images mr-2" />
-            Revisión de medios
-          </Tab>
-          <Tab v-if="auth.isBoard" value="5" data-testid="tab-payments">
-            <i class="pi pi-credit-card mr-2" />
-            Pagos
-          </Tab>
-          <Tab v-if="auth.isBoard" value="6" data-testid="tab-settings">
-            <i class="pi pi-cog mr-2" />
-            Configuración
-          </Tab>
-        </TabList>
+      <div class="flex gap-8">
+        <!-- Desktop sidebar -->
+        <AdminSidebar class="hidden md:block" />
 
-        <TabPanels>
-          <TabPanel value="0" data-testid="panel-camps">
-            <div class="py-4">
-              <CampsAdminPanel />
-            </div>
-          </TabPanel>
+        <!-- Mobile drawer -->
+        <Drawer
+          v-model:visible="drawerVisible"
+          header="Menú de Administración"
+          position="left"
+          class="md:hidden"
+          data-testid="admin-drawer"
+        >
+          <AdminSidebar @click="drawerVisible = false" />
+        </Drawer>
 
-          <TabPanel value="1" data-testid="panel-registrations">
-            <div class="py-4">
-              <RegistrationsAdminPanel />
-            </div>
-          </TabPanel>
-
-          <TabPanel value="2" data-testid="panel-family-units">
-            <div class="py-4">
-              <FamilyUnitsAdminPanel />
-            </div>
-          </TabPanel>
-
-          <TabPanel value="3" data-testid="panel-users">
-            <div class="py-4">
-              <UsersAdminPanel />
-            </div>
-          </TabPanel>
-
-          <TabPanel v-if="auth.isAdmin" value="4" data-testid="panel-storage">
-            <div class="py-4">
-              <BlobStorageAdminPanel />
-            </div>
-          </TabPanel>
-
-          <TabPanel v-if="auth.isBoard" value="5" data-testid="panel-media-review">
-            <div class="py-4">
-              <MediaItemsReviewPanel />
-            </div>
-          </TabPanel>
-
-          <TabPanel v-if="auth.isBoard" value="5" data-testid="panel-payments">
-            <div class="py-4">
-              <PaymentsAdminPanel />
-            </div>
-          </TabPanel>
-
-          <TabPanel v-if="auth.isBoard" value="6" data-testid="panel-settings">
-            <div class="py-4">
-              <AssociationSettingsPanel />
-            </div>
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
+        <!-- Main content area -->
+        <main class="min-w-0 flex-1">
+          <div class="py-4">
+            <router-view />
+          </div>
+        </main>
+      </div>
     </div>
   </Container>
 </template>
