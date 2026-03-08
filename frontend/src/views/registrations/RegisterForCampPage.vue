@@ -500,6 +500,51 @@ onMounted(async () => {
                   </div>
                 </div>
               </StepPanel>
+
+              <!-- Step: Payment Instructions -->
+              <StepPanel v-if="createdRegistrationId" :value="paymentStepValue">
+                <div class="flex flex-col gap-6 py-4">
+                  <div>
+                    <h2 class="mb-1 text-base font-semibold text-gray-900">
+                      Instrucciones de pago
+                    </h2>
+                    <p class="mb-4 text-sm text-gray-500">
+                      Realiza una transferencia bancaria con los datos indicados y sube el justificante.
+                    </p>
+                  </div>
+
+                  <BankTransferInstructions
+                    v-if="paymentSettings"
+                    :iban="paymentSettings.iban"
+                    :bank-name="paymentSettings.bankName"
+                    :account-holder="paymentSettings.accountHolder"
+                  />
+
+                  <div class="space-y-4">
+                    <PaymentInstallmentCard
+                      v-for="payment in installments"
+                      :key="payment.id"
+                      :payment="payment"
+                      @updated="handleInstallmentUpdated"
+                    />
+                  </div>
+
+                  <Message v-if="installments.length > 1 && installments[1].dueDate" severity="info" :closable="false">
+                    El segundo plazo vence el {{ formatDate(installments[1].dueDate!) }}.
+                    Puedes subir el justificante ahora o más tarde desde el detalle de tu inscripción.
+                  </Message>
+
+                  <div class="flex justify-end">
+                    <Button
+                      label="Ir a mi inscripción"
+                      icon="pi pi-arrow-right"
+                      icon-pos="right"
+                      @click="router.push({ name: 'registration-detail', params: { id: createdRegistrationId! } })"
+                      data-testid="go-to-registration-btn"
+                    />
+                  </div>
+                </div>
+              </StepPanel>
             </StepPanels>
           </Stepper>
         </div>

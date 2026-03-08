@@ -44,6 +44,7 @@ public class AdminRegistrationServiceTests
         _paymentsService = Substitute.For<IPaymentsService>();
         _logger = Substitute.For<ILogger<RegistrationsService>>();
         _pricingService = new RegistrationPricingService(_settingsRepo);
+        var paymentsService = Substitute.For<IPaymentsService>();
         _sut = new RegistrationsService(
             _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo,
             _editionsRepo, _accommodationsRepo, _pricingService, _emailService,

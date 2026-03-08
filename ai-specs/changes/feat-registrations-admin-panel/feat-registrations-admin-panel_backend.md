@@ -51,13 +51,17 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
 
 - **Implementation Steps**:
   1. Add `Draft` to the enum:
+
      ```csharp
      public enum RegistrationStatus { Pending, Confirmed, Cancelled, Draft }
      ```
+
   2. Add `AdminModifiedAt` nullable DateTime to the `Registration` entity:
+
      ```csharp
      public DateTime? AdminModifiedAt { get; set; }
      ```
+
   3. Verify no other code breaks (e.g., switch statements on `RegistrationStatus` — check `CountActiveByEditionAsync` which filters on status)
 
 - **Dependencies**: None
@@ -73,6 +77,7 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
 
 - **Implementation Steps**:
   1. Add the admin list response DTOs:
+
      ```csharp
      // ── Admin List DTOs ──
      public record AdminRegistrationListResponse(
@@ -113,6 +118,7 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
      ```
 
   2. Add admin list projection (internal, used by repository):
+
      ```csharp
      public record AdminRegistrationProjection(
          Guid Id,
@@ -131,6 +137,7 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
      ```
 
   3. Add admin edit request DTO:
+
      ```csharp
      public record AdminEditRegistrationRequest(
          List<MemberAttendanceRequest>? Members,
@@ -157,6 +164,7 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
 
 - **Implementation Steps**:
   1. Create `AdminEditRegistrationValidator : AbstractValidator<AdminEditRegistrationRequest>`:
+
      ```csharp
      public class AdminEditRegistrationValidator : AbstractValidator<AdminEditRegistrationRequest>
      {
@@ -211,12 +219,14 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
 
 - **Implementation Steps**:
   1. Add to `IRegistrationsRepository`:
+
      ```csharp
      Task<(List<AdminRegistrationProjection> Items, int TotalCount, AdminRegistrationTotals Totals)>
          GetAdminPagedAsync(Guid campEditionId, int page, int pageSize, string? search, string? status, CancellationToken ct);
      ```
 
   2. Implement `GetAdminPagedAsync` in `RegistrationsRepository`:
+
      ```csharp
      public async Task<(List<AdminRegistrationProjection> Items, int TotalCount, AdminRegistrationTotals Totals)>
          GetAdminPagedAsync(Guid campEditionId, int page, int pageSize, string? search, string? status, CancellationToken ct)
@@ -308,6 +318,7 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
 - **Implementation Steps**:
 
   1. **`GetAdminListAsync`**:
+
      ```csharp
      public async Task<AdminRegistrationListResponse> GetAdminListAsync(
          Guid campEditionId, int page, int pageSize, string? search, string? status, CancellationToken ct)
@@ -346,6 +357,7 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
      ```
 
   2. **`AdminUpdateAsync`**:
+
      ```csharp
      public async Task<RegistrationResponse> AdminUpdateAsync(
          Guid registrationId, AdminEditRegistrationRequest request, CancellationToken ct)
@@ -482,6 +494,7 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
 
 - **Implementation Steps**:
   1. Add a new route group for admin endpoints inside `MapRegistrationsEndpoints`:
+
      ```csharp
      // Admin endpoints — Board and Admin only
      var adminGroup = app.MapGroup("/api/camp-editions/{campEditionId:guid}/registrations")
@@ -510,6 +523,7 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
      ```
 
   2. Add handler for `GetAdminRegistrations`:
+
      ```csharp
      private static async Task<IResult> GetAdminRegistrations(
          Guid campEditionId,
@@ -533,6 +547,7 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
      ```
 
   3. Add handler for `AdminEditRegistration`:
+
      ```csharp
      private static async Task<IResult> AdminEditRegistration(
          Guid id,
@@ -572,6 +587,7 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
 - **Implementation Steps**:
   1. Find the existing `RegistrationConfiguration` class (implements `IEntityTypeConfiguration<Registration>`)
   2. Add column mapping:
+
      ```csharp
      builder.Property(r => r.AdminModifiedAt)
          .HasColumnName("admin_modified_at")
@@ -590,13 +606,16 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
 
 - **Implementation Steps**:
   1. Add `bool IsAdminModified` to `RegistrationResponse`:
+
      ```csharp
      public record RegistrationResponse(
          // ... existing fields ...
          bool IsAdminModified  // NEW: true when AdminModifiedAt is not null and status is Draft
      );
      ```
+
   2. Update the `ToResponse` extension method to populate it:
+
      ```csharp
      IsAdminModified: r.AdminModifiedAt != null && r.Status == RegistrationStatus.Draft
      ```
@@ -629,15 +648,18 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
 
 - **Implementation Steps**:
   1. Run migration generation:
+
      ```bash
      cd src/Abuvi.API
      dotnet ef migrations add AddDraftStatusAndAdminModifiedAt
      ```
+
   2. Review the generated migration:
      - Should add `admin_modified_at` column to `registrations` table
      - Should add `Draft` to the PostgreSQL enum type for `RegistrationStatus`
      - **Important**: If `RegistrationStatus` is stored as a string (check `HasColumnType` and max length in config), no enum migration is needed — just the new column
   3. Verify the migration applies cleanly:
+
      ```bash
      dotnet ef database update
      ```
@@ -654,9 +676,10 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
 - **File**: `tests/Abuvi.API.Tests/Features/Registrations/` (new test files)
 - **Action**: Write xUnit tests with FluentAssertions and NSubstitute
 
-#### Test Categories:
+#### Test Categories
 
 **A. `GetAdminListAsync` Service Tests:**
+
 1. ✅ Returns paginated list for valid camp edition
 2. ✅ Throws `NotFoundException` for non-existent camp edition
 3. ✅ Clamps page/pageSize to valid ranges
@@ -666,6 +689,7 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
 7. ✅ Returns empty list for edition with no registrations
 
 **B. `AdminUpdateAsync` Service Tests:**
+
 1. ✅ Updates members and recalculates pricing
 2. ✅ Updates extras and recalculates totals
 3. ✅ Updates text fields (notes, specialNeeds, campatesPreference)
@@ -677,6 +701,7 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
 9. ✅ Works for Pending, Confirmed, and Draft source statuses
 
 **C. Repository Tests (Integration):**
+
 1. ✅ `GetAdminPagedAsync` returns correct data with joins
 2. ✅ Pagination works correctly (skip/take)
 3. ✅ Search filter matches family name and representative name (case-insensitive)
@@ -684,6 +709,7 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
 5. ✅ Totals reflect filtered data
 
 **D. Validator Tests:**
+
 1. ✅ Valid request passes validation
 2. ✅ Members with missing MemberId fails
 3. ✅ Notes exceeding 1000 chars fails
@@ -760,6 +786,7 @@ All changes follow the existing Vertical Slice Architecture within `src/Abuvi.AP
 | Forbidden (wrong role) | 403 | — |
 
 All errors use the `ApiResponse<T>` envelope:
+
 ```json
 {
   "success": false,
@@ -773,6 +800,7 @@ All errors use the `ApiResponse<T>` envelope:
 ## Partial Update Support
 
 The `AdminEditRegistrationRequest` supports partial updates:
+
 - All fields are nullable/optional
 - Only non-null fields trigger updates
 - `Members`, `Extras`, `Preferences` — when provided, replace the entire collection (delete + re-create)

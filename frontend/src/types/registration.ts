@@ -185,6 +185,9 @@ export interface AvailableCampEditionResponse {
   weekendDays: number
   maxWeekendCapacity: number | null
   weekendSpotsRemaining: number | null
+  // Payment deadlines:
+  firstPaymentDeadline: string | null
+  secondPaymentDeadline: string | null
 }
 
 // Request types

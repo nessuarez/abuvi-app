@@ -239,6 +239,10 @@ public class CampEdition
     // Weekend visit capacity (optional separate cap; if null, uses MaxCapacity)
     public int? MaxWeekendCapacity { get; set; }
 
+    // Payment deadlines for this edition (null = use defaults: 117 / 75 days before StartDate)
+    public DateTime? FirstPaymentDeadline { get; set; }
+    public DateTime? SecondPaymentDeadline { get; set; }
+
     public string? AccommodationCapacityJson { get; set; }
 
     public AccommodationCapacity? GetAccommodationCapacity()
@@ -698,7 +702,9 @@ public record ActiveCampEditionResponse(
     string? Notes,
     string? Description,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    DateTime? FirstPaymentDeadline,
+    DateTime? SecondPaymentDeadline
 );
 
 /// <summary>
@@ -743,7 +749,9 @@ public record CurrentCampEditionResponse(
     IReadOnlyList<CampPhotoResponse> CampPhotos,
     AccommodationCapacity? AccommodationCapacity,
     int? CalculatedTotalBedCapacity,
-    IReadOnlyList<CampEditionExtraResponse> Extras
+    IReadOnlyList<CampEditionExtraResponse> Extras,
+    DateTime? FirstPaymentDeadline,
+    DateTime? SecondPaymentDeadline
 );
 
 /// <summary>
@@ -774,7 +782,10 @@ public record UpdateCampEditionRequest(
     decimal? PricePerAdultWeekend = null,
     decimal? PricePerChildWeekend = null,
     decimal? PricePerBabyWeekend = null,
-    int? MaxWeekendCapacity = null
+    int? MaxWeekendCapacity = null,
+    // Payment deadlines (null = use defaults: 117/75 days before StartDate):
+    DateTime? FirstPaymentDeadline = null,
+    DateTime? SecondPaymentDeadline = null
 );
 
 /// <summary>
@@ -815,7 +826,10 @@ public record CampEditionResponse(
     decimal? PricePerAdultWeekend,
     decimal? PricePerChildWeekend,
     decimal? PricePerBabyWeekend,
-    int? MaxWeekendCapacity
+    int? MaxWeekendCapacity,
+    // Payment deadlines:
+    DateTime? FirstPaymentDeadline,
+    DateTime? SecondPaymentDeadline
 );
 
 /// <summary>
