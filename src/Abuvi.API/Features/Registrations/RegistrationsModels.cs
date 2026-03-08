@@ -186,7 +186,9 @@ public record AvailableCampEditionResponse(
     DateOnly? WeekendEndDate,
     int WeekendDays,
     int? MaxWeekendCapacity,
-    int? WeekendSpotsRemaining
+    int? WeekendSpotsRemaining,
+    DateTime? FirstPaymentDeadline,
+    DateTime? SecondPaymentDeadline
 );
 
 public record AgeRangesInfo(int BabyMaxAge, int ChildMinAge, int ChildMaxAge, int AdultMinAge);

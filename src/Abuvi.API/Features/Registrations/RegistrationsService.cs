@@ -497,7 +497,9 @@ public class RegistrationsService(
                 WeekendEndDate: edition.WeekendEndDate,
                 WeekendDays: RegistrationPricingService.GetPeriodDays(AttendancePeriod.WeekendVisit, edition),
                 MaxWeekendCapacity: edition.MaxWeekendCapacity,
-                WeekendSpotsRemaining: weekendSpotsRemaining));
+                WeekendSpotsRemaining: weekendSpotsRemaining,
+                FirstPaymentDeadline: edition.FirstPaymentDeadline,
+                SecondPaymentDeadline: edition.SecondPaymentDeadline));
         }
 
         return result;

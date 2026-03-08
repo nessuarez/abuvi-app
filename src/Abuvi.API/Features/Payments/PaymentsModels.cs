@@ -58,7 +58,6 @@ public record PaymentSettingsResponse(
     string Iban,
     string BankName,
     string AccountHolder,
-    int SecondInstallmentDaysBefore,
     string TransferConceptPrefix
 );
 
@@ -66,7 +65,6 @@ public record PaymentSettingsRequest(
     string Iban,
     string BankName,
     string AccountHolder,
-    int SecondInstallmentDaysBefore,
     string TransferConceptPrefix
 );
 
@@ -76,6 +74,5 @@ public class PaymentSettingsJson
     public string Iban { get; set; } = string.Empty;
     public string BankName { get; set; } = string.Empty;
     public string AccountHolder { get; set; } = string.Empty;
-    public int SecondInstallmentDaysBefore { get; set; } = 15;
     public string TransferConceptPrefix { get; set; } = "CAMP";
 }
