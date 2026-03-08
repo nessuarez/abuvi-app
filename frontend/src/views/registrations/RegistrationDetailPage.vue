@@ -72,8 +72,8 @@ const canCancel = computed(
 const canDelete = computed(() => {
   if (!registration.value) return false
   const status = registration.value.status
-  if (status !== 'Pending' && status !== 'Draft') return false
-  return isRepresentative.value || isAdminOrBoard.value
+  if (isAdminOrBoard.value) return status !== 'Confirmed'
+  return (status === 'Pending' || status === 'Draft') && isRepresentative.value
 })
 
 const formatDate = (dateStr: string): string =>
