@@ -8,6 +8,7 @@ import InputText from 'primevue/inputtext'
 import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
 import Container from '@/components/ui/Container.vue'
+import ProfilePhotoAvatar from '@/components/family-units/ProfilePhotoAvatar.vue'
 import PayFeeDialog from '@/components/memberships/PayFeeDialog.vue'
 import MembershipDialog from '@/components/memberships/MembershipDialog.vue'
 import BulkMembershipDialog from '@/components/memberships/BulkMembershipDialog.vue'
@@ -25,7 +26,11 @@ const router = useRouter()
 const toast = useToast()
 
 const { fullUser, loading: profileLoading, error: profileError, loadProfile, updateProfile } = useProfile()
-const { familyUnit, familyMembers, getCurrentUserFamilyUnit, getFamilyMembers } = useFamilyUnits()
+const {
+  familyUnit, familyMembers, getCurrentUserFamilyUnit, getFamilyMembers,
+  uploadMemberProfilePhoto, removeMemberProfilePhoto,
+  uploadUnitProfilePhoto, removeUnitProfilePhoto
+} = useFamilyUnits()
 
 // --- Edit profile state ---
 const isEditing = ref(false)
@@ -225,6 +230,74 @@ const goToFamilyManagement = () => router.push('/family-unit/me')
 const goToForgotPassword = () => router.push('/forgot-password')
 
 const displayPhone = computed(() => fullUser.value?.phone ?? auth.user?.phone ?? null)
+
+// --- Profile photo state ---
+const uploadingUnitPhoto = ref(false)
+const uploadingMemberPhotoId = ref<string | null>(null)
+
+const isRepresentative = computed(() =>
+  familyUnit.value?.representativeUserId === auth.user?.id
+)
+
+async function onUploadUnitPhoto(file: File) {
+  if (!familyUnit.value) return
+  uploadingUnitPhoto.value = true
+  const result = await uploadUnitProfilePhoto(familyUnit.value.id, file)
+  uploadingUnitPhoto.value = false
+  if (result) {
+    toast.add({ severity: 'success', summary: 'Foto actualizada', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error al subir la foto', life: 5000 })
+  }
+}
+
+async function onRemoveUnitPhoto() {
+  if (!familyUnit.value) return
+  uploadingUnitPhoto.value = true
+  const ok = await removeUnitProfilePhoto(familyUnit.value.id)
+  uploadingUnitPhoto.value = false
+  if (ok) {
+    toast.add({ severity: 'success', summary: 'Foto eliminada', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error al eliminar la foto', life: 5000 })
+  }
+}
+
+async function onUploadMemberPhoto(memberId: string, file: File) {
+  if (!familyUnit.value) return
+  uploadingMemberPhotoId.value = memberId
+  const result = await uploadMemberProfilePhoto(familyUnit.value.id, memberId, file)
+  uploadingMemberPhotoId.value = null
+  if (result) {
+    // Update memberData local state
+    const idx = memberData.value.findIndex(d => d.member.id === memberId)
+    if (idx !== -1) {
+      memberData.value[idx] = { ...memberData.value[idx], member: result }
+    }
+    toast.add({ severity: 'success', summary: 'Foto actualizada', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error al subir la foto', life: 5000 })
+  }
+}
+
+async function onRemoveMemberPhoto(memberId: string) {
+  if (!familyUnit.value) return
+  uploadingMemberPhotoId.value = memberId
+  const ok = await removeMemberProfilePhoto(familyUnit.value.id, memberId)
+  uploadingMemberPhotoId.value = null
+  if (ok) {
+    const idx = memberData.value.findIndex(d => d.member.id === memberId)
+    if (idx !== -1) {
+      memberData.value[idx] = {
+        ...memberData.value[idx],
+        member: { ...memberData.value[idx].member, profilePhotoUrl: null }
+      }
+    }
+    toast.add({ severity: 'success', summary: 'Foto eliminada', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error al eliminar la foto', life: 5000 })
+  }
+}
 </script>
 
 <template>
@@ -240,12 +313,15 @@ const displayPhone = computed(() => fullUser.value?.phone ?? auth.user?.phone ??
           <div v-if="!isEditing">
             <div class="flex items-start justify-between gap-4">
               <div class="flex items-center gap-4">
-                <div
-                  class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xl font-bold text-primary-700"
-                  aria-hidden="true"
-                >
-                  {{ (auth.user?.firstName?.[0] ?? '') + (auth.user?.lastName?.[0] ?? '') }}
-                </div>
+                <ProfilePhotoAvatar
+                  :photo-url="familyUnit?.profilePhotoUrl ?? null"
+                  :initials="(auth.user?.firstName?.[0] ?? '') + (auth.user?.lastName?.[0] ?? '')"
+                  size="md"
+                  :editable="isRepresentative"
+                  :loading="uploadingUnitPhoto"
+                  @upload="onUploadUnitPhoto"
+                  @remove="onRemoveUnitPhoto"
+                />
                 <div>
                   <h2 class="text-xl font-semibold text-gray-900" data-testid="user-full-name">
                     {{ auth.fullName }}
@@ -449,13 +525,24 @@ const displayPhone = computed(() => fullUser.value?.phone ?? auth.user?.phone ??
                 class="flex flex-col gap-2 rounded-lg border border-gray-100 p-3 sm:flex-row sm:items-center sm:justify-between"
                 :data-testid="`member-row-${data.member.id}`"
               >
-                <div>
-                  <p class="font-medium text-gray-900">
-                    {{ data.member.firstName }} {{ data.member.lastName }}
-                  </p>
-                  <p class="text-xs text-gray-500">
-                    {{ FamilyRelationshipLabels[data.member.relationship] }} · {{ calculateAge(data.member.dateOfBirth) }} años
-                  </p>
+                <div class="flex items-center gap-3">
+                  <ProfilePhotoAvatar
+                    :photo-url="data.member.profilePhotoUrl"
+                    :initials="(data.member.firstName?.[0] ?? '') + (data.member.lastName?.[0] ?? '')"
+                    size="sm"
+                    :editable="isRepresentative"
+                    :loading="uploadingMemberPhotoId === data.member.id"
+                    @upload="(file: File) => onUploadMemberPhoto(data.member.id, file)"
+                    @remove="() => onRemoveMemberPhoto(data.member.id)"
+                  />
+                  <div>
+                    <p class="font-medium text-gray-900">
+                      {{ data.member.firstName }} {{ data.member.lastName }}
+                    </p>
+                    <p class="text-xs text-gray-500">
+                      {{ FamilyRelationshipLabels[data.member.relationship] }} · {{ calculateAge(data.member.dateOfBirth) }} años
+                    </p>
+                  </div>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">

@@ -299,6 +299,114 @@ export function useFamilyUnits() {
     }
   }
 
+  // Profile Photo: Family Member
+
+  const uploadMemberProfilePhoto = async (
+    familyUnitId: string,
+    memberId: string,
+    file: File
+  ): Promise<FamilyMemberResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await api.put<ApiResponse<FamilyMemberResponse>>(
+        `/family-units/${familyUnitId}/members/${memberId}/profile-photo`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      )
+      if (response.data.success && response.data.data) {
+        const idx = familyMembers.value.findIndex(m => m.id === memberId)
+        if (idx !== -1) {
+          familyMembers.value[idx] = response.data.data
+        }
+        return response.data.data
+      }
+      return null
+    } catch (err: unknown) {
+      const apiErr = err as { response?: { data?: { error?: { message?: string } } } }
+      error.value = apiErr?.response?.data?.error?.message || 'Error al subir la foto de perfil'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const removeMemberProfilePhoto = async (
+    familyUnitId: string,
+    memberId: string
+  ): Promise<boolean> => {
+    loading.value = true
+    error.value = null
+    try {
+      await api.delete(`/family-units/${familyUnitId}/members/${memberId}/profile-photo`)
+      const idx = familyMembers.value.findIndex(m => m.id === memberId)
+      if (idx !== -1) {
+        familyMembers.value[idx] = { ...familyMembers.value[idx], profilePhotoUrl: null }
+      }
+      return true
+    } catch (err: unknown) {
+      const apiErr = err as { response?: { data?: { error?: { message?: string } } } }
+      error.value = apiErr?.response?.data?.error?.message || 'Error al eliminar la foto de perfil'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Profile Photo: Family Unit
+
+  const uploadUnitProfilePhoto = async (
+    familyUnitId: string,
+    file: File
+  ): Promise<FamilyUnitResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await api.put<ApiResponse<FamilyUnitResponse>>(
+        `/family-units/${familyUnitId}/profile-photo`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      )
+      if (response.data.success && response.data.data) {
+        familyUnit.value = response.data.data
+        return response.data.data
+      }
+      return null
+    } catch (err: unknown) {
+      const apiErr = err as { response?: { data?: { error?: { message?: string } } } }
+      error.value = apiErr?.response?.data?.error?.message || 'Error al subir la foto familiar'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const removeUnitProfilePhoto = async (
+    familyUnitId: string
+  ): Promise<boolean> => {
+    loading.value = true
+    error.value = null
+    try {
+      await api.delete(`/family-units/${familyUnitId}/profile-photo`)
+      if (familyUnit.value) {
+        familyUnit.value = { ...familyUnit.value, profilePhotoUrl: null }
+      }
+      return true
+    } catch (err: unknown) {
+      const apiErr = err as { response?: { data?: { error?: { message?: string } } } }
+      error.value = apiErr?.response?.data?.error?.message || 'Error al eliminar la foto familiar'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     // State
     familyUnit,
@@ -321,6 +429,12 @@ export function useFamilyUnits() {
     getFamilyMembers,
     getFamilyMemberById,
     updateFamilyMember,
-    deleteFamilyMember
+    deleteFamilyMember,
+
+    // Profile Photo Methods
+    uploadMemberProfilePhoto,
+    removeMemberProfilePhoto,
+    uploadUnitProfilePhoto,
+    removeUnitProfilePhoto
   }
 }
