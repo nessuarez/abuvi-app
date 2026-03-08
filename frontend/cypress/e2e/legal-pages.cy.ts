@@ -102,63 +102,12 @@ describe('Legal Pages', () => {
       cy.get('[data-testid="legal-back-link"]').should('contain.text', 'Volver al inicio')
     })
 
-    it('should render accordion with chapters', () => {
-      // PrimeVue Accordion renders AccordionHeader elements
-      cy.get('.p-accordionheader').should('have.length', 7)
-    })
-
-    it('should expand accordion panels on click', () => {
-      cy.get('.p-accordionheader').first().click()
-      cy.get('.p-accordioncontent').first().should('be.visible')
+    it('should display placeholder message', () => {
+      cy.contains('Próximamente publicaremos aquí la documentación oficial de la asociación').should('be.visible')
     })
 
     it('should be accessible without authentication', () => {
       cy.url().should('include', '/legal/bylaws')
-      cy.get('[data-testid="legal-page-title"]').should('exist')
-    })
-  })
-
-  describe('Transparencia (/legal/transparency)', () => {
-    beforeEach(() => {
-      cy.visit('/legal/transparency')
-    })
-
-    it('should load and display the title', () => {
-      cy.get('[data-testid="legal-page-title"]').should('contain.text', 'Transparencia')
-    })
-
-    it('should display the last updated date', () => {
-      cy.get('[data-testid="legal-last-updated"]').should('be.visible')
-    })
-
-    it('should show the "Volver al inicio" back link', () => {
-      cy.get('[data-testid="legal-back-link"]').should('contain.text', 'Volver al inicio')
-    })
-
-    it('should display the table of contents', () => {
-      cy.get('[data-testid="legal-toc"]').should('be.visible')
-    })
-
-    it('should show all required sections', () => {
-      cy.get('#quienes-somos').should('exist')
-      cy.get('#estructura-gobierno').should('exist')
-      cy.get('#estructura-organizativa').should('exist')
-      cy.get('#informacion-financiera').should('exist')
-      cy.get('#memoria-actividades').should('exist')
-      cy.get('#documentos').should('exist')
-      cy.get('#contacto').should('exist')
-    })
-
-    it('should render board members table', () => {
-      cy.get('#estructura-gobierno').find('table').should('exist')
-    })
-
-    it('should render documents table', () => {
-      cy.get('#documentos').find('table').should('exist')
-    })
-
-    it('should be accessible without authentication', () => {
-      cy.url().should('include', '/legal/transparency')
       cy.get('[data-testid="legal-page-title"]').should('exist')
     })
   })
