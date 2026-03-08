@@ -430,7 +430,7 @@ public class PaymentsServiceTests
         Method = PaymentMethod.Transfer,
         Status = status,
         InstallmentNumber = 2,
-        TransferConcept = "CAMP-2026-GARCIA-2",
+        TransferConcept = "CAMP-GAR-2",
         CreatedAt = DateTime.UtcNow,
         UpdatedAt = DateTime.UtcNow,
         Registration = new Registration

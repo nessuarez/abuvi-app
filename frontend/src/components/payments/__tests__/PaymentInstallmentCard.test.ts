@@ -25,7 +25,7 @@ const makePayment = (overrides: Partial<PaymentResponse> = {}): PaymentResponse 
   dueDate: '2026-07-01T00:00:00Z',
   method: 'Transfer',
   status: 'Pending',
-  transferConcept: 'CAMP-2026-GARCIA-1',
+  transferConcept: 'CAMP-GAR-1',
   proofFileUrl: null,
   proofFileName: null,
   proofUploadedAt: null,
@@ -49,7 +49,7 @@ describe('PaymentInstallmentCard', () => {
 
   it('displays transfer concept', () => {
     const wrapper = mount(makePayment())
-    expect(wrapper.text()).toContain('CAMP-2026-GARCIA-1')
+    expect(wrapper.text()).toContain('CAMP-GAR-1')
   })
 
   it('renders ProofUploader when showUpload is true', () => {

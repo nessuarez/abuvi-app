@@ -242,7 +242,8 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
         :class="{ 'border-blue-400 bg-blue-50': isSelected(member.id) }" :data-testid="`member-label-${member.id}`"
         @click="toggleMember(member.id)">
         <Checkbox :model-value="isSelected(member.id)" :binary="true"
-          :input-id="`member-${member.id}`" data-testid="member-checkbox" @click.stop />
+          :input-id="`member-${member.id}`" data-testid="member-checkbox"
+          @click.stop="toggleMember(member.id)" />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
             <span class="font-medium text-gray-900">
