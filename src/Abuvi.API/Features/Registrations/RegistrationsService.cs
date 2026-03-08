@@ -536,11 +536,12 @@ public class RegistrationsService(
 
             return new RegistrationListResponse(
                 Id: r.Id,
-                FamilyUnit: new RegistrationFamilyUnitSummary(r.FamilyUnit.Id, r.FamilyUnit.Name),
+                FamilyUnit: new RegistrationFamilyUnitSummary(r.FamilyUnit.Id, r.FamilyUnit.Name, r.FamilyUnit.RepresentativeUserId),
                 CampEdition: new RegistrationCampEditionSummary(
                     r.CampEdition.Id, r.CampEdition.Camp.Name, r.CampEdition.Year,
                     r.CampEdition.StartDate, r.CampEdition.EndDate,
-                    (r.CampEdition.EndDate - r.CampEdition.StartDate).Days),
+                    (r.CampEdition.EndDate - r.CampEdition.StartDate).Days,
+                    r.CampEdition.Camp.Location),
                 Status: r.Status,
                 TotalAmount: r.TotalAmount,
                 AmountPaid: amountPaid,
@@ -627,7 +628,7 @@ public class RegistrationsService(
         return new AdminRegistrationListResponse(
             Items: items.Select(p => new AdminRegistrationListItem(
                 p.Id,
-                new RegistrationFamilyUnitSummary(p.FamilyUnitId, p.FamilyUnitName),
+                new RegistrationFamilyUnitSummary(p.FamilyUnitId, p.FamilyUnitName, p.RepresentativeUserId),
                 new RepresentativeSummary(p.RepresentativeUserId, p.RepresentativeFirstName, p.RepresentativeLastName, p.RepresentativeEmail),
                 p.Status,
                 p.MemberCount,
@@ -778,6 +779,47 @@ public class RegistrationsService(
         logger.LogInformation("Registration {RegistrationId} edited by admin, status set to Draft", registrationId);
 
         return updated.ToResponse(amountPaid);
+    }
+
+    public async Task DeleteAsync(
+        Guid registrationId, Guid requestingUserId, bool isAdminOrBoard, CancellationToken ct)
+    {
+        // 1. Load registration with details (Payments + FamilyUnit needed for validation)
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException(nameof(Registration), registrationId);
+
+        // 2. Validate authorization
+        if (!isAdminOrBoard)
+        {
+            if (registration.FamilyUnit.RepresentativeUserId != requestingUserId)
+                throw new UnauthorizedAccessException("You are not authorized to delete this registration.");
+        }
+
+        // 3. Validate status — only Pending or Draft
+        if (registration.Status is RegistrationStatus.Confirmed)
+            throw new BusinessRuleException("Confirmed registrations cannot be deleted. Please cancel first.");
+        if (registration.Status is RegistrationStatus.Cancelled)
+            throw new BusinessRuleException("Cancelled registrations cannot be deleted.");
+
+        // 4. Validate no payments exist
+        if (registration.Payments?.Any() == true)
+            throw new BusinessRuleException("Cannot delete registration with existing payments. Please contact an administrator.");
+
+        // 5. Validate time window (representative only)
+        if (!isAdminOrBoard)
+        {
+            var gracePeriod = TimeSpan.FromHours(24);
+            if (DateTime.UtcNow - registration.CreatedAt > gracePeriod)
+                throw new BusinessRuleException("Registration can only be deleted within 24 hours of creation.");
+        }
+
+        // 6. Execute deletion
+        await registrationsRepo.DeleteAsync(registrationId, ct);
+
+        // 7. Log the action
+        logger.LogInformation(
+            "Registration {RegistrationId} deleted by user {UserId} (Admin: {IsAdmin})",
+            registrationId, requestingUserId, isAdminOrBoard);
     }
 
     private static CampRegistrationEmailData BuildRegistrationEmailData(

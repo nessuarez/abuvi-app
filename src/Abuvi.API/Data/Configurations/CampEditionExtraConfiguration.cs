@@ -83,6 +83,14 @@ public class CampEditionExtraConfiguration : IEntityTypeConfiguration<CampEditio
             .HasMaxLength(200)
             .HasColumnName("user_input_label");
 
+        // Sort order
+        builder.Property(e => e.SortOrder)
+            .IsRequired()
+            .HasDefaultValue(0)
+            .HasColumnName("sort_order");
+
+        builder.ToTable(t => t.HasCheckConstraint("CK_CampEditionExtras_SortOrder", "sort_order >= 0"));
+
         // Timestamps: required, default NOW()
         builder.Property(e => e.CreatedAt)
             .IsRequired()

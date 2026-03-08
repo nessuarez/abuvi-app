@@ -9,6 +9,7 @@ import Container from '@/components/ui/Container.vue'
 import RegistrationStatusBadge from '@/components/registrations/RegistrationStatusBadge.vue'
 import RegistrationPricingBreakdown from '@/components/registrations/RegistrationPricingBreakdown.vue'
 import RegistrationCancelDialog from '@/components/registrations/RegistrationCancelDialog.vue'
+import RegistrationDeleteDialog from '@/components/registrations/RegistrationDeleteDialog.vue'
 import BankTransferInstructions from '@/components/payments/BankTransferInstructions.vue'
 import PaymentInstallmentCard from '@/components/payments/PaymentInstallmentCard.vue'
 import { useRegistrations } from '@/composables/useRegistrations'
@@ -27,11 +28,14 @@ const {
   error,
   getRegistrationById,
   cancelRegistration,
+  deleteRegistration,
   getAccommodationPreferences
 } = useRegistrations()
 const { getRegistrationPayments, getPaymentSettings } = usePayments()
 const showCancelDialog = ref(false)
 const cancelling = ref(false)
+const showDeleteDialog = ref(false)
+const deleting = ref(false)
 const installments = ref<PaymentResponse[]>([])
 const paymentSettingsData = ref<PaymentSettings | null>(null)
 
@@ -64,6 +68,13 @@ const canCancel = computed(
     registration.value?.status === 'Confirmed' ||
     registration.value?.status === 'Draft'
 )
+
+const canDelete = computed(() => {
+  if (!registration.value) return false
+  const status = registration.value.status
+  if (status !== 'Pending' && status !== 'Draft') return false
+  return isRepresentative.value || isAdminOrBoard.value
+})
 
 const formatDate = (dateStr: string): string =>
   new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(
@@ -109,6 +120,29 @@ const handleCancel = async () => {
     })
   } else {
     toast.add({ severity: 'error', summary: 'Error', detail: error.value, life: 5000 })
+  }
+}
+
+const handleDelete = async () => {
+  deleting.value = true
+  const success = await deleteRegistration(registrationId.value)
+  deleting.value = false
+  showDeleteDialog.value = false
+  if (success) {
+    toast.add({
+      severity: 'success',
+      summary: 'Registration deleted',
+      detail: 'Your registration has been deleted. You can register again for this camp edition.',
+      life: 4000
+    })
+    router.push('/registrations')
+  } else {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.value || 'Could not delete the registration.',
+      life: 5000
+    })
   }
 }
 
@@ -255,14 +289,18 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Cancel action -->
-        <div v-if="isRepresentative && canCancel" class="flex justify-end">
-          <Button label="Cancelar inscripción" severity="danger" outlined icon="pi pi-times"
-            @click="showCancelDialog = true" data-testid="cancel-registration-btn" />
+        <!-- Actions -->
+        <div v-if="(isRepresentative && canCancel) || canDelete" class="flex justify-end gap-2">
+          <Button v-if="isRepresentative && canCancel" label="Cancelar inscripción" severity="danger" outlined
+            icon="pi pi-times" @click="showCancelDialog = true" data-testid="cancel-registration-btn" />
+          <Button v-if="canDelete" label="Delete registration" severity="danger" icon="pi pi-trash"
+            @click="showDeleteDialog = true" data-testid="delete-registration-btn" />
         </div>
 
         <RegistrationCancelDialog v-model:visible="showCancelDialog" :registration-id="registrationId"
           :loading="cancelling" @confirm="handleCancel" />
+        <RegistrationDeleteDialog v-model:visible="showDeleteDialog" :loading="deleting"
+          @confirm="handleDelete" />
       </template>
     </div>
   </Container>

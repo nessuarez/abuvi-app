@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import Galleria from 'primevue/galleria'
 
 import imgGrupo from '@/assets/images/grupo-abuvi.jpg'
+import imgWhatsapp from '@/assets/images/swello-IRWj0hdSbM4-unsplash.jpg'
 import imgTents from '@/assets/images/camping-tents-generic.jpg'
 import imgFriends from '@/assets/images/camping-friends.jpg'
 
@@ -13,6 +14,7 @@ interface HeroSlide {
   description: string
   ctaLabel: string
   ctaPath: string
+  external?: boolean
 }
 
 const slides: HeroSlide[] = [
@@ -24,6 +26,16 @@ const slides: HeroSlide[] = [
       'Desde 1976 creando recuerdos. Celebra con nosotros medio siglo de ABUVI compartiendo tus historias y fotos.',
     ctaLabel: 'Participar en el Aniversario',
     ctaPath: '/anniversary',
+  },
+  {
+    image: imgWhatsapp,
+    imageAlt: 'Comunidad WhatsApp ABUVI',
+    headline: 'Únete a la Comunidad de Whatsapp',
+    description:
+      'Mantente al día con las novedades, eventos y actividades de ABUVI. Únete a nuestro grupo de WhatsApp.',
+    ctaLabel: 'Unirse a WhatsApp',
+    ctaPath: 'https://chat.whatsapp.com/EBsp8GfXGPEB6PM8u3HUGu',
+    external: true,
   },
   {
     image: imgTents,
@@ -46,6 +58,7 @@ const slides: HeroSlide[] = [
 ]
 
 const activeIndex = ref(0)
+const activeSlide = computed(() => slides[activeIndex.value] as HeroSlide)
 </script>
 
 <template>
@@ -103,20 +116,30 @@ const activeIndex = ref(0)
         <h1
           class="mb-4 text-3xl font-bold text-white drop-shadow-lg md:text-5xl"
         >
-          {{ slides[activeIndex].headline }}
+          {{ activeSlide.headline }}
         </h1>
 
         <p
           class="mb-8 text-lg font-medium text-amber-100 drop-shadow-md md:text-xl"
         >
-          {{ slides[activeIndex].description }}
+          {{ activeSlide.description }}
         </p>
 
-        <router-link
-          :to="slides[activeIndex].ctaPath"
+        <a
+          v-if="activeSlide.external"
+          :href="activeSlide.ctaPath"
+          target="_blank"
+          rel="noopener noreferrer"
           class="inline-block rounded-lg bg-amber-400 px-8 py-4 text-lg font-semibold text-amber-900 shadow-lg transition-colors hover:bg-amber-300 focus:outline-none focus:ring-4 focus:ring-amber-300/50"
         >
-          {{ slides[activeIndex].ctaLabel }}
+          {{ activeSlide.ctaLabel }}
+        </a>
+        <router-link
+          v-else
+          :to="activeSlide.ctaPath"
+          class="inline-block rounded-lg bg-amber-400 px-8 py-4 text-lg font-semibold text-amber-900 shadow-lg transition-colors hover:bg-amber-300 focus:outline-none focus:ring-4 focus:ring-amber-300/50"
+        >
+          {{ activeSlide.ctaLabel }}
         </router-link>
       </div>
 

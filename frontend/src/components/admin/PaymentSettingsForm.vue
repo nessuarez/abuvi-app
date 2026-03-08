@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -13,6 +14,7 @@ const { getPaymentSettings, updatePaymentSettings, loading, error } = usePayment
 const iban = ref('')
 const bankName = ref('')
 const accountHolder = ref('')
+const secondInstallmentDaysBefore = ref(15)
 const transferConceptPrefix = ref('CAMP')
 const initialLoading = ref(true)
 const saving = ref(false)
@@ -37,6 +39,7 @@ const handleSave = async () => {
     iban: iban.value.replace(/\s/g, ''),
     bankName: bankName.value.trim(),
     accountHolder: accountHolder.value.trim(),
+    secondInstallmentDaysBefore: secondInstallmentDaysBefore.value,
     transferConceptPrefix: transferConceptPrefix.value.trim().toUpperCase()
   })
   saving.value = false
@@ -56,6 +59,7 @@ onMounted(async () => {
     iban.value = settings.iban
     bankName.value = settings.bankName
     accountHolder.value = settings.accountHolder
+    secondInstallmentDaysBefore.value = settings.secondInstallmentDaysBefore
     transferConceptPrefix.value = settings.transferConceptPrefix
   }
   initialLoading.value = false
@@ -83,6 +87,16 @@ onMounted(async () => {
       <div>
         <label class="mb-1 block text-sm font-medium text-gray-700">Titular de la cuenta</label>
         <InputText v-model="accountHolder" class="w-full" placeholder="Asociación ABUVI" />
+      </div>
+
+      <div>
+        <label class="mb-1 block text-sm font-medium text-gray-700">
+          Días de antelación para el 2º plazo
+        </label>
+        <InputNumber v-model="secondInstallmentDaysBefore" :min="1" :max="90" class="w-full" />
+        <p class="mt-1 text-xs text-gray-500">
+          El 2º plazo vencerá estos días antes del inicio del campamento.
+        </p>
       </div>
 
       <div>

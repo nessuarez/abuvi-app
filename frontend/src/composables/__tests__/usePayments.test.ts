@@ -166,6 +166,7 @@ describe('usePayments', () => {
         iban: 'ES1234567890123456789012',
         bankName: 'Banco Test',
         accountHolder: 'Asociación ABUVI',
+        secondInstallmentDaysBefore: 15,
         transferConceptPrefix: 'CAMP'
       }
       vi.mocked(api.get).mockResolvedValueOnce({
@@ -187,6 +188,7 @@ describe('usePayments', () => {
         iban: 'ES1234567890123456789012',
         bankName: 'Banco Test',
         accountHolder: 'Asociación ABUVI',
+        secondInstallmentDaysBefore: 15,
         transferConceptPrefix: 'CAMP'
       }
       vi.mocked(api.put).mockResolvedValueOnce({

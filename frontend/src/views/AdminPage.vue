@@ -12,6 +12,7 @@ import BlobStorageAdminPanel from '@/components/admin/BlobStorageAdminPanel.vue'
 import MediaItemsReviewPanel from '@/components/admin/MediaItemsReviewPanel.vue'
 import PaymentsAdminPanel from '@/components/admin/PaymentsAdminPanel.vue'
 import RegistrationsAdminPanel from '@/components/admin/RegistrationsAdminPanel.vue'
+import AssociationSettingsPanel from '@/components/admin/AssociationSettingsPanel.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -48,9 +49,13 @@ const auth = useAuthStore()
             <i class="pi pi-images mr-2" />
             Revisión de medios
           </Tab>
-          <Tab v-if="auth.isBoard" value="5" data-testid="tab-payments">
+          <Tab v-if="auth.isBoard" value="6" data-testid="tab-payments">
             <i class="pi pi-credit-card mr-2" />
             Pagos
+          </Tab>
+          <Tab v-if="auth.isBoard" value="7" data-testid="tab-settings">
+            <i class="pi pi-cog mr-2" />
+            Configuración
           </Tab>
         </TabList>
 
@@ -91,9 +96,15 @@ const auth = useAuthStore()
             </div>
           </TabPanel>
 
-          <TabPanel v-if="auth.isBoard" value="5" data-testid="panel-payments">
+          <TabPanel v-if="auth.isBoard" value="6" data-testid="panel-payments">
             <div class="py-4">
               <PaymentsAdminPanel />
+            </div>
+          </TabPanel>
+
+          <TabPanel v-if="auth.isBoard" value="7" data-testid="panel-settings">
+            <div class="py-4">
+              <AssociationSettingsPanel />
             </div>
           </TabPanel>
         </TabPanels>

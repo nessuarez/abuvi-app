@@ -21,6 +21,7 @@ public class AdminRegistrationServiceTests
     private readonly ICampEditionAccommodationsRepository _accommodationsRepo;
     private readonly IAssociationSettingsRepository _settingsRepo;
     private readonly IEmailService _emailService;
+    private readonly IPaymentsService _paymentsService;
     private readonly ILogger<RegistrationsService> _logger;
     private readonly RegistrationPricingService _pricingService;
     private readonly RegistrationsService _sut;
@@ -40,13 +41,14 @@ public class AdminRegistrationServiceTests
         _accommodationsRepo = Substitute.For<ICampEditionAccommodationsRepository>();
         _settingsRepo = Substitute.For<IAssociationSettingsRepository>();
         _emailService = Substitute.For<IEmailService>();
+        _paymentsService = Substitute.For<IPaymentsService>();
         _logger = Substitute.For<ILogger<RegistrationsService>>();
         _pricingService = new RegistrationPricingService(_settingsRepo);
         var paymentsService = Substitute.For<IPaymentsService>();
         _sut = new RegistrationsService(
             _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo,
             _editionsRepo, _accommodationsRepo, _pricingService, _emailService,
-            paymentsService, _logger);
+            _paymentsService, _logger);
     }
 
     // ── GetAdminListAsync ─────────────────────────────────────────────────────
@@ -78,6 +80,7 @@ public class AdminRegistrationServiceTests
         result.Totals.TotalRegistrations.Should().Be(1);
         result.Totals.TotalMembers.Should().Be(3);
         result.Items[0].FamilyUnit.Name.Should().Be("García Family");
+        result.Items[0].FamilyUnit.RepresentativeUserId.Should().Be(UserId);
         result.Items[0].Representative.Email.Should().Be("juan@test.com");
         result.Items[0].AmountRemaining.Should().Be(700m);
     }

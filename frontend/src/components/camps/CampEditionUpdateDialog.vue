@@ -8,6 +8,7 @@ import Textarea from 'primevue/textarea'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Message from 'primevue/message'
 import { useCampEditions } from '@/composables/useCampEditions'
+import { formatDateLocal, parseDateLocal } from '@/utils/date'
 import type { CampEdition, UpdateCampEditionRequest } from '@/types/camp-edition'
 
 interface Props {
@@ -95,21 +96,20 @@ const initializeForm = () => {
   form.pricePerChild = props.edition.pricePerChild
   form.pricePerBaby = props.edition.pricePerBaby
   form.useCustomAgeRanges = props.edition.useCustomAgeRanges
-  // Map from existing CampEdition field names (without 'custom' prefix) to form fields
-  form.customBabyMaxAge = props.edition.babyMaxAge ?? null
-  form.customChildMinAge = props.edition.childMinAge ?? null
-  form.customChildMaxAge = props.edition.childMaxAge ?? null
-  form.customAdultMinAge = props.edition.adultMinAge ?? null
+  form.customBabyMaxAge = props.edition.customBabyMaxAge ?? null
+  form.customChildMinAge = props.edition.customChildMinAge ?? null
+  form.customChildMaxAge = props.edition.customChildMaxAge ?? null
+  form.customAdultMinAge = props.edition.customAdultMinAge ?? null
   form.maxCapacity = props.edition.maxCapacity > 0 ? props.edition.maxCapacity : null
   form.notes = ''
   form.allowPartialAttendance = props.edition.pricePerAdultWeek != null
-  form.halfDate = props.edition.halfDate ? new Date(props.edition.halfDate) : null
+  form.halfDate = props.edition.halfDate ? parseDateLocal(props.edition.halfDate) : null
   form.pricePerAdultWeek = props.edition.pricePerAdultWeek ?? null
   form.pricePerChildWeek = props.edition.pricePerChildWeek ?? null
   form.pricePerBabyWeek = props.edition.pricePerBabyWeek ?? null
   form.allowWeekendVisit = props.edition.weekendStartDate != null
-  form.weekendStartDate = props.edition.weekendStartDate ? new Date(props.edition.weekendStartDate) : null
-  form.weekendEndDate = props.edition.weekendEndDate ? new Date(props.edition.weekendEndDate) : null
+  form.weekendStartDate = props.edition.weekendStartDate ? parseDateLocal(props.edition.weekendStartDate) : null
+  form.weekendEndDate = props.edition.weekendEndDate ? parseDateLocal(props.edition.weekendEndDate) : null
   form.pricePerAdultWeekend = props.edition.pricePerAdultWeekend ?? null
   form.pricePerChildWeekend = props.edition.pricePerChildWeekend ?? null
   form.pricePerBabyWeekend = props.edition.pricePerBabyWeekend ?? null
@@ -126,7 +126,7 @@ watch(() => props.visible, (visible) => {
 
 const formatDateToIso = (date: Date | null): string => {
   if (!date) return ''
-  return date.toISOString().split('T')[0]
+  return formatDateLocal(date)
 }
 
 const validate = (): boolean => {

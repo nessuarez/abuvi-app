@@ -10,6 +10,7 @@ import PricingBreakdown from '@/components/camps/PricingBreakdown.vue'
 import CampExtrasSection from '@/components/camps/CampExtrasSection.vue'
 import { useCampEditions } from '@/composables/useCampEditions'
 import { useFamilyUnits } from '@/composables/useFamilyUnits'
+import { useAssociationSettings } from '@/composables/useAssociationSettings'
 import { useAuthStore } from '@/stores/auth'
 import type { AgeRangeSettings } from '@/types/association-settings'
 import type { CampLocation } from '@/types/camp'
@@ -22,6 +23,9 @@ const router = useRouter()
 const auth = useAuthStore()
 const { currentCampEdition, loading, error, fetchCurrentCampEdition } = useCampEditions()
 const { familyUnit, getCurrentUserFamilyUnit } = useFamilyUnits()
+const { ageRanges: globalAgeRanges, fetchAgeRanges } = useAssociationSettings()
+
+const defaultAgeRanges: AgeRangeSettings = { babyMaxAge: 2, childMinAge: 3, childMaxAge: 12, adultMinAge: 13 }
 
 // ── Derived state ──────────────────────────────────────────────────────────────
 
@@ -36,15 +40,15 @@ const isPreviousYear = computed(() => {
 
 const ageRanges = computed<AgeRangeSettings>(() => {
   const e = currentCampEdition.value
-  if (!e || !e.useCustomAgeRanges) {
-    return { babyMaxAge: 3, childMinAge: 4, childMaxAge: 14, adultMinAge: 15 }
+  if (e?.useCustomAgeRanges) {
+    return {
+      babyMaxAge: e.customBabyMaxAge ?? defaultAgeRanges.babyMaxAge,
+      childMinAge: e.customChildMinAge ?? defaultAgeRanges.childMinAge,
+      childMaxAge: e.customChildMaxAge ?? defaultAgeRanges.childMaxAge,
+      adultMinAge: e.customAdultMinAge ?? defaultAgeRanges.adultMinAge
+    }
   }
-  return {
-    babyMaxAge: e.customBabyMaxAge ?? 3,
-    childMinAge: e.customChildMinAge ?? 4,
-    childMaxAge: e.customChildMaxAge ?? 14,
-    adultMinAge: e.customAdultMinAge ?? 15
-  }
+  return globalAgeRanges.value ?? defaultAgeRanges
 })
 
 const mapLocations = computed<CampLocation[]>(() => {
@@ -100,6 +104,7 @@ const goToRegister = () => {
 onMounted(() => {
   fetchCurrentCampEdition()
   getCurrentUserFamilyUnit()
+  fetchAgeRanges()
 })
 </script>
 

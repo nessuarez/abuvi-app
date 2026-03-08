@@ -4,6 +4,7 @@ import Button from 'primevue/button'
 import PaymentStatusBadge from './PaymentStatusBadge.vue'
 import ProofUploader from './ProofUploader.vue'
 import type { PaymentResponse } from '@/types/payment'
+import { parseDateSafe } from '@/utils/date'
 
 const props = withDefaults(
   defineProps<{
@@ -24,7 +25,7 @@ const formatCurrency = (amount: number): string =>
 
 const formatDate = (dateStr: string): string =>
   new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(
-    new Date(dateStr)
+    parseDateSafe(dateStr)
   )
 
 const copyToClipboard = async (text: string) => {

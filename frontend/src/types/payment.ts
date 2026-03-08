@@ -27,6 +27,7 @@ export interface PaymentSettings {
   iban: string
   bankName: string
   accountHolder: string
+  secondInstallmentDaysBefore: number
   transferConceptPrefix: string
 }
 

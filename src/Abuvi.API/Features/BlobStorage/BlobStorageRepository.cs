@@ -13,9 +13,13 @@ public sealed class BlobStorageRepository : IBlobStorageRepository, IDisposable
     public BlobStorageRepository(IOptions<BlobStorageOptions> options)
     {
         _options = options.Value;
+        var endpoint = _options.Endpoint;
+        if (!string.IsNullOrEmpty(endpoint) && !endpoint.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            endpoint = $"https://{endpoint}";
+
         var config = new AmazonS3Config
         {
-            ServiceURL = _options.Endpoint,
+            ServiceURL = endpoint,
             ForcePathStyle = true, // Required for Hetzner and most S3-compatible providers
         };
         _s3 = new AmazonS3Client(_options.AccessKeyId, _options.SecretAccessKey, config);
@@ -30,6 +34,7 @@ public sealed class BlobStorageRepository : IBlobStorageRepository, IDisposable
             InputStream = stream,
             ContentType = contentType,
             CannedACL = S3CannedACL.PublicRead, // Bucket is configured for public read
+            AutoCloseStream = false, // Caller manages stream lifetime
         };
         await _s3.PutObjectAsync(request, ct);
     }

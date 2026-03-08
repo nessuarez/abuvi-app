@@ -26,6 +26,7 @@ public interface IRegistrationsRepository
     Task AddAsync(Registration registration, CancellationToken ct);
     Task UpdateAsync(Registration registration, CancellationToken ct);
     Task DeleteMembersByRegistrationIdAsync(Guid registrationId, CancellationToken ct);
+    Task DeleteAsync(Guid id, CancellationToken ct);
 }
 
 public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsRepository
@@ -166,5 +167,13 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
         await db.RegistrationMembers
             .Where(m => m.RegistrationId == registrationId)
             .ExecuteDeleteAsync(ct);
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct)
+    {
+        var entity = await db.Registrations.FindAsync([id], ct);
+        if (entity is null) return;
+        db.Registrations.Remove(entity);
+        await db.SaveChangesAsync(ct);
     }
 }

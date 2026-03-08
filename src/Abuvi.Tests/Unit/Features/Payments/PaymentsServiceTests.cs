@@ -101,7 +101,7 @@ public class PaymentsServiceTests
     }
 
     [Fact]
-    public async Task CreateInstallmentsAsync_NoDeadlines_UsesDefaultCalculation()
+    public async Task CreateInstallmentsAsync_ValidRegistration_SetsCorrectDueDates()
     {
         var registration = CreateRegistration(totalAmount: 200m);
         _registrationsRepo.GetByIdWithDetailsAsync(RegistrationId, Arg.Any<CancellationToken>())
@@ -111,42 +111,9 @@ public class PaymentsServiceTests
 
         var result = await _sut.CreateInstallmentsAsync(RegistrationId, CancellationToken.None);
 
-        result[0].DueDate.Should().Be(registration.CampEdition.StartDate.AddDays(-117));
-        result[1].DueDate.Should().Be(registration.CampEdition.StartDate.AddDays(-75));
-    }
-
-    [Fact]
-    public async Task CreateInstallmentsAsync_EditionHasDeadlines_UsesEditionDates()
-    {
-        var registration = CreateRegistration(totalAmount: 200m);
-        registration.CampEdition.FirstPaymentDeadline = new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc);
-        registration.CampEdition.SecondPaymentDeadline = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
-        _registrationsRepo.GetByIdWithDetailsAsync(RegistrationId, Arg.Any<CancellationToken>())
-            .Returns(registration);
-        _settingsRepo.GetByKeyAsync("payment_settings", Arg.Any<CancellationToken>())
-            .ReturnsNull();
-
-        var result = await _sut.CreateInstallmentsAsync(RegistrationId, CancellationToken.None);
-
-        result[0].DueDate.Should().Be(new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc));
-        result[1].DueDate.Should().Be(new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc));
-    }
-
-    [Fact]
-    public async Task CreateInstallmentsAsync_EditionHasPartialDeadlines_UsesDefaultForMissing()
-    {
-        var registration = CreateRegistration(totalAmount: 200m);
-        registration.CampEdition.FirstPaymentDeadline = new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc);
-        registration.CampEdition.SecondPaymentDeadline = null;
-        _registrationsRepo.GetByIdWithDetailsAsync(RegistrationId, Arg.Any<CancellationToken>())
-            .Returns(registration);
-        _settingsRepo.GetByKeyAsync("payment_settings", Arg.Any<CancellationToken>())
-            .ReturnsNull();
-
-        var result = await _sut.CreateInstallmentsAsync(RegistrationId, CancellationToken.None);
-
-        result[0].DueDate.Should().Be(new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc));
-        result[1].DueDate.Should().Be(registration.CampEdition.StartDate.AddDays(-75));
+        result[0].DueDate.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+        result[1].DueDate.Should().BeCloseTo(
+            registration.CampEdition.StartDate.AddDays(-15), TimeSpan.FromMinutes(1));
     }
 
     [Fact]
@@ -375,6 +342,7 @@ public class PaymentsServiceTests
         var result = await _sut.GetPaymentSettingsAsync(CancellationToken.None);
 
         result.TransferConceptPrefix.Should().Be("CAMP");
+        result.SecondInstallmentDaysBefore.Should().Be(15);
     }
 
     [Fact]
@@ -394,6 +362,7 @@ public class PaymentsServiceTests
 
         result.Iban.Should().Be("ES1234567890123456789012");
         result.TransferConceptPrefix.Should().Be("ABUVI");
+        result.SecondInstallmentDaysBefore.Should().Be(20);
     }
 
     [Fact]
@@ -403,7 +372,7 @@ public class PaymentsServiceTests
             .ReturnsNull();
 
         var request = new PaymentSettingsRequest(
-            "ES1234567890123456789012", "Test Bank", "Test Holder", "CAMP");
+            "ES1234567890123456789012", "Test Bank", "Test Holder", 20, "CAMP");
 
         var result = await _sut.UpdatePaymentSettingsAsync(
             request, AdminUserId, CancellationToken.None);

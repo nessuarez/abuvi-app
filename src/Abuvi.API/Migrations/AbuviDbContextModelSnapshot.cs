@@ -661,6 +661,12 @@ namespace Abuvi.API.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("requires_user_input");
 
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
+
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -681,6 +687,8 @@ namespace Abuvi.API.Migrations
                             t.HasCheckConstraint("CK_CampEditionExtras_MaxQuantity", "max_quantity IS NULL OR max_quantity > 0");
 
                             t.HasCheckConstraint("CK_CampEditionExtras_Price", "price >= 0");
+
+                            t.HasCheckConstraint("CK_CampEditionExtras_SortOrder", "sort_order >= 0");
                         });
                 });
 

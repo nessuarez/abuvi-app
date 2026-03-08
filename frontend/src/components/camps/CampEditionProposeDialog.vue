@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -11,6 +11,7 @@ import Message from 'primevue/message'
 import type { Camp } from '@/types/camp'
 import type { CampEdition } from '@/types/camp-edition'
 import { useCampEditions } from '@/composables/useCampEditions'
+import { formatDateLocal } from '@/utils/date'
 
 interface Props {
   visible: boolean
@@ -36,6 +37,11 @@ const form = ref({
   pricePerChild: 0,
   pricePerBaby: 0,
   maxCapacity: 0,
+  useCustomAgeRanges: false,
+  customBabyMaxAge: null as number | null,
+  customChildMinAge: null as number | null,
+  customChildMaxAge: null as number | null,
+  customAdultMinAge: null as number | null,
   proposalReason: '',
   allowPartialAttendance: false,
   halfDate: null as Date | null,
@@ -83,6 +89,11 @@ watch(() => props.visible, (val) => {
       pricePerChild: props.camp?.pricePerChild ?? 0,
       pricePerBaby: props.camp?.pricePerBaby ?? 0,
       maxCapacity: 0,
+      useCustomAgeRanges: false,
+      customBabyMaxAge: null,
+      customChildMinAge: null,
+      customChildMaxAge: null,
+      customAdultMinAge: null,
       proposalReason: '',
       allowPartialAttendance: false,
       halfDate: null,
@@ -127,6 +138,24 @@ const validate = (): boolean => {
     if (form.value.pricePerBabyWeek == null || form.value.pricePerBabyWeek < 0)
       errors.value.pricePerBabyWeek = 'El precio por bebé/semana es obligatorio'
   }
+  if (form.value.useCustomAgeRanges) {
+    if (!form.value.customBabyMaxAge && form.value.customBabyMaxAge !== 0)
+      errors.value.customBabyMaxAge = 'La edad máxima de bebé es obligatoria'
+    if (!form.value.customChildMinAge)
+      errors.value.customChildMinAge = 'La edad mínima de niño es obligatoria'
+    if (!form.value.customChildMaxAge)
+      errors.value.customChildMaxAge = 'La edad máxima de niño es obligatoria'
+    if (!form.value.customAdultMinAge)
+      errors.value.customAdultMinAge = 'La edad mínima de adulto es obligatoria'
+    if (form.value.customBabyMaxAge != null && form.value.customChildMinAge != null
+        && form.value.customBabyMaxAge >= form.value.customChildMinAge) {
+      errors.value.customBabyMaxAge = 'La edad máxima de bebé debe ser menor a la edad mínima de niño'
+    }
+    if (form.value.customChildMaxAge != null && form.value.customAdultMinAge != null
+        && form.value.customChildMaxAge >= form.value.customAdultMinAge) {
+      errors.value.customChildMaxAge = 'La edad máxima de niño debe ser menor a la edad mínima de adulto'
+    }
+  }
   if (form.value.allowWeekendVisit) {
     if (!form.value.weekendStartDate)
       errors.value.weekendStartDate = 'La fecha de inicio del fin de semana es obligatoria'
@@ -147,7 +176,7 @@ const validate = (): boolean => {
   return Object.keys(errors.value).length === 0
 }
 
-const toISODate = (date: Date): string => date.toISOString().split('T')[0]
+const toISODate = (date: Date): string => formatDateLocal(date)
 
 const handleSubmit = async () => {
   if (!validate()) return
@@ -161,6 +190,13 @@ const handleSubmit = async () => {
     pricePerChild: form.value.pricePerChild,
     pricePerBaby: form.value.pricePerBaby,
     maxCapacity: form.value.maxCapacity || null,
+    useCustomAgeRanges: form.value.useCustomAgeRanges,
+    ...(form.value.useCustomAgeRanges && {
+      customBabyMaxAge: form.value.customBabyMaxAge ?? undefined,
+      customChildMinAge: form.value.customChildMinAge ?? undefined,
+      customChildMaxAge: form.value.customChildMaxAge ?? undefined,
+      customAdultMinAge: form.value.customAdultMinAge ?? undefined
+    }),
     proposalReason: form.value.proposalReason || undefined,
     halfDate: form.value.allowPartialAttendance && form.value.halfDate
       ? toISODate(form.value.halfDate) : null,
@@ -368,6 +404,57 @@ const handleSubmit = async () => {
               class="w-full"
             />
             <span v-if="errors.maxWeekendCapacity" class="text-xs text-red-600">{{ errors.maxWeekendCapacity }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Age Ranges -->
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-3">
+          <ToggleSwitch v-model="form.useCustomAgeRanges" />
+          <label class="text-sm font-medium text-gray-700">Usar rangos de edad personalizados</label>
+        </div>
+
+        <div v-if="form.useCustomAgeRanges" class="grid grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-gray-600">Edad máx. bebé</label>
+            <InputNumber
+              v-model="form.customBabyMaxAge"
+              :min="0"
+              :max="10"
+              :use-grouping="false"
+            />
+            <span v-if="errors.customBabyMaxAge" class="text-xs text-red-600">{{ errors.customBabyMaxAge }}</span>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-gray-600">Edad mín. niño</label>
+            <InputNumber
+              v-model="form.customChildMinAge"
+              :min="0"
+              :max="18"
+              :use-grouping="false"
+            />
+            <span v-if="errors.customChildMinAge" class="text-xs text-red-600">{{ errors.customChildMinAge }}</span>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-gray-600">Edad máx. niño</label>
+            <InputNumber
+              v-model="form.customChildMaxAge"
+              :min="0"
+              :max="18"
+              :use-grouping="false"
+            />
+            <span v-if="errors.customChildMaxAge" class="text-xs text-red-600">{{ errors.customChildMaxAge }}</span>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-gray-600">Edad mín. adulto</label>
+            <InputNumber
+              v-model="form.customAdultMinAge"
+              :min="0"
+              :max="99"
+              :use-grouping="false"
+            />
+            <span v-if="errors.customAdultMinAge" class="text-xs text-red-600">{{ errors.customAdultMinAge }}</span>
           </div>
         </div>
       </div>
