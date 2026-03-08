@@ -5,6 +5,7 @@ import { useToast } from 'primevue/usetoast'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import PhoneInput from '@/components/shared/PhoneInput.vue'
 import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
 import Container from '@/components/ui/Container.vue'
@@ -394,15 +395,13 @@ async function onRemoveMemberPhoto(memberId: string) {
 
               <div class="flex flex-col gap-1">
                 <label for="edit-phone" class="text-sm font-medium">Teléfono</label>
-                <InputText
+                <PhoneInput
                   id="edit-phone"
                   v-model="editForm.phone"
-                  placeholder="+34612345678"
                   :invalid="!!editErrors.phone"
                   data-testid="edit-phone"
                 />
                 <small v-if="editErrors.phone" class="text-red-500">{{ editErrors.phone }}</small>
-                <small class="text-gray-500">Opcional. Formato internacional (ej. +34612345678).</small>
               </div>
 
               <div class="flex justify-end gap-2">
