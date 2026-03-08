@@ -97,7 +97,7 @@ onMounted(async () => {
                 <span class="font-semibold">{{ formatCurrency(edition.pricePerAdult) }}</span>
               </div>
               <div class="flex justify-between">
-                <span class="text-gray-600">Precio niño:</span>
+                <span class="text-gray-600">Precio infantil:</span>
                 <span class="font-semibold">{{ formatCurrency(edition.pricePerChild) }}</span>
               </div>
               <div class="flex justify-between">

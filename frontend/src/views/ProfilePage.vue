@@ -73,7 +73,7 @@ const getFeeForCurrentYear = (fees: MembershipFeeResponse[]): MembershipFeeRespo
 const getMembershipBadge = (data: MemberMembershipData): { label: string; severity: 'success' | 'warn' | 'danger' | 'secondary' } => {
   if (!data.membershipId) return { label: 'Sin membresía', severity: 'warn' }
   if (!data.isActiveMembership) return { label: 'Membresía inactiva', severity: 'danger' }
-  return { label: 'Socio activo', severity: 'success' }
+  return { label: 'Socio/a activo/a', severity: 'success' }
 }
 
 const getFeeBadge = (data: MemberMembershipData): { label: string; severity: 'success' | 'warn' | 'danger' | 'secondary' } | null => {

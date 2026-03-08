@@ -223,7 +223,7 @@ const isFormValid = computed(() => {
     <div class="flex gap-3">
       <Button
         type="submit"
-        :label="mode === 'create' ? 'Crear usuario' : 'Actualizar usuario'"
+        :label="mode === 'create' ? 'Crear cuenta' : 'Actualizar cuenta'"
         :loading="loading"
         :disabled="!isFormValid || loading"
         class="flex-1"

@@ -166,7 +166,7 @@ const handlePayFee = async (request: PayFeeRequest) => {
         <!-- Status row -->
         <div class="flex flex-wrap justify-between items-center gap-3">
           <div class="flex items-center gap-3">
-            <Tag v-if="membership.isActive" value="Socio activo" severity="success" />
+            <Tag v-if="membership.isActive" value="Socio/a activo/a" severity="success" />
             <Tag v-else value="Membresía inactiva" severity="secondary" />
             <span class="text-sm text-gray-600">Desde {{ formatDate(membership.startDate) }}</span>
           </div>

@@ -279,7 +279,7 @@ const handleCancel = () => {
       />
       <Button
         type="submit"
-        :label="isEditing ? 'Actualizar invitado' : 'Añadir invitado'"
+        :label="isEditing ? 'Actualizar invitado/a' : 'Añadir invitado/a'"
         :loading="loading"
         :disabled="loading"
       />

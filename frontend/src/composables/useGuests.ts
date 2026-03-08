@@ -22,7 +22,7 @@ export function useGuests() {
       guests.value = response.data.data
       return response.data.data
     } catch (err: any) {
-      error.value = err.response?.data?.error?.message || 'Error al obtener los invitados'
+      error.value = err.response?.data?.error?.message || 'Error al obtener la lista de invitados/as'
       return []
     } finally {
       loading.value = false
@@ -46,7 +46,7 @@ export function useGuests() {
       guests.value.push(response.data.data)
       return response.data.data
     } catch (err: any) {
-      error.value = err.response?.data?.error?.message || 'Error al crear el invitado'
+      error.value = err.response?.data?.error?.message || 'Error al crear el/la invitado/a'
       return null
     } finally {
       loading.value = false
@@ -72,7 +72,7 @@ export function useGuests() {
       if (idx !== -1) guests.value[idx] = response.data.data
       return response.data.data
     } catch (err: any) {
-      error.value = err.response?.data?.error?.message || 'Error al actualizar el invitado'
+      error.value = err.response?.data?.error?.message || 'Error al actualizar el/la invitado/a'
       return null
     } finally {
       loading.value = false
@@ -90,7 +90,7 @@ export function useGuests() {
       guests.value = guests.value.filter((g) => g.id !== guestId)
       return true
     } catch (err: any) {
-      error.value = err.response?.data?.error?.message || 'Error al eliminar el invitado'
+      error.value = err.response?.data?.error?.message || 'Error al eliminar el/la invitado/a'
       return false
     } finally {
       loading.value = false

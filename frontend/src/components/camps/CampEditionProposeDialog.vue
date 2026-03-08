@@ -134,7 +134,7 @@ const validate = (): boolean => {
     if (form.value.pricePerAdultWeek == null || form.value.pricePerAdultWeek < 0)
       errors.value.pricePerAdultWeek = 'El precio por adulto/semana es obligatorio'
     if (form.value.pricePerChildWeek == null || form.value.pricePerChildWeek < 0)
-      errors.value.pricePerChildWeek = 'El precio por niño/semana es obligatorio'
+      errors.value.pricePerChildWeek = 'El precio infantil/semana es obligatorio'
     if (form.value.pricePerBabyWeek == null || form.value.pricePerBabyWeek < 0)
       errors.value.pricePerBabyWeek = 'El precio por bebé/semana es obligatorio'
   }
@@ -142,18 +142,18 @@ const validate = (): boolean => {
     if (!form.value.customBabyMaxAge && form.value.customBabyMaxAge !== 0)
       errors.value.customBabyMaxAge = 'La edad máxima de bebé es obligatoria'
     if (!form.value.customChildMinAge)
-      errors.value.customChildMinAge = 'La edad mínima de niño es obligatoria'
+      errors.value.customChildMinAge = 'La edad mínima infantil es obligatoria'
     if (!form.value.customChildMaxAge)
-      errors.value.customChildMaxAge = 'La edad máxima de niño es obligatoria'
+      errors.value.customChildMaxAge = 'La edad máxima infantil es obligatoria'
     if (!form.value.customAdultMinAge)
       errors.value.customAdultMinAge = 'La edad mínima de adulto es obligatoria'
     if (form.value.customBabyMaxAge != null && form.value.customChildMinAge != null
         && form.value.customBabyMaxAge >= form.value.customChildMinAge) {
-      errors.value.customBabyMaxAge = 'La edad máxima de bebé debe ser menor a la edad mínima de niño'
+      errors.value.customBabyMaxAge = 'La edad máxima de bebé debe ser menor a la edad mínima infantil'
     }
     if (form.value.customChildMaxAge != null && form.value.customAdultMinAge != null
         && form.value.customChildMaxAge >= form.value.customAdultMinAge) {
-      errors.value.customChildMaxAge = 'La edad máxima de niño debe ser menor a la edad mínima de adulto'
+      errors.value.customChildMaxAge = 'La edad máxima infantil debe ser menor a la edad mínima de adulto'
     }
   }
   if (form.value.allowWeekendVisit) {
@@ -167,7 +167,7 @@ const validate = (): boolean => {
     if (form.value.pricePerAdultWeekend == null || form.value.pricePerAdultWeekend < 0)
       errors.value.pricePerAdultWeekend = 'El precio por adulto/fds es obligatorio'
     if (form.value.pricePerChildWeekend == null || form.value.pricePerChildWeekend < 0)
-      errors.value.pricePerChildWeekend = 'El precio por niño/fds es obligatorio'
+      errors.value.pricePerChildWeekend = 'El precio infantil/fds es obligatorio'
     if (form.value.pricePerBabyWeekend == null || form.value.pricePerBabyWeekend < 0)
       errors.value.pricePerBabyWeekend = 'El precio por bebé/fds es obligatorio'
     if (form.value.maxWeekendCapacity != null && form.value.maxWeekendCapacity <= 0)
@@ -264,7 +264,7 @@ const handleSubmit = async () => {
           <span v-if="errors.pricePerAdult" class="text-xs text-red-600">{{ errors.pricePerAdult }}</span>
         </div>
         <div class="flex flex-col gap-1">
-          <label class="text-sm font-medium">Precio niño *</label>
+          <label class="text-sm font-medium">Precio infantil *</label>
           <InputNumber v-model="form.pricePerChild" mode="currency" currency="EUR" locale="es-ES" :min="0" />
           <span v-if="errors.pricePerChild" class="text-xs text-red-600">{{ errors.pricePerChild }}</span>
         </div>
@@ -309,7 +309,7 @@ const handleSubmit = async () => {
               <span v-if="errors.pricePerAdultWeek" class="text-xs text-red-600">{{ errors.pricePerAdultWeek }}</span>
             </div>
             <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-gray-600">Precio niño/sem</label>
+              <label class="text-xs font-medium text-gray-600">Precio infantil/sem</label>
               <InputNumber
                 v-model="form.pricePerChildWeek"
                 mode="currency"
@@ -370,7 +370,7 @@ const handleSubmit = async () => {
               <span v-if="errors.pricePerAdultWeekend" class="text-xs text-red-600">{{ errors.pricePerAdultWeekend }}</span>
             </div>
             <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-gray-600">Precio niño/fds</label>
+              <label class="text-xs font-medium text-gray-600">Precio infantil/fds</label>
               <InputNumber
                 v-model="form.pricePerChildWeekend"
                 mode="currency"
@@ -427,7 +427,7 @@ const handleSubmit = async () => {
             <span v-if="errors.customBabyMaxAge" class="text-xs text-red-600">{{ errors.customBabyMaxAge }}</span>
           </div>
           <div class="flex flex-col gap-1">
-            <label class="text-xs font-medium text-gray-600">Edad mín. niño</label>
+            <label class="text-xs font-medium text-gray-600">Edad mín. infantil</label>
             <InputNumber
               v-model="form.customChildMinAge"
               :min="0"
@@ -437,7 +437,7 @@ const handleSubmit = async () => {
             <span v-if="errors.customChildMinAge" class="text-xs text-red-600">{{ errors.customChildMinAge }}</span>
           </div>
           <div class="flex flex-col gap-1">
-            <label class="text-xs font-medium text-gray-600">Edad máx. niño</label>
+            <label class="text-xs font-medium text-gray-600">Edad máx. infantil</label>
             <InputNumber
               v-model="form.customChildMaxAge"
               :min="0"

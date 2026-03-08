@@ -47,7 +47,7 @@ const handleSubmit = () => {
 <template>
   <section aria-label="Contacto para el 50 aniversario" class="mx-auto max-w-2xl px-6">
     <div class="mb-8 text-center">
-      <h2 class="mb-4 text-3xl font-bold text-amber-900 md:text-4xl">Colabora con nosotros</h2>
+      <h2 class="mb-4 text-3xl font-bold text-amber-900 md:text-4xl">Colabora con la asociación</h2>
       <p class="text-gray-600">
         Contacta con los organizadores si quieres colaborar en este 50º aniversario
       </p>

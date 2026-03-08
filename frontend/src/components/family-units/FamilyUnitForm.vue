@@ -106,7 +106,7 @@ const handleCancel = () => {
             :disabled="loading" data-testid="consent-checkbox" />
           <label for="consent-accepted" class="text-sm text-gray-700">
             Actuaré como representante de la familia y seré quien realice la inscripción de la familia
-            al campamento. Además, confirmo que tengo el consentimiento de todos los miembros de la
+            al campamento. Además, confirmo que tengo el consentimiento de cada miembro de la
             familia para darles de alta en la plataforma.
           </label>
         </div>

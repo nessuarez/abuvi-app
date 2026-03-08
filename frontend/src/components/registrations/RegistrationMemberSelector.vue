@@ -310,7 +310,7 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
         <Checkbox v-model="hasDifferentPeriods" :binary="true"
           input-id="different-periods" data-testid="different-periods-checkbox" />
         <label for="different-periods" class="cursor-pointer text-sm text-gray-600">
-          No todos los asistentes tienen la misma estancia
+          No todas las personas asistentes tienen la misma estancia
         </label>
       </div>
 
