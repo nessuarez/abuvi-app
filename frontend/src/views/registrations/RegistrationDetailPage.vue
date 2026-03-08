@@ -10,6 +10,7 @@ import RegistrationStatusBadge from '@/components/registrations/RegistrationStat
 import RegistrationPricingBreakdown from '@/components/registrations/RegistrationPricingBreakdown.vue'
 import RegistrationCancelDialog from '@/components/registrations/RegistrationCancelDialog.vue'
 import RegistrationDeleteDialog from '@/components/registrations/RegistrationDeleteDialog.vue'
+import RegistrationDeleteDialog from '@/components/registrations/RegistrationDeleteDialog.vue'
 import BankTransferInstructions from '@/components/payments/BankTransferInstructions.vue'
 import PaymentInstallmentCard from '@/components/payments/PaymentInstallmentCard.vue'
 import { useRegistrations } from '@/composables/useRegistrations'
@@ -29,11 +30,14 @@ const {
   getRegistrationById,
   cancelRegistration,
   deleteRegistration,
+  deleteRegistration,
   getAccommodationPreferences
 } = useRegistrations()
 const { getRegistrationPayments, getPaymentSettings } = usePayments()
 const showCancelDialog = ref(false)
 const cancelling = ref(false)
+const showDeleteDialog = ref(false)
+const deleting = ref(false)
 const showDeleteDialog = ref(false)
 const deleting = ref(false)
 const installments = ref<PaymentResponse[]>([])
@@ -120,6 +124,29 @@ const handleCancel = async () => {
     })
   } else {
     toast.add({ severity: 'error', summary: 'Error', detail: error.value, life: 5000 })
+  }
+}
+
+const handleDelete = async () => {
+  deleting.value = true
+  const success = await deleteRegistration(registrationId.value)
+  deleting.value = false
+  showDeleteDialog.value = false
+  if (success) {
+    toast.add({
+      severity: 'success',
+      summary: 'Registration deleted',
+      detail: 'Your registration has been deleted. You can register again for this camp edition.',
+      life: 4000
+    })
+    router.push('/registrations')
+  } else {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.value || 'Could not delete the registration.',
+      life: 5000
+    })
   }
 }
 
@@ -254,22 +281,14 @@ onMounted(async () => {
 
           <!-- Bank transfer instructions (collapsible) -->
           <div v-if="paymentSettingsData" class="mb-4">
-            <BankTransferInstructions
-              :iban="paymentSettingsData.iban"
-              :bank-name="paymentSettingsData.bankName"
-              :account-holder="paymentSettingsData.accountHolder"
-              collapsible
-            />
+            <BankTransferInstructions :iban="paymentSettingsData.iban" :bank-name="paymentSettingsData.bankName"
+              :account-holder="paymentSettingsData.accountHolder" collapsible />
           </div>
 
           <!-- Installment cards -->
           <div v-if="installments.length > 0" class="space-y-4">
-            <PaymentInstallmentCard
-              v-for="payment in installments"
-              :key="payment.id"
-              :payment="payment"
-              @updated="handleInstallmentUpdated"
-            />
+            <PaymentInstallmentCard v-for="payment in installments" :key="payment.id" :payment="payment"
+              @updated="handleInstallmentUpdated" />
           </div>
 
           <div v-else
@@ -295,12 +314,18 @@ onMounted(async () => {
             icon="pi pi-times" @click="showCancelDialog = true" data-testid="cancel-registration-btn" />
           <Button v-if="canDelete" label="Delete registration" severity="danger" icon="pi pi-trash"
             @click="showDeleteDialog = true" data-testid="delete-registration-btn" />
-        </div>
+          <!-- Actions -->
+          <div v-if="(isRepresentative && canCancel) || canDelete" class="flex justify-end gap-2">
+            <Button v-if="isRepresentative && canCancel" label="Cancelar inscripción" severity="danger" outlined
+              icon="pi pi-times" @click="showCancelDialog = true" data-testid="cancel-registration-btn" />
+            <Button v-if="canDelete" label="Delete registration" severity="danger" icon="pi pi-trash"
+              @click="showDeleteDialog = true" data-testid="delete-registration-btn" />
+          </div>
 
-        <RegistrationCancelDialog v-model:visible="showCancelDialog" :registration-id="registrationId"
-          :loading="cancelling" @confirm="handleCancel" />
-        <RegistrationDeleteDialog v-model:visible="showDeleteDialog" :loading="deleting"
-          @confirm="handleDelete" />
+          <RegistrationCancelDialog v-model:visible="showCancelDialog" :registration-id="registrationId"
+            :loading="cancelling" @confirm="handleCancel" />
+          <RegistrationDeleteDialog v-model:visible="showDeleteDialog" :loading="deleting" @confirm="handleDelete" />
+          <RegistrationDeleteDialog v-model:visible="showDeleteDialog" :loading="deleting" @confirm="handleDelete" />
       </template>
     </div>
   </Container>

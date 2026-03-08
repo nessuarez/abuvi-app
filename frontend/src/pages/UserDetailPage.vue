@@ -87,7 +87,7 @@ const formatDate = (dateString: string) => {
         @click="goBack"
         class="mb-4"
       />
-      <h1 class="text-3xl font-bold text-gray-900">Detalle del usuario</h1>
+      <h1 class="text-3xl font-bold text-gray-900">Detalle de la cuenta</h1>
     </div>
 
     <!-- Loading state -->
@@ -159,7 +159,7 @@ const formatDate = (dateString: string) => {
       <!-- Edit mode -->
       <Card v-else>
         <template #title>
-          <span>Editar usuario</span>
+          <span>Editar cuenta</span>
         </template>
         <template #content>
           <UserForm

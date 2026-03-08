@@ -11,6 +11,7 @@ export interface FamilyUnitResponse {
   id: string
   name: string
   representativeUserId: string
+  profilePhotoUrl: string | null
   createdAt: string
   updatedAt: string
   // Optional: populated in admin list endpoint (GET /api/family-units)
@@ -42,6 +43,7 @@ export interface FamilyMemberResponse {
   phone: string | null
   hasMedicalNotes: boolean    // NEVER show actual content
   hasAllergies: boolean        // NEVER show actual content
+  profilePhotoUrl: string | null
   createdAt: string
   updatedAt: string
 }

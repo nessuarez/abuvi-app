@@ -78,7 +78,7 @@ describe('AnniversaryGallery', () => {
   it('should show empty state when no items returned', () => {
     mockMediaItems.value = []
     const wrapper = mountGallery()
-    expect(wrapper.text()).toContain('Aún no hay recuerdos aprobados')
+    expect(wrapper.text()).toContain('Aún no hay recuerdos con aprobación')
   })
 
   it('should render photo items with Image component', () => {

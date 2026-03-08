@@ -10,13 +10,20 @@ const commitHash = (() => {
     return 'unknown'
   }
 })()
-const packageVersion = process.env.npm_package_version || '0.0.0'
+
+const gitVersion = (() => {
+  try {
+    return execSync('git describe --tags --abbrev=0').toString().trim().replace(/^v/, '')
+  } catch {
+    return process.env.npm_package_version || '0.0.0'
+  }
+})()
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue()],
   define: {
-    __APP_VERSION__: JSON.stringify(packageVersion),
+    __APP_VERSION__: JSON.stringify(gitVersion),
     __COMMIT_HASH__: JSON.stringify(commitHash)
   },
   resolve: {

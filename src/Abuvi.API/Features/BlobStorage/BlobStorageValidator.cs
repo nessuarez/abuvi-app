@@ -6,7 +6,7 @@ namespace Abuvi.API.Features.BlobStorage;
 public class UploadBlobRequestValidator : AbstractValidator<UploadBlobRequest>
 {
     private static readonly string[] AllowedFolders =
-        ["photos", "media-items", "camp-locations", "camp-photos", "payment-proofs"];
+        ["photos", "media-items", "camp-locations", "camp-photos", "payment-proofs", "profile-photos"];
 
     public UploadBlobRequestValidator(IOptions<BlobStorageOptions> options)
     {

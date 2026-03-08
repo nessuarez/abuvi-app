@@ -29,8 +29,10 @@ const defaultAgeRanges: AgeRangeSettings = { babyMaxAge: 2, childMinAge: 3, chil
 
 // ── Derived state ──────────────────────────────────────────────────────────────
 
+const hasFamilyUnit = computed(() => !!familyUnit.value)
+
 const isRepresentative = computed(
-  () => !!familyUnit.value && familyUnit.value.representativeUserId === auth.user?.id
+  () => hasFamilyUnit.value && familyUnit.value!.representativeUserId === auth.user?.id
 )
 
 const isPreviousYear = computed(() => {
@@ -208,6 +210,13 @@ onMounted(() => {
                   data-testid="register-button"
                   @click="goToRegister"
                 />
+                <div v-else-if="!hasFamilyUnit" class="rounded-md bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                  <i class="pi pi-info-circle mr-2" />
+                  En primer lugar, define tu unidad familiar para poder inscribirte.
+                  <RouterLink to="/family-unit" class="ml-1 font-semibold text-blue-700 underline hover:text-blue-900">
+                    Crear unidad familiar
+                  </RouterLink>
+                </div>
                 <Button
                   v-else
                   label="Solo el representante puede inscribirse"
@@ -394,13 +403,21 @@ onMounted(() => {
       <!-- ── BOTTOM CTA ─────────────────────────────────────────────────────────── -->
       <Container>
         <div class="mt-6 mb-10 flex flex-col items-center gap-3 rounded-lg border border-gray-200 bg-white p-6 text-center sm:flex-row sm:justify-center">
-          <template v-if="currentCampEdition.status === 'Open' && isRepresentative">
+          <template v-if="currentCampEdition.status === 'Open'">
             <Button
+              v-if="isRepresentative"
               label="Inscribirse al campamento"
               icon="pi pi-user-plus"
               size="large"
               @click="goToRegister"
             />
+            <div v-else-if="!hasFamilyUnit" class="text-sm text-blue-700">
+              <i class="pi pi-info-circle mr-1" />
+              <RouterLink to="/family-unit" class="font-semibold text-blue-700 underline hover:text-blue-900">
+                Define tu unidad familiar
+              </RouterLink>
+              para poder inscribirte.
+            </div>
           </template>
           <RouterLink
             :to="{ name: 'registrations' }"

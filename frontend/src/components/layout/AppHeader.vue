@@ -21,6 +21,10 @@ const isActive = (path: string): boolean => {
   return router.currentRoute.value.path === path
 }
 
+const isAdminActive = (): boolean => {
+  return router.currentRoute.value.path.startsWith('/admin')
+}
+
 const toggleMobileMenu = () => {
   mobileMenuOpen.value = !mobileMenuOpen.value
 }
@@ -69,7 +73,7 @@ const toggleMobileMenu = () => {
             to="/admin"
             class="rounded-md px-4 py-2 text-sm font-medium transition-colors"
             :class="
-              isActive('/admin')
+              isAdminActive()
                 ? 'bg-red-50 text-red-700'
                 : 'bg-red-600 text-white hover:bg-red-700'
             "
@@ -122,7 +126,7 @@ const toggleMobileMenu = () => {
             to="/admin"
             class="flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium transition-colors"
             :class="
-              isActive('/admin')
+              isAdminActive()
                 ? 'bg-red-50 text-red-700'
                 : 'bg-red-600 text-white'
             "

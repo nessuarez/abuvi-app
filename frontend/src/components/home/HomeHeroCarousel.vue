@@ -23,7 +23,7 @@ const slides: HeroSlide[] = [
     imageAlt: 'Comunidad ABUVI reunida',
     headline: '50 Años de Buena Vida',
     description:
-      'Desde 1976 creando recuerdos. Celebra con nosotros medio siglo de ABUVI compartiendo tus historias y fotos.',
+      'Desde 1976 creando recuerdos. Únete a celebrar medio siglo de ABUVI compartiendo tus historias y fotos.',
     ctaLabel: 'Participar en el Aniversario',
     ctaPath: '/anniversary',
   },

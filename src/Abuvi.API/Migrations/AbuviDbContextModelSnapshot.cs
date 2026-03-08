@@ -389,6 +389,10 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("end_date");
 
+                    b.Property<DateTime?>("FirstPaymentDeadline")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_payment_deadline");
+
                     b.Property<DateOnly?>("HalfDate")
                         .HasColumnType("date")
                         .HasColumnName("half_date");
@@ -466,6 +470,10 @@ namespace Abuvi.API.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("proposal_reason");
+
+                    b.Property<DateTime?>("SecondPaymentDeadline")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("second_payment_deadline");
 
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("timestamp with time zone")
@@ -653,6 +661,12 @@ namespace Abuvi.API.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("requires_user_input");
 
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
+
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -673,6 +687,8 @@ namespace Abuvi.API.Migrations
                             t.HasCheckConstraint("CK_CampEditionExtras_MaxQuantity", "max_quantity IS NULL OR max_quantity > 0");
 
                             t.HasCheckConstraint("CK_CampEditionExtras_Price", "price >= 0");
+
+                            t.HasCheckConstraint("CK_CampEditionExtras_SortOrder", "sort_order >= 0");
                         });
                 });
 
@@ -859,6 +875,11 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("phone");
 
+                    b.Property<string>("ProfilePhotoUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("profile_photo_url");
+
                     b.Property<string>("Relationship")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -901,6 +922,11 @@ namespace Abuvi.API.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
+
+                    b.Property<string>("ProfilePhotoUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("profile_photo_url");
 
                     b.Property<Guid>("RepresentativeUserId")
                         .HasColumnType("uuid")

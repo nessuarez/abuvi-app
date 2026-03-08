@@ -2,7 +2,9 @@ namespace Abuvi.API.Features.FamilyUnits;
 
 using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Common.Services;
+using Abuvi.API.Features.BlobStorage;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 /// <summary>
 /// Business logic service for family units and members management
@@ -10,6 +12,8 @@ using Microsoft.Extensions.Logging;
 public class FamilyUnitsService(
     IFamilyUnitsRepository repository,
     IEncryptionService encryptionService,
+    IBlobStorageService blobStorageService,
+    IOptions<BlobStorageOptions> blobOptions,
     ILogger<FamilyUnitsService> logger)
 {
     #region Family Unit CRUD
@@ -343,6 +347,167 @@ public class FamilyUnitsService(
             PageSize: pageSize,
             TotalPages: totalPages
         );
+    }
+
+    #endregion
+
+    #region Profile Photos
+
+    /// <summary>
+    /// Uploads a profile photo for a family member
+    /// </summary>
+    public async Task<FamilyMemberResponse> UploadFamilyMemberProfilePhotoAsync(
+        Guid familyUnitId, Guid memberId, Guid userId, bool isAdmin,
+        IFormFile file, CancellationToken ct)
+    {
+        var familyUnit = await repository.GetFamilyUnitByIdAsync(familyUnitId, ct)
+            ?? throw new NotFoundException("Unidad Familiar", familyUnitId);
+
+        if (!isAdmin && familyUnit.RepresentativeUserId != userId)
+            throw new BusinessRuleException("No tienes permiso para gestionar fotos de esta unidad familiar");
+
+        var member = await repository.GetFamilyMemberByIdAsync(memberId, ct)
+            ?? throw new NotFoundException("Miembro Familiar", memberId);
+
+        if (member.FamilyUnitId != familyUnitId)
+            throw new BusinessRuleException("El miembro no pertenece a esta unidad familiar");
+
+        ValidateImageFile(file);
+
+        // Delete old photo if exists
+        if (member.ProfilePhotoUrl is not null)
+            await DeleteBlobByUrl(member.ProfilePhotoUrl, ct);
+
+        await using var stream = file.OpenReadStream();
+        var result = await blobStorageService.UploadAsync(
+            stream, file.FileName, file.ContentType,
+            "profile-photos", memberId, true, ct);
+
+        member.ProfilePhotoUrl = result.ThumbnailUrl ?? result.FileUrl;
+        member.UpdatedAt = DateTime.UtcNow;
+        await repository.UpdateFamilyMemberAsync(member, ct);
+
+        logger.LogInformation(
+            "Profile photo uploaded for family member {MemberId} in unit {FamilyUnitId}",
+            memberId, familyUnitId);
+
+        return member.ToResponse();
+    }
+
+    /// <summary>
+    /// Removes the profile photo of a family member
+    /// </summary>
+    public async Task RemoveFamilyMemberProfilePhotoAsync(
+        Guid familyUnitId, Guid memberId, Guid userId, bool isAdmin,
+        CancellationToken ct)
+    {
+        var familyUnit = await repository.GetFamilyUnitByIdAsync(familyUnitId, ct)
+            ?? throw new NotFoundException("Unidad Familiar", familyUnitId);
+
+        if (!isAdmin && familyUnit.RepresentativeUserId != userId)
+            throw new BusinessRuleException("No tienes permiso para gestionar fotos de esta unidad familiar");
+
+        var member = await repository.GetFamilyMemberByIdAsync(memberId, ct)
+            ?? throw new NotFoundException("Miembro Familiar", memberId);
+
+        if (member.FamilyUnitId != familyUnitId)
+            throw new BusinessRuleException("El miembro no pertenece a esta unidad familiar");
+
+        if (member.ProfilePhotoUrl is null)
+            return;
+
+        await DeleteBlobByUrl(member.ProfilePhotoUrl, ct);
+
+        member.ProfilePhotoUrl = null;
+        member.UpdatedAt = DateTime.UtcNow;
+        await repository.UpdateFamilyMemberAsync(member, ct);
+
+        logger.LogInformation(
+            "Profile photo removed for family member {MemberId} in unit {FamilyUnitId}",
+            memberId, familyUnitId);
+    }
+
+    /// <summary>
+    /// Uploads a profile photo for a family unit
+    /// </summary>
+    public async Task<FamilyUnitResponse> UploadFamilyUnitProfilePhotoAsync(
+        Guid familyUnitId, Guid userId, bool isAdmin,
+        IFormFile file, CancellationToken ct)
+    {
+        var familyUnit = await repository.GetFamilyUnitByIdAsync(familyUnitId, ct)
+            ?? throw new NotFoundException("Unidad Familiar", familyUnitId);
+
+        if (!isAdmin && familyUnit.RepresentativeUserId != userId)
+            throw new BusinessRuleException("No tienes permiso para gestionar fotos de esta unidad familiar");
+
+        ValidateImageFile(file);
+
+        // Delete old photo if exists
+        if (familyUnit.ProfilePhotoUrl is not null)
+            await DeleteBlobByUrl(familyUnit.ProfilePhotoUrl, ct);
+
+        await using var stream = file.OpenReadStream();
+        var result = await blobStorageService.UploadAsync(
+            stream, file.FileName, file.ContentType,
+            "profile-photos", familyUnitId, true, ct);
+
+        familyUnit.ProfilePhotoUrl = result.ThumbnailUrl ?? result.FileUrl;
+        familyUnit.UpdatedAt = DateTime.UtcNow;
+        await repository.UpdateFamilyUnitAsync(familyUnit, ct);
+
+        logger.LogInformation(
+            "Profile photo uploaded for family unit {FamilyUnitId}",
+            familyUnitId);
+
+        return familyUnit.ToResponse();
+    }
+
+    /// <summary>
+    /// Removes the profile photo of a family unit
+    /// </summary>
+    public async Task RemoveFamilyUnitProfilePhotoAsync(
+        Guid familyUnitId, Guid userId, bool isAdmin,
+        CancellationToken ct)
+    {
+        var familyUnit = await repository.GetFamilyUnitByIdAsync(familyUnitId, ct)
+            ?? throw new NotFoundException("Unidad Familiar", familyUnitId);
+
+        if (!isAdmin && familyUnit.RepresentativeUserId != userId)
+            throw new BusinessRuleException("No tienes permiso para gestionar fotos de esta unidad familiar");
+
+        if (familyUnit.ProfilePhotoUrl is null)
+            return;
+
+        await DeleteBlobByUrl(familyUnit.ProfilePhotoUrl, ct);
+
+        familyUnit.ProfilePhotoUrl = null;
+        familyUnit.UpdatedAt = DateTime.UtcNow;
+        await repository.UpdateFamilyUnitAsync(familyUnit, ct);
+
+        logger.LogInformation(
+            "Profile photo removed for family unit {FamilyUnitId}",
+            familyUnitId);
+    }
+
+    private void ValidateImageFile(IFormFile file)
+    {
+        var cfg = blobOptions.Value;
+
+        if (file.Length > cfg.MaxFileSizeBytes)
+            throw new BusinessRuleException(
+                $"El archivo no puede superar {cfg.MaxFileSizeBytes / 1_048_576} MB");
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!cfg.AllowedImageExtensions.Contains(ext))
+            throw new BusinessRuleException(
+                "El tipo de archivo no está permitido. Extensiones permitidas: " +
+                string.Join(", ", cfg.AllowedImageExtensions));
+    }
+
+    private async Task DeleteBlobByUrl(string fileUrl, CancellationToken ct)
+    {
+        var key = new Uri(fileUrl).AbsolutePath.TrimStart('/');
+        await blobStorageService.DeleteManyAsync([key], ct);
     }
 
     #endregion

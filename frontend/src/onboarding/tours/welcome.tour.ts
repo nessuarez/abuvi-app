@@ -9,7 +9,7 @@ export const welcomeTour: OnboardingTour = {
   steps: [
     {
       element: '[data-onboarding="hero-carousel"]',
-      title: 'Bienvenido a ABUVI',
+      title: 'Te damos la bienvenida a ABUVI',
       description:
         'Este es el carrusel de novedades. Aquí encontrarás las últimas noticias y eventos destacados de ABUVI.',
       side: 'bottom',

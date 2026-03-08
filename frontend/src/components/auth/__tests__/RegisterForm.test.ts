@@ -149,7 +149,7 @@ describe('RegisterForm', () => {
       await fillAndSubmitForm(wrapper)
       await vi.dynamicImportSettled()
 
-      expect(wrapper.text()).toContain('¡Registro completado!')
+      expect(wrapper.text()).toContain('¡Registro completo!')
       expect(wrapper.text()).toContain('email de verificación')
     })
 

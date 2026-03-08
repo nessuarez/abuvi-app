@@ -946,6 +946,62 @@ Deletes a family member. Representatives cannot delete their own family member r
 
 ---
 
+### PUT /api/family-units/{familyUnitId}/members/{memberId}/profile-photo
+
+Uploads a profile photo for a family member. Accepts `multipart/form-data` with an image file. Generates a 400x400 WebP thumbnail and stores its URL as `profilePhotoUrl`. Replaces any existing photo.
+
+**Authorization**: Representative of the family unit or Admin
+**Request**: `multipart/form-data` with `file` field (image: .jpg, .jpeg, .png, .webp, .gif; max 50 MB)
+**Success Response:** 200 OK — `ApiResponse<FamilyMemberResponse>`
+**Error Responses:**
+
+- **400 Bad Request**: Invalid file type or file too large
+- **403 Forbidden**: User is not the representative or admin
+- **404 Not Found**: Family unit or member doesn't exist
+
+---
+
+### DELETE /api/family-units/{familyUnitId}/members/{memberId}/profile-photo
+
+Removes the profile photo of a family member.
+
+**Authorization**: Representative of the family unit or Admin
+**Success Response:** 204 No Content
+**Error Responses:**
+
+- **403 Forbidden**: User is not the representative or admin
+- **404 Not Found**: Family unit or member doesn't exist
+
+---
+
+### PUT /api/family-units/{id}/profile-photo
+
+Uploads a profile photo for a family unit. Accepts `multipart/form-data` with an image file. Generates a 400x400 WebP thumbnail and stores its URL as `profilePhotoUrl`. Replaces any existing photo.
+
+**Authorization**: Representative of the family unit or Admin
+**Request**: `multipart/form-data` with `file` field (image: .jpg, .jpeg, .png, .webp, .gif; max 50 MB)
+**Success Response:** 200 OK — `ApiResponse<FamilyUnitResponse>`
+**Error Responses:**
+
+- **400 Bad Request**: Invalid file type or file too large
+- **403 Forbidden**: User is not the representative or admin
+- **404 Not Found**: Family unit doesn't exist
+
+---
+
+### DELETE /api/family-units/{id}/profile-photo
+
+Removes the profile photo of a family unit.
+
+**Authorization**: Representative of the family unit or Admin
+**Success Response:** 204 No Content
+**Error Responses:**
+
+- **403 Forbidden**: User is not the representative or admin
+- **404 Not Found**: Family unit doesn't exist
+
+---
+
 ## Google Places API (Backend Proxy)
 
 These endpoints proxy Google Places API calls through the backend to protect the API key from client exposure.

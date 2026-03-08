@@ -118,7 +118,7 @@ const handleClose = () => {
         data-testid="bulk-year-input"
       />
       <small class="text-gray-500">
-        Año en que estos miembros se hacen socios. Se aplicará a todos los que no tengan membresía.
+        Año en que estos miembros se hacen socios. Se aplicará a quienes no tengan membresía.
       </small>
     </div>
 

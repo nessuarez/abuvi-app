@@ -53,9 +53,25 @@ vi.mock('primevue/inputnumber', () => ({
 vi.mock('primevue/datepicker', () => ({
   default: {
     name: 'DatePicker',
-    props: ['modelValue', 'dateFormat', 'showIcon'],
+    props: ['modelValue', 'dateFormat', 'showIcon', 'inline', 'minDate', 'maxDate'],
     emits: ['update:modelValue'],
     template: '<input type="text" :value="modelValue" />',
+  },
+}))
+
+vi.mock('primevue/inputmask', () => ({
+  default: {
+    name: 'InputMask',
+    props: ['modelValue', 'mask', 'placeholder', 'invalid', 'disabled', 'id', 'slotChar'],
+    emits: ['update:modelValue', 'complete', 'blur'],
+    template: '<input type="text" :value="modelValue" />',
+  },
+}))
+
+vi.mock('primevue/popover', () => ({
+  default: {
+    name: 'Popover',
+    template: '<div><slot /></div>',
   },
 }))
 

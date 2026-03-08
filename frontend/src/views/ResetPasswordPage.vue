@@ -69,7 +69,7 @@ const validate = (): boolean => {
   if (!formData.newPassword) {
     clientFieldErrors.value.newPassword = 'La nueva contraseña es obligatoria'
   } else if (!allCriteriaMet.value) {
-    clientFieldErrors.value.newPassword = 'La contraseña no cumple todos los requisitos'
+    clientFieldErrors.value.newPassword = 'La contraseña no cumple con los requisitos'
   }
 
   if (!formData.confirmPassword) {

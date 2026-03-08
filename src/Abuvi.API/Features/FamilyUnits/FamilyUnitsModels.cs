@@ -8,6 +8,7 @@ public class FamilyUnit
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public Guid RepresentativeUserId { get; set; }
+    public string? ProfilePhotoUrl { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -33,6 +34,8 @@ public class FamilyMember
     // Encrypted sensitive health data
     public string? MedicalNotes { get; set; }
     public string? Allergies { get; set; }
+
+    public string? ProfilePhotoUrl { get; set; }
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -84,6 +87,7 @@ public record FamilyUnitResponse(
     Guid Id,
     string Name,
     Guid RepresentativeUserId,
+    string? ProfilePhotoUrl,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );
@@ -101,6 +105,7 @@ public record FamilyMemberResponse(
     string? Phone,
     bool HasMedicalNotes,    // Boolean flag only - never expose encrypted data
     bool HasAllergies,       // Boolean flag only - never expose encrypted data
+    string? ProfilePhotoUrl,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );
@@ -153,6 +158,7 @@ public static class FamilyUnitExtensions
             unit.Id,
             unit.Name,
             unit.RepresentativeUserId,
+            unit.ProfilePhotoUrl,
             unit.CreatedAt,
             unit.UpdatedAt
         );
@@ -174,6 +180,7 @@ public static class FamilyMemberExtensions
             member.Phone,
             !string.IsNullOrEmpty(member.MedicalNotes),
             !string.IsNullOrEmpty(member.Allergies),
+            member.ProfilePhotoUrl,
             member.CreatedAt,
             member.UpdatedAt
         );
