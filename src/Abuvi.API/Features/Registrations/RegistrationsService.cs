@@ -2,6 +2,7 @@ using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Common.Services;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
+using Abuvi.API.Features.Payments;
 using Microsoft.Extensions.Logging;
 
 namespace Abuvi.API.Features.Registrations;
@@ -152,7 +153,7 @@ public class RegistrationsService(
             registration.Id, request.FamilyUnitId, request.CampEditionId);
 
         // 12. Create payment installments
-        await paymentsService.CreateInstallmentsAsync(registration.Id, ct);
+        var installments = await paymentsService.CreateInstallmentsAsync(registration.Id, ct);
 
         // 13. Reload and return (includes newly created payments)
         var detailed = await registrationsRepo.GetByIdWithDetailsAsync(registration.Id, ct)
@@ -161,7 +162,8 @@ public class RegistrationsService(
         // 14. Send confirmation email (non-blocking on failure)
         try
         {
-            var emailData = BuildRegistrationEmailData(detailed, edition);
+            var paymentSettings = await paymentsService.GetPaymentSettingsAsync(ct);
+            var emailData = BuildRegistrationEmailData(detailed, edition, installments, paymentSettings);
             await emailService.SendCampRegistrationConfirmationAsync(emailData, ct);
         }
         catch (Exception ex)
@@ -823,8 +825,14 @@ public class RegistrationsService(
     }
 
     private static CampRegistrationEmailData BuildRegistrationEmailData(
-        Registration registration, CampEdition edition)
+        Registration registration,
+        CampEdition edition,
+        List<PaymentResponse>? installments = null,
+        PaymentSettingsResponse? paymentSettings = null)
     {
+        var first = installments?.FirstOrDefault(i => i.InstallmentNumber == 1);
+        var hasPaymentInfo = first != null && !string.IsNullOrWhiteSpace(paymentSettings?.Iban);
+
         return new CampRegistrationEmailData
         {
             ToEmail = registration.RegisteredByUser.Email,
@@ -847,7 +855,12 @@ public class RegistrationsService(
                 AgeAtCamp = m.AgeAtCamp,
                 AttendancePeriod = MapAttendancePeriod(m.AttendancePeriod),
                 IndividualAmount = m.IndividualAmount
-            }).ToList()
+            }).ToList(),
+            FirstInstallmentConcept = hasPaymentInfo ? first!.TransferConcept : null,
+            FirstInstallmentAmount = hasPaymentInfo ? first!.Amount : null,
+            Iban = hasPaymentInfo ? paymentSettings!.Iban : null,
+            BankName = hasPaymentInfo ? paymentSettings!.BankName : null,
+            AccountHolder = hasPaymentInfo ? paymentSettings!.AccountHolder : null,
         };
     }
 

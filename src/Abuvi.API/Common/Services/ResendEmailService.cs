@@ -237,6 +237,32 @@ public class ResendEmailService : IEmailService
             ? $"<p style='margin: 5px 0;'>Extras: <strong>{data.ExtrasAmount.ToString("N2", culture)} €</strong></p>"
             : "";
 
+        var ibanFormatted = string.IsNullOrWhiteSpace(data.Iban) ? "" :
+            string.Join(" ", Enumerable.Range(0, (data.Iban.Replace(" ", "").Length + 3) / 4)
+                .Select(i => { var s = data.Iban.Replace(" ", ""); return s.Substring(i * 4, Math.Min(4, s.Length - i * 4)); }));
+
+        var paymentInstructionsHtml = (data.Iban != null && data.FirstInstallmentConcept != null)
+            ? $@"
+                <div style='background-color: #fefce8; border: 2px solid #eab308; border-radius: 8px; padding: 20px; margin: 25px 0;'>
+                    <h3 style='color: #92400e; margin-top: 0; margin-bottom: 12px;'>Instrucciones para el primer pago</h3>
+                    <p style='margin: 6px 0;'><strong>IBAN:</strong> {WebUtility.HtmlEncode(ibanFormatted)}</p>
+                    <p style='margin: 6px 0;'><strong>Banco:</strong> {WebUtility.HtmlEncode(data.BankName ?? "")}</p>
+                    <p style='margin: 6px 0;'><strong>Destinatario:</strong> {WebUtility.HtmlEncode(data.AccountHolder ?? "")}</p>
+                    <p style='margin: 6px 0;'><strong>Importe:</strong> {data.FirstInstallmentAmount!.Value.ToString("N2", culture)} €</p>
+                    <div style='background-color: #fde68a; border-radius: 6px; padding: 14px; margin-top: 14px;'>
+                        <p style='margin: 0 0 6px; font-size: 13px; font-weight: bold; color: #78350f;'>
+                            CONCEPTO — Usa este código exacto en tu transferencia:
+                        </p>
+                        <p style='margin: 0; font-family: monospace; font-size: 18px; letter-spacing: 1px; color: #1e3a5f;'>
+                            {WebUtility.HtmlEncode(data.FirstInstallmentConcept)}
+                        </p>
+                        <p style='margin: 8px 0 0; font-size: 12px; color: #78350f;'>
+                            Es imprescindible incluir este código exacto en el campo &quot;Concepto&quot; o &quot;Referencia&quot; de la transferencia para que podamos identificar tu pago.
+                        </p>
+                    </div>
+                </div>"
+            : "";
+
         var specialNeedsHtml = !string.IsNullOrWhiteSpace(data.SpecialNeeds)
             ? $"<p style='margin: 5px 0;'><strong>Necesidades especiales:</strong> {WebUtility.HtmlEncode(data.SpecialNeeds)}</p>"
             : "";
@@ -285,6 +311,8 @@ public class ResendEmailService : IEmailService
                             <hr style='border: none; border-top: 1px solid #ccc; margin: 10px 0;' />
                             <p style='margin: 5px 0; font-size: 18px;'>Total: <strong>{data.TotalAmount.ToString("N2", culture)} €</strong></p>
                         </div>
+
+                        {paymentInstructionsHtml}
 
                         {specialNeedsHtml}
                         {campatesHtml}
