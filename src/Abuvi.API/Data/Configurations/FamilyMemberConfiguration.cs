@@ -92,6 +92,11 @@ public class FamilyMemberConfiguration : IEntityTypeConfiguration<FamilyMember>
             .HasMaxLength(1000)
             .HasColumnName("allergies");
 
+        // Profile photo URL: optional, max 2048
+        builder.Property(fm => fm.ProfilePhotoUrl)
+            .HasMaxLength(2048)
+            .HasColumnName("profile_photo_url");
+
         // Timestamps: required, default NOW()
         builder.Property(fm => fm.CreatedAt)
             .IsRequired()

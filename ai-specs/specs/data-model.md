@@ -60,6 +60,7 @@ Groups people who attend camp together as a family. A User acts as the represent
 - `id`: Unique identifier for the FamilyUnit entity (Primary Key, UUID)
 - `name`: Family display name, e.g. "Garcia Family" (required, max 200 characters)
 - `representativeUserId`: User who manages this family unit (required, FK -> User)
+- `profilePhotoUrl`: URL of the family unit's profile photo thumbnail (optional, max 2048 characters)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
@@ -94,6 +95,7 @@ A person (child or adult) within a family unit. In the future, a FamilyMember ma
 - `phone`: Contact phone number (optional, max 20 characters, E.164 format, e.g., "+34612345678")
 - `medicalNotes`: Medical information (optional, max 2000 characters, sensitive data, must be stored encrypted at rest)
 - `allergies`: Allergy information (optional, max 1000 characters, sensitive data, must be stored encrypted at rest)
+- `profilePhotoUrl`: URL of the family member's profile photo thumbnail (optional, max 2048 characters)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 

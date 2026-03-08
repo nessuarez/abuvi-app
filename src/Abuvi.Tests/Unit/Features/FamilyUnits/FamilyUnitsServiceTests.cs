@@ -1,9 +1,11 @@
 using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Common.Services;
+using Abuvi.API.Features.BlobStorage;
 using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.Users;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using NSubstitute.ReturnsExtensions;
 
@@ -25,7 +27,9 @@ public class FamilyUnitsServiceTests
         _repository = Substitute.For<IFamilyUnitsRepository>();
         _encryptionService = Substitute.For<IEncryptionService>();
         _logger = Substitute.For<ILogger<FamilyUnitsService>>();
-        _sut = new FamilyUnitsService(_repository, _encryptionService, _logger);
+        var blobStorageService = Substitute.For<IBlobStorageService>();
+        var blobOptions = Options.Create(new BlobStorageOptions());
+        _sut = new FamilyUnitsService(_repository, _encryptionService, blobStorageService, blobOptions, _logger);
 
         // Setup encryption mock to return predictable values
         _encryptionService.Encrypt(Arg.Any<string>())
