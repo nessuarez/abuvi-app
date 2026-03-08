@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
 import DateInput from '@/components/shared/DateInput.vue'
+import PhoneInput from '@/components/shared/PhoneInput.vue'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import type {
@@ -323,16 +324,14 @@ const handleCancel = () => {
     <!-- Phone (optional) -->
     <div class="flex flex-col gap-2">
       <label for="phone" class="font-medium text-sm">Teléfono</label>
-      <InputText
+      <PhoneInput
         id="phone"
         v-model="phone"
-        placeholder="Ej: +34612345678"
         :invalid="!!phoneError"
         :disabled="loading"
         @blur="validatePhone"
       />
       <small v-if="phoneError" class="text-red-500">{{ phoneError }}</small>
-      <small class="text-gray-500">Formato E.164 con código de país (ej. +34)</small>
     </div>
 
     <div class="flex justify-end gap-2 pt-4">
