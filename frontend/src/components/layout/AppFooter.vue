@@ -19,8 +19,7 @@ const linkGroups = [
     links: [
       { label: 'Aviso Legal', path: '/legal/notice' },
       { label: 'Política de Privacidad', path: '/legal/privacy' },
-      { label: 'Estatutos', path: '/legal/bylaws' },
-      { label: 'Transparencia', path: '/legal/transparency' }
+      { label: 'Estatutos', path: '/legal/bylaws' }
     ]
   }
 ]

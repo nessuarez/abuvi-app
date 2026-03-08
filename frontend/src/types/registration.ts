@@ -41,6 +41,7 @@ export interface RegistrationCampEditionSummary {
   startDate: string
   endDate: string
   location: string | null
+  duration: number
 }
 
 // Pricing breakdown (returned in RegistrationResponse)
@@ -87,7 +88,19 @@ export interface PaymentSummary {
   status: PaymentStatus
 }
 
-// Main registration response (used for list and detail)
+// List endpoint response (lightweight, used by GET /api/registrations)
+export interface RegistrationListItem {
+  id: string
+  familyUnit: RegistrationFamilyUnitSummary
+  campEdition: RegistrationCampEditionSummary
+  status: RegistrationStatus
+  totalAmount: number
+  amountPaid: number
+  amountRemaining: number
+  createdAt: string
+}
+
+// Detail endpoint response (full, used by GET /api/registrations/:id)
 export interface RegistrationResponse {
   id: string
   familyUnit: RegistrationFamilyUnitSummary
@@ -172,6 +185,9 @@ export interface AvailableCampEditionResponse {
   weekendDays: number
   maxWeekendCapacity: number | null
   weekendSpotsRemaining: number | null
+  // Payment deadlines:
+  firstPaymentDeadline: string | null
+  secondPaymentDeadline: string | null
 }
 
 // Request types

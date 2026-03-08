@@ -14,14 +14,8 @@ const drawerVisible = ref(false)
       <div class="mb-6 flex items-center justify-between">
         <h1 class="text-3xl font-bold text-gray-900">Panel de Administración</h1>
         <!-- Mobile menu toggle -->
-        <Button
-          icon="pi pi-bars"
-          text
-          rounded
-          class="md:hidden"
-          data-testid="admin-menu-toggle"
-          @click="drawerVisible = true"
-        />
+        <Button icon="pi pi-bars" text rounded class="md:hidden" data-testid="admin-menu-toggle"
+          @click="drawerVisible = true" />
       </div>
 
       <div class="flex gap-8">
@@ -29,13 +23,8 @@ const drawerVisible = ref(false)
         <AdminSidebar class="hidden md:block" />
 
         <!-- Mobile drawer -->
-        <Drawer
-          v-model:visible="drawerVisible"
-          header="Menú de Administración"
-          position="left"
-          class="md:hidden"
-          data-testid="admin-drawer"
-        >
+        <Drawer v-model:visible="drawerVisible" header="Menú de Administración" position="left" class="md:hidden"
+          data-testid="admin-drawer">
           <AdminSidebar @click="drawerVisible = false" />
         </Drawer>
 

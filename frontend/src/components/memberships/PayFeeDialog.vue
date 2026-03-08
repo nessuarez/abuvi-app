@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import Dialog from 'primevue/dialog'
-import DatePicker from 'primevue/datepicker'
+import DateInput from '@/components/shared/DateInput.vue'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import type { MembershipFeeResponse, PayFeeRequest } from '@/types/membership'
@@ -105,16 +105,13 @@ const handleClose = () => {
         <label for="paid-date" class="font-medium text-sm">
           Fecha de pago <span class="text-red-500">*</span>
         </label>
-        <DatePicker
+        <DateInput
           id="paid-date"
           v-model="paidDate"
-          dateFormat="dd/mm/yy"
           :maxDate="new Date()"
           :invalid="!!paidDateError"
           :disabled="loading"
-          showIcon
           @blur="validatePaidDate"
-          class="w-full"
         />
         <small v-if="paidDateError" class="text-red-500">{{ paidDateError }}</small>
       </div>

@@ -4,6 +4,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
+import ProfilePhotoAvatar from '@/components/family-units/ProfilePhotoAvatar.vue'
 import { FamilyRelationshipLabels } from '@/types/family-unit'
 import type { FamilyMemberResponse } from '@/types/family-unit'
 import { parseDateLocal } from '@/utils/date'
@@ -13,12 +14,15 @@ const props = defineProps<{
   loading?: boolean
   canManageMemberships?: boolean
   readOnly?: boolean
+  uploadingMemberId?: string | null
 }>()
 
 const emit = defineEmits<{
   edit: [member: FamilyMemberResponse]
   delete: [member: FamilyMemberResponse]
   manageMembership: [member: FamilyMemberResponse]
+  uploadPhoto: [memberId: string, file: File]
+  removePhoto: [memberId: string]
 }>()
 
 const membersWithAge = computed(() => {
@@ -82,9 +86,22 @@ const handleDelete = (member: FamilyMemberResponse) => {
 
       <Column field="firstName" header="Nombre" :sortable="true">
         <template #body="{ data }">
-          <div class="font-medium">{{ data.firstName }} {{ data.lastName }}</div>
-          <div v-if="data.userId" class="text-xs text-gray-500">
-            <i class="pi pi-user text-xs"></i> Usuario vinculado
+          <div class="flex items-center gap-2">
+            <ProfilePhotoAvatar
+              :photo-url="data.profilePhotoUrl"
+              :initials="(data.firstName?.[0] ?? '') + (data.lastName?.[0] ?? '')"
+              size="sm"
+              :editable="!props.readOnly"
+              :loading="props.uploadingMemberId === data.id"
+              @upload="(file: File) => emit('uploadPhoto', data.id, file)"
+              @remove="() => emit('removePhoto', data.id)"
+            />
+            <div>
+              <div class="font-medium">{{ data.firstName }} {{ data.lastName }}</div>
+              <div v-if="data.userId" class="text-xs text-gray-500">
+                <i class="pi pi-user text-xs"></i> Usuario vinculado
+              </div>
+            </div>
           </div>
         </template>
       </Column>

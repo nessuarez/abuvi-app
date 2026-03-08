@@ -3,6 +3,7 @@ import { api } from '@/utils/api'
 import type { ApiResponse } from '@/types/api'
 import type {
   RegistrationResponse,
+  RegistrationListItem,
   CreateRegistrationRequest,
   UpdateRegistrationMembersRequest,
   UpdateRegistrationExtrasRequest,
@@ -10,8 +11,21 @@ import type {
   AccommodationPreferenceResponse
 } from '@/types/registration'
 
+function toListItem(r: RegistrationResponse): RegistrationListItem {
+  return {
+    id: r.id,
+    familyUnit: r.familyUnit,
+    campEdition: r.campEdition,
+    status: r.status,
+    totalAmount: r.pricing.totalAmount,
+    amountPaid: r.amountPaid,
+    amountRemaining: r.amountRemaining,
+    createdAt: r.createdAt
+  }
+}
+
 export function useRegistrations() {
-  const registrations = ref<RegistrationResponse[]>([])
+  const registrations = ref<RegistrationListItem[]>([])
   const registration = ref<RegistrationResponse | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -20,7 +34,7 @@ export function useRegistrations() {
     loading.value = true
     error.value = null
     try {
-      const response = await api.get<ApiResponse<RegistrationResponse[]>>('/registrations')
+      const response = await api.get<ApiResponse<RegistrationListItem[]>>('/registrations')
       registrations.value = response.data.success ? (response.data.data ?? []) : []
     } catch (err: unknown) {
       error.value = (err as { response?: { data?: { error?: { message?: string } } } })
@@ -59,7 +73,7 @@ export function useRegistrations() {
     try {
       const response = await api.post<ApiResponse<RegistrationResponse>>('/registrations', request)
       if (response.data.success && response.data.data) {
-        registrations.value.push(response.data.data)
+        registrations.value.push(toListItem(response.data.data))
         return response.data.data
       }
       return null
@@ -87,7 +101,7 @@ export function useRegistrations() {
       if (response.data.success && response.data.data) {
         const updated = response.data.data
         const index = registrations.value.findIndex((r) => r.id === id)
-        if (index !== -1) registrations.value[index] = updated
+        if (index !== -1) registrations.value[index] = toListItem(updated)
         if (registration.value?.id === id) registration.value = updated
         return updated
       }
@@ -116,7 +130,7 @@ export function useRegistrations() {
       if (response.data.success && response.data.data) {
         const updated = response.data.data
         const index = registrations.value.findIndex((r) => r.id === id)
-        if (index !== -1) registrations.value[index] = updated
+        if (index !== -1) registrations.value[index] = toListItem(updated)
         if (registration.value?.id === id) registration.value = updated
         return updated
       }

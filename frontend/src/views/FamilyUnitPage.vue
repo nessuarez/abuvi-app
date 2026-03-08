@@ -13,6 +13,7 @@ import BulkMembershipDialog from '@/components/memberships/BulkMembershipDialog.
 import FamilyUnitForm from '@/components/family-units/FamilyUnitForm.vue'
 import FamilyMemberForm from '@/components/family-units/FamilyMemberForm.vue'
 import FamilyMemberList from '@/components/family-units/FamilyMemberList.vue'
+import ProfilePhotoAvatar from '@/components/family-units/ProfilePhotoAvatar.vue'
 import { useAuthStore } from '@/stores/auth'
 import type {
   CreateFamilyUnitRequest,
@@ -40,7 +41,11 @@ const {
   createFamilyMember,
   getFamilyMembers,
   updateFamilyMember,
-  deleteFamilyMember
+  deleteFamilyMember,
+  uploadMemberProfilePhoto,
+  removeMemberProfilePhoto,
+  uploadUnitProfilePhoto,
+  removeUnitProfilePhoto
 } = useFamilyUnits()
 
 const auth = useAuthStore()
@@ -239,6 +244,58 @@ const handleManageMembership = (member: FamilyMemberResponse) => {
   selectedMemberForMembership.value = member
   showMembershipDialog.value = true
 }
+
+// Profile photo state
+const uploadingUnitPhoto = ref(false)
+const uploadingMemberPhotoId = ref<string | null>(null)
+
+async function onUploadUnitPhoto(file: File) {
+  if (!familyUnit.value) return
+  uploadingUnitPhoto.value = true
+  const result = await uploadUnitProfilePhoto(familyUnit.value.id, file)
+  uploadingUnitPhoto.value = false
+  if (result) {
+    toast.add({ severity: 'success', summary: 'Foto actualizada', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error al subir la foto', life: 5000 })
+  }
+}
+
+async function onRemoveUnitPhoto() {
+  if (!familyUnit.value) return
+  uploadingUnitPhoto.value = true
+  const ok = await removeUnitProfilePhoto(familyUnit.value.id)
+  uploadingUnitPhoto.value = false
+  if (ok) {
+    toast.add({ severity: 'success', summary: 'Foto eliminada', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error al eliminar la foto', life: 5000 })
+  }
+}
+
+async function onUploadMemberPhoto(memberId: string, file: File) {
+  if (!familyUnit.value) return
+  uploadingMemberPhotoId.value = memberId
+  const result = await uploadMemberProfilePhoto(familyUnit.value.id, memberId, file)
+  uploadingMemberPhotoId.value = null
+  if (result) {
+    toast.add({ severity: 'success', summary: 'Foto actualizada', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error al subir la foto', life: 5000 })
+  }
+}
+
+async function onRemoveMemberPhoto(memberId: string) {
+  if (!familyUnit.value) return
+  uploadingMemberPhotoId.value = memberId
+  const ok = await removeMemberProfilePhoto(familyUnit.value.id, memberId)
+  uploadingMemberPhotoId.value = null
+  if (ok) {
+    toast.add({ severity: 'success', summary: 'Foto eliminada', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error al eliminar la foto', life: 5000 })
+  }
+}
 </script>
 
 <template>
@@ -286,7 +343,18 @@ const handleManageMembership = (member: FamilyMemberResponse) => {
       <Card>
         <template #title>
           <div class="flex justify-between items-center">
-            <span>{{ familyUnit.name }}</span>
+            <div class="flex items-center gap-3">
+              <ProfilePhotoAvatar
+                :photo-url="familyUnit.profilePhotoUrl"
+                :initials="familyUnit.name?.[0] ?? 'F'"
+                size="lg"
+                :editable="!isViewingOther"
+                :loading="uploadingUnitPhoto"
+                @upload="onUploadUnitPhoto"
+                @remove="onRemoveUnitPhoto"
+              />
+              <span>{{ familyUnit.name }}</span>
+            </div>
             <div v-if="!isViewingOther" class="flex gap-2">
               <Button
                 icon="pi pi-pencil"
@@ -343,9 +411,12 @@ const handleManageMembership = (member: FamilyMemberResponse) => {
             :loading="loading"
             :can-manage-memberships="auth.isBoard"
             :read-only="isViewingOther"
+            :uploading-member-id="uploadingMemberPhotoId"
             @edit="openEditMemberDialog"
             @delete="handleDeleteMember"
             @manage-membership="handleManageMembership"
+            @upload-photo="onUploadMemberPhoto"
+            @remove-photo="onRemoveMemberPhoto"
           />
         </template>
       </Card>

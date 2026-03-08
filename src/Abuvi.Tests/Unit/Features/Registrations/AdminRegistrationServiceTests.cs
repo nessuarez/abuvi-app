@@ -44,6 +44,7 @@ public class AdminRegistrationServiceTests
         _paymentsService = Substitute.For<IPaymentsService>();
         _logger = Substitute.For<ILogger<RegistrationsService>>();
         _pricingService = new RegistrationPricingService(_settingsRepo);
+        var paymentsService = Substitute.For<IPaymentsService>();
         _sut = new RegistrationsService(
             _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo,
             _editionsRepo, _accommodationsRepo, _pricingService, _emailService,
@@ -79,6 +80,7 @@ public class AdminRegistrationServiceTests
         result.Totals.TotalRegistrations.Should().Be(1);
         result.Totals.TotalMembers.Should().Be(3);
         result.Items[0].FamilyUnit.Name.Should().Be("García Family");
+        result.Items[0].FamilyUnit.RepresentativeUserId.Should().Be(UserId);
         result.Items[0].Representative.Email.Should().Be("juan@test.com");
         result.Items[0].AmountRemaining.Should().Be(700m);
     }

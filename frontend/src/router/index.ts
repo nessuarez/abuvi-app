@@ -269,12 +269,6 @@ const router = createRouter({
 			component: () => import("@/views/legal/BylawsPage.vue"),
 			meta: { title: "ABUVI | Estatutos", requiresAuth: false }
 		},
-		{
-			path: "/legal/transparency",
-			name: "legal-transparency",
-			component: () => import("@/views/legal/TransparencyPage.vue"),
-			meta: { title: "ABUVI | Transparencia", requiresAuth: false }
-		},
 
 		// Email verification — public, no auth required
 		{

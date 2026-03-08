@@ -24,7 +24,7 @@ function switchToLogin() {
         alt="ABUVI"
         class="mx-auto mb-3 max-w-[80px] sm:max-w-[120px]"
       />
-      <h1 class="mb-2 text-2xl font-bold text-gray-900 sm:text-3xl">Bienvenidos a ABUVI</h1>
+      <h1 class="mb-2 text-2xl font-bold text-gray-900 sm:text-3xl">Te damos la bienvenida a ABUVI</h1>
       <p class="text-sm font-medium text-gray-700">
         Plataforma exclusiva para socios/as
       </p>

@@ -35,6 +35,11 @@ public class FamilyUnitConfiguration : IEntityTypeConfiguration<FamilyUnit>
             .HasForeignKey<FamilyUnit>(fu => fu.RepresentativeUserId)
             .OnDelete(DeleteBehavior.Restrict); // Don't cascade delete user if family unit is deleted
 
+        // Profile photo URL: optional, max 2048
+        builder.Property(fu => fu.ProfilePhotoUrl)
+            .HasMaxLength(2048)
+            .HasColumnName("profile_photo_url");
+
         // Timestamps: required, default NOW()
         builder.Property(fu => fu.CreatedAt)
             .IsRequired()

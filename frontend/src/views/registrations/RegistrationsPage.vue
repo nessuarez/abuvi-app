@@ -7,12 +7,12 @@ import Button from 'primevue/button'
 import Container from '@/components/ui/Container.vue'
 import RegistrationCard from '@/components/registrations/RegistrationCard.vue'
 import { useRegistrations } from '@/composables/useRegistrations'
-import type { RegistrationResponse } from '@/types/registration'
+import type { RegistrationListItem } from '@/types/registration'
 
 const router = useRouter()
 const { registrations, loading, error, fetchMyRegistrations } = useRegistrations()
 
-const sortedRegistrations = computed<RegistrationResponse[]>(() => {
+const sortedRegistrations = computed<RegistrationListItem[]>(() => {
   const active = registrations.value.filter(
     (r) => r.status === 'Pending' || r.status === 'Confirmed'
   )

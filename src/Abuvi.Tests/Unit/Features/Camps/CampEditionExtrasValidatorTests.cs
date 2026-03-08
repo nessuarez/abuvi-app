@@ -178,6 +178,46 @@ public class CampEditionExtrasValidatorTests
         result.IsValid.Should().BeTrue();
     }
 
+    [Fact]
+    public void Create_NegativeSortOrder_FailsValidation()
+    {
+        var request = new CreateCampEditionExtraRequest(
+            Name: "Extra", Description: null, Price: 10m,
+            PricingType: PricingType.PerPerson, PricingPeriod: PricingPeriod.OneTime,
+            IsRequired: false, MaxQuantity: null, SortOrder: -1);
+
+        var result = _createValidator.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "SortOrder");
+    }
+
+    [Fact]
+    public void Create_ZeroSortOrder_PassesValidation()
+    {
+        var request = new CreateCampEditionExtraRequest(
+            Name: "Extra", Description: null, Price: 10m,
+            PricingType: PricingType.PerPerson, PricingPeriod: PricingPeriod.OneTime,
+            IsRequired: false, MaxQuantity: null, SortOrder: 0);
+
+        var result = _createValidator.Validate(request);
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Create_PositiveSortOrder_PassesValidation()
+    {
+        var request = new CreateCampEditionExtraRequest(
+            Name: "Extra", Description: null, Price: 10m,
+            PricingType: PricingType.PerPerson, PricingPeriod: PricingPeriod.OneTime,
+            IsRequired: false, MaxQuantity: null, SortOrder: 5);
+
+        var result = _createValidator.Validate(request);
+
+        result.IsValid.Should().BeTrue();
+    }
+
     #endregion
 
     #region UpdateCampEditionExtraRequestValidator
@@ -248,6 +288,46 @@ public class CampEditionExtrasValidatorTests
         );
 
         var result = _updateValidator.Validate(request);
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Update_NegativeSortOrder_FailsValidation()
+    {
+        var request = new UpdateCampEditionExtraRequest(
+            Name: "Name", Description: null, Price: 10m,
+            IsRequired: false, IsActive: true, MaxQuantity: null, SortOrder: -1);
+
+        var result = _updateValidator.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "SortOrder");
+    }
+
+    #endregion
+
+    #region ReorderCampEditionExtrasRequestValidator
+
+    private readonly ReorderCampEditionExtrasRequestValidator _reorderValidator = new();
+
+    [Fact]
+    public void Reorder_EmptyOrderedIds_FailsValidation()
+    {
+        var request = new ReorderCampEditionExtrasRequest([]);
+
+        var result = _reorderValidator.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "OrderedIds");
+    }
+
+    [Fact]
+    public void Reorder_ValidOrderedIds_PassesValidation()
+    {
+        var request = new ReorderCampEditionExtrasRequest([Guid.NewGuid(), Guid.NewGuid()]);
+
+        var result = _reorderValidator.Validate(request);
 
         result.IsValid.Should().BeTrue();
     }

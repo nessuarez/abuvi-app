@@ -45,7 +45,7 @@ onMounted(() => {
     <!-- Empty state -->
     <div v-else-if="mediaItems.length === 0" class="py-12 text-center">
       <i class="pi pi-images mb-4 text-4xl text-amber-300" />
-      <p class="text-lg text-gray-500">Aún no hay recuerdos aprobados.</p>
+      <p class="text-lg text-gray-500">Aún no hay recuerdos con aprobación.</p>
       <p class="mt-2 text-sm text-gray-400">¡Sé el primero en compartir!</p>
     </div>
 

@@ -97,8 +97,8 @@ const formatDate = (dateString: string) => {
 <template>
   <div class="container mx-auto p-4">
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-3xl font-bold text-gray-900">Gestión de usuarios</h1>
-      <Button label="Crear usuario" icon="pi pi-plus" @click="openCreateDialog" />
+      <h1 class="text-3xl font-bold text-gray-900">Gestión de cuentas</h1>
+      <Button label="Crear cuenta" icon="pi pi-plus" @click="openCreateDialog" />
     </div>
 
     <!-- Loading state -->
@@ -176,7 +176,7 @@ const formatDate = (dateString: string) => {
     <!-- Create User Dialog -->
     <Dialog
       v-model:visible="showCreateDialog"
-      header="Crear nuevo usuario"
+      header="Crear nueva cuenta"
       modal
       class="w-full max-w-md"
     >
