@@ -61,16 +61,6 @@ public class PaymentSettingsRequestValidatorTests
         result.ShouldHaveValidationErrorFor(x => x.BankName);
     }
 
-    [Theory]
-    [InlineData(0)]
-    [InlineData(91)]
-    public void SecondInstallmentDaysBefore_OutOfRange_Fails(int days)
-    {
-        var request = CreateValidRequest() with { SecondInstallmentDaysBefore = days };
-        var result = _validator.TestValidate(request);
-        result.ShouldHaveValidationErrorFor(x => x.SecondInstallmentDaysBefore);
-    }
-
     [Fact]
     public void ValidRequest_Passes()
     {
@@ -93,7 +83,6 @@ public class PaymentSettingsRequestValidatorTests
         "ES1234567890123456789012",
         "Test Bank",
         "Test Holder",
-        15,
         "CAMP"
     );
 }

@@ -50,6 +50,8 @@ interface FormModel {
   pricePerBabyWeekend: number | null
   maxWeekendCapacity: number | null
   description: string
+  firstPaymentDeadline: Date | null
+  secondPaymentDeadline: Date | null
 }
 
 const form = reactive<FormModel>({
@@ -77,7 +79,9 @@ const form = reactive<FormModel>({
   pricePerChildWeekend: null,
   pricePerBabyWeekend: null,
   maxWeekendCapacity: null,
-  description: ''
+  description: '',
+  firstPaymentDeadline: null,
+  secondPaymentDeadline: null
 })
 
 const errors = ref<Record<string, string>>({})
@@ -111,6 +115,8 @@ const initializeForm = () => {
   form.pricePerBabyWeekend = props.edition.pricePerBabyWeekend ?? null
   form.maxWeekendCapacity = props.edition.maxWeekendCapacity ?? null
   form.description = props.edition.description ?? ''
+  form.firstPaymentDeadline = props.edition.firstPaymentDeadline ? new Date(props.edition.firstPaymentDeadline) : null
+  form.secondPaymentDeadline = props.edition.secondPaymentDeadline ? new Date(props.edition.secondPaymentDeadline) : null
   errors.value = {}
 }
 
@@ -209,7 +215,9 @@ const handleSave = async () => {
     pricePerChildWeekend: form.allowWeekendVisit ? form.pricePerChildWeekend : null,
     pricePerBabyWeekend: form.allowWeekendVisit ? form.pricePerBabyWeekend : null,
     maxWeekendCapacity: form.allowWeekendVisit ? (form.maxWeekendCapacity || null) : null,
-    description: form.description || undefined
+    description: form.description || undefined,
+    firstPaymentDeadline: form.firstPaymentDeadline ? form.firstPaymentDeadline.toISOString() : null,
+    secondPaymentDeadline: form.secondPaymentDeadline ? form.secondPaymentDeadline.toISOString() : null
   }
 
   const result = await updateEdition(props.edition.id, request)
@@ -462,6 +470,30 @@ const handleSave = async () => {
             />
             <span v-if="errors.maxWeekendCapacity" class="text-xs text-red-600">{{ errors.maxWeekendCapacity }}</span>
           </div>
+        </div>
+      </div>
+
+      <!-- Payment deadlines -->
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium text-gray-700">Fecha límite 1er pago</label>
+          <DatePicker
+            v-model="form.firstPaymentDeadline"
+            date-format="dd/mm/yy"
+            show-icon
+            class="w-full"
+          />
+          <p class="text-xs text-gray-500">Si se deja vacío, se calcula 117 días antes del inicio.</p>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium text-gray-700">Fecha límite 2º pago</label>
+          <DatePicker
+            v-model="form.secondPaymentDeadline"
+            date-format="dd/mm/yy"
+            show-icon
+            class="w-full"
+          />
+          <p class="text-xs text-gray-500">Si se deja vacío, se calcula 75 días antes del inicio.</p>
         </div>
       </div>
 

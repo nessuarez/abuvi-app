@@ -16,6 +16,8 @@ public class PaymentsService(
     ILogger<PaymentsService> logger) : IPaymentsService
 {
     private const string PaymentSettingsKey = "payment_settings";
+    private const int DefaultFirstPaymentDaysBefore = 117;
+    private const int DefaultSecondPaymentDaysBefore = 75;
 
     public async Task<List<PaymentResponse>> CreateInstallmentsAsync(Guid registrationId, CancellationToken ct)
     {
@@ -37,8 +39,10 @@ public class PaymentsService(
         if (concept1.Length > 100) concept1 = concept1[..100];
         if (concept2.Length > 100) concept2 = concept2[..100];
 
-        var dueDate2 = registration.CampEdition.StartDate
-            .AddDays(-settings.SecondInstallmentDaysBefore);
+        var dueDate1 = registration.CampEdition.FirstPaymentDeadline
+            ?? registration.CampEdition.StartDate.AddDays(-DefaultFirstPaymentDaysBefore);
+        var dueDate2 = registration.CampEdition.SecondPaymentDeadline
+            ?? registration.CampEdition.StartDate.AddDays(-DefaultSecondPaymentDaysBefore);
 
         var payments = new List<Payment>
         {
@@ -51,7 +55,7 @@ public class PaymentsService(
                 Method = PaymentMethod.Transfer,
                 Status = PaymentStatus.Pending,
                 InstallmentNumber = 1,
-                DueDate = DateTime.UtcNow,
+                DueDate = dueDate1,
                 TransferConcept = concept1,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -250,7 +254,7 @@ public class PaymentsService(
         var settings = await LoadPaymentSettingsAsync(ct);
         return new PaymentSettingsResponse(
             settings.Iban, settings.BankName, settings.AccountHolder,
-            settings.SecondInstallmentDaysBefore, settings.TransferConceptPrefix);
+            settings.TransferConceptPrefix);
     }
 
     public async Task<PaymentSettingsResponse> UpdatePaymentSettingsAsync(
@@ -261,7 +265,6 @@ public class PaymentsService(
             Iban = request.Iban,
             BankName = request.BankName,
             AccountHolder = request.AccountHolder,
-            SecondInstallmentDaysBefore = request.SecondInstallmentDaysBefore,
             TransferConceptPrefix = request.TransferConceptPrefix
         };
 
@@ -292,7 +295,7 @@ public class PaymentsService(
 
         return new PaymentSettingsResponse(
             request.Iban, request.BankName, request.AccountHolder,
-            request.SecondInstallmentDaysBefore, request.TransferConceptPrefix);
+            request.TransferConceptPrefix);
     }
 
     // --- Private helpers ---

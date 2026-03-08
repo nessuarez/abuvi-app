@@ -2,6 +2,7 @@ using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Common.Services;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
+using Abuvi.API.Features.Payments;
 using Abuvi.API.Features.Registrations;
 using Abuvi.API.Features.Users;
 using FluentAssertions;
@@ -41,9 +42,11 @@ public class AdminRegistrationServiceTests
         _emailService = Substitute.For<IEmailService>();
         _logger = Substitute.For<ILogger<RegistrationsService>>();
         _pricingService = new RegistrationPricingService(_settingsRepo);
+        var paymentsService = Substitute.For<IPaymentsService>();
         _sut = new RegistrationsService(
             _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo,
-            _editionsRepo, _accommodationsRepo, _pricingService, _emailService, _logger);
+            _editionsRepo, _accommodationsRepo, _pricingService, _emailService,
+            paymentsService, _logger);
     }
 
     // ── GetAdminListAsync ─────────────────────────────────────────────────────
