@@ -386,5 +386,4 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
       </div>
     </div>
   </div>
-  </div>
 </template>
