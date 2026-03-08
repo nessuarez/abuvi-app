@@ -506,7 +506,7 @@ watch(
 
           <div>
             <label for="priceChild" class="mb-1 block text-sm font-medium text-gray-700">
-              Precio niño (€) *
+              Precio infantil (€) *
             </label>
             <InputNumber
               id="priceChild"

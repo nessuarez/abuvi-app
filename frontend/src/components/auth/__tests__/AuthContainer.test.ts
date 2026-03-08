@@ -46,7 +46,7 @@ describe('AuthContainer', () => {
     const wrapper = mountContainer()
     await router.isReady()
 
-    expect(wrapper.text()).toContain('Bienvenidos a ABUVI')
+    expect(wrapper.text()).toContain('Te damos la bienvenida a ABUVI')
   })
 
   it('should display disclaimer text for members only', async () => {

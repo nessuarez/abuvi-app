@@ -262,7 +262,7 @@ const handleSave = async () => {
           placeholder="Ej: Indica tu talla"
           data-testid="user-input-label-input"
         />
-        <small class="text-gray-400">Texto que verá el usuario (máx. 200 caracteres)</small>
+        <small class="text-gray-400">Texto visible para quien se registre (máx. 200 caracteres)</small>
       </div>
 
       <!-- Max Quantity -->

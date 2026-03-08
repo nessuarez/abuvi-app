@@ -34,10 +34,10 @@ const validate = (): boolean => {
   if (form.value.childMaxAge < 0) errors.value.childMaxAge = 'Debe ser mayor o igual a 0'
   if (form.value.adultMinAge < 0) errors.value.adultMinAge = 'Debe ser mayor o igual a 0'
   if (form.value.babyMaxAge >= form.value.childMinAge) {
-    errors.value.babyMaxAge = 'La edad máxima de bebé debe ser menor a la edad mínima de niño'
+    errors.value.babyMaxAge = 'La edad máxima de bebé debe ser menor a la edad mínima infantil'
   }
   if (form.value.childMaxAge >= form.value.adultMinAge) {
-    errors.value.childMaxAge = 'La edad máxima de niño debe ser menor a la edad mínima de adulto'
+    errors.value.childMaxAge = 'La edad máxima infantil debe ser menor a la edad mínima de adulto'
   }
   return Object.keys(errors.value).length === 0
 }
@@ -94,7 +94,7 @@ onMounted(async () => {
             <span v-if="errors.babyMaxAge" class="text-xs text-red-600">{{ errors.babyMaxAge }}</span>
           </div>
           <div class="flex flex-col gap-1">
-            <label class="text-sm font-medium text-gray-700">Edad mín. niño</label>
+            <label class="text-sm font-medium text-gray-700">Edad mín. infantil</label>
             <InputNumber
               v-model="form.childMinAge"
               :min="0"
@@ -105,7 +105,7 @@ onMounted(async () => {
             <span v-if="errors.childMinAge" class="text-xs text-red-600">{{ errors.childMinAge }}</span>
           </div>
           <div class="flex flex-col gap-1">
-            <label class="text-sm font-medium text-gray-700">Edad máx. niño</label>
+            <label class="text-sm font-medium text-gray-700">Edad máx. infantil</label>
             <InputNumber
               v-model="form.childMaxAge"
               :min="0"

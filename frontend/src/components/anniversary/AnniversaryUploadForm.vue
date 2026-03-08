@@ -150,7 +150,7 @@ const handleSubmit = async () => {
         Colabora con la Memoria ABUVINA
       </h2>
       <p class="mx-auto max-w-xl text-gray-600">
-        El 50 aniversario lo construimos entre todos. Si tienes fotos antiguas, anécdotas escritas o
+        El 50 aniversario lo construimos entre todas las personas. Si tienes fotos antiguas, anécdotas escritas o
         quieres grabar un mensaje de voz para la cápsula del tiempo, este es el lugar.
       </p>
     </div>
