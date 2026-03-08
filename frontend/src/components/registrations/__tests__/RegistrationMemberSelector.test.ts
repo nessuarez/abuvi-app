@@ -116,6 +116,28 @@ describe('RegistrationMemberSelector', () => {
     expect(wrapper.text()).toContain('Ana García')
   })
 
+  it('should emit update:modelValue when clicking directly on the checkbox to select', async () => {
+    const wrapper = mountComponent([])
+    const checkboxEl = wrapper.find('[data-testid="member-label-member-1"] [data-testid="member-checkbox"]')
+    await checkboxEl.trigger('click')
+    const emitted = wrapper.emitted('update:modelValue') as WizardMemberSelection[][]
+    expect(emitted).toBeTruthy()
+    const emittedSelections = emitted[emitted.length - 1][0] as unknown as WizardMemberSelection[]
+    expect(emittedSelections.some((s) => s.memberId === 'member-1')).toBe(true)
+  })
+
+  it('should emit update:modelValue when clicking directly on the checkbox to deselect', async () => {
+    const preSelected: WizardMemberSelection[] = [
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
+    ]
+    const wrapper = mountComponent(preSelected)
+    const checkboxEl = wrapper.find('[data-testid="member-label-member-1"] [data-testid="member-checkbox"]')
+    await checkboxEl.trigger('click')
+    const emitted = wrapper.emitted('update:modelValue') as WizardMemberSelection[][]
+    const emittedSelections = emitted[emitted.length - 1][0] as unknown as WizardMemberSelection[]
+    expect(emittedSelections.some((s) => s.memberId === 'member-1')).toBe(false)
+  })
+
   it('should emit update:modelValue with WizardMemberSelection when member is checked', async () => {
     const wrapper = mountComponent([])
     const card = wrapper.find('[data-testid="member-label-member-1"]')

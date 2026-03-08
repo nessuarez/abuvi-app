@@ -28,11 +28,10 @@ public class PaymentsService(
         var installment2Amount = registration.TotalAmount - installment1Amount;
 
         var familyName = NormalizeName(registration.FamilyUnit.Name);
-        var year = registration.CampEdition.StartDate.Year;
         var prefix = settings.TransferConceptPrefix;
 
-        var concept1 = $"{prefix}-{year}-{familyName}-1";
-        var concept2 = $"{prefix}-{year}-{familyName}-2";
+        var concept1 = $"{prefix}-{familyName}-1";
+        var concept2 = $"{prefix}-{familyName}-2";
 
         if (concept1.Length > 100) concept1 = concept1[..100];
         if (concept2.Length > 100) concept2 = concept2[..100];
@@ -340,10 +339,13 @@ public class PaymentsService(
                 sb.Append(c);
         }
 
-        return sb.ToString()
+        var cleanName = sb.ToString()
             .Normalize(NormalizationForm.FormC)
-            .ToUpperInvariant()
-            .Replace(" ", "");
+            .ToUpperInvariant();
+
+        return string.Concat(
+            cleanName.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Select(word => word.Length >= 3 ? word[..3] : word));
     }
 
     private static string ExtractBlobKey(string fileUrl)

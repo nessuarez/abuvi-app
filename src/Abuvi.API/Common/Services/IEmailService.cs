@@ -120,6 +120,13 @@ public record CampRegistrationEmailData
     public required IReadOnlyList<RegistrationMemberEmailData> Members { get; init; }
     public string? SpecialNeeds { get; init; }
     public string? CampatesPreference { get; init; }
+
+    // First installment payment info (null if payment settings not configured)
+    public string? FirstInstallmentConcept { get; init; }
+    public decimal? FirstInstallmentAmount { get; init; }
+    public string? Iban { get; init; }
+    public string? BankName { get; init; }
+    public string? AccountHolder { get; init; }
 }
 
 /// <summary>

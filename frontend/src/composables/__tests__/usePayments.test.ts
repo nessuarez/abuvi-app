@@ -14,7 +14,7 @@ const mockPayment = {
   dueDate: '2026-03-06T00:00:00Z',
   method: 'Transfer',
   status: 'Pending',
-  transferConcept: 'CAMP-2026-GARCIA-1',
+  transferConcept: 'CAMP-GAR-1',
   proofFileUrl: null,
   proofFileName: null,
   proofUploadedAt: null,
