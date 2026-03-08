@@ -37,8 +37,8 @@ describe('BankTransferInstructions', () => {
   })
 
   it('displays transfer concept when provided', () => {
-    const wrapper = mount({ transferConcept: 'CAMP-2026-GARCIA-1' })
-    expect(wrapper.text()).toContain('CAMP-2026-GARCIA-1')
+    const wrapper = mount({ transferConcept: 'CAMP-GAR-1' })
+    expect(wrapper.text()).toContain('CAMP-GAR-1')
   })
 
   it('does not show amount when not provided', () => {
