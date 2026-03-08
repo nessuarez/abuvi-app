@@ -3,7 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Select from 'primevue/select'
-import DatePicker from 'primevue/datepicker'
+import DateInput from '@/components/shared/DateInput.vue'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
@@ -123,11 +123,11 @@ onMounted(async () => {
       </div>
       <div>
         <label class="mb-1 block text-xs font-medium text-gray-600">Desde</label>
-        <DatePicker v-model="dateFrom" date-format="dd/mm/yy" placeholder="Desde" class="w-36" />
+        <DateInput v-model="dateFrom" placeholder="Desde" :show-calendar="false" />
       </div>
       <div>
         <label class="mb-1 block text-xs font-medium text-gray-600">Hasta</label>
-        <DatePicker v-model="dateTo" date-format="dd/mm/yy" placeholder="Hasta" class="w-36" />
+        <DateInput v-model="dateTo" placeholder="Hasta" :show-calendar="false" />
       </div>
       <Button
         icon="pi pi-filter-slash"

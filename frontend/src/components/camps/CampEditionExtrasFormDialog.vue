@@ -47,6 +47,7 @@ const isRequired = ref(false)
 const requiresUserInput = ref(false)
 const userInputLabel = ref('')
 const maxQuantity = ref<number | null>(null)
+const sortOrder = ref(0)
 const isActive = ref(true)
 const validationErrors = ref<Record<string, string>>({})
 
@@ -73,6 +74,7 @@ watch(
         requiresUserInput.value = props.extra.requiresUserInput
         userInputLabel.value = props.extra.userInputLabel ?? ''
         maxQuantity.value = props.extra.maxQuantity ?? null
+        sortOrder.value = props.extra.sortOrder
         isActive.value = props.extra.isActive
       } else {
         name.value = ''
@@ -84,6 +86,7 @@ watch(
         requiresUserInput.value = false
         userInputLabel.value = ''
         maxQuantity.value = null
+        sortOrder.value = 0
         isActive.value = true
       }
     }
@@ -114,7 +117,8 @@ const handleSave = async () => {
       isActive: isActive.value,
       requiresUserInput: requiresUserInput.value,
       userInputLabel: requiresUserInput.value ? userInputLabel.value.trim() || undefined : undefined,
-      maxQuantity: maxQuantity.value ?? undefined
+      maxQuantity: maxQuantity.value ?? undefined,
+      sortOrder: sortOrder.value
     })
     if (result) {
       toast.add({ severity: 'success', summary: 'Extra actualizado', life: 3000 })
@@ -131,7 +135,8 @@ const handleSave = async () => {
       isRequired: isRequired.value,
       requiresUserInput: requiresUserInput.value,
       userInputLabel: requiresUserInput.value ? userInputLabel.value.trim() || undefined : undefined,
-      maxQuantity: maxQuantity.value ?? undefined
+      maxQuantity: maxQuantity.value ?? undefined,
+      sortOrder: sortOrder.value
     })
     if (result) {
       toast.add({ severity: 'success', summary: 'Extra creado', life: 3000 })
@@ -257,7 +262,7 @@ const handleSave = async () => {
           placeholder="Ej: Indica tu talla"
           data-testid="user-input-label-input"
         />
-        <small class="text-gray-400">Texto que verá el usuario (máx. 200 caracteres)</small>
+        <small class="text-gray-400">Texto visible para quien se registre (máx. 200 caracteres)</small>
       </div>
 
       <!-- Max Quantity -->
@@ -274,6 +279,18 @@ const handleSave = async () => {
           {{ validationErrors.maxQuantity }}
         </small>
         <small v-else class="text-gray-400">Dejar vacío si no hay límite</small>
+      </div>
+
+      <!-- Sort Order -->
+      <div>
+        <label class="mb-1 block text-sm font-medium text-gray-700">Orden</label>
+        <InputNumber
+          v-model="sortOrder"
+          :min="0"
+          class="w-full"
+          data-testid="extra-sort-order-input"
+        />
+        <small class="text-gray-400">Orden de visualización (menor = primero)</small>
       </div>
 
       <!-- Is Active (edit only) -->

@@ -186,7 +186,9 @@ public record AvailableCampEditionResponse(
     DateOnly? WeekendEndDate,
     int WeekendDays,
     int? MaxWeekendCapacity,
-    int? WeekendSpotsRemaining
+    int? WeekendSpotsRemaining,
+    DateTime? FirstPaymentDeadline,
+    DateTime? SecondPaymentDeadline
 );
 
 public record AgeRangesInfo(int BabyMaxAge, int ChildMinAge, int ChildMaxAge, int AdultMinAge);
@@ -208,8 +210,8 @@ public record RegistrationResponse(
     bool IsAdminModified
 );
 
-public record RegistrationFamilyUnitSummary(Guid Id, string Name);
-public record RegistrationCampEditionSummary(Guid Id, string CampName, int Year, DateTime StartDate, DateTime EndDate, int Duration);
+public record RegistrationFamilyUnitSummary(Guid Id, string Name, Guid RepresentativeUserId);
+public record RegistrationCampEditionSummary(Guid Id, string CampName, int Year, DateTime StartDate, DateTime EndDate, int Duration, string? Location);
 public record PricingBreakdown(
     List<MemberPricingDetail> Members,
     decimal BaseTotalAmount,
@@ -246,14 +248,14 @@ public record PaymentSummary(
 );
 public record ExtraPricingDetail(
   Guid CampEditionExtraId,
-  string Name, 
-  decimal UnitPrice, 
-  string PricingType, 
-  string PricingPeriod, 
-  int Quantity, 
-  int? CampDurationDays, 
-  string Calculation, 
-  decimal TotalAmount, 
+  string Name,
+  decimal UnitPrice,
+  string PricingType,
+  string PricingPeriod,
+  int Quantity,
+  int? CampDurationDays,
+  string Calculation,
+  decimal TotalAmount,
   string? UserInput);
 
 public record RegistrationListResponse(
@@ -346,10 +348,11 @@ public static class RegistrationMappingExtensions
         this Registration r,
         decimal amountPaid) => new(
         r.Id,
-        new(r.FamilyUnit.Id, r.FamilyUnit.Name),
+        new(r.FamilyUnit.Id, r.FamilyUnit.Name, r.FamilyUnit.RepresentativeUserId),
         new(r.CampEdition.Id, r.CampEdition.Camp.Name, r.CampEdition.Year,
             r.CampEdition.StartDate, r.CampEdition.EndDate,
-            (r.CampEdition.EndDate - r.CampEdition.StartDate).Days),
+            (r.CampEdition.EndDate - r.CampEdition.StartDate).Days,
+            r.CampEdition.Camp.Location),
         r.Status,
         r.Notes,
         new PricingBreakdown(

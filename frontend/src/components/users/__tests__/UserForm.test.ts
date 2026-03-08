@@ -50,7 +50,7 @@ describe('UserForm', () => {
   it('should disable submit button when form is invalid', () => {
     const wrapper = mountComponent({ mode: 'create' })
 
-    const submitButton = wrapper.findAll('button').find((b) => b.text().includes('Crear usuario'))
+    const submitButton = wrapper.findAll('button').find((b) => b.text().includes('Crear cuenta'))
     expect(submitButton?.attributes('disabled')).toBeDefined()
   })
 
@@ -76,6 +76,6 @@ describe('UserForm', () => {
 
   it('should display "Actualizar usuario" button in edit mode', () => {
     const wrapper = mountComponent({ mode: 'edit', user: mockUser })
-    expect(wrapper.text()).toContain('Actualizar usuario')
+    expect(wrapper.text()).toContain('Actualizar cuenta')
   })
 })

@@ -60,6 +60,7 @@ Groups people who attend camp together as a family. A User acts as the represent
 - `id`: Unique identifier for the FamilyUnit entity (Primary Key, UUID)
 - `name`: Family display name, e.g. "Garcia Family" (required, max 200 characters)
 - `representativeUserId`: User who manages this family unit (required, FK -> User)
+- `profilePhotoUrl`: URL of the family unit's profile photo thumbnail (optional, max 2048 characters)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
@@ -94,6 +95,7 @@ A person (child or adult) within a family unit. In the future, a FamilyMember ma
 - `phone`: Contact phone number (optional, max 20 characters, E.164 format, e.g., "+34612345678")
 - `medicalNotes`: Medical information (optional, max 2000 characters, sensitive data, must be stored encrypted at rest)
 - `allergies`: Allergy information (optional, max 1000 characters, sensitive data, must be stored encrypted at rest)
+- `profilePhotoUrl`: URL of the family member's profile photo thumbnail (optional, max 2048 characters)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
@@ -480,6 +482,8 @@ A specific annual edition of a camp (e.g., Camp 2026). Defines dates, pricing, c
 - `accommodationCapacityJson`: JSON-serialized `AccommodationCapacity` for this specific edition (optional, stored as `text`). When set, auto-syncs to parent `Camp.accommodationCapacityJson`.
 - `proposalReason`: Reason provided when proposing the edition (optional, used in Proposed → Draft flow)
 - `proposalNotes`: Additional notes provided at proposal time (optional)
+- `firstPaymentDeadline`: Explicit deadline for the 1st payment installment (optional, datetime UTC). When null, defaults to `startDate - 117 days`.
+- `secondPaymentDeadline`: Explicit deadline for the 2nd payment installment (optional, datetime UTC). When null, defaults to `startDate - 75 days`.
 - `contactEmail`: Contact email for this edition (optional)
 - `contactPhone`: Contact phone for this edition (optional)
 - `createdAt`: Record creation timestamp (required, auto-generated)
@@ -526,6 +530,7 @@ An extra service or product available for purchase during a camp edition (e.g., 
 - `maxQuantity`: Maximum quantity available (optional, integer > 0 when set; null = unlimited)
 - `requiresUserInput`: Whether this extra requires free-text input from the registrant (required, default: false)
 - `userInputLabel`: Custom label/prompt for the text input field (optional, max 200 characters, e.g. "Indica tu talla")
+- `sortOrder`: Display order for the extra within its camp edition (required, integer >= 0, default: 0)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
@@ -536,6 +541,7 @@ An extra service or product available for purchase during a camp edition (e.g., 
 - PricingType and PricingPeriod must be valid enum values
 - MaxQuantity must be > 0 when provided
 - UserInputLabel max 200 characters when provided
+- SortOrder must be >= 0
 - Cannot change price if already sold (quantity > 0)
 - Cannot reduce MaxQuantity below already-sold quantity
 - Cannot delete if any RegistrationExtra references this extra (deactivate instead)
@@ -1171,6 +1177,8 @@ erDiagram
         integer maxCapacity
         text accommodationCapacityJson
         boolean isArchived
+        datetime firstPaymentDeadline
+        datetime secondPaymentDeadline
         datetime createdAt
         datetime updatedAt
     }
@@ -1188,6 +1196,7 @@ erDiagram
         integer maxQuantity
         boolean requiresUserInput
         string userInputLabel
+        integer sortOrder
         datetime createdAt
         datetime updatedAt
     }

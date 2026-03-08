@@ -224,7 +224,7 @@ onMounted(async () => {
         <p class="text-sm text-gray-600">
           Rechazar el justificante de
           <strong>{{ rejectTarget?.familyUnitName }}</strong>.
-          El usuario podrá subir uno nuevo.
+          Se podrá subir uno nuevo.
         </p>
         <div>
           <label class="mb-1 block text-sm font-medium text-gray-700">

@@ -116,6 +116,28 @@ describe('RegistrationMemberSelector', () => {
     expect(wrapper.text()).toContain('Ana García')
   })
 
+  it('should emit update:modelValue when clicking directly on the checkbox to select', async () => {
+    const wrapper = mountComponent([])
+    const checkboxEl = wrapper.find('[data-testid="member-label-member-1"] [data-testid="member-checkbox"]')
+    await checkboxEl.trigger('click')
+    const emitted = wrapper.emitted('update:modelValue') as WizardMemberSelection[][]
+    expect(emitted).toBeTruthy()
+    const emittedSelections = emitted[emitted.length - 1][0] as unknown as WizardMemberSelection[]
+    expect(emittedSelections.some((s) => s.memberId === 'member-1')).toBe(true)
+  })
+
+  it('should emit update:modelValue when clicking directly on the checkbox to deselect', async () => {
+    const preSelected: WizardMemberSelection[] = [
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
+    ]
+    const wrapper = mountComponent(preSelected)
+    const checkboxEl = wrapper.find('[data-testid="member-label-member-1"] [data-testid="member-checkbox"]')
+    await checkboxEl.trigger('click')
+    const emitted = wrapper.emitted('update:modelValue') as WizardMemberSelection[][]
+    const emittedSelections = emitted[emitted.length - 1][0] as unknown as WizardMemberSelection[]
+    expect(emittedSelections.some((s) => s.memberId === 'member-1')).toBe(false)
+  })
+
   it('should emit update:modelValue with WizardMemberSelection when member is checked', async () => {
     const wrapper = mountComponent([])
     const card = wrapper.find('[data-testid="member-label-member-1"]')
@@ -146,64 +168,117 @@ describe('RegistrationMemberSelector', () => {
     expect(emittedSelections).toHaveLength(0)
   })
 
-  it('should not show period selector when edition has only Complete period', () => {
+  it('should not show global period section when edition has only Complete period', () => {
     const selected: WizardMemberSelection[] = [
       { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
     ]
     const wrapper = mountComponent(selected, mockEditionComplete)
-    expect(wrapper.find('[data-testid="period-select-member-1"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="global-period-section"]').exists()).toBe(false)
   })
 
-  it('should show period selector when member is selected and edition allows multiple periods', () => {
+  it('should show global period section when members are selected and edition allows multiple periods', () => {
     const selected: WizardMemberSelection[] = [
       { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
     ]
     const wrapper = mountComponent(selected, mockEditionWithPeriods)
-    expect(wrapper.find('[data-testid="period-select-member-1"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="global-period-section"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="global-period-select"]').exists()).toBe(true)
   })
 
-  it('should not show period selector for unselected members', () => {
+  it('should not show global period section when no members are selected', () => {
     const wrapper = mountComponent([], mockEditionWithPeriods)
+    expect(wrapper.find('[data-testid="global-period-section"]').exists()).toBe(false)
+  })
+
+  it('should not show individual period selectors by default', () => {
+    const selected: WizardMemberSelection[] = [
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
+    ]
+    const wrapper = mountComponent(selected, mockEditionWithPeriods)
+    expect(wrapper.find('[data-testid="individual-periods-section"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="period-select-member-1"]').exists()).toBe(false)
   })
 
-  it('should show WeekendVisit date pickers when WeekendVisit period is selected', () => {
+  it('should show individual period selectors when different-periods checkbox is checked', async () => {
     const selected: WizardMemberSelection[] = [
-      {
-        memberId: 'member-1',
-        attendancePeriod: 'WeekendVisit',
-        visitStartDate: null,
-        visitEndDate: null,
-        guardianName: null,
-        guardianDocumentNumber: null
-      }
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null },
+      { memberId: 'member-2', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
     ]
     const wrapper = mountComponent(selected, mockEditionWithPeriods)
+
+    // Find and click the different-periods checkbox
+    const checkbox = wrapper.find('[data-testid="different-periods-checkbox"]')
+    expect(checkbox.exists()).toBe(true)
+
+    // Simulate the v-model update
+    await wrapper.vm.$nextTick()
+    // Directly set internal state since checkbox v-model needs component interaction
+    ;(wrapper.vm as any).hasDifferentPeriods = true
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="individual-periods-section"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="period-select-member-1"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="period-select-member-2"]').exists()).toBe(true)
+  })
+
+  it('should show global WeekendVisit date pickers when global period is WeekendVisit', async () => {
+    const selected: WizardMemberSelection[] = [
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
+    ]
+    const wrapper = mountComponent(selected, mockEditionWithPeriods)
+
+    // Set global period to WeekendVisit
+    ;(wrapper.vm as any).globalPeriod = 'WeekendVisit'
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="global-visit-start"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="global-visit-end"]').exists()).toBe(true)
+  })
+
+  it('should not show global WeekendVisit date pickers when global period is Complete', () => {
+    const selected: WizardMemberSelection[] = [
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
+    ]
+    const wrapper = mountComponent(selected, mockEditionWithPeriods)
+    expect(wrapper.find('[data-testid="global-visit-start"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="global-visit-end"]').exists()).toBe(false)
+  })
+
+  it('should update all members when global period changes', async () => {
+    const selected: WizardMemberSelection[] = [
+      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null },
+      { memberId: 'member-2', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
+    ]
+    const wrapper = mountComponent(selected, mockEditionWithPeriods)
+
+    // Change global period
+    ;(wrapper.vm as any).globalPeriod = 'FirstWeek'
+    await wrapper.vm.$nextTick()
+
+    const emitted = wrapper.emitted('update:modelValue') as WizardMemberSelection[][]
+    expect(emitted).toBeTruthy()
+    const lastEmit = emitted[emitted.length - 1][0] as unknown as WizardMemberSelection[]
+    expect(lastEmit).toHaveLength(2)
+    expect(lastEmit[0].attendancePeriod).toBe('FirstWeek')
+    expect(lastEmit[1].attendancePeriod).toBe('FirstWeek')
+  })
+
+  it('should show individual WeekendVisit date pickers in different-periods mode', async () => {
+    const selected: WizardMemberSelection[] = [
+      { memberId: 'member-1', attendancePeriod: 'WeekendVisit', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null },
+      { memberId: 'member-2', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
+    ]
+    const wrapper = mountComponent(selected, mockEditionWithPeriods)
+
+    ;(wrapper.vm as any).hasDifferentPeriods = true
+    await wrapper.vm.$nextTick()
+
+    // Member 1 has WeekendVisit → should show date pickers
     expect(wrapper.find('[data-testid="visit-start-member-1"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="visit-end-member-1"]').exists()).toBe(true)
-  })
-
-  it('should not show WeekendVisit date pickers when period is Complete', () => {
-    const selected: WizardMemberSelection[] = [
-      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
-    ]
-    const wrapper = mountComponent(selected, mockEditionWithPeriods)
-    expect(wrapper.find('[data-testid="visit-start-member-1"]').exists()).toBe(false)
-  })
-
-  it('should not deselect member when clicking on the period selector area', async () => {
-    const selected: WizardMemberSelection[] = [
-      { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
-    ]
-    const wrapper = mountComponent(selected, mockEditionWithPeriods)
-
-    // Click on the period selector wrapper (has @click.stop)
-    const periodSelect = wrapper.find('[data-testid="period-select-member-1"]')
-    expect(periodSelect.exists()).toBe(true)
-    await periodSelect.trigger('click')
-
-    // Should NOT emit update:modelValue (member should remain selected)
-    expect(wrapper.emitted('update:modelValue')).toBeFalsy()
+    // Member 2 has Complete → no date pickers
+    expect(wrapper.find('[data-testid="visit-start-member-2"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="visit-end-member-2"]').exists()).toBe(false)
   })
 
   describe('guardian pre-fill from first selected adult', () => {
