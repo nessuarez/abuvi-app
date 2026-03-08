@@ -25,6 +25,7 @@ describe('useFamilyUnits', () => {
             id: '123',
             name: 'Garcia Family',
             representativeUserId: 'user-1',
+            profilePhotoUrl: null,
             createdAt: '2026-02-15T10:00:00Z',
             updatedAt: '2026-02-15T10:00:00Z'
           }
@@ -71,6 +72,7 @@ describe('useFamilyUnits', () => {
             id: '123',
             name: 'Garcia Family',
             representativeUserId: 'user-1',
+            profilePhotoUrl: null,
             createdAt: '2026-02-15T10:00:00Z',
             updatedAt: '2026-02-15T10:00:00Z'
           }
@@ -112,6 +114,7 @@ describe('useFamilyUnits', () => {
             id: '123',
             name: 'Updated Family',
             representativeUserId: 'user-1',
+            profilePhotoUrl: null,
             createdAt: '2026-02-15T10:00:00Z',
             updatedAt: '2026-02-15T11:00:00Z'
           }
@@ -139,6 +142,7 @@ describe('useFamilyUnits', () => {
         id: '123',
         name: 'Garcia Family',
         representativeUserId: 'user-1',
+        profilePhotoUrl: null,
         createdAt: '2026-02-15T10:00:00Z',
         updatedAt: '2026-02-15T10:00:00Z'
       }
@@ -156,6 +160,7 @@ describe('useFamilyUnits', () => {
           phone: null,
           hasMedicalNotes: false,
           hasAllergies: false,
+          profilePhotoUrl: null,
           createdAt: '2026-02-15T11:00:00Z',
           updatedAt: '2026-02-15T11:00:00Z'
         }
@@ -187,6 +192,7 @@ describe('useFamilyUnits', () => {
             phone: '+34612345678',
             hasMedicalNotes: true,
             hasAllergies: true,
+            profilePhotoUrl: null,
             createdAt: '2026-02-15T11:00:00Z',
             updatedAt: '2026-02-15T11:00:00Z'
           }
@@ -231,6 +237,7 @@ describe('useFamilyUnits', () => {
           phone: null,
           hasMedicalNotes: false,
           hasAllergies: false,
+          profilePhotoUrl: null,
           createdAt: '2026-02-15T11:00:00Z',
           updatedAt: '2026-02-15T11:00:00Z'
         }
@@ -268,6 +275,7 @@ describe('useFamilyUnits', () => {
         phone: '+34612345678',
         hasMedicalNotes: false,
         hasAllergies: false,
+        profilePhotoUrl: null,
         createdAt: '2026-02-15T11:00:00Z',
         updatedAt: '2026-02-15T11:00:00Z'
       }
@@ -315,6 +323,7 @@ describe('useFamilyUnits', () => {
           phone: null,
           hasMedicalNotes: false,
           hasAllergies: false,
+          profilePhotoUrl: null,
           createdAt: '2026-02-15T11:00:00Z',
           updatedAt: '2026-02-15T11:00:00Z'
         }
@@ -336,6 +345,7 @@ describe('useFamilyUnits', () => {
             id: '123',
             name: 'Garcia Family',
             representativeUserId: 'user-1',
+            profilePhotoUrl: null,
             createdAt: '2026-02-15T10:00:00Z',
             updatedAt: '2026-02-15T10:00:00Z'
           }
@@ -367,6 +377,7 @@ describe('useFamilyUnits', () => {
         phone: null,
         hasMedicalNotes: false,
         hasAllergies: false,
+        profilePhotoUrl: null,
         createdAt: '2026-02-15T11:00:00Z',
         updatedAt: '2026-02-15T11:00:00Z'
       }
@@ -392,7 +403,7 @@ describe('useFamilyUnits', () => {
       const mockPagedResult = {
         items: [
           { id: 'unit-1', name: 'Garcia Family', representativeUserId: 'user-1',
-            representativeName: 'Juan Garcia', membersCount: 4,
+            profilePhotoUrl: null, representativeName: 'Juan Garcia', membersCount: 4,
             createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' }
         ],
         totalCount: 1, page: 1, pageSize: 20, totalPages: 1,
