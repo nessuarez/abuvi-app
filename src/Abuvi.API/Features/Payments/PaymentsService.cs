@@ -348,6 +348,14 @@ public class PaymentsService(
                 .Select(word => word.Length >= 3 ? word[..3] : word));
     }
 
+    public async Task DeleteByRegistrationIdAsync(Guid registrationId, CancellationToken ct)
+    {
+        await paymentsRepo.DeleteByRegistrationIdAsync(registrationId, ct);
+        logger.LogInformation(
+            "All payments deleted for registration {RegistrationId} during registration cleanup",
+            registrationId);
+    }
+
     private static string ExtractBlobKey(string fileUrl)
     {
         // URLs are like https://cdn.example.com/payment-proofs/xxx/file.jpg

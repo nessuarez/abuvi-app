@@ -59,6 +59,11 @@ public class PaymentsRepository(AbuviDbContext db) : IPaymentsRepository
             .OrderBy(p => p.ProofUploadedAt)
             .ToListAsync(ct);
 
+    public async Task DeleteByRegistrationIdAsync(Guid registrationId, CancellationToken ct)
+        => await db.Payments
+            .Where(p => p.RegistrationId == registrationId)
+            .ExecuteDeleteAsync(ct);
+
     public async Task<(List<Payment> Items, int TotalCount)> GetFilteredAsync(
         PaymentFilterRequest filter, CancellationToken ct)
     {

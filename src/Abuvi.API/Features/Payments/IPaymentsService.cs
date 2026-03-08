@@ -13,4 +13,5 @@ public interface IPaymentsService
     Task<(List<AdminPaymentResponse> Items, int TotalCount)> GetAllPaymentsAsync(PaymentFilterRequest filter, CancellationToken ct);
     Task<PaymentSettingsResponse> GetPaymentSettingsAsync(CancellationToken ct);
     Task<PaymentSettingsResponse> UpdatePaymentSettingsAsync(PaymentSettingsRequest request, Guid adminUserId, CancellationToken ct);
+    Task DeleteByRegistrationIdAsync(Guid registrationId, CancellationToken ct);
 }
