@@ -799,9 +799,24 @@ public class RegistrationsService(
         if (registration.Status is RegistrationStatus.Cancelled && !isAdminOrBoard)
             throw new BusinessRuleException("Cancelled registrations cannot be deleted.");
 
-        // 4. Validate no payments exist
+        // 4. Validate payment guard (BR-2)
         if (registration.Payments?.Any() == true)
-            throw new BusinessRuleException("Cannot delete registration with existing payments. Please contact an administrator.");
+        {
+            if (!isAdminOrBoard)
+                throw new BusinessRuleException("Cannot delete registration with existing payments. Please contact an administrator.");
+
+            // Admin/Board: blocked only if proof was uploaded or a payment was confirmed
+            if (registration.Payments.Any(p => p.ProofFileUrl != null))
+                throw new BusinessRuleException(
+                    "No se puede eliminar la inscripción porque tiene pagos con justificantes subidos. Elimina los justificantes primero.");
+
+            if (registration.Payments.Any(p => p.Status == PaymentStatus.Completed))
+                throw new BusinessRuleException(
+                    "No se puede eliminar la inscripción porque tiene pagos confirmados.");
+
+            // Payments are clean (no proof, not completed) — delete them first (FK Restrict)
+            await paymentsService.DeleteByRegistrationIdAsync(registrationId, ct);
+        }
 
         // 5. Validate time window (representative only)
         if (!isAdminOrBoard)
