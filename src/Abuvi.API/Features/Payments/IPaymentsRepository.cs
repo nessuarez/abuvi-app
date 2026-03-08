@@ -13,4 +13,5 @@ public interface IPaymentsRepository
     Task<decimal> GetTotalCompletedAsync(Guid registrationId, CancellationToken ct);
     Task<List<Payment>> GetPendingReviewAsync(CancellationToken ct);
     Task<(List<Payment> Items, int TotalCount)> GetFilteredAsync(PaymentFilterRequest filter, CancellationToken ct);
+    Task DeleteByRegistrationIdAsync(Guid registrationId, CancellationToken ct);
 }

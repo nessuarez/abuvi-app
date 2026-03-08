@@ -274,7 +274,121 @@ public class RegistrationsService_DeleteAsync_Tests
     }
 
     [Fact]
-    public async Task DeleteAsync_WhenAdminAndPaymentsExist_ShouldStillThrowBusinessRuleException()
+    public async Task DeleteAsync_WhenAdminAndPaymentHasProof_ShouldThrowBusinessRuleException()
+    {
+        // Arrange
+        var registrationId = Guid.NewGuid();
+        var registration = CreateRegistrationForDelete(registrationId,
+            status: RegistrationStatus.Pending,
+            createdAt: DateTime.UtcNow.AddDays(-3));
+        registration.Payments =
+        [
+            new Payment
+            {
+                Id = Guid.NewGuid(),
+                RegistrationId = registrationId,
+                Amount = 100m,
+                Status = PaymentStatus.PendingReview,
+                ProofFileUrl = "https://cdn.test.com/payment-proofs/abc/proof.jpg",
+                CreatedAt = DateTime.UtcNow
+            }
+        ];
+
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>())
+            .Returns(registration);
+
+        // Act
+        Func<Task> act = async () =>
+            await _sut.DeleteAsync(registrationId, UserId, isAdminOrBoard: true, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage("*justificantes*");
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WhenAdminAndPaymentIsCompleted_ShouldThrowBusinessRuleException()
+    {
+        // Arrange
+        var registrationId = Guid.NewGuid();
+        var registration = CreateRegistrationForDelete(registrationId,
+            status: RegistrationStatus.Pending,
+            createdAt: DateTime.UtcNow.AddDays(-3));
+        registration.Payments =
+        [
+            new Payment
+            {
+                Id = Guid.NewGuid(),
+                RegistrationId = registrationId,
+                Amount = 100m,
+                Status = PaymentStatus.Completed,
+                ProofFileUrl = null,
+                CreatedAt = DateTime.UtcNow
+            }
+        ];
+
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>())
+            .Returns(registration);
+
+        // Act
+        Func<Task> act = async () =>
+            await _sut.DeleteAsync(registrationId, UserId, isAdminOrBoard: true, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage("*confirmados*");
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WhenAdminAndPaymentsAreClean_ShouldDeletePaymentsThenRegistration()
+    {
+        // Arrange
+        var registrationId = Guid.NewGuid();
+        var registration = CreateRegistrationForDelete(registrationId,
+            status: RegistrationStatus.Pending,
+            createdAt: DateTime.UtcNow.AddDays(-3));
+        registration.Payments =
+        [
+            new Payment
+            {
+                Id = Guid.NewGuid(),
+                RegistrationId = registrationId,
+                Amount = 100m,
+                Status = PaymentStatus.Pending,
+                ProofFileUrl = null,
+                CreatedAt = DateTime.UtcNow
+            },
+            new Payment
+            {
+                Id = Guid.NewGuid(),
+                RegistrationId = registrationId,
+                Amount = 100m,
+                Status = PaymentStatus.Failed,
+                ProofFileUrl = null,
+                CreatedAt = DateTime.UtcNow
+            }
+        ];
+
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>())
+            .Returns(registration);
+        _repo.DeleteAsync(registrationId, Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _paymentsService.DeleteByRegistrationIdAsync(registrationId, Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _sut.DeleteAsync(registrationId, UserId, isAdminOrBoard: true, CancellationToken.None);
+
+        // Assert: payments deleted before registration
+        Received.InOrder(() =>
+        {
+            _paymentsService.DeleteByRegistrationIdAsync(registrationId, Arg.Any<CancellationToken>());
+            _repo.DeleteAsync(registrationId, Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WhenNonAdminAndCleanPaymentsExist_ShouldThrowBusinessRuleException()
     {
         // Arrange
         var registrationId = Guid.NewGuid();
@@ -288,7 +402,8 @@ public class RegistrationsService_DeleteAsync_Tests
                 Id = Guid.NewGuid(),
                 RegistrationId = registrationId,
                 Amount = 100m,
-                Status = PaymentStatus.Completed,
+                Status = PaymentStatus.Pending,
+                ProofFileUrl = null,
                 CreatedAt = DateTime.UtcNow
             }
         ];
@@ -298,9 +413,9 @@ public class RegistrationsService_DeleteAsync_Tests
 
         // Act
         Func<Task> act = async () =>
-            await _sut.DeleteAsync(registrationId, UserId, isAdminOrBoard: true, CancellationToken.None);
+            await _sut.DeleteAsync(registrationId, UserId, isAdminOrBoard: false, CancellationToken.None);
 
-        // Assert
+        // Assert: non-admin always blocked when payments exist
         await act.Should().ThrowAsync<BusinessRuleException>()
             .WithMessage("*payments*");
     }
