@@ -9,8 +9,13 @@ import Container from '@/components/ui/Container.vue'
 import RegistrationStatusBadge from '@/components/registrations/RegistrationStatusBadge.vue'
 import RegistrationPricingBreakdown from '@/components/registrations/RegistrationPricingBreakdown.vue'
 import RegistrationCancelDialog from '@/components/registrations/RegistrationCancelDialog.vue'
+import RegistrationDeleteDialog from '@/components/registrations/RegistrationDeleteDialog.vue'
+import BankTransferInstructions from '@/components/payments/BankTransferInstructions.vue'
+import PaymentInstallmentCard from '@/components/payments/PaymentInstallmentCard.vue'
 import { useRegistrations } from '@/composables/useRegistrations'
+import { usePayments } from '@/composables/usePayments'
 import { useAuthStore } from '@/stores/auth'
+import type { PaymentResponse, PaymentSettings } from '@/types/payment'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,10 +28,16 @@ const {
   error,
   getRegistrationById,
   cancelRegistration,
+  deleteRegistration,
   getAccommodationPreferences
 } = useRegistrations()
+const { getRegistrationPayments, getPaymentSettings } = usePayments()
 const showCancelDialog = ref(false)
 const cancelling = ref(false)
+const showDeleteDialog = ref(false)
+const deleting = ref(false)
+const installments = ref<PaymentResponse[]>([])
+const paymentSettingsData = ref<PaymentSettings | null>(null)
 
 import type { AccommodationPreferenceResponse } from '@/types/registration'
 import type { AccommodationType } from '@/types/camp-edition'
@@ -47,9 +58,23 @@ const isRepresentative = computed(
   () => registration.value?.familyUnit.representativeUserId === auth.user?.id
 )
 
+const isAdminOrBoard = computed(() => auth.isAdmin || auth.isBoard)
+
+const isDraft = computed(() => registration.value?.status === 'Draft')
+
 const canCancel = computed(
-  () => registration.value?.status === 'Pending' || registration.value?.status === 'Confirmed'
+  () =>
+    registration.value?.status === 'Pending' ||
+    registration.value?.status === 'Confirmed' ||
+    registration.value?.status === 'Draft'
 )
+
+const canDelete = computed(() => {
+  if (!registration.value) return false
+  const status = registration.value.status
+  if (status !== 'Pending' && status !== 'Draft') return false
+  return isRepresentative.value || isAdminOrBoard.value
+})
 
 const formatDate = (dateStr: string): string =>
   new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(
@@ -98,12 +123,46 @@ const handleCancel = async () => {
   }
 }
 
+const handleDelete = async () => {
+  deleting.value = true
+  const success = await deleteRegistration(registrationId.value)
+  deleting.value = false
+  showDeleteDialog.value = false
+  if (success) {
+    toast.add({
+      severity: 'success',
+      summary: 'Registration deleted',
+      detail: 'Your registration has been deleted. You can register again for this camp edition.',
+      life: 4000
+    })
+    router.push('/registrations')
+  } else {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.value || 'Could not delete the registration.',
+      life: 5000
+    })
+  }
+}
+
+const handleInstallmentUpdated = (updated: PaymentResponse) => {
+  const index = installments.value.findIndex((p) => p.id === updated.id)
+  if (index !== -1) installments.value[index] = updated
+}
+
 onMounted(async () => {
   await getRegistrationById(registrationId.value)
-  const prefs = await getAccommodationPreferences(registrationId.value)
+  const [prefs, paymentsResult, settingsResult] = await Promise.all([
+    getAccommodationPreferences(registrationId.value),
+    getRegistrationPayments(registrationId.value),
+    getPaymentSettings()
+  ])
   if (prefs) {
     accommodationPrefs.value = prefs.sort((a, b) => a.preferenceOrder - b.preferenceOrder)
   }
+  installments.value = paymentsResult
+  paymentSettingsData.value = settingsResult
 })
 </script>
 
@@ -142,6 +201,11 @@ onMounted(async () => {
             </p>
           </div>
         </div>
+
+        <!-- Draft banner -->
+        <Message v-if="isDraft" severity="warn" :closable="false" class="mb-6" data-testid="draft-banner">
+          Esta inscripción fue modificada por un administrador. El representante familiar debe volver a confirmarla.
+        </Message>
 
         <!-- Notes -->
         <div v-if="registration.notes" class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -188,20 +252,24 @@ onMounted(async () => {
         <div class="mb-6">
           <h2 class="mb-3 text-base font-semibold text-gray-900">Pagos</h2>
 
-          <div v-if="registration.payments.length > 0" class="space-y-2">
-            <div v-for="payment in registration.payments" :key="payment.id"
-              class="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3">
-              <div>
-                <span class="text-sm font-medium text-gray-900">
-                  {{ PAYMENT_METHOD_LABELS[payment.method] ?? payment.method }}
-                </span>
-                <span class="ml-2 text-xs text-gray-400">{{ formatPaymentDate(payment.paymentDate) }}</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="text-xs text-gray-500">{{ PAYMENT_STATUS_LABELS[payment.status] ?? payment.status }}</span>
-                <span class="font-semibold text-gray-900">{{ formatCurrency(payment.amount) }}</span>
-              </div>
-            </div>
+          <!-- Bank transfer instructions (collapsible) -->
+          <div v-if="paymentSettingsData" class="mb-4">
+            <BankTransferInstructions
+              :iban="paymentSettingsData.iban"
+              :bank-name="paymentSettingsData.bankName"
+              :account-holder="paymentSettingsData.accountHolder"
+              collapsible
+            />
+          </div>
+
+          <!-- Installment cards -->
+          <div v-if="installments.length > 0" class="space-y-4">
+            <PaymentInstallmentCard
+              v-for="payment in installments"
+              :key="payment.id"
+              :payment="payment"
+              @updated="handleInstallmentUpdated"
+            />
           </div>
 
           <div v-else
@@ -221,14 +289,18 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Cancel action -->
-        <div v-if="isRepresentative && canCancel" class="flex justify-end">
-          <Button label="Cancelar inscripción" severity="danger" outlined icon="pi pi-times"
-            @click="showCancelDialog = true" data-testid="cancel-registration-btn" />
+        <!-- Actions -->
+        <div v-if="(isRepresentative && canCancel) || canDelete" class="flex justify-end gap-2">
+          <Button v-if="isRepresentative && canCancel" label="Cancelar inscripción" severity="danger" outlined
+            icon="pi pi-times" @click="showCancelDialog = true" data-testid="cancel-registration-btn" />
+          <Button v-if="canDelete" label="Delete registration" severity="danger" icon="pi pi-trash"
+            @click="showDeleteDialog = true" data-testid="delete-registration-btn" />
         </div>
 
         <RegistrationCancelDialog v-model:visible="showCancelDialog" :registration-id="registrationId"
           :loading="cancelling" @confirm="handleCancel" />
+        <RegistrationDeleteDialog v-model:visible="showDeleteDialog" :loading="deleting"
+          @confirm="handleDelete" />
       </template>
     </div>
   </Container>

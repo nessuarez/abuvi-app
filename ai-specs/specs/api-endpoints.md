@@ -946,6 +946,62 @@ Deletes a family member. Representatives cannot delete their own family member r
 
 ---
 
+### PUT /api/family-units/{familyUnitId}/members/{memberId}/profile-photo
+
+Uploads a profile photo for a family member. Accepts `multipart/form-data` with an image file. Generates a 400x400 WebP thumbnail and stores its URL as `profilePhotoUrl`. Replaces any existing photo.
+
+**Authorization**: Representative of the family unit or Admin
+**Request**: `multipart/form-data` with `file` field (image: .jpg, .jpeg, .png, .webp, .gif; max 50 MB)
+**Success Response:** 200 OK — `ApiResponse<FamilyMemberResponse>`
+**Error Responses:**
+
+- **400 Bad Request**: Invalid file type or file too large
+- **403 Forbidden**: User is not the representative or admin
+- **404 Not Found**: Family unit or member doesn't exist
+
+---
+
+### DELETE /api/family-units/{familyUnitId}/members/{memberId}/profile-photo
+
+Removes the profile photo of a family member.
+
+**Authorization**: Representative of the family unit or Admin
+**Success Response:** 204 No Content
+**Error Responses:**
+
+- **403 Forbidden**: User is not the representative or admin
+- **404 Not Found**: Family unit or member doesn't exist
+
+---
+
+### PUT /api/family-units/{id}/profile-photo
+
+Uploads a profile photo for a family unit. Accepts `multipart/form-data` with an image file. Generates a 400x400 WebP thumbnail and stores its URL as `profilePhotoUrl`. Replaces any existing photo.
+
+**Authorization**: Representative of the family unit or Admin
+**Request**: `multipart/form-data` with `file` field (image: .jpg, .jpeg, .png, .webp, .gif; max 50 MB)
+**Success Response:** 200 OK — `ApiResponse<FamilyUnitResponse>`
+**Error Responses:**
+
+- **400 Bad Request**: Invalid file type or file too large
+- **403 Forbidden**: User is not the representative or admin
+- **404 Not Found**: Family unit doesn't exist
+
+---
+
+### DELETE /api/family-units/{id}/profile-photo
+
+Removes the profile photo of a family unit.
+
+**Authorization**: Representative of the family unit or Admin
+**Success Response:** 204 No Content
+**Error Responses:**
+
+- **403 Forbidden**: User is not the representative or admin
+- **404 Not Found**: Family unit doesn't exist
+
+---
+
 ## Google Places API (Backend Proxy)
 
 These endpoints proxy Google Places API calls through the backend to protect the API key from client exposure.
@@ -2509,6 +2565,121 @@ Get accommodation preferences for a registration, ordered by preference rank.
 **Error Responses:**
 
 - **404 Not Found**: Registration not found
+
+---
+
+## Registration Admin Endpoints
+
+Admin/Board-only endpoints for managing registrations across camp editions.
+
+**Authorization**: Requires `Admin` or `Board` role.
+
+---
+
+### GET /api/camp-editions/{campEditionId}/registrations
+
+Get paginated list of registrations for a camp edition with search, filtering, and aggregated totals.
+
+**Query Parameters:**
+
+| Parameter  | Type   | Default | Description                                      |
+| ---------- | ------ | ------- | ------------------------------------------------ |
+| `page`     | int    | 1       | Page number (clamped to >= 1)                    |
+| `pageSize` | int    | 20      | Items per page (clamped to 1-100)                |
+| `search`   | string | null    | Search by family name, representative name/email |
+| `status`   | string | null    | Filter by registration status                    |
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "...",
+        "familyUnit": { "id": "...", "name": "García Family" },
+        "representative": {
+          "id": "...",
+          "firstName": "Juan",
+          "lastName": "García",
+          "email": "juan@test.com"
+        },
+        "status": "Pending",
+        "memberCount": 3,
+        "totalAmount": 900.00,
+        "amountPaid": 200.00,
+        "amountRemaining": 700.00,
+        "createdAt": "2026-03-01T10:00:00Z"
+      }
+    ],
+    "totalCount": 1,
+    "page": 1,
+    "pageSize": 20,
+    "totalPages": 1,
+    "totals": {
+      "totalRegistrations": 1,
+      "totalMembers": 3,
+      "totalAmount": 900.00,
+      "totalPaid": 200.00,
+      "totalRemaining": 700.00
+    }
+  }
+}
+```
+
+**Error Responses:**
+
+- **404 Not Found**: Camp edition not found
+
+---
+
+### PUT /api/registrations/{id}/admin-edit
+
+Edit a registration as Admin/Board. Sets the registration status to `Draft` and records `adminModifiedAt`. Supports partial updates — only provided fields are updated.
+
+**Request Body:**
+
+```json
+{
+  "members": [
+    { "familyMemberId": "...", "attendancePeriod": "Complete" }
+  ],
+  "extras": [
+    { "campEditionExtraId": "...", "quantity": 2 }
+  ],
+  "preferences": [
+    { "campEditionAccommodationId": "...", "preferenceOrder": 1 }
+  ],
+  "notes": "Updated notes",
+  "specialNeeds": "Updated special needs",
+  "campatesPreference": "Updated preference"
+}
+```
+
+All fields are optional (null = no change).
+
+**Validation Rules:**
+
+- Members list, if provided, must not be empty
+- Extra quantity must be > 0
+- Preference order must be > 0
+- Notes max 1000 chars, SpecialNeeds max 2000 chars, CampatesPreference max 500 chars
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": { "...RegistrationResponse..." }
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **404 Not Found**: Registration not found
+- **422 Unprocessable Entity**: Registration is cancelled
 
 ---
 

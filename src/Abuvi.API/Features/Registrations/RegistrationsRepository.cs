@@ -21,9 +21,12 @@ public interface IRegistrationsRepository
         AttendancePeriod period,
         CancellationToken ct
     );
+    Task<(List<AdminRegistrationProjection> Items, int TotalCount, AdminRegistrationTotals Totals)>
+        GetAdminPagedAsync(Guid campEditionId, int page, int pageSize, string? search, string? status, CancellationToken ct);
     Task AddAsync(Registration registration, CancellationToken ct);
     Task UpdateAsync(Registration registration, CancellationToken ct);
     Task DeleteMembersByRegistrationIdAsync(Guid registrationId, CancellationToken ct);
+    Task DeleteAsync(Guid id, CancellationToken ct);
 }
 
 public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsRepository
@@ -74,6 +77,76 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
                  rm.AttendancePeriod == period))
             .CountAsync(ct);
 
+    public async Task<(List<AdminRegistrationProjection> Items, int TotalCount, AdminRegistrationTotals Totals)>
+        GetAdminPagedAsync(Guid campEditionId, int page, int pageSize, string? search, string? status, CancellationToken ct)
+    {
+        var query = from r in db.Registrations.AsNoTracking()
+                    join fu in db.FamilyUnits on r.FamilyUnitId equals fu.Id
+                    join u in db.Users on r.RegisteredByUserId equals u.Id
+                    where r.CampEditionId == campEditionId
+                    select new
+                    {
+                        r.Id,
+                        FamilyUnitId = fu.Id,
+                        FamilyUnitName = fu.Name,
+                        RepresentativeUserId = u.Id,
+                        RepresentativeFirstName = u.FirstName,
+                        RepresentativeLastName = u.LastName,
+                        RepresentativeEmail = u.Email,
+                        r.Status,
+                        MemberCount = db.RegistrationMembers.Count(m => m.RegistrationId == r.Id),
+                        r.TotalAmount,
+                        AmountPaid = db.Payments
+                            .Where(p => p.RegistrationId == r.Id && p.Status == PaymentStatus.Completed)
+                            .Sum(p => (decimal?)p.Amount) ?? 0m,
+                        r.CreatedAt
+                    };
+
+        // Status filter
+        if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<RegistrationStatus>(status, true, out var statusEnum))
+        {
+            query = query.Where(x => x.Status == statusEnum);
+        }
+
+        // Search filter (case-insensitive on family name or representative name)
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(x =>
+                x.FamilyUnitName.ToLower().Contains(term) ||
+                (x.RepresentativeFirstName + " " + x.RepresentativeLastName).ToLower().Contains(term));
+        }
+
+        // Totals (computed AFTER filters, BEFORE pagination)
+        var totalCount = await query.CountAsync(ct);
+
+        var aggregateTotals = totalCount == 0
+            ? new AdminRegistrationTotals(0, 0, 0, 0, 0)
+            : await query.GroupBy(_ => 1).Select(g => new AdminRegistrationTotals(
+                g.Count(),
+                g.Sum(x => x.MemberCount),
+                g.Sum(x => x.TotalAmount),
+                g.Sum(x => x.AmountPaid),
+                g.Sum(x => x.TotalAmount - x.AmountPaid)
+            )).FirstAsync(ct);
+
+        // Pagination
+        var items = await query
+            .OrderByDescending(x => x.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        var projections = items.Select(x => new AdminRegistrationProjection(
+            x.Id, x.FamilyUnitId, x.FamilyUnitName,
+            x.RepresentativeUserId, x.RepresentativeFirstName,
+            x.RepresentativeLastName, x.RepresentativeEmail,
+            x.Status, x.MemberCount, x.TotalAmount, x.AmountPaid, x.CreatedAt
+        )).ToList();
+
+        return (projections, totalCount, aggregateTotals);
+    }
+
     public async Task AddAsync(Registration registration, CancellationToken ct)
     {
         registration.CreatedAt = DateTime.UtcNow;
@@ -94,5 +167,13 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
         await db.RegistrationMembers
             .Where(m => m.RegistrationId == registrationId)
             .ExecuteDeleteAsync(ct);
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct)
+    {
+        var entity = await db.Registrations.FindAsync([id], ct);
+        if (entity is null) return;
+        db.Registrations.Remove(entity);
+        await db.SaveChangesAsync(ct);
     }
 }

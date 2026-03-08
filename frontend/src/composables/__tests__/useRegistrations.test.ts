@@ -6,6 +6,25 @@ vi.mock('@/utils/api', () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() }
 }))
 
+const mockListItem = {
+  id: 'reg-1',
+  familyUnit: { id: 'fu-1', name: 'Familia García', representativeUserId: 'user-1' },
+  campEdition: {
+    id: 'edition-1',
+    campName: 'Campamento ABUVI',
+    year: 2026,
+    startDate: '2026-07-01',
+    endDate: '2026-07-15',
+    location: 'Montaña Norte',
+    duration: 14
+  },
+  status: 'Pending',
+  totalAmount: 450,
+  amountPaid: 0,
+  amountRemaining: 450,
+  createdAt: '2026-02-01T00:00:00Z'
+}
+
 const mockRegistration = {
   id: 'reg-1',
   familyUnit: { id: 'fu-1', name: 'Familia García', representativeUserId: 'user-1' },
@@ -15,7 +34,8 @@ const mockRegistration = {
     year: 2026,
     startDate: '2026-07-01',
     endDate: '2026-07-15',
-    location: 'Montaña Norte'
+    location: 'Montaña Norte',
+    duration: 14
   },
   status: 'Pending',
   notes: null,
@@ -40,7 +60,7 @@ describe('useRegistrations - fetchMyRegistrations', () => {
 
   it('should load registrations successfully', async () => {
     vi.mocked(api.get).mockResolvedValueOnce({
-      data: { success: true, data: [mockRegistration], error: null }
+      data: { success: true, data: [mockListItem], error: null }
     })
 
     const { registrations, loading, error, fetchMyRegistrations } = useRegistrations()
@@ -48,6 +68,7 @@ describe('useRegistrations - fetchMyRegistrations', () => {
 
     expect(registrations.value).toHaveLength(1)
     expect(registrations.value[0].id).toBe('reg-1')
+    expect(registrations.value[0].totalAmount).toBe(450)
     expect(loading.value).toBe(false)
     expect(error.value).toBeNull()
     expect(api.get).toHaveBeenCalledWith('/registrations')
@@ -132,6 +153,7 @@ describe('useRegistrations - createRegistration', () => {
     expect(result).toEqual(mockRegistration)
     expect(registrations.value).toHaveLength(1)
     expect(registrations.value[0].id).toBe('reg-1')
+    expect(registrations.value[0].totalAmount).toBe(450)
     expect(error.value).toBeNull()
     expect(api.post).toHaveBeenCalledWith('/registrations', createRequest)
   })
@@ -208,12 +230,12 @@ describe('useRegistrations - setExtras', () => {
     })
 
     const { registrations, registration, setExtras } = useRegistrations()
-    registrations.value = [mockRegistration as never]
+    registrations.value = [mockListItem as never]
     registration.value = mockRegistration as never
 
     await setExtras('reg-1', extrasRequest)
 
-    expect(registrations.value[0].pricing.extrasAmount).toBe(30)
+    expect(registrations.value[0].totalAmount).toBe(480)
     expect(registration.value?.pricing.extrasAmount).toBe(30)
   })
 
@@ -256,5 +278,50 @@ describe('useRegistrations - cancelRegistration', () => {
 
     expect(result).toBe(false)
     expect(error.value).toBe('La inscripción no se puede modificar en su estado actual')
+  })
+})
+
+describe('useRegistrations - deleteRegistration', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('should return true on successful deletion (204)', async () => {
+    vi.mocked(api.delete).mockResolvedValueOnce({ status: 204, data: null })
+
+    const { registration, registrations, deleteRegistration } = useRegistrations()
+    registration.value = { ...mockRegistration } as never
+    registrations.value = [{ ...mockRegistration } as never]
+
+    const result = await deleteRegistration('reg-1')
+
+    expect(result).toBe(true)
+    expect(registration.value).toBeNull()
+    expect(registrations.value).toHaveLength(0)
+    expect(api.delete).toHaveBeenCalledWith('/registrations/reg-1')
+  })
+
+  it('should return false and set error on API failure', async () => {
+    vi.mocked(api.delete).mockRejectedValueOnce({
+      response: { data: { error: { message: 'Cannot delete registration with existing payments. Please contact an administrator.', code: 'REGISTRATION_HAS_PAYMENTS' } } }
+    })
+
+    const { error, deleteRegistration } = useRegistrations()
+    const result = await deleteRegistration('reg-1')
+
+    expect(result).toBe(false)
+    expect(error.value).toBe('Cannot delete registration with existing payments. Please contact an administrator.')
+  })
+
+  it('should set loading during the API call', async () => {
+    let resolvePromise!: (value: unknown) => void
+    vi.mocked(api.delete).mockReturnValueOnce(
+      new Promise((r) => { resolvePromise = r })
+    )
+
+    const { loading, deleteRegistration } = useRegistrations()
+    const promise = deleteRegistration('reg-1')
+    expect(loading.value).toBe(true)
+    resolvePromise({ status: 204, data: null })
+    await promise
+    expect(loading.value).toBe(false)
   })
 })

@@ -15,6 +15,7 @@ public class RegistrationsService(
     ICampEditionAccommodationsRepository accommodationsRepo,
     RegistrationPricingService pricingService,
     IEmailService emailService,
+    Payments.IPaymentsService paymentsService,
     ILogger<RegistrationsService> logger)
 {
     public async Task<RegistrationResponse> CreateAsync(
@@ -150,11 +151,14 @@ public class RegistrationsService(
             "Registration {RegistrationId} created for family {FamilyUnitId} in edition {EditionId}",
             registration.Id, request.FamilyUnitId, request.CampEditionId);
 
-        // 12. Reload and return
+        // 12. Create payment installments
+        await paymentsService.CreateInstallmentsAsync(registration.Id, ct);
+
+        // 13. Reload and return (includes newly created payments)
         var detailed = await registrationsRepo.GetByIdWithDetailsAsync(registration.Id, ct)
             ?? throw new NotFoundException("Inscripción", registration.Id);
 
-        // 13. Send confirmation email (non-blocking on failure)
+        // 14. Send confirmation email (non-blocking on failure)
         try
         {
             var emailData = BuildRegistrationEmailData(detailed, edition);
@@ -341,7 +345,8 @@ public class RegistrationsService(
                 Quantity = extraReq.Quantity,
                 UnitPrice = extra.Price,              // price snapshot
                 CampDurationDays = campDurationDays,  // duration snapshot
-                TotalAmount = totalAmount
+                TotalAmount = totalAmount,
+                UserInput = extraReq.UserInput
             });
         }
 
@@ -492,7 +497,9 @@ public class RegistrationsService(
                 WeekendEndDate: edition.WeekendEndDate,
                 WeekendDays: RegistrationPricingService.GetPeriodDays(AttendancePeriod.WeekendVisit, edition),
                 MaxWeekendCapacity: edition.MaxWeekendCapacity,
-                WeekendSpotsRemaining: weekendSpotsRemaining));
+                WeekendSpotsRemaining: weekendSpotsRemaining,
+                FirstPaymentDeadline: edition.FirstPaymentDeadline,
+                SecondPaymentDeadline: edition.SecondPaymentDeadline));
         }
 
         return result;
@@ -529,11 +536,12 @@ public class RegistrationsService(
 
             return new RegistrationListResponse(
                 Id: r.Id,
-                FamilyUnit: new RegistrationFamilyUnitSummary(r.FamilyUnit.Id, r.FamilyUnit.Name),
+                FamilyUnit: new RegistrationFamilyUnitSummary(r.FamilyUnit.Id, r.FamilyUnit.Name, r.FamilyUnit.RepresentativeUserId),
                 CampEdition: new RegistrationCampEditionSummary(
                     r.CampEdition.Id, r.CampEdition.Camp.Name, r.CampEdition.Year,
                     r.CampEdition.StartDate, r.CampEdition.EndDate,
-                    (r.CampEdition.EndDate - r.CampEdition.StartDate).Days),
+                    (r.CampEdition.EndDate - r.CampEdition.StartDate).Days,
+                    r.CampEdition.Camp.Location),
                 Status: r.Status,
                 TotalAmount: r.TotalAmount,
                 AmountPaid: amountPaid,
@@ -601,6 +609,217 @@ public class RegistrationsService(
             p.CampEditionAccommodation.Name,
             p.CampEditionAccommodation.AccommodationType,
             p.PreferenceOrder)).ToList();
+    }
+
+    public async Task<AdminRegistrationListResponse> GetAdminListAsync(
+        Guid campEditionId, int page, int pageSize, string? search, string? status, CancellationToken ct)
+    {
+        var edition = await campEditionsRepo.GetByIdAsync(campEditionId, ct)
+            ?? throw new NotFoundException("Edición de Campamento", campEditionId);
+
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var (items, totalCount, totals) = await registrationsRepo.GetAdminPagedAsync(
+            campEditionId, page, pageSize, search, status, ct);
+
+        var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new AdminRegistrationListResponse(
+            Items: items.Select(p => new AdminRegistrationListItem(
+                p.Id,
+                new RegistrationFamilyUnitSummary(p.FamilyUnitId, p.FamilyUnitName, p.RepresentativeUserId),
+                new RepresentativeSummary(p.RepresentativeUserId, p.RepresentativeFirstName, p.RepresentativeLastName, p.RepresentativeEmail),
+                p.Status,
+                p.MemberCount,
+                p.TotalAmount,
+                p.AmountPaid,
+                p.TotalAmount - p.AmountPaid,
+                p.CreatedAt
+            )).ToList(),
+            TotalCount: totalCount,
+            Page: page,
+            PageSize: pageSize,
+            TotalPages: totalPages,
+            Totals: totals
+        );
+    }
+
+    public async Task<RegistrationResponse> AdminUpdateAsync(
+        Guid registrationId, AdminEditRegistrationRequest request, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        if (registration.Status == RegistrationStatus.Cancelled)
+            throw new BusinessRuleException("No se puede editar una inscripción cancelada");
+
+        var edition = await campEditionsRepo.GetByIdAsync(registration.CampEditionId, ct)
+            ?? throw new NotFoundException("Edición de Campamento", registration.CampEditionId);
+
+        // Update members if provided
+        if (request.Members != null)
+        {
+            await registrationsRepo.DeleteMembersByRegistrationIdAsync(registrationId, ct);
+
+            var newMembers = new List<RegistrationMember>();
+            foreach (var memberReq in request.Members)
+            {
+                var familyMember = await familyUnitsRepo.GetFamilyMemberByIdAsync(memberReq.MemberId, ct)
+                    ?? throw new NotFoundException("Miembro Familiar", memberReq.MemberId);
+
+                if (memberReq.AttendancePeriod == AttendancePeriod.WeekendVisit)
+                {
+                    var campStart = DateOnly.FromDateTime(edition.StartDate);
+                    var campEnd = DateOnly.FromDateTime(edition.EndDate);
+                    if (memberReq.VisitStartDate < campStart || memberReq.VisitEndDate > campEnd)
+                        throw new BusinessRuleException(
+                            "Las fechas de la visita deben estar dentro del periodo del campamento");
+                }
+
+                var age = pricingService.CalculateAge(familyMember.DateOfBirth, edition.StartDate);
+                var category = await pricingService.GetAgeCategoryAsync(age, edition, ct);
+                var price = pricingService.GetPriceForCategory(category, memberReq.AttendancePeriod, edition);
+
+                newMembers.Add(new RegistrationMember
+                {
+                    Id = Guid.NewGuid(),
+                    RegistrationId = registrationId,
+                    FamilyMemberId = memberReq.MemberId,
+                    AgeAtCamp = age,
+                    AgeCategory = category,
+                    IndividualAmount = price,
+                    AttendancePeriod = memberReq.AttendancePeriod,
+                    VisitStartDate = memberReq.VisitStartDate,
+                    VisitEndDate = memberReq.VisitEndDate,
+                    GuardianName = memberReq.GuardianName,
+                    GuardianDocumentNumber = memberReq.GuardianDocumentNumber,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            registration.Members = newMembers;
+            registration.BaseTotalAmount = newMembers.Sum(m => m.IndividualAmount);
+            registration.TotalAmount = registration.BaseTotalAmount + registration.ExtrasAmount;
+        }
+
+        // Update extras if provided
+        if (request.Extras != null)
+        {
+            await extrasRepo.DeleteByRegistrationIdAsync(registrationId, ct);
+
+            var campDurationDays = (edition.EndDate - edition.StartDate).Days;
+            var newExtras = new List<RegistrationExtra>();
+            foreach (var extraReq in request.Extras)
+            {
+                var campExtra = await campEditionsRepo.GetExtraByIdAsync(extraReq.CampEditionExtraId, ct)
+                    ?? throw new NotFoundException("Extra de Campamento", extraReq.CampEditionExtraId);
+
+                if (campExtra.CampEditionId != registration.CampEditionId)
+                    throw new BusinessRuleException(
+                        $"El extra '{campExtra.Name}' no pertenece a esta edición del campamento");
+
+                var totalAmount = pricingService.CalculateExtraAmount(campExtra, extraReq.Quantity, campDurationDays);
+
+                newExtras.Add(new RegistrationExtra
+                {
+                    Id = Guid.NewGuid(),
+                    RegistrationId = registrationId,
+                    CampEditionExtraId = extraReq.CampEditionExtraId,
+                    Quantity = extraReq.Quantity,
+                    UnitPrice = campExtra.Price,
+                    CampDurationDays = campDurationDays,
+                    TotalAmount = totalAmount,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            await extrasRepo.AddRangeAsync(newExtras, ct);
+            registration.ExtrasAmount = newExtras.Sum(e => e.TotalAmount);
+            registration.TotalAmount = registration.BaseTotalAmount + registration.ExtrasAmount;
+        }
+
+        // Update accommodation preferences if provided
+        if (request.Preferences != null)
+        {
+            await accommodationPrefsRepo.DeleteByRegistrationIdAsync(registrationId, ct);
+            if (request.Preferences.Count > 0)
+            {
+                var newPrefs = request.Preferences.Select(p => new RegistrationAccommodationPreference
+                {
+                    Id = Guid.NewGuid(),
+                    RegistrationId = registrationId,
+                    CampEditionAccommodationId = p.CampEditionAccommodationId,
+                    PreferenceOrder = p.PreferenceOrder,
+                    CreatedAt = DateTime.UtcNow
+                });
+                await accommodationPrefsRepo.AddRangeAsync(newPrefs, ct);
+            }
+        }
+
+        // Update text fields if provided
+        if (request.Notes != null) registration.Notes = request.Notes;
+        if (request.SpecialNeeds != null) registration.SpecialNeeds = request.SpecialNeeds;
+        if (request.CampatesPreference != null) registration.CampatesPreference = request.CampatesPreference;
+
+        // Set status to Draft and record admin modification
+        registration.Status = RegistrationStatus.Draft;
+        registration.AdminModifiedAt = DateTime.UtcNow;
+
+        await registrationsRepo.UpdateAsync(registration, ct);
+
+        // Reload with full details for response
+        var updated = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var amountPaid = updated.Payments
+            .Where(p => p.Status == PaymentStatus.Completed)
+            .Sum(p => p.Amount);
+
+        logger.LogInformation("Registration {RegistrationId} edited by admin, status set to Draft", registrationId);
+
+        return updated.ToResponse(amountPaid);
+    }
+
+    public async Task DeleteAsync(
+        Guid registrationId, Guid requestingUserId, bool isAdminOrBoard, CancellationToken ct)
+    {
+        // 1. Load registration with details (Payments + FamilyUnit needed for validation)
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException(nameof(Registration), registrationId);
+
+        // 2. Validate authorization
+        if (!isAdminOrBoard)
+        {
+            if (registration.FamilyUnit.RepresentativeUserId != requestingUserId)
+                throw new UnauthorizedAccessException("You are not authorized to delete this registration.");
+        }
+
+        // 3. Validate status — only Pending or Draft
+        if (registration.Status is RegistrationStatus.Confirmed)
+            throw new BusinessRuleException("Confirmed registrations cannot be deleted. Please cancel first.");
+        if (registration.Status is RegistrationStatus.Cancelled)
+            throw new BusinessRuleException("Cancelled registrations cannot be deleted.");
+
+        // 4. Validate no payments exist
+        if (registration.Payments?.Any() == true)
+            throw new BusinessRuleException("Cannot delete registration with existing payments. Please contact an administrator.");
+
+        // 5. Validate time window (representative only)
+        if (!isAdminOrBoard)
+        {
+            var gracePeriod = TimeSpan.FromHours(24);
+            if (DateTime.UtcNow - registration.CreatedAt > gracePeriod)
+                throw new BusinessRuleException("Registration can only be deleted within 24 hours of creation.");
+        }
+
+        // 6. Execute deletion
+        await registrationsRepo.DeleteAsync(registrationId, ct);
+
+        // 7. Log the action
+        logger.LogInformation(
+            "Registration {RegistrationId} deleted by user {UserId} (Admin: {IsAdmin})",
+            registrationId, requestingUserId, isAdminOrBoard);
     }
 
     private static CampRegistrationEmailData BuildRegistrationEmailData(

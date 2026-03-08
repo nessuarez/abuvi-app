@@ -129,7 +129,7 @@ const handleGoToLogin = () => {
   <!-- Success state -->
   <div v-if="registrationComplete" class="flex flex-col items-center gap-4 py-4 text-center" role="alert">
     <i class="pi pi-check-circle text-5xl text-green-500" />
-    <h2 class="text-xl font-bold text-gray-900">¡Registro completado!</h2>
+    <h2 class="text-xl font-bold text-gray-900">¡Registro completo!</h2>
     <p class="text-sm text-gray-600">
       Hemos enviado un email de verificación a
       <strong class="text-gray-900">{{ registeredEmail }}</strong>.

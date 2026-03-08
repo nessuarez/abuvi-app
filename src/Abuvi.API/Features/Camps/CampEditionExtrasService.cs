@@ -1,3 +1,5 @@
+using Abuvi.API.Common.Models;
+
 namespace Abuvi.API.Features.Camps;
 
 public class CampEditionExtrasService(
@@ -55,6 +57,9 @@ public class CampEditionExtrasService(
             IsRequired = request.IsRequired,
             IsActive = true,
             MaxQuantity = request.MaxQuantity,
+            RequiresUserInput = request.RequiresUserInput,
+            UserInputLabel = request.UserInputLabel,
+            SortOrder = request.SortOrder,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -90,6 +95,9 @@ public class CampEditionExtrasService(
         extra.IsRequired = request.IsRequired;
         extra.IsActive = request.IsActive;
         extra.MaxQuantity = request.MaxQuantity;
+        extra.RequiresUserInput = request.RequiresUserInput;
+        extra.UserInputLabel = request.UserInputLabel;
+        extra.SortOrder = request.SortOrder;
         extra.UpdatedAt = DateTime.UtcNow;
 
         await repository.UpdateAsync(extra, ct);
@@ -140,6 +148,35 @@ public class CampEditionExtrasService(
         return extra.ToResponse(sold);
     }
 
+    public async Task<IResult> ReorderAsync(
+        Guid campEditionId,
+        ReorderCampEditionExtrasRequest request,
+        CancellationToken ct = default)
+    {
+        var extras = await repository.GetByCampEditionTrackedAsync(campEditionId, ct);
+
+        if (extras.Count == 0)
+            return TypedResults.NotFound(ApiResponse<string>.NotFound("No extras found for this camp edition"));
+
+        var extraIds = extras.Select(e => e.Id).ToHashSet();
+        var requestIds = request.OrderedIds.ToHashSet();
+
+        if (!requestIds.SetEquals(extraIds))
+            return TypedResults.BadRequest(ApiResponse<string>.Fail(
+                "Ordered IDs must contain exactly all extras for this camp edition", "VALIDATION_ERROR"));
+
+        for (var i = 0; i < request.OrderedIds.Count; i++)
+        {
+            var extra = extras.First(e => e.Id == request.OrderedIds[i]);
+            extra.SortOrder = i;
+            extra.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await repository.UpdateManyAsync(extras, ct);
+
+        return TypedResults.Ok(ApiResponse<string>.Ok("Extras reordered successfully"));
+    }
+
     public async Task<bool> IsAvailableAsync(
         Guid extraId,
         int requestedQuantity,
@@ -171,6 +208,9 @@ internal static class CampEditionExtraExtensions
             extra.IsRequired,
             extra.IsActive,
             extra.MaxQuantity,
+            extra.RequiresUserInput,
+            extra.UserInputLabel,
+            extra.SortOrder,
             currentQuantitySold,
             extra.CreatedAt,
             extra.UpdatedAt

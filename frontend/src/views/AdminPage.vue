@@ -10,6 +10,9 @@ import FamilyUnitsAdminPanel from '@/components/admin/FamilyUnitsAdminPanel.vue'
 import UsersAdminPanel from '@/components/admin/UsersAdminPanel.vue'
 import BlobStorageAdminPanel from '@/components/admin/BlobStorageAdminPanel.vue'
 import MediaItemsReviewPanel from '@/components/admin/MediaItemsReviewPanel.vue'
+import PaymentsAdminPanel from '@/components/admin/PaymentsAdminPanel.vue'
+import RegistrationsAdminPanel from '@/components/admin/RegistrationsAdminPanel.vue'
+import AssociationSettingsPanel from '@/components/admin/AssociationSettingsPanel.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -26,21 +29,33 @@ const auth = useAuthStore()
             <i class="pi pi-map mr-2" />
             Campamentos
           </Tab>
-          <Tab value="1" data-testid="tab-family-units">
+          <Tab value="1" data-testid="tab-registrations">
+            <i class="pi pi-list-check mr-2" />
+            Inscripciones
+          </Tab>
+          <Tab value="2" data-testid="tab-family-units">
             <i class="pi pi-users mr-2" />
             Unidades Familiares
           </Tab>
-          <Tab value="2" data-testid="tab-users">
+          <Tab value="3" data-testid="tab-users">
             <i class="pi pi-user-edit mr-2" />
             Usuarios
           </Tab>
-          <Tab v-if="auth.isAdmin" value="3" data-testid="tab-storage">
+          <Tab v-if="auth.isAdmin" value="4" data-testid="tab-storage">
             <i class="pi pi-database mr-2" />
             Almacenamiento
           </Tab>
-          <Tab v-if="auth.isBoard" value="4" data-testid="tab-media-review">
+          <Tab v-if="auth.isBoard" value="5" data-testid="tab-media-review">
             <i class="pi pi-images mr-2" />
             Revisión de medios
+          </Tab>
+          <Tab v-if="auth.isBoard" value="6" data-testid="tab-payments">
+            <i class="pi pi-credit-card mr-2" />
+            Pagos
+          </Tab>
+          <Tab v-if="auth.isBoard" value="7" data-testid="tab-settings">
+            <i class="pi pi-cog mr-2" />
+            Configuración
           </Tab>
         </TabList>
 
@@ -51,27 +66,45 @@ const auth = useAuthStore()
             </div>
           </TabPanel>
 
-          <TabPanel value="1" data-testid="panel-family-units">
+          <TabPanel value="1" data-testid="panel-registrations">
+            <div class="py-4">
+              <RegistrationsAdminPanel />
+            </div>
+          </TabPanel>
+
+          <TabPanel value="2" data-testid="panel-family-units">
             <div class="py-4">
               <FamilyUnitsAdminPanel />
             </div>
           </TabPanel>
 
-          <TabPanel value="2" data-testid="panel-users">
+          <TabPanel value="3" data-testid="panel-users">
             <div class="py-4">
               <UsersAdminPanel />
             </div>
           </TabPanel>
 
-          <TabPanel v-if="auth.isAdmin" value="3" data-testid="panel-storage">
+          <TabPanel v-if="auth.isAdmin" value="4" data-testid="panel-storage">
             <div class="py-4">
               <BlobStorageAdminPanel />
             </div>
           </TabPanel>
 
-          <TabPanel v-if="auth.isBoard" value="4" data-testid="panel-media-review">
+          <TabPanel v-if="auth.isBoard" value="5" data-testid="panel-media-review">
             <div class="py-4">
               <MediaItemsReviewPanel />
+            </div>
+          </TabPanel>
+
+          <TabPanel v-if="auth.isBoard" value="6" data-testid="panel-payments">
+            <div class="py-4">
+              <PaymentsAdminPanel />
+            </div>
+          </TabPanel>
+
+          <TabPanel v-if="auth.isBoard" value="7" data-testid="panel-settings">
+            <div class="py-4">
+              <AssociationSettingsPanel />
             </div>
           </TabPanel>
         </TabPanels>

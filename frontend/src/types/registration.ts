@@ -1,8 +1,8 @@
 // Registration status and related enums
-export type RegistrationStatus = 'Pending' | 'Confirmed' | 'Cancelled'
+export type RegistrationStatus = 'Pending' | 'Confirmed' | 'Cancelled' | 'Draft'
 export type AgeCategory = 'Baby' | 'Child' | 'Adult'
 export type PaymentMethod = 'Card' | 'Transfer' | 'Cash'
-export type PaymentStatus = 'Pending' | 'Completed' | 'Failed' | 'Refunded'
+export type PaymentStatus = 'Pending' | 'PendingReview' | 'Completed' | 'Failed' | 'Refunded'
 
 // Complete is first to match the backend enum CLR default (0)
 export type AttendancePeriod = 'Complete' | 'FirstWeek' | 'SecondWeek' | 'WeekendVisit'
@@ -41,6 +41,7 @@ export interface RegistrationCampEditionSummary {
   startDate: string
   endDate: string
   location: string | null
+  duration: number
 }
 
 // Pricing breakdown (returned in RegistrationResponse)
@@ -68,6 +69,7 @@ export interface ExtraPricingDetail {
   campDurationDays: number | null
   calculation: string
   totalAmount: number
+  userInput?: string
 }
 
 export interface PricingBreakdown {
@@ -86,7 +88,19 @@ export interface PaymentSummary {
   status: PaymentStatus
 }
 
-// Main registration response (used for list and detail)
+// List endpoint response (lightweight, used by GET /api/registrations)
+export interface RegistrationListItem {
+  id: string
+  familyUnit: RegistrationFamilyUnitSummary
+  campEdition: RegistrationCampEditionSummary
+  status: RegistrationStatus
+  totalAmount: number
+  amountPaid: number
+  amountRemaining: number
+  createdAt: string
+}
+
+// Detail endpoint response (full, used by GET /api/registrations/:id)
 export interface RegistrationResponse {
   id: string
   familyUnit: RegistrationFamilyUnitSummary
@@ -101,6 +115,33 @@ export interface RegistrationResponse {
   updatedAt: string
   specialNeeds: string | null
   campatesPreference: string | null
+}
+
+// Admin registration list types
+export interface AdminRegistrationListItem {
+  id: string
+  familyUnit: { id: string; name: string }
+  representative: { id: string; firstName: string; lastName: string; email: string }
+  status: RegistrationStatus
+  memberCount: number
+  totalAmount: number
+  amountPaid: number
+  amountRemaining: number
+  createdAt: string
+}
+
+export interface AdminRegistrationTotals {
+  totalRegistrations: number
+  totalMembers: number
+  totalAmount: number
+  totalPaid: number
+  totalRemaining: number
+}
+
+export interface AdminRegistrationListResponse {
+  items: AdminRegistrationListItem[]
+  totalCount: number
+  totals: AdminRegistrationTotals
 }
 
 // Available camp edition for registration wizard
@@ -144,6 +185,9 @@ export interface AvailableCampEditionResponse {
   weekendDays: number
   maxWeekendCapacity: number | null
   weekendSpotsRemaining: number | null
+  // Payment deadlines:
+  firstPaymentDeadline: string | null
+  secondPaymentDeadline: string | null
 }
 
 // Request types
@@ -163,6 +207,7 @@ export interface UpdateRegistrationMembersRequest {
 export interface ExtraSelectionRequest {
   campEditionExtraId: string
   quantity: number
+  userInput?: string
 }
 
 export interface UpdateRegistrationExtrasRequest {
@@ -175,6 +220,7 @@ export interface WizardExtrasSelection {
   name: string
   quantity: number
   unitPrice: number
+  userInput?: string
 }
 
 // === Accommodation Preferences ===

@@ -28,6 +28,13 @@ public class CreateCampEditionExtraRequestValidator
         RuleFor(x => x.MaxQuantity)
             .GreaterThan(0).WithMessage("La cantidad máxima debe ser mayor que 0")
             .When(x => x.MaxQuantity.HasValue);
+
+        RuleFor(x => x.UserInputLabel)
+            .MaximumLength(200).WithMessage("La etiqueta de entrada no puede superar los 200 caracteres")
+            .When(x => x.UserInputLabel != null);
+
+        RuleFor(x => x.SortOrder)
+            .GreaterThanOrEqualTo(0).WithMessage("Sort order must be greater than or equal to 0");
     }
 }
 
@@ -51,5 +58,25 @@ public class UpdateCampEditionExtraRequestValidator
         RuleFor(x => x.MaxQuantity)
             .GreaterThan(0).WithMessage("La cantidad máxima debe ser mayor que 0")
             .When(x => x.MaxQuantity.HasValue);
+
+        RuleFor(x => x.UserInputLabel)
+            .MaximumLength(200).WithMessage("La etiqueta de entrada no puede superar los 200 caracteres")
+            .When(x => x.UserInputLabel != null);
+
+        RuleFor(x => x.SortOrder)
+            .GreaterThanOrEqualTo(0).WithMessage("Sort order must be greater than or equal to 0");
+    }
+}
+
+public class ReorderCampEditionExtrasRequestValidator
+    : AbstractValidator<ReorderCampEditionExtrasRequest>
+{
+    public ReorderCampEditionExtrasRequestValidator()
+    {
+        RuleFor(x => x.OrderedIds)
+            .NotEmpty().WithMessage("Ordered IDs list is required");
+
+        RuleForEach(x => x.OrderedIds)
+            .NotEmpty().WithMessage("Each ID must be a valid GUID");
     }
 }

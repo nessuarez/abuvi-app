@@ -25,12 +25,17 @@ const durationDays = computed(() => {
   return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
 })
 
-const ageRanges = computed<AgeRangeSettings>(() => ({
-  babyMaxAge: props.campEdition.babyMaxAge ?? 3,
-  childMinAge: props.campEdition.childMinAge ?? 4,
-  childMaxAge: props.campEdition.childMaxAge ?? 14,
-  adultMinAge: props.campEdition.adultMinAge ?? 15
-}))
+const ageRanges = computed<AgeRangeSettings>(() => {
+  if (props.campEdition.useCustomAgeRanges) {
+    return {
+      babyMaxAge: props.campEdition.customBabyMaxAge ?? 2,
+      childMinAge: props.campEdition.customChildMinAge ?? 3,
+      childMaxAge: props.campEdition.customChildMaxAge ?? 12,
+      adultMinAge: props.campEdition.customAdultMinAge ?? 13
+    }
+  }
+  return { babyMaxAge: 2, childMinAge: 3, childMaxAge: 12, adultMinAge: 13 }
+})
 
 const mapLocations = computed<CampLocation[]>(() => {
   const camp = props.campEdition.camp

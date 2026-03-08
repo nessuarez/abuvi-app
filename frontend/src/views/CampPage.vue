@@ -10,6 +10,7 @@ import PricingBreakdown from '@/components/camps/PricingBreakdown.vue'
 import CampExtrasSection from '@/components/camps/CampExtrasSection.vue'
 import { useCampEditions } from '@/composables/useCampEditions'
 import { useFamilyUnits } from '@/composables/useFamilyUnits'
+import { useAssociationSettings } from '@/composables/useAssociationSettings'
 import { useAuthStore } from '@/stores/auth'
 import type { AgeRangeSettings } from '@/types/association-settings'
 import type { CampLocation } from '@/types/camp'
@@ -22,11 +23,16 @@ const router = useRouter()
 const auth = useAuthStore()
 const { currentCampEdition, loading, error, fetchCurrentCampEdition } = useCampEditions()
 const { familyUnit, getCurrentUserFamilyUnit } = useFamilyUnits()
+const { ageRanges: globalAgeRanges, fetchAgeRanges } = useAssociationSettings()
+
+const defaultAgeRanges: AgeRangeSettings = { babyMaxAge: 2, childMinAge: 3, childMaxAge: 12, adultMinAge: 13 }
 
 // ── Derived state ──────────────────────────────────────────────────────────────
 
+const hasFamilyUnit = computed(() => !!familyUnit.value)
+
 const isRepresentative = computed(
-  () => !!familyUnit.value && familyUnit.value.representativeUserId === auth.user?.id
+  () => hasFamilyUnit.value && familyUnit.value!.representativeUserId === auth.user?.id
 )
 
 const isPreviousYear = computed(() => {
@@ -36,15 +42,15 @@ const isPreviousYear = computed(() => {
 
 const ageRanges = computed<AgeRangeSettings>(() => {
   const e = currentCampEdition.value
-  if (!e || !e.useCustomAgeRanges) {
-    return { babyMaxAge: 3, childMinAge: 4, childMaxAge: 14, adultMinAge: 15 }
+  if (e?.useCustomAgeRanges) {
+    return {
+      babyMaxAge: e.customBabyMaxAge ?? defaultAgeRanges.babyMaxAge,
+      childMinAge: e.customChildMinAge ?? defaultAgeRanges.childMinAge,
+      childMaxAge: e.customChildMaxAge ?? defaultAgeRanges.childMaxAge,
+      adultMinAge: e.customAdultMinAge ?? defaultAgeRanges.adultMinAge
+    }
   }
-  return {
-    babyMaxAge: e.customBabyMaxAge ?? 3,
-    childMinAge: e.customChildMinAge ?? 4,
-    childMaxAge: e.customChildMaxAge ?? 14,
-    adultMinAge: e.customAdultMinAge ?? 15
-  }
+  return globalAgeRanges.value ?? defaultAgeRanges
 })
 
 const mapLocations = computed<CampLocation[]>(() => {
@@ -100,6 +106,7 @@ const goToRegister = () => {
 onMounted(() => {
   fetchCurrentCampEdition()
   getCurrentUserFamilyUnit()
+  fetchAgeRanges()
 })
 </script>
 
@@ -203,6 +210,13 @@ onMounted(() => {
                   data-testid="register-button"
                   @click="goToRegister"
                 />
+                <div v-else-if="!hasFamilyUnit" class="rounded-md bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                  <i class="pi pi-info-circle mr-2" />
+                  En primer lugar, define tu unidad familiar para poder inscribirte.
+                  <RouterLink to="/family-unit" class="ml-1 font-semibold text-blue-700 underline hover:text-blue-900">
+                    Crear unidad familiar
+                  </RouterLink>
+                </div>
                 <Button
                   v-else
                   label="Solo el representante puede inscribirse"
@@ -389,13 +403,21 @@ onMounted(() => {
       <!-- ── BOTTOM CTA ─────────────────────────────────────────────────────────── -->
       <Container>
         <div class="mt-6 mb-10 flex flex-col items-center gap-3 rounded-lg border border-gray-200 bg-white p-6 text-center sm:flex-row sm:justify-center">
-          <template v-if="currentCampEdition.status === 'Open' && isRepresentative">
+          <template v-if="currentCampEdition.status === 'Open'">
             <Button
+              v-if="isRepresentative"
               label="Inscribirse al campamento"
               icon="pi pi-user-plus"
               size="large"
               @click="goToRegister"
             />
+            <div v-else-if="!hasFamilyUnit" class="text-sm text-blue-700">
+              <i class="pi pi-info-circle mr-1" />
+              <RouterLink to="/family-unit" class="font-semibold text-blue-700 underline hover:text-blue-900">
+                Define tu unidad familiar
+              </RouterLink>
+              para poder inscribirte.
+            </div>
           </template>
           <RouterLink
             :to="{ name: 'registrations' }"

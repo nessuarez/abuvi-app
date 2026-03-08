@@ -6,7 +6,7 @@ namespace Abuvi.API.Features.BlobStorage;
 public class UploadBlobRequestValidator : AbstractValidator<UploadBlobRequest>
 {
     private static readonly string[] AllowedFolders =
-        ["photos", "media-items", "camp-locations", "camp-photos"];
+        ["photos", "media-items", "camp-locations", "camp-photos", "payment-proofs", "profile-photos"];
 
     public UploadBlobRequestValidator(IOptions<BlobStorageOptions> options)
     {
@@ -40,6 +40,8 @@ public class UploadBlobRequestValidator : AbstractValidator<UploadBlobRequest>
                              || cfg.AllowedVideoExtensions.Contains(ext)
                              || cfg.AllowedAudioExtensions.Contains(ext)
                              || cfg.AllowedDocumentExtensions.Contains(ext),
+            "payment-proofs" => cfg.AllowedImageExtensions.Contains(ext)
+                                || ext == ".pdf",
             _ => cfg.AllowedImageExtensions.Contains(ext)
         };
     }

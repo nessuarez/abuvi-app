@@ -491,6 +491,140 @@ public class CampEditionExtrasServiceTests
 
     #endregion
 
+    #region ReorderAsync
+
+    [Fact]
+    public async Task ReorderAsync_WithValidIds_ReorderSuccessfully()
+    {
+        // Arrange
+        var editionId = Guid.NewGuid();
+        var extraA = MakeExtra(e => { e.Id = Guid.NewGuid(); e.CampEditionId = editionId; e.SortOrder = 0; });
+        var extraB = MakeExtra(e => { e.Id = Guid.NewGuid(); e.CampEditionId = editionId; e.SortOrder = 1; });
+        var extraC = MakeExtra(e => { e.Id = Guid.NewGuid(); e.CampEditionId = editionId; e.SortOrder = 2; });
+
+        _repository.GetByCampEditionTrackedAsync(editionId, Arg.Any<CancellationToken>())
+            .Returns([extraA, extraB, extraC]);
+
+        var request = new ReorderCampEditionExtrasRequest([extraC.Id, extraA.Id, extraB.Id]);
+
+        // Act
+        var result = await _sut.ReorderAsync(editionId, request);
+
+        // Assert
+        extraC.SortOrder.Should().Be(0);
+        extraA.SortOrder.Should().Be(1);
+        extraB.SortOrder.Should().Be(2);
+        await _repository.Received(1).UpdateManyAsync(Arg.Any<List<CampEditionExtra>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReorderAsync_WithMismatchedIds_ReturnsBadRequest()
+    {
+        // Arrange
+        var editionId = Guid.NewGuid();
+        var extraA = MakeExtra(e => { e.Id = Guid.NewGuid(); e.CampEditionId = editionId; });
+        var extraB = MakeExtra(e => { e.Id = Guid.NewGuid(); e.CampEditionId = editionId; });
+
+        _repository.GetByCampEditionTrackedAsync(editionId, Arg.Any<CancellationToken>())
+            .Returns([extraA, extraB]);
+
+        var request = new ReorderCampEditionExtrasRequest([extraA.Id, Guid.NewGuid()]);
+
+        // Act
+        var result = await _sut.ReorderAsync(editionId, request);
+
+        // Assert
+        result.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.BadRequest<API.Common.Models.ApiResponse<string>>>();
+    }
+
+    [Fact]
+    public async Task ReorderAsync_WithNoExtras_ReturnsNotFound()
+    {
+        // Arrange
+        var editionId = Guid.NewGuid();
+        _repository.GetByCampEditionTrackedAsync(editionId, Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var request = new ReorderCampEditionExtrasRequest([Guid.NewGuid()]);
+
+        // Act
+        var result = await _sut.ReorderAsync(editionId, request);
+
+        // Assert
+        result.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.NotFound<API.Common.Models.ApiResponse<string>>>();
+    }
+
+    [Fact]
+    public async Task ReorderAsync_WithPartialIds_ReturnsBadRequest()
+    {
+        // Arrange
+        var editionId = Guid.NewGuid();
+        var extraA = MakeExtra(e => { e.Id = Guid.NewGuid(); e.CampEditionId = editionId; });
+        var extraB = MakeExtra(e => { e.Id = Guid.NewGuid(); e.CampEditionId = editionId; });
+        var extraC = MakeExtra(e => { e.Id = Guid.NewGuid(); e.CampEditionId = editionId; });
+
+        _repository.GetByCampEditionTrackedAsync(editionId, Arg.Any<CancellationToken>())
+            .Returns([extraA, extraB, extraC]);
+
+        // Only 2 of 3 IDs
+        var request = new ReorderCampEditionExtrasRequest([extraA.Id, extraB.Id]);
+
+        // Act
+        var result = await _sut.ReorderAsync(editionId, request);
+
+        // Assert
+        result.Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.BadRequest<API.Common.Models.ApiResponse<string>>>();
+    }
+
+    #endregion
+
+    #region CreateAsync_SortOrder
+
+    [Fact]
+    public async Task CreateAsync_WithSortOrder_SetsSortOrder()
+    {
+        // Arrange
+        var edition = MakeEdition(CampEditionStatus.Draft);
+        _editionsRepository.GetByIdAsync(edition.Id, Arg.Any<CancellationToken>())
+            .Returns(edition);
+
+        var request = new CreateCampEditionExtraRequest(
+            Name: "Extra", Description: null, Price: 10m,
+            PricingType: PricingType.PerPerson, PricingPeriod: PricingPeriod.OneTime,
+            IsRequired: false, MaxQuantity: null, SortOrder: 5);
+
+        // Act
+        var result = await _sut.CreateAsync(edition.Id, request);
+
+        // Assert
+        result.SortOrder.Should().Be(5);
+    }
+
+    #endregion
+
+    #region UpdateAsync_SortOrder
+
+    [Fact]
+    public async Task UpdateAsync_WithSortOrder_UpdatesSortOrder()
+    {
+        // Arrange
+        var extra = MakeExtra(e => e.SortOrder = 0);
+        _repository.GetByIdAsync(extra.Id, Arg.Any<CancellationToken>()).Returns(extra);
+        _repository.GetQuantitySoldAsync(extra.Id, Arg.Any<CancellationToken>()).Returns(0);
+
+        var request = new UpdateCampEditionExtraRequest(
+            Name: "Name", Description: null, Price: extra.Price,
+            IsRequired: false, IsActive: true, MaxQuantity: null, SortOrder: 3);
+
+        // Act
+        var result = await _sut.UpdateAsync(extra.Id, request);
+
+        // Assert
+        result.SortOrder.Should().Be(3);
+    }
+
+    #endregion
+
     #region ActivateAsync / DeactivateAsync
 
     [Fact]

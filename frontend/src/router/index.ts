@@ -72,6 +72,16 @@ const router = createRouter({
 			}
 		},
 		{
+			path: "/family-unit/:id",
+			name: "family-unit-detail",
+			component: () => import("@/views/FamilyUnitPage.vue"),
+			meta: {
+				requiresAuth: true,
+				requiresBoard: true,
+				title: "ABUVI | Unidad Familiar"
+			}
+		},
+		{
 			path: "/family-unit/me",
 			redirect: "/family-unit"
 		},
@@ -178,12 +188,6 @@ const router = createRouter({
 			name: "legal-bylaws",
 			component: () => import("@/views/legal/BylawsPage.vue"),
 			meta: { title: "ABUVI | Estatutos", requiresAuth: false }
-		},
-		{
-			path: "/legal/transparency",
-			name: "legal-transparency",
-			component: () => import("@/views/legal/TransparencyPage.vue"),
-			meta: { title: "ABUVI | Transparencia", requiresAuth: false }
 		},
 
 		// Email verification — public, no auth required

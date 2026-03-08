@@ -113,6 +113,40 @@ public static class FamilyUnitsEndpoints
             .Produces(404)
             .Produces(409);
 
+        // Profile photo endpoints — Family Member
+        group.MapPut("/{familyUnitId:guid}/members/{memberId:guid}/profile-photo", UploadMemberProfilePhoto)
+            .WithName("UploadMemberProfilePhoto")
+            .WithSummary("Upload a profile photo for a family member")
+            .DisableAntiforgery()
+            .Produces<ApiResponse<FamilyMemberResponse>>()
+            .Produces(400)
+            .Produces(403)
+            .Produces(404);
+
+        group.MapDelete("/{familyUnitId:guid}/members/{memberId:guid}/profile-photo", RemoveMemberProfilePhoto)
+            .WithName("RemoveMemberProfilePhoto")
+            .WithSummary("Remove the profile photo of a family member")
+            .Produces(204)
+            .Produces(403)
+            .Produces(404);
+
+        // Profile photo endpoints — Family Unit
+        group.MapPut("/{id:guid}/profile-photo", UploadUnitProfilePhoto)
+            .WithName("UploadUnitProfilePhoto")
+            .WithSummary("Upload a profile photo for a family unit")
+            .DisableAntiforgery()
+            .Produces<ApiResponse<FamilyUnitResponse>>()
+            .Produces(400)
+            .Produces(403)
+            .Produces(404);
+
+        group.MapDelete("/{id:guid}/profile-photo", RemoveUnitProfilePhoto)
+            .WithName("RemoveUnitProfilePhoto")
+            .WithSummary("Remove the profile photo of a family unit")
+            .Produces(204)
+            .Produces(403)
+            .Produces(404);
+
         return app;
     }
 
@@ -413,6 +447,116 @@ public static class FamilyUnitsEndpoints
         {
             return TypedResults.Conflict(
                 ApiResponse<object>.Fail(ex.Message, "CANNOT_DELETE_REPRESENTATIVE"));
+        }
+    }
+
+    // Profile photo endpoint handlers
+
+    private static async Task<IResult> UploadMemberProfilePhoto(
+        Guid familyUnitId,
+        Guid memberId,
+        IFormFile file,
+        FamilyUnitsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var isAdmin = user.IsInRole("Admin");
+
+        try
+        {
+            var result = await service.UploadFamilyMemberProfilePhotoAsync(
+                familyUnitId, memberId, userId, isAdmin, file, ct);
+            return TypedResults.Ok(ApiResponse<FamilyMemberResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.BadRequest(ApiResponse<object>.Fail(ex.Message, "VALIDATION_ERROR"));
+        }
+    }
+
+    private static async Task<IResult> RemoveMemberProfilePhoto(
+        Guid familyUnitId,
+        Guid memberId,
+        FamilyUnitsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var isAdmin = user.IsInRole("Admin");
+
+        try
+        {
+            await service.RemoveFamilyMemberProfilePhotoAsync(
+                familyUnitId, memberId, userId, isAdmin, ct);
+            return TypedResults.NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.BadRequest(ApiResponse<object>.Fail(ex.Message, "VALIDATION_ERROR"));
+        }
+    }
+
+    private static async Task<IResult> UploadUnitProfilePhoto(
+        [Microsoft.AspNetCore.Mvc.FromRoute(Name = "id")] Guid familyUnitId,
+        IFormFile file,
+        FamilyUnitsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var isAdmin = user.IsInRole("Admin");
+
+        try
+        {
+            var result = await service.UploadFamilyUnitProfilePhotoAsync(
+                familyUnitId, userId, isAdmin, file, ct);
+            return TypedResults.Ok(ApiResponse<FamilyUnitResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.BadRequest(ApiResponse<object>.Fail(ex.Message, "VALIDATION_ERROR"));
+        }
+    }
+
+    private static async Task<IResult> RemoveUnitProfilePhoto(
+        [Microsoft.AspNetCore.Mvc.FromRoute(Name = "id")] Guid familyUnitId,
+        FamilyUnitsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var isAdmin = user.IsInRole("Admin");
+
+        try
+        {
+            await service.RemoveFamilyUnitProfilePhotoAsync(
+                familyUnitId, userId, isAdmin, ct);
+            return TypedResults.NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.BadRequest(ApiResponse<object>.Fail(ex.Message, "VALIDATION_ERROR"));
         }
     }
 }

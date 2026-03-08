@@ -15,10 +15,10 @@ export interface CampEdition {
   pricePerChild: number
   pricePerBaby: number
   useCustomAgeRanges: boolean
-  babyMaxAge?: number
-  childMinAge?: number
-  childMaxAge?: number
-  adultMinAge?: number
+  customBabyMaxAge?: number
+  customChildMinAge?: number
+  customChildMaxAge?: number
+  customAdultMinAge?: number
   maxCapacity: number
   contactEmail?: string
   contactPhone?: string
@@ -46,6 +46,9 @@ export interface CampEdition {
   pricePerChildWeekend?: number | null
   pricePerBabyWeekend?: number | null
   maxWeekendCapacity?: number | null
+  // Payment deadlines:
+  firstPaymentDeadline?: string | null
+  secondPaymentDeadline?: string | null
 }
 
 export type CampEditionStatus = 'Proposed' | 'Draft' | 'Open' | 'Closed' | 'Completed'
@@ -62,10 +65,10 @@ export interface CreateCampEditionRequest {
   pricePerChild: number
   pricePerBaby: number
   useCustomAgeRanges?: boolean
-  babyMaxAge?: number
-  childMinAge?: number
-  childMaxAge?: number
-  adultMinAge?: number
+  customBabyMaxAge?: number
+  customChildMinAge?: number
+  customChildMaxAge?: number
+  customAdultMinAge?: number
   maxCapacity?: number | null
   contactEmail?: string
   contactPhone?: string
@@ -97,7 +100,10 @@ export interface CampEditionExtra {
   pricingType: 'PerPerson' | 'PerFamily'
   pricingPeriod: 'OneTime' | 'PerDay'
   isRequired: boolean
+  requiresUserInput: boolean
+  userInputLabel?: string
   maxQuantity?: number
+  sortOrder: number
   currentQuantitySold: number | null
   isActive: boolean
   createdAt: string
@@ -111,7 +117,10 @@ export interface CreateCampExtraRequest {
   pricingType: 'PerPerson' | 'PerFamily'
   pricingPeriod: 'OneTime' | 'PerDay'
   isRequired: boolean
+  requiresUserInput?: boolean
+  userInputLabel?: string
   maxQuantity?: number
+  sortOrder?: number
 }
 
 export interface UpdateCampExtraRequest {
@@ -120,7 +129,14 @@ export interface UpdateCampExtraRequest {
   price: number
   isRequired: boolean
   isActive: boolean
+  requiresUserInput?: boolean
+  userInputLabel?: string
   maxQuantity?: number
+  sortOrder?: number
+}
+
+export interface ReorderCampExtrasRequest {
+  orderedIds: string[]
 }
 
 // === Accommodation Types ===
@@ -185,6 +201,9 @@ export interface UpdateCampEditionRequest {
   pricePerChildWeekend?: number | null
   pricePerBabyWeekend?: number | null
   maxWeekendCapacity?: number | null
+  // Payment deadlines:
+  firstPaymentDeadline?: string | null
+  secondPaymentDeadline?: string | null
 }
 
 export interface ChangeEditionStatusRequest {
@@ -228,6 +247,9 @@ export interface ActiveCampEditionResponse {
   pricePerChildWeekend?: number | null
   pricePerBabyWeekend?: number | null
   maxWeekendCapacity?: number | null
+  // Payment deadlines:
+  firstPaymentDeadline?: string | null
+  secondPaymentDeadline?: string | null
 }
 
 export interface CampEditionFilters {
@@ -274,4 +296,7 @@ export interface CurrentCampEditionResponse {
   accommodationCapacity: AccommodationCapacity | null
   calculatedTotalBedCapacity: number | null
   extras: CampEditionExtra[]
+  // Payment deadlines:
+  firstPaymentDeadline?: string | null
+  secondPaymentDeadline?: string | null
 }

@@ -2,6 +2,7 @@ using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Common.Services;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
+using Abuvi.API.Features.Payments;
 using Abuvi.API.Features.Registrations;
 using Abuvi.API.Features.Users;
 using FluentAssertions;
@@ -22,6 +23,7 @@ public class RegistrationsServiceTests
     private readonly ICampEditionAccommodationsRepository _accommodationsRepo;
     private readonly IAssociationSettingsRepository _settingsRepo;
     private readonly IEmailService _emailService;
+    private readonly IPaymentsService _paymentsService;
     private readonly ILogger<RegistrationsService> _logger;
     private readonly RegistrationPricingService _pricingService;
     private readonly RegistrationsService _sut;
@@ -43,10 +45,11 @@ public class RegistrationsServiceTests
         _accommodationsRepo = Substitute.For<ICampEditionAccommodationsRepository>();
         _settingsRepo = Substitute.For<IAssociationSettingsRepository>();
         _emailService = Substitute.For<IEmailService>();
+        _paymentsService = Substitute.For<IPaymentsService>();
         _logger = Substitute.For<ILogger<RegistrationsService>>();
         _pricingService = new RegistrationPricingService(_settingsRepo);
         _sut = new RegistrationsService(
-            _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo, _editionsRepo, _accommodationsRepo, _pricingService, _emailService, _logger);
+            _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo, _editionsRepo, _accommodationsRepo, _pricingService, _emailService, _paymentsService, _logger);
     }
 
     // ── CreateAsync ───────────────────────────────────────────────────────────
@@ -600,6 +603,74 @@ public class RegistrationsServiceTests
                 SettingValue = json,
                 UpdatedAt = DateTime.UtcNow
             });
+    }
+
+    // ── DTO field mapping tests ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetByIdAsync_ValidId_ResponseIncludesRepresentativeUserId()
+    {
+        var registrationId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var member = CreateFamilyMember(MemberId, FamilyUnitId);
+
+        var registration = BuildFullRegistration(registrationId, familyUnit, edition, [member], edition.PricePerAdult);
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>()).Returns(registration);
+
+        var result = await _sut.GetByIdAsync(registrationId, UserId, isAdminOrBoard: false, CancellationToken.None);
+
+        result.FamilyUnit.RepresentativeUserId.Should().Be(UserId);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_ValidId_ResponseIncludesCampLocation()
+    {
+        var registrationId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var member = CreateFamilyMember(MemberId, FamilyUnitId);
+
+        var registration = BuildFullRegistration(registrationId, familyUnit, edition, [member], edition.PricePerAdult);
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>()).Returns(registration);
+
+        var result = await _sut.GetByIdAsync(registrationId, UserId, isAdminOrBoard: false, CancellationToken.None);
+
+        result.CampEdition.Location.Should().Be("Test Location");
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_CampWithNullLocation_ResponseLocationIsNull()
+    {
+        var registrationId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        edition.Camp.Location = null;
+        var member = CreateFamilyMember(MemberId, FamilyUnitId);
+
+        var registration = BuildFullRegistration(registrationId, familyUnit, edition, [member], edition.PricePerAdult);
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>()).Returns(registration);
+
+        var result = await _sut.GetByIdAsync(registrationId, UserId, isAdminOrBoard: false, CancellationToken.None);
+
+        result.CampEdition.Location.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetByFamilyUnitAsync_HasRegistrations_ResponsesIncludeRepresentativeUserIdAndLocation()
+    {
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var registration = CreateRegistrationWithFamilyUnit(Guid.NewGuid(), familyUnit, edition);
+
+        _familyUnitsRepo.GetFamilyUnitByRepresentativeIdAsync(UserId, Arg.Any<CancellationToken>()).Returns(familyUnit);
+        _repo.GetByFamilyUnitAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns([registration]);
+
+        var result = await _sut.GetByFamilyUnitAsync(UserId, CancellationToken.None);
+
+        result.Should().HaveCount(1);
+        result[0].FamilyUnit.RepresentativeUserId.Should().Be(UserId);
+        result[0].CampEdition.Location.Should().Be("Test Location");
     }
 
     // ── New field mapping tests ───────────────────────────────────────────────

@@ -66,6 +66,16 @@ public static class RegistrationsEndpoints
             .Produces<ApiResponse<CancelRegistrationResponse>>()
             .Produces(403).Produces(404).Produces(422);
 
+        group.MapDelete("/{id:guid}", DeleteRegistration)
+            .WithName("DeleteRegistration")
+            .WithSummary("Permanently delete a registration (representative within 24h or Admin/Board)")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status409Conflict)
+            .Produces(StatusCodes.Status422UnprocessableEntity);
+
         group.MapPut("/{id:guid}/accommodation-preferences", SetAccommodationPreferences)
             .WithName("SetAccommodationPreferences")
             .WithSummary("Set accommodation preferences ranked 1-3 (representative or Admin/Board)")
@@ -78,6 +88,30 @@ public static class RegistrationsEndpoints
             .WithSummary("Get accommodation preferences for a registration")
             .Produces<ApiResponse<List<AccommodationPreferenceResponse>>>()
             .Produces(404);
+
+        // Admin endpoints — Board and Admin only
+        var adminListGroup = app.MapGroup("/api/camp-editions/{campEditionId:guid}/registrations")
+            .WithTags("Registrations Admin")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"));
+
+        adminListGroup.MapGet("/", GetAdminRegistrations)
+            .WithName("GetAdminRegistrations")
+            .WithSummary("Get paginated registrations for a camp edition (Admin/Board only)")
+            .Produces<ApiResponse<AdminRegistrationListResponse>>()
+            .Produces(401).Produces(403).Produces(404);
+
+        var adminEditGroup = app.MapGroup("/api/registrations")
+            .WithTags("Registrations Admin")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"));
+
+        adminEditGroup.MapPut("/{id:guid}/admin-edit", AdminEditRegistration)
+            .WithName("AdminEditRegistration")
+            .WithSummary("Edit registration as Admin/Board (sets status to Draft)")
+            .AddEndpointFilter<ValidationFilter<AdminEditRegistrationRequest>>()
+            .Produces<ApiResponse<RegistrationResponse>>()
+            .Produces(400).Produces(401).Produces(403).Produces(404).Produces(422);
 
         return app;
     }
@@ -232,6 +266,39 @@ public static class RegistrationsEndpoints
         }
     }
 
+    private static async Task<IResult> DeleteRegistration(
+        Guid id,
+        RegistrationsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
+        var isAdminOrBoard = userRole is "Admin" or "Board";
+
+        try
+        {
+            await service.DeleteAsync(id, userId, isAdminOrBoard, ct);
+            return Results.NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+        catch (BusinessRuleException ex)
+        {
+            if (ex.Message.Contains("payments", StringComparison.OrdinalIgnoreCase))
+                return TypedResults.Conflict(ApiResponse<object>.Fail(ex.Message, "REGISTRATION_HAS_PAYMENTS"));
+
+            return TypedResults.UnprocessableEntity(ApiResponse<object>.Fail(ex.Message, "REGISTRATION_DELETE_BLOCKED"));
+        }
+    }
+
     private static async Task<IResult> SetAccommodationPreferences(
         Guid id,
         UpdateRegistrationAccommodationPreferencesRequest request,
@@ -274,6 +341,48 @@ public static class RegistrationsEndpoints
         catch (NotFoundException ex)
         {
             return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> GetAdminRegistrations(
+        Guid campEditionId,
+        RegistrationsService service,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] string? status = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var result = await service.GetAdminListAsync(campEditionId, page, pageSize, search, status, ct);
+            return TypedResults.Ok(ApiResponse<AdminRegistrationListResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> AdminEditRegistration(
+        Guid id,
+        AdminEditRegistrationRequest request,
+        RegistrationsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await service.AdminUpdateAsync(id, request, ct);
+            return TypedResults.Ok(ApiResponse<RegistrationResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.UnprocessableEntity(
+                ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
         }
     }
 }

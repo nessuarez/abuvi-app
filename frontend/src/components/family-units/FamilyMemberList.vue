@@ -4,19 +4,25 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
+import ProfilePhotoAvatar from '@/components/family-units/ProfilePhotoAvatar.vue'
 import { FamilyRelationshipLabels } from '@/types/family-unit'
 import type { FamilyMemberResponse } from '@/types/family-unit'
+import { parseDateLocal } from '@/utils/date'
 
 const props = defineProps<{
   members: FamilyMemberResponse[]
   loading?: boolean
   canManageMemberships?: boolean
+  readOnly?: boolean
+  uploadingMemberId?: string | null
 }>()
 
 const emit = defineEmits<{
   edit: [member: FamilyMemberResponse]
   delete: [member: FamilyMemberResponse]
   manageMembership: [member: FamilyMemberResponse]
+  uploadPhoto: [memberId: string, file: File]
+  removePhoto: [memberId: string]
 }>()
 
 const membersWithAge = computed(() => {
@@ -27,7 +33,7 @@ const membersWithAge = computed(() => {
 })
 
 const calculateAge = (dateOfBirth: string): number => {
-  const birthDate = new Date(dateOfBirth)
+  const birthDate = parseDateLocal(dateOfBirth)
   const today = new Date()
   let age = today.getFullYear() - birthDate.getFullYear()
   const monthDiff = today.getMonth() - birthDate.getMonth()
@@ -40,7 +46,7 @@ const calculateAge = (dateOfBirth: string): number => {
 }
 
 const formatDate = (dateString: string): string => {
-  const date = new Date(dateString)
+  const date = parseDateLocal(dateString)
   return new Intl.DateTimeFormat('es-ES', {
     day: '2-digit',
     month: '2-digit',
@@ -80,9 +86,22 @@ const handleDelete = (member: FamilyMemberResponse) => {
 
       <Column field="firstName" header="Nombre" :sortable="true">
         <template #body="{ data }">
-          <div class="font-medium">{{ data.firstName }} {{ data.lastName }}</div>
-          <div v-if="data.userId" class="text-xs text-gray-500">
-            <i class="pi pi-user text-xs"></i> Usuario vinculado
+          <div class="flex items-center gap-2">
+            <ProfilePhotoAvatar
+              :photo-url="data.profilePhotoUrl"
+              :initials="(data.firstName?.[0] ?? '') + (data.lastName?.[0] ?? '')"
+              size="sm"
+              :editable="!props.readOnly"
+              :loading="props.uploadingMemberId === data.id"
+              @upload="(file: File) => emit('uploadPhoto', data.id, file)"
+              @remove="() => emit('removePhoto', data.id)"
+            />
+            <div>
+              <div class="font-medium">{{ data.firstName }} {{ data.lastName }}</div>
+              <div v-if="data.userId" class="text-xs text-gray-500">
+                <i class="pi pi-user text-xs"></i> Usuario vinculado
+              </div>
+            </div>
           </div>
         </template>
       </Column>
@@ -132,6 +151,7 @@ const handleDelete = (member: FamilyMemberResponse) => {
               @click="emit('manageMembership', data)"
             />
             <Button
+              v-if="!props.readOnly"
               icon="pi pi-pencil"
               severity="info"
               text
@@ -140,6 +160,7 @@ const handleDelete = (member: FamilyMemberResponse) => {
               v-tooltip.top="'Editar'"
             />
             <Button
+              v-if="!props.readOnly"
               icon="pi pi-trash"
               severity="danger"
               text

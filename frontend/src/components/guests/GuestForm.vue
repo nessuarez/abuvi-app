@@ -2,9 +2,11 @@
 import { ref, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
-import DatePicker from 'primevue/datepicker'
+import DateInput from '@/components/shared/DateInput.vue'
+import PhoneInput from '@/components/shared/PhoneInput.vue'
 import Button from 'primevue/button'
 import type { GuestResponse, CreateGuestRequest } from '@/types/guest'
+import { formatDateLocal, parseDateLocal } from '@/utils/date'
 
 const props = defineProps<{
   guest?: GuestResponse | null
@@ -22,7 +24,7 @@ const toast = useToast()
 const firstName = ref(props.guest?.firstName || '')
 const lastName = ref(props.guest?.lastName || '')
 const dateOfBirth = ref<Date | null>(
-  props.guest?.dateOfBirth ? new Date(props.guest.dateOfBirth) : null,
+  props.guest?.dateOfBirth ? parseDateLocal(props.guest.dateOfBirth) : null,
 )
 const documentNumber = ref(props.guest?.documentNumber || '')
 const email = ref(props.guest?.email || '')
@@ -159,7 +161,7 @@ const handleSubmit = () => {
   const request: CreateGuestRequest = {
     firstName: firstName.value.trim(),
     lastName: lastName.value.trim(),
-    dateOfBirth: dateOfBirth.value!.toISOString().split('T')[0], // YYYY-MM-DD
+    dateOfBirth: formatDateLocal(dateOfBirth.value!),
     documentNumber: documentNumber.value.trim() || null,
     email: email.value.trim() || null,
     phone: phone.value.trim() || null,
@@ -212,16 +214,13 @@ const handleCancel = () => {
       <label for="guest-date-of-birth" class="font-medium text-sm">
         Fecha de Nacimiento <span class="text-red-500">*</span>
       </label>
-      <DatePicker
+      <DateInput
         id="guest-date-of-birth"
         v-model="dateOfBirth"
-        dateFormat="dd/mm/yy"
         :maxDate="new Date()"
         :invalid="!!dateOfBirthError"
         :disabled="loading"
-        showIcon
         @blur="validateDateOfBirth"
-        class="w-full"
       />
       <small v-if="dateOfBirthError" class="text-red-500">{{ dateOfBirthError }}</small>
     </div>
@@ -259,16 +258,14 @@ const handleCancel = () => {
     <!-- Phone (optional) -->
     <div class="flex flex-col gap-2">
       <label for="guest-phone" class="font-medium text-sm">Teléfono</label>
-      <InputText
+      <PhoneInput
         id="guest-phone"
         v-model="phone"
-        placeholder="Ej: +34612345678"
         :invalid="!!phoneError"
         :disabled="loading"
         @blur="validatePhone"
       />
       <small v-if="phoneError" class="text-red-500">{{ phoneError }}</small>
-      <small class="text-gray-500">Formato E.164 con código de país (ej. +34)</small>
     </div>
 
     <div class="flex justify-end gap-2 pt-4">
@@ -281,7 +278,7 @@ const handleCancel = () => {
       />
       <Button
         type="submit"
-        :label="isEditing ? 'Actualizar invitado' : 'Añadir invitado'"
+        :label="isEditing ? 'Actualizar invitado/a' : 'Añadir invitado/a'"
         :loading="loading"
         :disabled="loading"
       />

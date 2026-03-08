@@ -8,10 +8,11 @@ import Message from 'primevue/message'
 import Dialog from 'primevue/dialog'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
+import OrderList from 'primevue/orderlist'
 import CampEditionExtrasFormDialog from './CampEditionExtrasFormDialog.vue'
 import { useCampExtras } from '@/composables/useCampExtras'
 import { useAuthStore } from '@/stores/auth'
-import type { CampEditionExtra, CampEditionStatus } from '@/types/camp-edition'
+import type { CampEditionExtra, CampEditionStatus, ReorderCampExtrasRequest } from '@/types/camp-edition'
 
 const props = defineProps<{
   editionId: string
@@ -27,7 +28,8 @@ const {
   fetchExtras,
   deleteExtra,
   activateExtra,
-  deactivateExtra
+  deactivateExtra,
+  reorderExtras
 } = useCampExtras(props.editionId)
 
 const canManage = computed(() => auth.user?.role === 'Admin' || auth.user?.role === 'Board')
@@ -39,6 +41,29 @@ const showDialog = ref(false)
 const editingExtra = ref<CampEditionExtra | undefined>(undefined)
 const deleteTarget = ref<CampEditionExtra | null>(null)
 const showDeleteConfirm = ref(false)
+const reorderMode = ref(false)
+
+const toggleReorderMode = async () => {
+  if (reorderMode.value) {
+    const request: ReorderCampExtrasRequest = {
+      orderedIds: extras.value.map((e) => e.id)
+    }
+    const success = await reorderExtras(request)
+    if (success) {
+      extras.value = extras.value.map((e, index) => ({ ...e, sortOrder: index }))
+      toast.add({
+        severity: 'success',
+        summary: 'Orden guardado',
+        detail: 'El orden de los extras se ha actualizado',
+        life: 3000
+      })
+    } else if (error.value) {
+      toast.add({ severity: 'error', summary: 'Error', detail: error.value, life: 5000 })
+      await fetchExtras()
+    }
+  }
+  reorderMode.value = !reorderMode.value
+}
 
 const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('es-ES', {
@@ -149,8 +174,56 @@ onMounted(() => fetchExtras())
       />
     </div>
 
+    <!-- Reorder toggle (only for managers with 2+ extras) -->
+    <div v-if="canManage && extras.length > 1 && !loading" class="mb-3">
+      <Button
+        :label="reorderMode ? 'Guardar orden' : 'Reordenar'"
+        :icon="reorderMode ? 'pi pi-check' : 'pi pi-arrows-v'"
+        text
+        size="small"
+        :loading="loading && reorderMode"
+        data-testid="reorder-extras-button"
+        @click="toggleReorderMode"
+      />
+      <span v-if="reorderMode" class="ml-2 text-xs text-gray-500">
+        Arrastra los extras para cambiar el orden
+      </span>
+    </div>
+
+    <!-- Reorder mode: OrderList -->
+    <OrderList
+      v-if="reorderMode && extras.length > 0"
+      v-model="extras"
+      data-key="id"
+      class="mb-4 w-full"
+      data-testid="extras-order-list"
+    >
+      <template #item="{ item }">
+        <div class="flex items-center justify-between gap-3 p-2">
+          <div class="flex items-center gap-3 min-w-0">
+            <i class="pi pi-bars text-gray-400" />
+            <div class="min-w-0">
+              <span class="font-medium text-gray-900">{{ item.name }}</span>
+              <p v-if="item.description" class="truncate text-xs text-gray-500">
+                {{ item.description }}
+              </p>
+            </div>
+          </div>
+          <div class="shrink-0 text-right">
+            <span class="text-sm font-semibold">{{ formatCurrency(item.price) }}</span>
+            <Tag
+              v-if="item.isRequired"
+              value="Obligatorio"
+              severity="danger"
+              class="ml-2"
+            />
+          </div>
+        </div>
+      </template>
+    </OrderList>
+
     <DataTable
-      v-else
+      v-if="!reorderMode && extras.length > 0"
       :value="extras"
       scrollable
       data-testid="extras-table"
@@ -159,6 +232,10 @@ onMounted(() => fetchExtras())
         <template #body="{ data }">
           <div>
             <span class="font-medium text-gray-900">{{ data.name }}</span>
+            <span v-if="data.requiresUserInput" class="ml-2 inline-flex items-center gap-1 text-xs text-blue-600">
+              <i class="pi pi-pencil text-xs" />
+              Requiere info
+            </span>
             <p v-if="data.description" class="mt-0.5 text-xs text-gray-500">
               {{ data.description }}
             </p>

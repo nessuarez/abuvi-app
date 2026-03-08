@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
-import DatePicker from 'primevue/datepicker'
+import DateInput from '@/components/shared/DateInput.vue'
 import Textarea from 'primevue/textarea'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Message from 'primevue/message'
 import type { Camp } from '@/types/camp'
 import type { CampEdition } from '@/types/camp-edition'
 import { useCampEditions } from '@/composables/useCampEditions'
+import { formatDateLocal } from '@/utils/date'
 
 interface Props {
   visible: boolean
@@ -36,6 +37,11 @@ const form = ref({
   pricePerChild: 0,
   pricePerBaby: 0,
   maxCapacity: 0,
+  useCustomAgeRanges: false,
+  customBabyMaxAge: null as number | null,
+  customChildMinAge: null as number | null,
+  customChildMaxAge: null as number | null,
+  customAdultMinAge: null as number | null,
   proposalReason: '',
   allowPartialAttendance: false,
   halfDate: null as Date | null,
@@ -83,6 +89,11 @@ watch(() => props.visible, (val) => {
       pricePerChild: props.camp?.pricePerChild ?? 0,
       pricePerBaby: props.camp?.pricePerBaby ?? 0,
       maxCapacity: 0,
+      useCustomAgeRanges: false,
+      customBabyMaxAge: null,
+      customChildMinAge: null,
+      customChildMaxAge: null,
+      customAdultMinAge: null,
       proposalReason: '',
       allowPartialAttendance: false,
       halfDate: null,
@@ -123,9 +134,27 @@ const validate = (): boolean => {
     if (form.value.pricePerAdultWeek == null || form.value.pricePerAdultWeek < 0)
       errors.value.pricePerAdultWeek = 'El precio por adulto/semana es obligatorio'
     if (form.value.pricePerChildWeek == null || form.value.pricePerChildWeek < 0)
-      errors.value.pricePerChildWeek = 'El precio por niño/semana es obligatorio'
+      errors.value.pricePerChildWeek = 'El precio infantil/semana es obligatorio'
     if (form.value.pricePerBabyWeek == null || form.value.pricePerBabyWeek < 0)
       errors.value.pricePerBabyWeek = 'El precio por bebé/semana es obligatorio'
+  }
+  if (form.value.useCustomAgeRanges) {
+    if (!form.value.customBabyMaxAge && form.value.customBabyMaxAge !== 0)
+      errors.value.customBabyMaxAge = 'La edad máxima de bebé es obligatoria'
+    if (!form.value.customChildMinAge)
+      errors.value.customChildMinAge = 'La edad mínima infantil es obligatoria'
+    if (!form.value.customChildMaxAge)
+      errors.value.customChildMaxAge = 'La edad máxima infantil es obligatoria'
+    if (!form.value.customAdultMinAge)
+      errors.value.customAdultMinAge = 'La edad mínima de adulto es obligatoria'
+    if (form.value.customBabyMaxAge != null && form.value.customChildMinAge != null
+        && form.value.customBabyMaxAge >= form.value.customChildMinAge) {
+      errors.value.customBabyMaxAge = 'La edad máxima de bebé debe ser menor a la edad mínima infantil'
+    }
+    if (form.value.customChildMaxAge != null && form.value.customAdultMinAge != null
+        && form.value.customChildMaxAge >= form.value.customAdultMinAge) {
+      errors.value.customChildMaxAge = 'La edad máxima infantil debe ser menor a la edad mínima de adulto'
+    }
   }
   if (form.value.allowWeekendVisit) {
     if (!form.value.weekendStartDate)
@@ -138,7 +167,7 @@ const validate = (): boolean => {
     if (form.value.pricePerAdultWeekend == null || form.value.pricePerAdultWeekend < 0)
       errors.value.pricePerAdultWeekend = 'El precio por adulto/fds es obligatorio'
     if (form.value.pricePerChildWeekend == null || form.value.pricePerChildWeekend < 0)
-      errors.value.pricePerChildWeekend = 'El precio por niño/fds es obligatorio'
+      errors.value.pricePerChildWeekend = 'El precio infantil/fds es obligatorio'
     if (form.value.pricePerBabyWeekend == null || form.value.pricePerBabyWeekend < 0)
       errors.value.pricePerBabyWeekend = 'El precio por bebé/fds es obligatorio'
     if (form.value.maxWeekendCapacity != null && form.value.maxWeekendCapacity <= 0)
@@ -147,7 +176,7 @@ const validate = (): boolean => {
   return Object.keys(errors.value).length === 0
 }
 
-const toISODate = (date: Date): string => date.toISOString().split('T')[0]
+const toISODate = (date: Date): string => formatDateLocal(date)
 
 const handleSubmit = async () => {
   if (!validate()) return
@@ -161,6 +190,13 @@ const handleSubmit = async () => {
     pricePerChild: form.value.pricePerChild,
     pricePerBaby: form.value.pricePerBaby,
     maxCapacity: form.value.maxCapacity || null,
+    useCustomAgeRanges: form.value.useCustomAgeRanges,
+    ...(form.value.useCustomAgeRanges && {
+      customBabyMaxAge: form.value.customBabyMaxAge ?? undefined,
+      customChildMinAge: form.value.customChildMinAge ?? undefined,
+      customChildMaxAge: form.value.customChildMaxAge ?? undefined,
+      customAdultMinAge: form.value.customAdultMinAge ?? undefined
+    }),
     proposalReason: form.value.proposalReason || undefined,
     halfDate: form.value.allowPartialAttendance && form.value.halfDate
       ? toISODate(form.value.halfDate) : null,
@@ -205,12 +241,12 @@ const handleSubmit = async () => {
       <div class="grid grid-cols-2 gap-4">
         <div class="flex flex-col gap-1">
           <label class="text-sm font-medium">Fecha de inicio *</label>
-          <DatePicker v-model="form.startDate" date-format="dd/mm/yy" show-icon />
+          <DateInput v-model="form.startDate" />
           <span v-if="errors.startDate" class="text-xs text-red-600">{{ errors.startDate }}</span>
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-sm font-medium">Fecha de fin *</label>
-          <DatePicker v-model="form.endDate" date-format="dd/mm/yy" show-icon />
+          <DateInput v-model="form.endDate" />
           <span v-if="errors.endDate" class="text-xs text-red-600">{{ errors.endDate }}</span>
         </div>
       </div>
@@ -228,7 +264,7 @@ const handleSubmit = async () => {
           <span v-if="errors.pricePerAdult" class="text-xs text-red-600">{{ errors.pricePerAdult }}</span>
         </div>
         <div class="flex flex-col gap-1">
-          <label class="text-sm font-medium">Precio niño *</label>
+          <label class="text-sm font-medium">Precio infantil *</label>
           <InputNumber v-model="form.pricePerChild" mode="currency" currency="EUR" locale="es-ES" :min="0" />
           <span v-if="errors.pricePerChild" class="text-xs text-red-600">{{ errors.pricePerChild }}</span>
         </div>
@@ -257,7 +293,7 @@ const handleSubmit = async () => {
         <div v-if="form.allowPartialAttendance" class="space-y-4 pl-1">
           <div class="flex flex-col gap-1">
             <label class="text-xs font-medium text-gray-600">Fecha de corte (opcional)</label>
-            <DatePicker v-model="form.halfDate" date-format="dd/mm/yy" show-icon class="w-full" />
+            <DateInput v-model="form.halfDate" />
           </div>
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div class="flex flex-col gap-1">
@@ -273,7 +309,7 @@ const handleSubmit = async () => {
               <span v-if="errors.pricePerAdultWeek" class="text-xs text-red-600">{{ errors.pricePerAdultWeek }}</span>
             </div>
             <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-gray-600">Precio niño/sem</label>
+              <label class="text-xs font-medium text-gray-600">Precio infantil/sem</label>
               <InputNumber
                 v-model="form.pricePerChildWeek"
                 mode="currency"
@@ -311,12 +347,12 @@ const handleSubmit = async () => {
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div class="flex flex-col gap-1">
               <label class="text-xs font-medium text-gray-600">Fecha inicio fds</label>
-              <DatePicker v-model="form.weekendStartDate" date-format="dd/mm/yy" show-icon class="w-full" />
+              <DateInput v-model="form.weekendStartDate" />
               <span v-if="errors.weekendStartDate" class="text-xs text-red-600">{{ errors.weekendStartDate }}</span>
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-xs font-medium text-gray-600">Fecha fin fds</label>
-              <DatePicker v-model="form.weekendEndDate" date-format="dd/mm/yy" show-icon class="w-full" />
+              <DateInput v-model="form.weekendEndDate" />
               <span v-if="errors.weekendEndDate" class="text-xs text-red-600">{{ errors.weekendEndDate }}</span>
             </div>
           </div>
@@ -334,7 +370,7 @@ const handleSubmit = async () => {
               <span v-if="errors.pricePerAdultWeekend" class="text-xs text-red-600">{{ errors.pricePerAdultWeekend }}</span>
             </div>
             <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-gray-600">Precio niño/fds</label>
+              <label class="text-xs font-medium text-gray-600">Precio infantil/fds</label>
               <InputNumber
                 v-model="form.pricePerChildWeekend"
                 mode="currency"
@@ -368,6 +404,57 @@ const handleSubmit = async () => {
               class="w-full"
             />
             <span v-if="errors.maxWeekendCapacity" class="text-xs text-red-600">{{ errors.maxWeekendCapacity }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Age Ranges -->
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-3">
+          <ToggleSwitch v-model="form.useCustomAgeRanges" />
+          <label class="text-sm font-medium text-gray-700">Usar rangos de edad personalizados</label>
+        </div>
+
+        <div v-if="form.useCustomAgeRanges" class="grid grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-gray-600">Edad máx. bebé</label>
+            <InputNumber
+              v-model="form.customBabyMaxAge"
+              :min="0"
+              :max="10"
+              :use-grouping="false"
+            />
+            <span v-if="errors.customBabyMaxAge" class="text-xs text-red-600">{{ errors.customBabyMaxAge }}</span>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-gray-600">Edad mín. infantil</label>
+            <InputNumber
+              v-model="form.customChildMinAge"
+              :min="0"
+              :max="18"
+              :use-grouping="false"
+            />
+            <span v-if="errors.customChildMinAge" class="text-xs text-red-600">{{ errors.customChildMinAge }}</span>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-gray-600">Edad máx. infantil</label>
+            <InputNumber
+              v-model="form.customChildMaxAge"
+              :min="0"
+              :max="18"
+              :use-grouping="false"
+            />
+            <span v-if="errors.customChildMaxAge" class="text-xs text-red-600">{{ errors.customChildMaxAge }}</span>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-gray-600">Edad mín. adulto</label>
+            <InputNumber
+              v-model="form.customAdultMinAge"
+              :min="0"
+              :max="99"
+              :use-grouping="false"
+            />
+            <span v-if="errors.customAdultMinAge" class="text-xs text-red-600">{{ errors.customAdultMinAge }}</span>
           </div>
         </div>
       </div>

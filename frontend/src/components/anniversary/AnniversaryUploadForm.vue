@@ -41,6 +41,8 @@ const form = reactive({
 const selectedFile = ref<File | null>(null)
 const errors = ref<Record<string, string>>({})
 
+const comingSoon = true
+
 const isSubmitting = computed(() => uploading.value || creatingMedia.value || creatingMemory.value)
 
 const validate = (): boolean => {
@@ -148,12 +150,16 @@ const handleSubmit = async () => {
         Colabora con la Memoria ABUVINA
       </h2>
       <p class="mx-auto max-w-xl text-gray-600">
-        El 50 aniversario lo construimos entre todos. Si tienes fotos antiguas, anécdotas escritas o
+        El 50 aniversario lo construimos entre todas las personas. Si tienes fotos antiguas, anécdotas escritas o
         quieres grabar un mensaje de voz para la cápsula del tiempo, este es el lugar.
       </p>
     </div>
 
-    <form class="space-y-6 rounded-xl bg-white p-8 shadow-sm" @submit.prevent="handleSubmit">
+    <form
+      class="space-y-6 rounded-xl bg-white p-8 shadow-sm"
+      :class="{ 'pointer-events-none opacity-60': comingSoon }"
+      @submit.prevent="handleSubmit"
+    >
       <!-- Nombre -->
       <div>
         <label for="upload-name" class="mb-2 block text-sm font-semibold text-gray-700">
@@ -262,13 +268,16 @@ const handleSubmit = async () => {
       />
 
       <!-- Submit -->
-      <div class="pt-2">
+      <div class="pointer-events-auto pt-2" :class="{ 'opacity-100': comingSoon }">
+        <p v-if="comingSoon" class="mb-3 text-center text-sm text-amber-700">
+          La subida de recuerdos estará disponible próximamente. ¡Estate atento!
+        </p>
         <Button
           type="submit"
-          label="Enviar recuerdo"
-          icon="pi pi-send"
+          :label="comingSoon ? 'Próximamente' : 'Enviar recuerdo'"
+          :icon="comingSoon ? 'pi pi-clock' : 'pi pi-send'"
           class="w-full"
-          :disabled="isSubmitting"
+          :disabled="comingSoon || isSubmitting"
           :loading="isSubmitting"
         />
       </div>

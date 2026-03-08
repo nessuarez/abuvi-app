@@ -239,6 +239,10 @@ public class CampEdition
     // Weekend visit capacity (optional separate cap; if null, uses MaxCapacity)
     public int? MaxWeekendCapacity { get; set; }
 
+    // Payment deadlines for this edition (null = use defaults: 117 / 75 days before StartDate)
+    public DateTime? FirstPaymentDeadline { get; set; }
+    public DateTime? SecondPaymentDeadline { get; set; }
+
     public string? AccommodationCapacityJson { get; set; }
 
     public AccommodationCapacity? GetAccommodationCapacity()
@@ -300,6 +304,12 @@ public class CampEditionExtra
     public bool IsRequired { get; set; } = false;
     public bool IsActive { get; set; } = true;
     public int? MaxQuantity { get; set; }
+
+    // User input configuration
+    public bool RequiresUserInput { get; set; } = false;
+    public string? UserInputLabel { get; set; }
+
+    public int SortOrder { get; set; } = 0;
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -408,6 +418,9 @@ public record CampEditionExtraResponse(
     bool IsRequired,
     bool IsActive,
     int? MaxQuantity,
+    bool RequiresUserInput,
+    string? UserInputLabel,
+    int SortOrder,
     int CurrentQuantitySold,
     DateTime CreatedAt,
     DateTime UpdatedAt
@@ -420,7 +433,10 @@ public record CreateCampEditionExtraRequest(
     PricingType PricingType,
     PricingPeriod PricingPeriod,
     bool IsRequired,
-    int? MaxQuantity
+    int? MaxQuantity,
+    bool RequiresUserInput = false,
+    string? UserInputLabel = null,
+    int SortOrder = 0
 );
 
 public record UpdateCampEditionExtraRequest(
@@ -429,7 +445,14 @@ public record UpdateCampEditionExtraRequest(
     decimal Price,
     bool IsRequired,
     bool IsActive,
-    int? MaxQuantity
+    int? MaxQuantity,
+    bool RequiresUserInput = false,
+    string? UserInputLabel = null,
+    int SortOrder = 0
+);
+
+public record ReorderCampEditionExtrasRequest(
+    List<Guid> OrderedIds
 );
 
 /// <summary>
@@ -679,7 +702,9 @@ public record ActiveCampEditionResponse(
     string? Notes,
     string? Description,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    DateTime? FirstPaymentDeadline,
+    DateTime? SecondPaymentDeadline
 );
 
 /// <summary>
@@ -724,7 +749,9 @@ public record CurrentCampEditionResponse(
     IReadOnlyList<CampPhotoResponse> CampPhotos,
     AccommodationCapacity? AccommodationCapacity,
     int? CalculatedTotalBedCapacity,
-    IReadOnlyList<CampEditionExtraResponse> Extras
+    IReadOnlyList<CampEditionExtraResponse> Extras,
+    DateTime? FirstPaymentDeadline,
+    DateTime? SecondPaymentDeadline
 );
 
 /// <summary>
@@ -755,7 +782,10 @@ public record UpdateCampEditionRequest(
     decimal? PricePerAdultWeekend = null,
     decimal? PricePerChildWeekend = null,
     decimal? PricePerBabyWeekend = null,
-    int? MaxWeekendCapacity = null
+    int? MaxWeekendCapacity = null,
+    // Payment deadlines (null = use defaults: 117/75 days before StartDate):
+    DateTime? FirstPaymentDeadline = null,
+    DateTime? SecondPaymentDeadline = null
 );
 
 /// <summary>
@@ -796,7 +826,10 @@ public record CampEditionResponse(
     decimal? PricePerAdultWeekend,
     decimal? PricePerChildWeekend,
     decimal? PricePerBabyWeekend,
-    int? MaxWeekendCapacity
+    int? MaxWeekendCapacity,
+    // Payment deadlines:
+    DateTime? FirstPaymentDeadline,
+    DateTime? SecondPaymentDeadline
 );
 
 /// <summary>

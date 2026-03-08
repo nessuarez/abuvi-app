@@ -1,6 +1,10 @@
 <script setup lang="ts">
 const currentYear = new Date().getFullYear()
 
+const appVersion = __APP_VERSION__
+const commitHash = __COMMIT_HASH__
+const environment = import.meta.env.VITE_APP_ENV === 'production' ? 'Production' : 'Development'
+
 const linkGroups = [
   {
     title: 'Enlaces',
@@ -15,15 +19,13 @@ const linkGroups = [
     links: [
       { label: 'Aviso Legal', path: '/legal/notice' },
       { label: 'Política de Privacidad', path: '/legal/privacy' },
-      { label: 'Estatutos', path: '/legal/bylaws' },
-      { label: 'Transparencia', path: '/legal/transparency' }
+      { label: 'Estatutos', path: '/legal/bylaws' }
     ]
   }
 ]
 
 const contactInfo = {
-  email: 'info@abuvi.org',
-  phone: '+34 600 000 000'
+  email: 'junta.abuvi@gmail.com'
 }
 </script>
 
@@ -81,9 +83,10 @@ const contactInfo = {
               </a>
             </p>
             <p>
-              <i class="pi pi-phone mr-2" />
-              <a :href="`tel:${contactInfo.phone}`" class="hover:text-primary-600">
-                {{ contactInfo.phone }}
+              <i class="pi pi-whatsapp mr-2" />
+              <a :href="`https://chat.whatsapp.com/EBsp8GfXGPEB6PM8u3HUGu`" target="_blank" rel="noopener noreferrer"
+                class="hover:text-primary-600">
+                Comunidad de WhatsApp
               </a>
             </p>
           </div>
@@ -123,6 +126,11 @@ const contactInfo = {
         </div>
         <p class="mt-3 text-center text-xs text-gray-500">
           Software de código abierto: libre para usar, modificar y compartir
+        </p>
+
+        <!-- Version & Environment Info -->
+        <p class="mt-3 text-center text-xs text-gray-400">
+          v{{ appVersion }} ({{ commitHash }}) · {{ environment }}
         </p>
       </div>
     </div>

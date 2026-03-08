@@ -13,6 +13,7 @@ import Message from 'primevue/message'
 import { useMemberships } from '@/composables/useMemberships'
 import PayFeeDialog from './PayFeeDialog.vue'
 import type { MembershipFeeResponse, PayFeeRequest } from '@/types/membership'
+import { parseDateSafe } from '@/utils/date'
 import { FeeStatusLabels, FeeStatusSeverity, FeeStatus } from '@/types/membership'
 
 const props = defineProps<{
@@ -48,7 +49,7 @@ watch(
 )
 
 const formatDate = (dateString: string): string => {
-  const date = new Date(dateString)
+  const date = parseDateSafe(dateString)
   return new Intl.DateTimeFormat('es-ES', {
     day: '2-digit',
     month: '2-digit',
@@ -165,7 +166,7 @@ const handlePayFee = async (request: PayFeeRequest) => {
         <!-- Status row -->
         <div class="flex flex-wrap justify-between items-center gap-3">
           <div class="flex items-center gap-3">
-            <Tag v-if="membership.isActive" value="Socio activo" severity="success" />
+            <Tag v-if="membership.isActive" value="Socio/a activo/a" severity="success" />
             <Tag v-else value="Membresía inactiva" severity="secondary" />
             <span class="text-sm text-gray-600">Desde {{ formatDate(membership.startDate) }}</span>
           </div>
