@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import Checkbox from 'primevue/checkbox'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
@@ -165,8 +164,14 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
       class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 transition hover:border-blue-300 hover:bg-blue-50"
       :class="{ 'border-blue-400 bg-blue-50': isSelected(member.id) }" :data-testid="`member-label-${member.id}`"
       @click="toggleMember(member.id)">
-      <Checkbox :model-value="isSelected(member.id)" :binary="true"
-        :input-id="`member-${member.id}`" data-testid="member-checkbox" @click.stop />
+      <div
+        class="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2 transition-colors"
+        :class="isSelected(member.id) ? 'border-blue-500 bg-blue-500' : 'border-gray-300 bg-white'"
+        data-testid="member-checkbox"
+        aria-hidden="true"
+      >
+        <i v-if="isSelected(member.id)" class="pi pi-check text-[10px] text-white" />
+      </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
           <span class="font-medium text-gray-900">
