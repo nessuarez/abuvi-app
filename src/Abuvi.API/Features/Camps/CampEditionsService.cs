@@ -262,6 +262,8 @@ public class CampEditionsService
         edition.PricePerChildWeekend = request.PricePerChildWeekend;
         edition.PricePerBabyWeekend = request.PricePerBabyWeekend;
         edition.MaxWeekendCapacity = request.MaxWeekendCapacity;
+        edition.FirstPaymentDeadline = request.FirstPaymentDeadline;
+        edition.SecondPaymentDeadline = request.SecondPaymentDeadline;
 
         var updated = await _repository.UpdateAsync(edition, cancellationToken);
         return MapToCampEditionResponse(updated, updated.Camp.Name);
@@ -368,7 +370,9 @@ public class CampEditionsService
             CampPhotos: campPhotos,
             AccommodationCapacity: accommodationCapacity,
             CalculatedTotalBedCapacity: bedCapacity,
-            Extras: extras
+            Extras: extras,
+            FirstPaymentDeadline: edition.FirstPaymentDeadline,
+            SecondPaymentDeadline: edition.SecondPaymentDeadline
         );
     }
 
@@ -415,7 +419,9 @@ public class CampEditionsService
             Notes: edition.Notes,
             Description: edition.Description,
             CreatedAt: edition.CreatedAt,
-            UpdatedAt: edition.UpdatedAt
+            UpdatedAt: edition.UpdatedAt,
+            FirstPaymentDeadline: edition.FirstPaymentDeadline,
+            SecondPaymentDeadline: edition.SecondPaymentDeadline
         );
     }
 
@@ -484,7 +490,9 @@ public class CampEditionsService
             PricePerAdultWeekend: edition.PricePerAdultWeekend,
             PricePerChildWeekend: edition.PricePerChildWeekend,
             PricePerBabyWeekend: edition.PricePerBabyWeekend,
-            MaxWeekendCapacity: edition.MaxWeekendCapacity
+            MaxWeekendCapacity: edition.MaxWeekendCapacity,
+            FirstPaymentDeadline: edition.FirstPaymentDeadline,
+            SecondPaymentDeadline: edition.SecondPaymentDeadline
         );
     }
 }

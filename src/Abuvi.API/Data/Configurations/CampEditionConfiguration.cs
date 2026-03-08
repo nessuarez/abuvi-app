@@ -177,6 +177,12 @@ public class CampEditionConfiguration : IEntityTypeConfiguration<CampEdition>
         builder.Property(e => e.MaxWeekendCapacity)
             .HasColumnName("max_weekend_capacity");
 
+        // Payment deadlines (nullable timestamps)
+        builder.Property(e => e.FirstPaymentDeadline)
+            .HasColumnName("first_payment_deadline");
+        builder.Property(e => e.SecondPaymentDeadline)
+            .HasColumnName("second_payment_deadline");
+
         // Accommodation capacity JSON (nullable text column)
         builder.Property(e => e.AccommodationCapacityJson)
             .HasColumnType("text")
