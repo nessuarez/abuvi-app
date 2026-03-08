@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useUsers } from '@/composables/useUsers'
 import { useToast } from 'primevue/usetoast'
 import DataTable from 'primevue/datatable'
@@ -9,6 +9,9 @@ import Dialog from 'primevue/dialog'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import Tag from 'primevue/tag'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
+import InputText from 'primevue/inputtext'
 import UserForm from '@/components/users/UserForm.vue'
 import UserRoleCell from '@/components/users/UserRoleCell.vue'
 import UserRoleDialog from '@/components/users/UserRoleDialog.vue'
@@ -16,6 +19,17 @@ import type { CreateUserRequest, User } from '@/types/user'
 
 const toast = useToast()
 const { users, loading, error, fetchUsers, createUser, clearError } = useUsers()
+
+const searchQuery = ref('')
+
+const filteredUsers = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return users.value
+  return users.value.filter(u =>
+    u.email.toLowerCase().includes(q) ||
+    `${u.firstName} ${u.lastName}`.toLowerCase().includes(q)
+  )
+})
 
 const showCreateDialog = ref(false)
 const creatingUser = ref(false)
@@ -66,9 +80,21 @@ const formatDate = (dateString: string) =>
 
 <template>
   <div data-testid="users-admin-panel" class="space-y-4">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-center justify-between gap-3">
       <h2 class="text-xl font-semibold text-gray-800">Gestión de Usuarios</h2>
-      <Button label="Crear Usuario" icon="pi pi-plus" @click="openCreateDialog" />
+      <div class="flex flex-wrap items-center gap-3">
+        <IconField>
+          <InputIcon class="pi pi-search" />
+          <InputText
+            v-model="searchQuery"
+            placeholder="Buscar por nombre o email…"
+            class="w-72"
+            aria-label="Buscar usuarios"
+            data-testid="users-search-input"
+          />
+        </IconField>
+        <Button label="Crear Usuario" icon="pi pi-plus" @click="openCreateDialog" />
+      </div>
     </div>
 
     <!-- Loading state -->
@@ -85,7 +111,7 @@ const formatDate = (dateString: string) =>
     <!-- Users DataTable -->
     <DataTable
       v-else
-      :value="users"
+      :value="filteredUsers"
       striped-rows
       paginator
       :rows="10"
@@ -122,6 +148,9 @@ const formatDate = (dateString: string) =>
           <span class="text-sm text-gray-600">{{ formatDate(data.createdAt) }}</span>
         </template>
       </Column>
+      <template #empty>
+        <span class="text-gray-500">No se encontraron usuarios que coincidan con la búsqueda.</span>
+      </template>
     </DataTable>
 
     <!-- Create User Dialog -->

@@ -23,18 +23,33 @@ describe('Admin Panel (/admin)', () => {
     cy.contains('Administración').should('not.exist')
   })
 
-  it('admin panel shows three tabs', () => {
+  it('/admin redirects to /admin/camps by default', () => {
     cy.login('board@abuvi.org', 'password123')
     cy.visit('/admin')
-    cy.contains('Campamentos').should('be.visible')
-    cy.contains('Unidades Familiares').should('be.visible')
-    cy.contains('Usuarios').should('be.visible')
+    cy.url().should('include', '/admin/camps')
   })
 
-  it('clicking Usuarios tab shows user management', () => {
+  it('admin sidebar shows grouped menu items', () => {
     cy.login('board@abuvi.org', 'password123')
     cy.visit('/admin')
-    cy.contains('Usuarios').click()
+    cy.get('[data-testid="admin-sidebar"]').should('be.visible')
+    cy.get('[data-testid="sidebar-camps"]').should('be.visible')
+    cy.get('[data-testid="sidebar-registrations"]').should('be.visible')
+    cy.get('[data-testid="sidebar-family-units"]').should('be.visible')
+    cy.get('[data-testid="sidebar-users"]').should('be.visible')
+  })
+
+  it('clicking sidebar items navigates to sub-routes', () => {
+    cy.login('board@abuvi.org', 'password123')
+    cy.visit('/admin')
+    cy.get('[data-testid="sidebar-users"]').click()
+    cy.url().should('include', '/admin/users')
     cy.get('[data-testid="users-admin-panel"]').should('be.visible')
+  })
+
+  it('sidebar highlights active item', () => {
+    cy.login('board@abuvi.org', 'password123')
+    cy.visit('/admin/users')
+    cy.get('[data-testid="sidebar-users"]').should('have.attr', 'aria-current', 'page')
   })
 })

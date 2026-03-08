@@ -54,13 +54,93 @@ const router = createRouter({
 		},
 		{
 			path: "/admin",
-			name: "admin",
 			component: () => import("@/views/AdminPage.vue"),
 			meta: {
 				requiresAuth: true,
 				requiresBoard: true,
 				title: "ABUVI | Administración"
-			}
+			},
+			redirect: "/admin/camps",
+			children: [
+				{
+					path: "camps",
+					name: "admin-camps",
+					component: () =>
+						import("@/components/admin/CampsAdminPanel.vue"),
+					meta: { title: "ABUVI | Campamentos" }
+				},
+				{
+					path: "registrations",
+					name: "admin-registrations",
+					component: () =>
+						import(
+							"@/components/admin/RegistrationsAdminPanel.vue"
+						),
+					meta: { title: "ABUVI | Inscripciones" }
+				},
+				{
+					path: "family-units",
+					name: "admin-family-units",
+					component: () =>
+						import(
+							"@/components/admin/FamilyUnitsAdminPanel.vue"
+						),
+					meta: { title: "ABUVI | Unidades Familiares" }
+				},
+				{
+					path: "users",
+					name: "admin-users",
+					component: () =>
+						import("@/components/admin/UsersAdminPanel.vue"),
+					meta: { title: "ABUVI | Usuarios" }
+				},
+				{
+					path: "media-review",
+					name: "admin-media-review",
+					component: () =>
+						import(
+							"@/components/admin/MediaItemsReviewPanel.vue"
+						),
+					meta: {
+						requiresBoard: true,
+						title: "ABUVI | Revisión de medios"
+					}
+				},
+				{
+					path: "payments",
+					name: "admin-payments",
+					component: () =>
+						import("@/components/admin/PaymentsAdminPanel.vue"),
+					meta: {
+						requiresBoard: true,
+						title: "ABUVI | Pagos"
+					}
+				},
+				{
+					path: "storage",
+					name: "admin-storage",
+					component: () =>
+						import(
+							"@/components/admin/BlobStorageAdminPanel.vue"
+						),
+					meta: {
+						requiresAdmin: true,
+						title: "ABUVI | Almacenamiento"
+					}
+				},
+				{
+					path: "settings",
+					name: "admin-settings",
+					component: () =>
+						import(
+							"@/components/admin/AssociationSettingsPanel.vue"
+						),
+					meta: {
+						requiresBoard: true,
+						title: "ABUVI | Configuración"
+					}
+				}
+			]
 		},
 		{
 			path: "/family-unit",
@@ -163,11 +243,11 @@ const router = createRouter({
 		// Legacy user management routes — redirect to admin panel
 		{
 			path: "/users",
-			redirect: "/admin"
+			redirect: "/admin/users"
 		},
 		{
 			path: "/users/:id",
-			redirect: "/admin"
+			redirect: "/admin/users"
 		},
 
 		// Public legal routes — no auth required

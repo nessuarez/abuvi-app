@@ -57,7 +57,7 @@ public class RegistrationsService(
             if (m.AttendancePeriod == AttendancePeriod.WeekendVisit)
             {
                 var campStart = DateOnly.FromDateTime(edition.StartDate);
-                var campEnd   = DateOnly.FromDateTime(edition.EndDate);
+                var campEnd = DateOnly.FromDateTime(edition.EndDate);
                 if (m.VisitStartDate < campStart || m.VisitEndDate > campEnd)
                     throw new BusinessRuleException(
                         "Las fechas de la visita deben estar dentro del periodo del campamento");
@@ -213,7 +213,7 @@ public class RegistrationsService(
             if (m.AttendancePeriod == AttendancePeriod.WeekendVisit)
             {
                 var campStart = DateOnly.FromDateTime(edition.StartDate);
-                var campEnd   = DateOnly.FromDateTime(edition.EndDate);
+                var campEnd = DateOnly.FromDateTime(edition.EndDate);
                 if (m.VisitStartDate < campStart || m.VisitEndDate > campEnd)
                     throw new BusinessRuleException(
                         "Las fechas de la visita deben estar dentro del periodo del campamento");
