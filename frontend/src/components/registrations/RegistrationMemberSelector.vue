@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import DateInput from '@/components/shared/DateInput.vue'
@@ -252,45 +252,6 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
         <p class="mt-0.5 text-xs text-gray-500">
           {{ relationshipLabel(member.relationship) }} · {{ formatDate(member.dateOfBirth) }}
         </p>
-
-        <!-- Period selector: only shown when member is selected and edition allows multiple periods -->
-        <div v-if="isSelected(member.id) && showPeriodSelector" class="mt-2 space-y-2" @click.stop>
-          <Select :model-value="getSelection(member.id)?.attendancePeriod" :options="periodOptions" option-label="label"
-            option-value="value" placeholder="Periodo" class="w-full text-sm"
-            :data-testid="`period-select-${member.id}`"
-            @update:model-value="(p: AttendancePeriod) => updatePeriod(member.id, p)" />
-
-          <!-- Weekend visit date pickers -->
-          <template v-if="getSelection(member.id)?.attendancePeriod === 'WeekendVisit'">
-            <div class="flex gap-2">
-              <div class="flex-1">
-                <label class="mb-1 block text-xs text-gray-500">Llegada</label>
-                <DatePicker :model-value="getSelection(member.id)?.visitStartDate
-                  ? parseDateLocal(getSelection(member.id)!.visitStartDate!)
-                  : null
-                  " :min-date="weekendMinDate" :max-date="weekendMaxDate" date-format="dd/mm/yy" show-icon
-                  class="w-full text-sm" :data-testid="`visit-start-${member.id}`"
-                  @update:model-value="(d: Date | null) => updateVisitDate(member.id, 'visitStartDate', d)" />
-              </div>
-              <div class="flex-1">
-                <label class="mb-1 block text-xs text-gray-500">Salida</label>
-                <DatePicker :model-value="getSelection(member.id)?.visitEndDate
-                  ? parseDateLocal(getSelection(member.id)!.visitEndDate!)
-                  : null
-                  " :min-date="getSelection(member.id)?.visitStartDate
-                    ? parseDateLocal(getSelection(member.id)!.visitStartDate!)
-                    : weekendMinDate
-                    " :max-date="weekendMaxDate" date-format="dd/mm/yy" show-icon class="w-full text-sm"
-                  :data-testid="`visit-end-${member.id}`"
-                  @update:model-value="(d: Date | null) => updateVisitDate(member.id, 'visitEndDate', d)" />
-              </div>
-            </div>
-            <p v-if="edition.weekendStartDate && edition.weekendEndDate" class="text-xs text-orange-600">
-              Máximo 3 días. Dentro del periodo {{ formatDate(edition.weekendStartDate) }} —
-              {{ formatDate(edition.weekendEndDate) }}
-            </p>
-          </template>
-        </div>
 
         <!-- Guardian info for minors -->
         <div v-if="isSelected(member.id) && isMinor(member)" class="mt-2 space-y-2 border-t border-gray-100 pt-2"
