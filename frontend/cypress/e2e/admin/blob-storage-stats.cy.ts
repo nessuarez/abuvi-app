@@ -26,17 +26,15 @@ describe('Blob Storage Admin Stats Panel', () => {
     cy.intercept('GET', '**/blobs/stats', { fixture: 'blob-stats.json' }).as('getStats')
   })
 
-  it('Admin sees the Almacenamiento storage tab', () => {
+  it('Admin sees the Almacenamiento sidebar item', () => {
     cy.window().then(loginAsAdmin)
     cy.visit('/admin')
-    cy.get('[data-testid="tab-storage"]').should('be.visible').and('contain.text', 'Almacenamiento')
+    cy.get('[data-testid="sidebar-storage"]').should('be.visible').and('contain.text', 'Almacenamiento')
   })
 
-  it('Stats load on tab open and summary cards are visible', () => {
+  it('Stats load when navigating to storage page and summary cards are visible', () => {
     cy.window().then(loginAsAdmin)
-    cy.visit('/admin')
-
-    cy.get('[data-testid="tab-storage"]').click()
+    cy.visit('/admin/storage')
     cy.wait('@getStats')
 
     cy.get('[data-testid="card-total-objects"]').should('be.visible').and('contain.text', '27')
@@ -45,9 +43,7 @@ describe('Blob Storage Admin Stats Panel', () => {
 
   it('Quota progress bar is displayed with usage percentage', () => {
     cy.window().then(loginAsAdmin)
-    cy.visit('/admin')
-
-    cy.get('[data-testid="tab-storage"]').click()
+    cy.visit('/admin/storage')
     cy.wait('@getStats')
 
     cy.get('[data-testid="quota-section"]').should('be.visible')
@@ -57,9 +53,7 @@ describe('Blob Storage Admin Stats Panel', () => {
 
   it('Folder breakdown table shows all four folders', () => {
     cy.window().then(loginAsAdmin)
-    cy.visit('/admin')
-
-    cy.get('[data-testid="tab-storage"]').click()
+    cy.visit('/admin/storage')
     cy.wait('@getStats')
 
     cy.get('[data-testid="folder-stats-table"]').should('be.visible')
@@ -69,17 +63,15 @@ describe('Blob Storage Admin Stats Panel', () => {
     cy.get('[data-testid="folder-stats-table"]').should('contain.text', 'camp-photos')
   })
 
-  it('Board user does NOT see the Almacenamiento tab', () => {
+  it('Board user does NOT see the Almacenamiento sidebar item', () => {
     cy.window().then(loginAsBoard)
     cy.visit('/admin')
-    cy.get('[data-testid="tab-storage"]').should('not.exist')
+    cy.get('[data-testid="sidebar-storage"]').should('not.exist')
   })
 
   it('Refresh button triggers a new stats fetch', () => {
     cy.window().then(loginAsAdmin)
-    cy.visit('/admin')
-
-    cy.get('[data-testid="tab-storage"]').click()
+    cy.visit('/admin/storage')
     cy.wait('@getStats')
 
     cy.get('[data-testid="refresh-btn"]').click()

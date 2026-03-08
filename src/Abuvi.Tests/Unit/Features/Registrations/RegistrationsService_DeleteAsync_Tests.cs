@@ -179,7 +179,7 @@ public class RegistrationsService_DeleteAsync_Tests
     }
 
     [Fact]
-    public async Task DeleteAsync_WhenStatusIsCancelled_ShouldThrowBusinessRuleException()
+    public async Task DeleteAsync_WhenStatusIsCancelledAndUserIsRepresentative_ShouldThrowBusinessRuleException()
     {
         // Arrange
         var registrationId = Guid.NewGuid();
@@ -197,6 +197,27 @@ public class RegistrationsService_DeleteAsync_Tests
         // Assert
         await act.Should().ThrowAsync<BusinessRuleException>()
             .WithMessage("*Cancelled*cannot be deleted*");
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WhenAdminDeletesCancelledRegistration_ShouldDeleteSuccessfully()
+    {
+        // Arrange
+        var registrationId = Guid.NewGuid();
+        var registration = CreateRegistrationForDelete(registrationId,
+            status: RegistrationStatus.Cancelled,
+            createdAt: DateTime.UtcNow.AddDays(-3));
+
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>())
+            .Returns(registration);
+        _repo.DeleteAsync(registrationId, Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _sut.DeleteAsync(registrationId, UserId, isAdminOrBoard: true, CancellationToken.None);
+
+        // Assert
+        await _repo.Received(1).DeleteAsync(registrationId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -290,57 +311,57 @@ public class RegistrationsService_DeleteAsync_Tests
         Guid id,
         RegistrationStatus status,
         DateTime createdAt) => new()
-    {
-        Id = id,
-        FamilyUnitId = FamilyUnitId,
-        CampEditionId = CampEditionId,
-        RegisteredByUserId = UserId,
-        BaseTotalAmount = 500m,
-        ExtrasAmount = 0m,
-        TotalAmount = 500m,
-        Status = status,
-        CreatedAt = createdAt,
-        UpdatedAt = DateTime.UtcNow,
-        FamilyUnit = new FamilyUnit
         {
-            Id = FamilyUnitId,
-            Name = "Test Family",
-            RepresentativeUserId = UserId,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        },
-        CampEdition = new CampEdition
-        {
-            Id = CampEditionId,
-            CampId = Guid.NewGuid(),
-            Year = 2025,
-            StartDate = new DateTime(2025, 7, 1, 0, 0, 0, DateTimeKind.Utc),
-            EndDate = new DateTime(2025, 7, 14, 0, 0, 0, DateTimeKind.Utc),
-            PricePerAdult = 500m,
-            PricePerChild = 300m,
-            PricePerBaby = 100m,
-            Status = CampEditionStatus.Open,
-            Camp = new Camp
+            Id = id,
+            FamilyUnitId = FamilyUnitId,
+            CampEditionId = CampEditionId,
+            RegisteredByUserId = UserId,
+            BaseTotalAmount = 500m,
+            ExtrasAmount = 0m,
+            TotalAmount = 500m,
+            Status = status,
+            CreatedAt = createdAt,
+            UpdatedAt = DateTime.UtcNow,
+            FamilyUnit = new FamilyUnit
             {
-                Id = Guid.NewGuid(),
-                Name = "Test Camp",
-                Location = "Test Location",
+                Id = FamilyUnitId,
+                Name = "Test Family",
+                RepresentativeUserId = UserId,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            CampEdition = new CampEdition
+            {
+                Id = CampEditionId,
+                CampId = Guid.NewGuid(),
+                Year = 2025,
+                StartDate = new DateTime(2025, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+                EndDate = new DateTime(2025, 7, 14, 0, 0, 0, DateTimeKind.Utc),
                 PricePerAdult = 500m,
                 PricePerChild = 300m,
-                PricePerBaby = 100m
-            }
-        },
-        RegisteredByUser = new User
-        {
-            Id = UserId,
-            Email = "test@example.com",
-            FirstName = "Test",
-            LastName = "User",
-            IsActive = true,
-            EmailVerified = true
-        },
-        Members = [],
-        Extras = [],
-        Payments = []
-    };
+                PricePerBaby = 100m,
+                Status = CampEditionStatus.Open,
+                Camp = new Camp
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Test Camp",
+                    Location = "Test Location",
+                    PricePerAdult = 500m,
+                    PricePerChild = 300m,
+                    PricePerBaby = 100m
+                }
+            },
+            RegisteredByUser = new User
+            {
+                Id = UserId,
+                Email = "test@example.com",
+                FirstName = "Test",
+                LastName = "User",
+                IsActive = true,
+                EmailVerified = true
+            },
+            Members = [],
+            Extras = [],
+            Payments = []
+        };
 }

@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import Checkbox from 'primevue/checkbox'
+import { computed } from 'vue'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import DateInput from '@/components/shared/DateInput.vue'
@@ -234,126 +233,158 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
 </script>
 
 <template>
-  <div>
-    <!-- Member cards grid -->
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <div v-for="member in members" :key="member.id"
-        class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 transition hover:border-blue-300 hover:bg-blue-50"
-        :class="{ 'border-blue-400 bg-blue-50': isSelected(member.id) }" :data-testid="`member-label-${member.id}`"
-        @click="toggleMember(member.id)">
-        <Checkbox :model-value="isSelected(member.id)" :binary="true"
-          :input-id="`member-${member.id}`" data-testid="member-checkbox"
-          @click.stop="toggleMember(member.id)" />
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2">
-            <span class="font-medium text-gray-900">
-              {{ member.firstName }} {{ member.lastName }}
-            </span>
-          </div>
-          <p class="mt-0.5 text-xs text-gray-500">
-            {{ relationshipLabel(member.relationship) }} · {{ formatDate(member.dateOfBirth) }}
-          </p>
-
-          <!-- Guardian info for minors -->
-          <div v-if="isSelected(member.id) && isMinor(member)" class="mt-2 space-y-2 border-t border-gray-100 pt-2"
-            @click.stop>
-            <p class="text-xs font-medium text-gray-500">Datos del tutor/a legal</p>
-            <InputText :model-value="getSelection(member.id)?.guardianName ?? ''"
-              placeholder="Nombre completo del tutor/a" class="w-full text-sm" :maxlength="200"
-              :data-testid="`guardian-name-${member.id}`"
-              @update:model-value="(v: string) => updateGuardianField(member.id, 'guardianName', v)" />
-            <InputText :model-value="getSelection(member.id)?.guardianDocumentNumber ?? ''"
-              placeholder="DNI / Documento del tutor/a" class="w-full text-sm" :maxlength="50"
-              :data-testid="`guardian-doc-${member.id}`"
-              @update:model-value="(v: string) => updateGuardianField(member.id, 'guardianDocumentNumber', v)" />
-          </div>
-        </div>
+  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <div v-for="member in members" :key="member.id"
+      class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 transition hover:border-blue-300 hover:bg-blue-50"
+      :class="{ 'border-blue-400 bg-blue-50': isSelected(member.id) }" :data-testid="`member-label-${member.id}`"
+      @click="toggleMember(member.id)">
+      <div class="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2 transition-colors"
+        :class="isSelected(member.id) ? 'border-blue-500 bg-blue-500' : 'border-gray-300 bg-white'"
+        data-testid="member-checkbox" aria-hidden="true">
+        <i v-if="isSelected(member.id)" class="pi pi-check text-[10px] text-white" />
       </div>
-    </div>
-
-    <!-- Global period selection section -->
-    <div v-if="hasSelectedMembers && showPeriodSelector"
-      class="mt-4 space-y-3 rounded-lg border border-gray-200 bg-white p-4" data-testid="global-period-section">
-      <h3 class="text-sm font-semibold text-gray-700">Estancia</h3>
-
-      <!-- Global period selector -->
-      <Select v-model="globalPeriod" :options="periodOptions" option-label="label"
-        option-value="value" placeholder="Periodo" class="w-full text-sm"
-        data-testid="global-period-select" />
-
-      <!-- Global WeekendVisit date pickers -->
-      <template v-if="globalPeriod === 'WeekendVisit' && !hasDifferentPeriods">
-        <div class="flex gap-2">
-          <div class="flex-1">
-            <label class="mb-1 block text-xs text-gray-500">Llegada</label>
-            <DateInput :model-value="globalVisitStartDate ? parseDateLocal(globalVisitStartDate) : null"
-              :min-date="weekendMinDate" :max-date="weekendMaxDate"
-              data-testid="global-visit-start"
-              @update:model-value="(d: Date | null) => updateGlobalVisitDate('visitStartDate', d)" />
-          </div>
-          <div class="flex-1">
-            <label class="mb-1 block text-xs text-gray-500">Salida</label>
-            <DateInput :model-value="globalVisitEndDate ? parseDateLocal(globalVisitEndDate) : null"
-              :min-date="globalVisitStartDate ? parseDateLocal(globalVisitStartDate) : weekendMinDate"
-              :max-date="weekendMaxDate"
-              data-testid="global-visit-end"
-              @update:model-value="(d: Date | null) => updateGlobalVisitDate('visitEndDate', d)" />
-          </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="font-medium text-gray-900">
+            {{ member.firstName }} {{ member.lastName }}
+          </span>
         </div>
-        <p v-if="edition.weekendStartDate && edition.weekendEndDate" class="text-xs text-orange-600">
-          Maximo 3 dias. Dentro del periodo {{ formatDate(edition.weekendStartDate) }} —
-          {{ formatDate(edition.weekendEndDate) }}
+        <p class="mt-0.5 text-xs text-gray-500">
+          {{ relationshipLabel(member.relationship) }} · {{ formatDate(member.dateOfBirth) }}
         </p>
-      </template>
 
-      <!-- Different periods checkbox -->
-      <div class="flex items-center gap-2 pt-1">
-        <Checkbox v-model="hasDifferentPeriods" :binary="true"
-          input-id="different-periods" data-testid="different-periods-checkbox" />
-        <label for="different-periods" class="cursor-pointer text-sm text-gray-600">
-          No todas las personas asistentes tienen la misma estancia
-        </label>
-      </div>
+        <!-- Period selector: only shown when member is selected and edition allows multiple periods -->
+        <div v-if="isSelected(member.id) && showPeriodSelector" class="mt-2 space-y-2" @click.stop>
+          <Select :model-value="getSelection(member.id)?.attendancePeriod" :options="periodOptions" option-label="label"
+            option-value="value" placeholder="Periodo" class="w-full text-sm"
+            :data-testid="`period-select-${member.id}`"
+            @update:model-value="(p: AttendancePeriod) => updatePeriod(member.id, p)" />
 
-      <!-- Individual period selectors -->
-      <div v-if="hasDifferentPeriods" class="space-y-3 border-t border-gray-100 pt-3"
-        data-testid="individual-periods-section">
-        <div v-for="sel in modelValue" :key="sel.memberId" class="space-y-2">
-          <div class="flex items-center gap-3">
-            <span class="min-w-[120px] text-sm font-medium text-gray-700">{{ getMemberName(sel.memberId) }}</span>
-            <Select :model-value="sel.attendancePeriod" :options="periodOptions"
-              option-label="label" option-value="value" class="flex-1 text-sm"
-              :data-testid="`period-select-${sel.memberId}`"
-              @update:model-value="(p: AttendancePeriod) => updatePeriod(sel.memberId, p)" />
-          </div>
-
-          <!-- Individual WeekendVisit date pickers -->
-          <template v-if="sel.attendancePeriod === 'WeekendVisit'">
-            <div class="ml-[132px] flex gap-2">
+          <!-- Weekend visit date pickers -->
+          <template v-if="getSelection(member.id)?.attendancePeriod === 'WeekendVisit'">
+            <div class="flex gap-2">
               <div class="flex-1">
                 <label class="mb-1 block text-xs text-gray-500">Llegada</label>
-                <DateInput :model-value="sel.visitStartDate ? parseDateLocal(sel.visitStartDate) : null"
-                  :min-date="weekendMinDate" :max-date="weekendMaxDate"
-                  :data-testid="`visit-start-${sel.memberId}`"
-                  @update:model-value="(d: Date | null) => updateVisitDate(sel.memberId, 'visitStartDate', d)" />
+                <DatePicker :model-value="getSelection(member.id)?.visitStartDate
+                  ? parseDateLocal(getSelection(member.id)!.visitStartDate!)
+                  : null
+                  " :min-date="weekendMinDate" :max-date="weekendMaxDate" date-format="dd/mm/yy" show-icon
+                  class="w-full text-sm" :data-testid="`visit-start-${member.id}`"
+                  @update:model-value="(d: Date | null) => updateVisitDate(member.id, 'visitStartDate', d)" />
               </div>
               <div class="flex-1">
                 <label class="mb-1 block text-xs text-gray-500">Salida</label>
-                <DateInput :model-value="sel.visitEndDate ? parseDateLocal(sel.visitEndDate) : null"
-                  :min-date="sel.visitStartDate ? parseDateLocal(sel.visitStartDate) : weekendMinDate"
-                  :max-date="weekendMaxDate"
-                  :data-testid="`visit-end-${sel.memberId}`"
-                  @update:model-value="(d: Date | null) => updateVisitDate(sel.memberId, 'visitEndDate', d)" />
+                <DatePicker :model-value="getSelection(member.id)?.visitEndDate
+                  ? parseDateLocal(getSelection(member.id)!.visitEndDate!)
+                  : null
+                  " :min-date="getSelection(member.id)?.visitStartDate
+                    ? parseDateLocal(getSelection(member.id)!.visitStartDate!)
+                    : weekendMinDate
+                    " :max-date="weekendMaxDate" date-format="dd/mm/yy" show-icon class="w-full text-sm"
+                  :data-testid="`visit-end-${member.id}`"
+                  @update:model-value="(d: Date | null) => updateVisitDate(member.id, 'visitEndDate', d)" />
               </div>
             </div>
-            <p v-if="edition.weekendStartDate && edition.weekendEndDate"
-              class="ml-[132px] text-xs text-orange-600">
-              Maximo 3 dias. Dentro del periodo {{ formatDate(edition.weekendStartDate) }} —
+            <p v-if="edition.weekendStartDate && edition.weekendEndDate" class="text-xs text-orange-600">
+              Máximo 3 días. Dentro del periodo {{ formatDate(edition.weekendStartDate) }} —
               {{ formatDate(edition.weekendEndDate) }}
             </p>
           </template>
         </div>
+
+        <!-- Guardian info for minors -->
+        <div v-if="isSelected(member.id) && isMinor(member)" class="mt-2 space-y-2 border-t border-gray-100 pt-2"
+          @click.stop>
+          <p class="text-xs font-medium text-gray-500">Datos del tutor/a legal</p>
+          <InputText :model-value="getSelection(member.id)?.guardianName ?? ''"
+            placeholder="Nombre completo del tutor/a" class="w-full text-sm" :maxlength="200"
+            :data-testid="`guardian-name-${member.id}`"
+            @update:model-value="(v: string) => updateGuardianField(member.id, 'guardianName', v)" />
+          <InputText :model-value="getSelection(member.id)?.guardianDocumentNumber ?? ''"
+            placeholder="DNI / Documento del tutor/a" class="w-full text-sm" :maxlength="50"
+            :data-testid="`guardian-doc-${member.id}`"
+            @update:model-value="(v: string) => updateGuardianField(member.id, 'guardianDocumentNumber', v)" />
+        </div>
       </div>
     </div>
+  </div>
+
+  <!-- Global period selection section -->
+  <div v-if="hasSelectedMembers && showPeriodSelector"
+    class="mt-4 space-y-3 rounded-lg border border-gray-200 bg-white p-4" data-testid="global-period-section">
+    <h3 class="text-sm font-semibold text-gray-700">Estancia</h3>
+
+    <!-- Global period selector -->
+    <Select v-model="globalPeriod" :options="periodOptions" option-label="label" option-value="value"
+      placeholder="Periodo" class="w-full text-sm" data-testid="global-period-select" />
+
+    <!-- Global WeekendVisit date pickers -->
+    <template v-if="globalPeriod === 'WeekendVisit' && !hasDifferentPeriods">
+      <div class="flex gap-2">
+        <div class="flex-1">
+          <label class="mb-1 block text-xs text-gray-500">Llegada</label>
+          <DateInput :model-value="globalVisitStartDate ? parseDateLocal(globalVisitStartDate) : null"
+            :min-date="weekendMinDate" :max-date="weekendMaxDate" data-testid="global-visit-start"
+            @update:model-value="(d: Date | null) => updateGlobalVisitDate('visitStartDate', d)" />
+        </div>
+        <div class="flex-1">
+          <label class="mb-1 block text-xs text-gray-500">Salida</label>
+          <DateInput :model-value="globalVisitEndDate ? parseDateLocal(globalVisitEndDate) : null"
+            :min-date="globalVisitStartDate ? parseDateLocal(globalVisitStartDate) : weekendMinDate"
+            :max-date="weekendMaxDate" data-testid="global-visit-end"
+            @update:model-value="(d: Date | null) => updateGlobalVisitDate('visitEndDate', d)" />
+        </div>
+      </div>
+      <p v-if="edition.weekendStartDate && edition.weekendEndDate" class="text-xs text-orange-600">
+        Maximo 3 dias. Dentro del periodo {{ formatDate(edition.weekendStartDate) }} —
+        {{ formatDate(edition.weekendEndDate) }}
+      </p>
+    </template>
+
+    <!-- Different periods checkbox -->
+    <div class="flex items-center gap-2 pt-1">
+      <Checkbox v-model="hasDifferentPeriods" :binary="true" input-id="different-periods"
+        data-testid="different-periods-checkbox" />
+      <label for="different-periods" class="cursor-pointer text-sm text-gray-600">
+        No todas las personas asistentes tienen la misma estancia
+      </label>
+    </div>
+
+    <!-- Individual period selectors -->
+    <div v-if="hasDifferentPeriods" class="space-y-3 border-t border-gray-100 pt-3"
+      data-testid="individual-periods-section">
+      <div v-for="sel in modelValue" :key="sel.memberId" class="space-y-2">
+        <div class="flex items-center gap-3">
+          <span class="min-w-[120px] text-sm font-medium text-gray-700">{{ getMemberName(sel.memberId) }}</span>
+          <Select :model-value="sel.attendancePeriod" :options="periodOptions" option-label="label" option-value="value"
+            class="flex-1 text-sm" :data-testid="`period-select-${sel.memberId}`"
+            @update:model-value="(p: AttendancePeriod) => updatePeriod(sel.memberId, p)" />
+        </div>
+
+        <!-- Individual WeekendVisit date pickers -->
+        <template v-if="sel.attendancePeriod === 'WeekendVisit'">
+          <div class="ml-[132px] flex gap-2">
+            <div class="flex-1">
+              <label class="mb-1 block text-xs text-gray-500">Llegada</label>
+              <DateInput :model-value="sel.visitStartDate ? parseDateLocal(sel.visitStartDate) : null"
+                :min-date="weekendMinDate" :max-date="weekendMaxDate" :data-testid="`visit-start-${sel.memberId}`"
+                @update:model-value="(d: Date | null) => updateVisitDate(sel.memberId, 'visitStartDate', d)" />
+            </div>
+            <div class="flex-1">
+              <label class="mb-1 block text-xs text-gray-500">Salida</label>
+              <DateInput :model-value="sel.visitEndDate ? parseDateLocal(sel.visitEndDate) : null"
+                :min-date="sel.visitStartDate ? parseDateLocal(sel.visitStartDate) : weekendMinDate"
+                :max-date="weekendMaxDate" :data-testid="`visit-end-${sel.memberId}`"
+                @update:model-value="(d: Date | null) => updateVisitDate(sel.memberId, 'visitEndDate', d)" />
+            </div>
+          </div>
+          <p v-if="edition.weekendStartDate && edition.weekendEndDate" class="ml-[132px] text-xs text-orange-600">
+            Maximo 3 dias. Dentro del periodo {{ formatDate(edition.weekendStartDate) }} —
+            {{ formatDate(edition.weekendEndDate) }}
+          </p>
+        </template>
+      </div>
+    </div>
+  </div>
   </div>
 </template>
