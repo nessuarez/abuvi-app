@@ -4,7 +4,7 @@ import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
-import DatePicker from 'primevue/datepicker'
+import DateInput from '@/components/shared/DateInput.vue'
 import Textarea from 'primevue/textarea'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Message from 'primevue/message'
@@ -241,12 +241,12 @@ const handleSubmit = async () => {
       <div class="grid grid-cols-2 gap-4">
         <div class="flex flex-col gap-1">
           <label class="text-sm font-medium">Fecha de inicio *</label>
-          <DatePicker v-model="form.startDate" date-format="dd/mm/yy" show-icon />
+          <DateInput v-model="form.startDate" />
           <span v-if="errors.startDate" class="text-xs text-red-600">{{ errors.startDate }}</span>
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-sm font-medium">Fecha de fin *</label>
-          <DatePicker v-model="form.endDate" date-format="dd/mm/yy" show-icon />
+          <DateInput v-model="form.endDate" />
           <span v-if="errors.endDate" class="text-xs text-red-600">{{ errors.endDate }}</span>
         </div>
       </div>
@@ -293,7 +293,7 @@ const handleSubmit = async () => {
         <div v-if="form.allowPartialAttendance" class="space-y-4 pl-1">
           <div class="flex flex-col gap-1">
             <label class="text-xs font-medium text-gray-600">Fecha de corte (opcional)</label>
-            <DatePicker v-model="form.halfDate" date-format="dd/mm/yy" show-icon class="w-full" />
+            <DateInput v-model="form.halfDate" />
           </div>
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div class="flex flex-col gap-1">
@@ -347,12 +347,12 @@ const handleSubmit = async () => {
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div class="flex flex-col gap-1">
               <label class="text-xs font-medium text-gray-600">Fecha inicio fds</label>
-              <DatePicker v-model="form.weekendStartDate" date-format="dd/mm/yy" show-icon class="w-full" />
+              <DateInput v-model="form.weekendStartDate" />
               <span v-if="errors.weekendStartDate" class="text-xs text-red-600">{{ errors.weekendStartDate }}</span>
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-xs font-medium text-gray-600">Fecha fin fds</label>
-              <DatePicker v-model="form.weekendEndDate" date-format="dd/mm/yy" show-icon class="w-full" />
+              <DateInput v-model="form.weekendEndDate" />
               <span v-if="errors.weekendEndDate" class="text-xs text-red-600">{{ errors.weekendEndDate }}</span>
             </div>
           </div>
