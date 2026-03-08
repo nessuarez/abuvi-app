@@ -34,7 +34,7 @@ Result: `P1 + P2 < Registration.TotalAmount` whenever extras exist.
 - **Updated** whenever extras change (amount and due date recalculated from settings).
 - **Deleted** when all extras are removed (`ExtrasAmount == 0`).
 
-**Transfer concept for P3:** `{prefix}-{year}-{familyName}-3`
+**Transfer concept for P3:** `{prefix}-{familyName}-3`
 
 **Invariant** that must hold at all times:
 
