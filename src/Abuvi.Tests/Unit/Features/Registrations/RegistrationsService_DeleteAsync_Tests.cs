@@ -179,7 +179,7 @@ public class RegistrationsService_DeleteAsync_Tests
     }
 
     [Fact]
-    public async Task DeleteAsync_WhenStatusIsCancelled_ShouldThrowBusinessRuleException()
+    public async Task DeleteAsync_WhenStatusIsCancelledAndUserIsRepresentative_ShouldThrowBusinessRuleException()
     {
         // Arrange
         var registrationId = Guid.NewGuid();
@@ -197,6 +197,27 @@ public class RegistrationsService_DeleteAsync_Tests
         // Assert
         await act.Should().ThrowAsync<BusinessRuleException>()
             .WithMessage("*Cancelled*cannot be deleted*");
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WhenAdminDeletesCancelledRegistration_ShouldDeleteSuccessfully()
+    {
+        // Arrange
+        var registrationId = Guid.NewGuid();
+        var registration = CreateRegistrationForDelete(registrationId,
+            status: RegistrationStatus.Cancelled,
+            createdAt: DateTime.UtcNow.AddDays(-3));
+
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>())
+            .Returns(registration);
+        _repo.DeleteAsync(registrationId, Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _sut.DeleteAsync(registrationId, UserId, isAdminOrBoard: true, CancellationToken.None);
+
+        // Assert
+        await _repo.Received(1).DeleteAsync(registrationId, Arg.Any<CancellationToken>());
     }
 
     [Fact]

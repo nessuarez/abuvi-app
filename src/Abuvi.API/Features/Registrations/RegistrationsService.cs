@@ -792,10 +792,11 @@ public class RegistrationsService(
                 throw new UnauthorizedAccessException("You are not authorized to delete this registration.");
         }
 
-        // 3. Validate status — only Pending or Draft
+        // 3. Validate status
+        // Confirmed is always blocked; Cancelled is only blocked for representatives (admins can delete it)
         if (registration.Status is RegistrationStatus.Confirmed)
             throw new BusinessRuleException("Confirmed registrations cannot be deleted. Please cancel first.");
-        if (registration.Status is RegistrationStatus.Cancelled)
+        if (registration.Status is RegistrationStatus.Cancelled && !isAdminOrBoard)
             throw new BusinessRuleException("Cancelled registrations cannot be deleted.");
 
         // 4. Validate no payments exist

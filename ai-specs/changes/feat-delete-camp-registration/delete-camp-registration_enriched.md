@@ -41,14 +41,14 @@ A **hard delete** is needed so the family can register again from zero for the s
 |---|------|---------|
 | BR-1 | **Time window for representatives** | A representative can only delete a registration created within the last **24 hours** (`CreatedAt + 24h > now`). |
 | BR-2 | **No payments exist** | Deletion is blocked if the registration has **any** associated payments (regardless of status). Return a clear error message. |
-| BR-3 | **Status restriction** | Only registrations with status `Pending` or `Draft` can be deleted. `Confirmed` and `Cancelled` registrations cannot be deleted. |
-| BR-4 | **Admin override** | Admin/Board roles can delete any `Pending` or `Draft` registration regardless of the time window (BR-1 does not apply). Payment guard (BR-2) still applies. |
+| BR-3 | **Status restriction** | Only registrations with status `Pending` or `Draft` can be deleted by representatives. `Confirmed` and `Cancelled` registrations cannot be deleted by representatives. |
+| BR-4 | **Admin override** | Admin/Board roles can delete any `Pending`, `Draft`, or `Cancelled` registration regardless of the time window (BR-1 does not apply). `Confirmed` registrations still cannot be deleted. Payment guard (BR-2) still applies. |
 | BR-5 | **Authorization** | The requester must be the representative of the registration's family unit, OR have Admin/Board role. |
 | BR-6 | **Cascade cleanup** | Deleting a registration removes all child entities: `RegistrationMembers`, `RegistrationExtras`, `RegistrationAccommodationPreferences`. |
 
 ### Edge Cases
 
-- If the registration is already cancelled (`Status = Cancelled`), return 422 with message: "Cancelled registrations cannot be deleted."
+- If the registration is already cancelled (`Status = Cancelled`) and the requester is not an admin, return 422 with message: "Cancelled registrations cannot be deleted."
 - If the registration is confirmed (`Status = Confirmed`), return 422 with message: "Confirmed registrations cannot be deleted. Please cancel first."
 - If payments exist, return 409 with message: "Cannot delete registration with existing payments. Please contact an administrator."
 - If the time window has expired (representative only), return 422 with message: "Registration can only be deleted within 24 hours of creation."
@@ -95,7 +95,7 @@ Task DeleteAsync(Guid registrationId, Guid requestingUserId, bool isAdmin, Cance
 
 1. Fetch registration by ID (include Payments). Throw `NotFoundException` if not found.
 2. Validate authorization: requester is representative of `FamilyUnitId` OR `isAdmin`.
-3. Validate status is `Pending` or `Draft`. Throw `BusinessRuleException` otherwise.
+3. Validate status: if admin, allow `Pending`, `Draft`, or `Cancelled`; if representative, allow only `Pending` or `Draft`. Throw `BusinessRuleException` otherwise.
 4. Validate no payments exist. Throw `BusinessRuleException` if any.
 5. If not admin, validate `CreatedAt + 24h > DateTime.UtcNow`. Throw `BusinessRuleException` if expired.
 6. Call repository `DeleteAsync(id, ct)`.
@@ -160,7 +160,8 @@ Following TDD, create tests in `src/Abuvi.Tests/Unit/Features/Registrations/`:
 | `Should_delete_draft_registration_within_time_window` | Success |
 | `Should_throw_NotFoundException_when_registration_not_found` | `NotFoundException` |
 | `Should_throw_when_status_is_Confirmed` | `BusinessRuleException` |
-| `Should_throw_when_status_is_Cancelled` | `BusinessRuleException` |
+| `Should_throw_when_status_is_Cancelled_and_user_is_representative` | `BusinessRuleException` |
+| `Should_allow_admin_to_delete_cancelled_registration` | Success (admin bypass) |
 | `Should_throw_when_payments_exist` | `BusinessRuleException` |
 | `Should_throw_when_time_window_expired_for_representative` | `BusinessRuleException` |
 | `Should_allow_admin_to_delete_outside_time_window` | Success (admin bypass) |
@@ -184,7 +185,8 @@ Following TDD, create tests in `src/Abuvi.Tests/Unit/Features/Registrations/`:
 - [ ] Representative cannot delete registration after 24-hour window
 - [ ] Admin/Board can delete any `Pending`/`Draft` registration regardless of time
 - [ ] Deletion is blocked when payments exist (for both representative and admin)
-- [ ] Deletion is blocked for `Confirmed` or `Cancelled` registrations
+- [ ] Deletion is blocked for `Confirmed` registrations (for everyone) and `Cancelled` registrations (for representatives only)
+- [ ] Admin/Board can delete `Cancelled` registrations
 - [ ] After deletion, the family can create a new registration for the same camp edition
 - [ ] Confirmation dialog shown before deletion on the frontend
 - [ ] All unit tests pass
