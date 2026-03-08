@@ -224,8 +224,16 @@ onMounted(async () => {
           </div>
         </div>
 
+        <!-- No family unit message -->
+        <Message v-if="!familyUnit" severity="info" :closable="false" class="mb-6">
+          En primer lugar, define tu unidad familiar para poder inscribirte.
+          <RouterLink to="/family-unit" class="ml-1 font-semibold text-blue-600 underline">
+            Crear unidad familiar
+          </RouterLink>
+        </Message>
+
         <!-- Non-representative warning -->
-        <Message v-if="!isRepresentative && familyUnit" severity="warn" :closable="false" class="mb-6">
+        <Message v-else-if="!isRepresentative" severity="warn" :closable="false" class="mb-6">
           Solo el representante de la unidad familiar puede inscribirse. Si quieres registrar a tu
           familia, contacta con el representante.
         </Message>
