@@ -35,6 +35,14 @@ public class FamilyUnitConfiguration : IEntityTypeConfiguration<FamilyUnit>
             .HasForeignKey<FamilyUnit>(fu => fu.RepresentativeUserId)
             .OnDelete(DeleteBehavior.Restrict); // Don't cascade delete user if family unit is deleted
 
+        // Family number: optional, unique when assigned
+        builder.Property(fu => fu.FamilyNumber)
+            .HasColumnName("family_number");
+
+        builder.HasIndex(fu => fu.FamilyNumber)
+            .IsUnique()
+            .HasFilter("family_number IS NOT NULL");
+
         // Profile photo URL: optional, max 2048
         builder.Property(fu => fu.ProfilePhotoUrl)
             .HasMaxLength(2048)

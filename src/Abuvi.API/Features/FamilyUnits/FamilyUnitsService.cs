@@ -327,26 +327,47 @@ public class FamilyUnitsService(
         string? search,
         string? sortBy,
         string? sortOrder,
+        string? membershipStatus,
         CancellationToken ct)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
 
         var (items, totalCount) = await repository.GetAllPagedAsync(
-            page, pageSize, search, sortBy, sortOrder, ct);
+            page, pageSize, search, sortBy, sortOrder, membershipStatus, ct);
 
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
 
         return new PagedFamilyUnitsResponse(
             Items: items.Select(p => new FamilyUnitListItemResponse(
                 p.Id, p.Name, p.RepresentativeUserId,
-                p.RepresentativeName, p.MembersCount, p.CreatedAt, p.UpdatedAt
+                p.RepresentativeName, p.FamilyNumber, p.MembersCount, p.CreatedAt, p.UpdatedAt
             )).ToList(),
             TotalCount: totalCount,
             Page: page,
             PageSize: pageSize,
             TotalPages: totalPages
         );
+    }
+
+    public async Task<FamilyUnitResponse> UpdateFamilyNumberAsync(
+        Guid familyUnitId,
+        UpdateFamilyNumberRequest request,
+        CancellationToken ct)
+    {
+        var familyUnit = await repository.GetFamilyUnitByIdAsync(familyUnitId, ct);
+        if (familyUnit is null)
+            throw new NotFoundException(nameof(FamilyUnit), familyUnitId);
+
+        // Check uniqueness
+        var isTaken = await repository.IsFamilyNumberTakenAsync(request.FamilyNumber, familyUnitId, ct);
+        if (isTaken)
+            throw new BusinessRuleException($"El número de familia {request.FamilyNumber} ya está en uso");
+
+        familyUnit.FamilyNumber = request.FamilyNumber;
+        await repository.UpdateFamilyUnitAsync(familyUnit, ct);
+
+        return familyUnit.ToResponse();
     }
 
     #endregion

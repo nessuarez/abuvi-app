@@ -16,6 +16,10 @@ public interface IMembershipsRepository
     Task<IReadOnlyList<MembershipFee>> GetFeesByMembershipAsync(Guid membershipId, CancellationToken ct);
     Task AddFeeAsync(MembershipFee fee, CancellationToken ct);
     Task UpdateFeeAsync(MembershipFee fee, CancellationToken ct);
+
+    // Member number operations
+    Task<int> GetNextMemberNumberAsync(CancellationToken ct);
+    Task<bool> IsMemberNumberTakenAsync(int memberNumber, Guid? excludeId, CancellationToken ct);
 }
 
 public class MembershipsRepository(AbuviDbContext db) : IMembershipsRepository
@@ -92,5 +96,20 @@ public class MembershipsRepository(AbuviDbContext db) : IMembershipsRepository
     {
         db.MembershipFees.Update(fee);
         await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<int> GetNextMemberNumberAsync(CancellationToken ct)
+    {
+        var max = await db.Memberships
+            .Where(m => m.MemberNumber != null)
+            .MaxAsync(m => (int?)m.MemberNumber, ct);
+        return (max ?? 0) + 1;
+    }
+
+    public async Task<bool> IsMemberNumberTakenAsync(int memberNumber, Guid? excludeId, CancellationToken ct)
+    {
+        return await db.Memberships
+            .AnyAsync(m => m.MemberNumber == memberNumber
+                && (!excludeId.HasValue || m.Id != excludeId.Value), ct);
     }
 }

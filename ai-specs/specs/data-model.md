@@ -60,6 +60,7 @@ Groups people who attend camp together as a family. A User acts as the represent
 - `id`: Unique identifier for the FamilyUnit entity (Primary Key, UUID)
 - `name`: Family display name, e.g. "Garcia Family" (required, max 200 characters)
 - `representativeUserId`: User who manages this family unit (required, FK -> User)
+- `familyNumber`: Sequential human-readable family number ("número de familia socia") (optional, int, unique when not null, auto-assigned on first membership activation in the family)
 - `profilePhotoUrl`: URL of the family unit's profile photo thumbnail (optional, max 2048 characters)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
@@ -127,6 +128,7 @@ Represents an active membership for a family member. Members pay annual fees and
 
 - `id`: Unique identifier for the Membership entity (Primary Key, UUID)
 - `familyMemberId`: The family member who holds this membership (required, FK -> FamilyMember, unique)
+- `memberNumber`: Sequential human-readable member number ("número de socio/a") (optional, int, unique when not null, auto-assigned on membership creation)
 - `startDate`: When the membership became active (required, TIMESTAMP). Always normalized to January 1st of the membership year (`{year}-01-01T00:00:00Z`). The API accepts `{ year: int }` and the backend normalizes it — the raw date within the year has no business meaning.
 - `endDate`: When the membership ended (optional, TIMESTAMP, null if currently active)
 - `isActive`: Whether the membership is currently active (required, BOOLEAN)
