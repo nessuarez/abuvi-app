@@ -184,18 +184,60 @@ public class ResendEmailServiceTests
         // Arrange
         var toEmail = "user@example.com";
         var firstName = "Jane";
+        var lastName = "Smith";
 
         _resendClient.SendEmailAsync(Arg.Any<EmailMessage>())
             .Returns("msg_welcome_123");
 
         // Act
-        await _sut.SendWelcomeEmailAsync(toEmail, firstName, CancellationToken.None);
+        await _sut.SendWelcomeEmailAsync(toEmail, firstName, lastName, CancellationToken.None);
 
         // Assert
         await _resendClient.Received(1).SendEmailAsync(
             Arg.Is<EmailMessage>(m =>
                 m.Subject.Contains("Bienvenido") &&
                 m.HtmlBody!.Contains(firstName)));
+    }
+
+    [Fact]
+    public async Task SendWelcomeEmailAsync_SubjectIncludesFullName()
+    {
+        // Arrange
+        var toEmail = "user@example.com";
+        var firstName = "Jane";
+        var lastName = "Smith";
+
+        _resendClient.SendEmailAsync(Arg.Any<EmailMessage>())
+            .Returns("msg_welcome_123");
+
+        // Act
+        await _sut.SendWelcomeEmailAsync(toEmail, firstName, lastName, CancellationToken.None);
+
+        // Assert
+        await _resendClient.Received(1).SendEmailAsync(
+            Arg.Is<EmailMessage>(m =>
+                m.Subject.Contains(firstName) &&
+                m.Subject.Contains(lastName)));
+    }
+
+    [Fact]
+    public async Task SendWelcomeEmailAsync_IncludesBccToBoard()
+    {
+        // Arrange
+        var toEmail = "user@example.com";
+        var firstName = "Jane";
+        var lastName = "Smith";
+        EmailMessage? capturedMessage = null;
+
+        _resendClient.SendEmailAsync(Arg.Do<EmailMessage>(m => capturedMessage = m))
+            .Returns("msg_welcome_123");
+
+        // Act
+        await _sut.SendWelcomeEmailAsync(toEmail, firstName, lastName, CancellationToken.None);
+
+        // Assert
+        capturedMessage.Should().NotBeNull();
+        capturedMessage!.Bcc.Should().NotBeNull();
     }
 
     [Fact]
@@ -207,7 +249,7 @@ public class ResendEmailServiceTests
 
         // Act
         Func<Task> act = async () => await _sut.SendWelcomeEmailAsync(
-            "user@example.com", "Jane", CancellationToken.None);
+            "user@example.com", "Jane", "Smith", CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>();
@@ -548,7 +590,7 @@ public class ResendEmailServiceTests
 
         // Act
         Func<Task> act = async () => await _sut.SendWelcomeEmailAsync(
-            "user@example.com", "Jane", CancellationToken.None);
+            "user@example.com", "Jane", "Smith", CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>();
