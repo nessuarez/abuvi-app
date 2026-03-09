@@ -25,6 +25,7 @@ public interface IRegistrationsRepository
         GetAdminPagedAsync(Guid campEditionId, int page, int pageSize, string? search, string? status, CancellationToken ct);
     Task AddAsync(Registration registration, CancellationToken ct);
     Task UpdateAsync(Registration registration, CancellationToken ct);
+    Task AddMembersAsync(IEnumerable<RegistrationMember> members, CancellationToken ct);
     Task DeleteMembersByRegistrationIdAsync(Guid registrationId, CancellationToken ct);
     Task DeleteAsync(Guid id, CancellationToken ct);
 }
@@ -158,7 +159,16 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
     public async Task UpdateAsync(Registration registration, CancellationToken ct)
     {
         registration.UpdatedAt = DateTime.UtcNow;
-        db.Registrations.Update(registration);
+        // Use Entry().State instead of Update() to avoid recursively walking the
+        // entire navigation graph, which would mark detached child entities
+        // (Members, Extras, Payments, etc.) as Modified and attempt spurious UPDATEs.
+        db.Entry(registration).State = EntityState.Modified;
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task AddMembersAsync(IEnumerable<RegistrationMember> members, CancellationToken ct)
+    {
+        db.RegistrationMembers.AddRange(members);
         await db.SaveChangesAsync(ct);
     }
 
