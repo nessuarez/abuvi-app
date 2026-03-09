@@ -48,3 +48,8 @@ For detailed standards and guidelines specific to different areas of the project
 
 - If a requirement is ambiguous, ask for clarification based on the provided PDF business rules.
 
+
+## 7. Git Workflow
+
+- **PRs go to `dev` first**, then release to `main`. Never target `main` directly for feature PRs except for hotfixes.
+- Main branch for PRs: `dev`
