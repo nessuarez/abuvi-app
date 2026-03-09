@@ -96,7 +96,6 @@ describe('CampEditionsPage — clickable edition names', () => {
           Container: { template: '<div><slot /></div>' },
           CampEditionStatusBadge: true,
           CampEditionStatusDialog: true,
-          CampEditionUpdateDialog: true,
           Toast: true,
           ProgressSpinner: true,
           Message: true,
