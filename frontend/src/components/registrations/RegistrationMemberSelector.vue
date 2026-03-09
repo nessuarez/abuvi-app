@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import Checkbox from 'primevue/checkbox'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import DateInput from '@/components/shared/DateInput.vue'
