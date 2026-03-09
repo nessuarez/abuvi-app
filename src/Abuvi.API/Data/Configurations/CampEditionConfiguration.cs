@@ -182,6 +182,8 @@ public class CampEditionConfiguration : IEntityTypeConfiguration<CampEdition>
             .HasColumnName("first_payment_deadline");
         builder.Property(e => e.SecondPaymentDeadline)
             .HasColumnName("second_payment_deadline");
+        builder.Property(e => e.ExtrasPaymentDeadline)
+            .HasColumnName("extras_payment_deadline");
 
         // Accommodation capacity JSON (nullable text column)
         builder.Property(e => e.AccommodationCapacityJson)

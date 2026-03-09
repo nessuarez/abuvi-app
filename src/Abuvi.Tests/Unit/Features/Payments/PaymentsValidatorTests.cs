@@ -89,11 +89,33 @@ public class PaymentSettingsRequestValidatorTests
         result.ShouldHaveValidationErrorFor(x => x.TransferConceptPrefix);
     }
 
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(366)]
+    public void FirstInstallmentDaysBefore_OutOfRange_Fails(int days)
+    {
+        var request = CreateValidRequest() with { FirstInstallmentDaysBefore = days };
+        var result = _validator.TestValidate(request);
+        result.ShouldHaveValidationErrorFor(x => x.FirstInstallmentDaysBefore);
+    }
+
+    [Theory]
+    [InlineData(-91)]
+    [InlineData(91)]
+    public void ExtrasInstallmentDaysFromCampStart_OutOfRange_Fails(int days)
+    {
+        var request = CreateValidRequest() with { ExtrasInstallmentDaysFromCampStart = days };
+        var result = _validator.TestValidate(request);
+        result.ShouldHaveValidationErrorFor(x => x.ExtrasInstallmentDaysFromCampStart);
+    }
+
     private static PaymentSettingsRequest CreateValidRequest() => new(
         "ES1234567890123456789012",
         "Test Bank",
         "Test Holder",
+        30,
         15,
+        0,
         "CAMP"
     );
 }

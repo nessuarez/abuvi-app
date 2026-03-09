@@ -28,9 +28,17 @@ public class PaymentSettingsRequestValidator : AbstractValidator<PaymentSettings
             .NotEmpty().WithMessage("El titular de la cuenta es obligatorio.")
             .MaximumLength(200);
 
+        RuleFor(x => x.FirstInstallmentDaysBefore)
+            .InclusiveBetween(0, 365)
+            .WithMessage("Los días de antelación del 1er plazo deben estar entre 0 y 365.");
+
         RuleFor(x => x.SecondInstallmentDaysBefore)
             .InclusiveBetween(1, 90)
-            .WithMessage("Los días de antelación deben estar entre 1 y 90.");
+            .WithMessage("Los días de antelación del 2º plazo deben estar entre 1 y 90.");
+
+        RuleFor(x => x.ExtrasInstallmentDaysFromCampStart)
+            .InclusiveBetween(-90, 90)
+            .WithMessage("El offset de días para extras debe estar entre -90 y 90.");
 
         RuleFor(x => x.TransferConceptPrefix)
             .NotEmpty().WithMessage("El prefijo del concepto es obligatorio.")

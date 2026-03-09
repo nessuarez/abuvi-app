@@ -484,8 +484,9 @@ A specific annual edition of a camp (e.g., Camp 2026). Defines dates, pricing, c
 - `accommodationCapacityJson`: JSON-serialized `AccommodationCapacity` for this specific edition (optional, stored as `text`). When set, auto-syncs to parent `Camp.accommodationCapacityJson`.
 - `proposalReason`: Reason provided when proposing the edition (optional, used in Proposed → Draft flow)
 - `proposalNotes`: Additional notes provided at proposal time (optional)
-- `firstPaymentDeadline`: Explicit deadline for the 1st payment installment (optional, datetime UTC). When null, defaults to `startDate - 117 days`.
-- `secondPaymentDeadline`: Explicit deadline for the 2nd payment installment (optional, datetime UTC). When null, defaults to `startDate - 75 days`.
+- `firstPaymentDeadline`: Deadline for the 1st payment installment (optional, datetime UTC). Materialized at creation from `PaymentSettings.FirstInstallmentDaysBefore` (default 30). When null (legacy), falls back to `startDate - settings offset`.
+- `secondPaymentDeadline`: Deadline for the 2nd payment installment (optional, datetime UTC). Materialized at creation from `PaymentSettings.SecondInstallmentDaysBefore` (default 15). When null (legacy), falls back to `startDate - settings offset`.
+- `extrasPaymentDeadline`: Deadline for the extras (3rd) payment installment (optional, datetime UTC). Materialized at creation from `PaymentSettings.ExtrasInstallmentDaysFromCampStart` (default 0). When null (legacy), falls back to `startDate + settings offset`.
 - `contactEmail`: Contact email for this edition (optional)
 - `contactPhone`: Contact phone for this edition (optional)
 - `createdAt`: Record creation timestamp (required, auto-generated)
@@ -1181,6 +1182,7 @@ erDiagram
         boolean isArchived
         datetime firstPaymentDeadline
         datetime secondPaymentDeadline
+        datetime extrasPaymentDeadline
         datetime createdAt
         datetime updatedAt
     }

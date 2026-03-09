@@ -3,6 +3,7 @@ using System;
 using Abuvi.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Abuvi.API.Migrations
 {
     [DbContext(typeof(AbuviDbContext))]
-    partial class AbuviDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260309010456_AddExtrasPaymentDeadlineToCampEdition")]
+    partial class AddExtrasPaymentDeadlineToCampEdition
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -921,10 +924,6 @@ namespace Abuvi.API.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("NOW()");
 
-                    b.Property<int?>("FamilyNumber")
-                        .HasColumnType("integer")
-                        .HasColumnName("family_number");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -947,10 +946,6 @@ namespace Abuvi.API.Migrations
                         .HasDefaultValueSql("NOW()");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("FamilyNumber")
-                        .IsUnique()
-                        .HasFilter("family_number IS NOT NULL");
 
                     b.HasIndex("RepresentativeUserId")
                         .IsUnique();
@@ -1141,10 +1136,6 @@ namespace Abuvi.API.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
-                    b.Property<int?>("MemberNumber")
-                        .HasColumnType("integer")
-                        .HasColumnName("member_number");
-
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -1155,10 +1146,6 @@ namespace Abuvi.API.Migrations
 
                     b.HasIndex("FamilyMemberId")
                         .IsUnique();
-
-                    b.HasIndex("MemberNumber")
-                        .IsUnique()
-                        .HasFilter("member_number IS NOT NULL");
 
                     b.ToTable("memberships", (string)null);
                 });

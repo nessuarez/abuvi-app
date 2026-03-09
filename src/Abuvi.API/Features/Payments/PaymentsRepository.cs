@@ -25,6 +25,12 @@ public class PaymentsRepository(AbuviDbContext db) : IPaymentsRepository
             .AsNoTracking()
             .ToListAsync(ct);
 
+    public async Task<List<Payment>> GetByRegistrationIdTrackedAsync(Guid registrationId, CancellationToken ct)
+        => await db.Payments
+            .Where(p => p.RegistrationId == registrationId)
+            .OrderBy(p => p.InstallmentNumber)
+            .ToListAsync(ct);
+
     public async Task AddAsync(Payment payment, CancellationToken ct)
     {
         db.Payments.Add(payment);
@@ -58,6 +64,11 @@ public class PaymentsRepository(AbuviDbContext db) : IPaymentsRepository
             .Where(p => p.Status == PaymentStatus.PendingReview)
             .OrderBy(p => p.ProofUploadedAt)
             .ToListAsync(ct);
+
+    public async Task DeleteAsync(Guid paymentId, CancellationToken ct)
+        => await db.Payments
+            .Where(p => p.Id == paymentId)
+            .ExecuteDeleteAsync(ct);
 
     public async Task DeleteByRegistrationIdAsync(Guid registrationId, CancellationToken ct)
         => await db.Payments

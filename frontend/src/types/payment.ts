@@ -27,7 +27,9 @@ export interface PaymentSettings {
   iban: string
   bankName: string
   accountHolder: string
+  firstInstallmentDaysBefore: number
   secondInstallmentDaysBefore: number
+  extrasInstallmentDaysFromCampStart: number
   transferConceptPrefix: string
 }
 

@@ -14,4 +14,12 @@ public interface IPaymentsService
     Task<PaymentSettingsResponse> GetPaymentSettingsAsync(CancellationToken ct);
     Task<PaymentSettingsResponse> UpdatePaymentSettingsAsync(PaymentSettingsRequest request, Guid adminUserId, CancellationToken ct);
     Task DeleteByRegistrationIdAsync(Guid registrationId, CancellationToken ct);
+
+    /// <summary>Creates, updates, or deletes the extras installment (P3) for a registration.</summary>
+    Task<PaymentResponse?> SyncExtrasInstallmentAsync(
+        Guid registrationId, decimal extrasAmount, CancellationToken ct);
+
+    /// <summary>Recalculates P1 and/or P2 when the base member total changes.</summary>
+    Task SyncBaseInstallmentsAsync(
+        Guid registrationId, decimal newBaseTotalAmount, decimal oldBaseTotalAmount, CancellationToken ct);
 }
