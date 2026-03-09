@@ -50,6 +50,7 @@ export interface CampEdition {
   // Payment deadlines:
   firstPaymentDeadline?: string | null
   secondPaymentDeadline?: string | null
+  extrasPaymentDeadline?: string | null
 }
 
 export type CampEditionStatus = 'Proposed' | 'Draft' | 'Open' | 'Closed' | 'Completed'
@@ -205,6 +206,7 @@ export interface UpdateCampEditionRequest {
   // Payment deadlines:
   firstPaymentDeadline?: string | null
   secondPaymentDeadline?: string | null
+  extrasPaymentDeadline?: string | null
 }
 
 export interface ChangeEditionStatusRequest {
@@ -251,6 +253,7 @@ export interface ActiveCampEditionResponse {
   // Payment deadlines:
   firstPaymentDeadline?: string | null
   secondPaymentDeadline?: string | null
+  extrasPaymentDeadline?: string | null
 }
 
 export interface CampEditionFilters {
@@ -300,4 +303,5 @@ export interface CurrentCampEditionResponse {
   // Payment deadlines:
   firstPaymentDeadline?: string | null
   secondPaymentDeadline?: string | null
+  extrasPaymentDeadline?: string | null
 }

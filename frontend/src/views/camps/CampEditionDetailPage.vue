@@ -83,6 +83,7 @@ interface FormModel {
   description: string
   firstPaymentDeadline: Date | null
   secondPaymentDeadline: Date | null
+  extrasPaymentDeadline: Date | null
 }
 
 const form = reactive<FormModel>({
@@ -97,7 +98,7 @@ const form = reactive<FormModel>({
   weekendStartDate: null, weekendEndDate: null,
   pricePerAdultWeekend: null, pricePerChildWeekend: null, pricePerBabyWeekend: null,
   maxWeekendCapacity: null,
-  firstPaymentDeadline: null, secondPaymentDeadline: null
+  firstPaymentDeadline: null, secondPaymentDeadline: null, extrasPaymentDeadline: null
 })
 
 const formatDate = (dateStr: string | null | undefined): string => {
@@ -143,6 +144,7 @@ const startEditing = () => {
   form.maxWeekendCapacity = ed.maxWeekendCapacity ?? null
   form.firstPaymentDeadline = ed.firstPaymentDeadline ? parseDateLocal(ed.firstPaymentDeadline) : null
   form.secondPaymentDeadline = ed.secondPaymentDeadline ? parseDateLocal(ed.secondPaymentDeadline) : null
+  form.extrasPaymentDeadline = ed.extrasPaymentDeadline ? parseDateLocal(ed.extrasPaymentDeadline) : null
   errors.value = {}
   isEditing.value = true
 }
@@ -257,7 +259,8 @@ const handleSave = async () => {
     maxWeekendCapacity: open ? (ed.maxWeekendCapacity ?? null)
       : (form.allowWeekendVisit ? (form.maxWeekendCapacity || null) : null),
     firstPaymentDeadline: form.firstPaymentDeadline ? formatDateToIso(form.firstPaymentDeadline) : null,
-    secondPaymentDeadline: form.secondPaymentDeadline ? formatDateToIso(form.secondPaymentDeadline) : null
+    secondPaymentDeadline: form.secondPaymentDeadline ? formatDateToIso(form.secondPaymentDeadline) : null,
+    extrasPaymentDeadline: form.extrasPaymentDeadline ? formatDateToIso(form.extrasPaymentDeadline) : null
   }
 
   const result = await updateEdition(ed.id, request)
@@ -660,18 +663,27 @@ onMounted(async () => {
                       <span class="text-gray-600">Fecha límite 2º pago:</span>
                       <span>{{ edition.secondPaymentDeadline ? formatDate(edition.secondPaymentDeadline) : 'Automática' }}</span>
                     </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Fecha límite pago extras:</span>
+                      <span>{{ edition.extrasPaymentDeadline ? formatDate(edition.extrasPaymentDeadline) : 'Automática' }}</span>
+                    </div>
                   </div>
 
-                  <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div class="flex flex-col gap-1">
                       <label class="text-sm font-medium text-gray-700">Fecha límite 1er pago</label>
                       <DateInput v-model="form.firstPaymentDeadline" />
-                      <p class="text-xs text-gray-500">Si se deja vacío, se calcula 117 días antes del inicio.</p>
+                      <p class="text-xs text-gray-500">Si se deja vacío, se calcula desde los ajustes globales.</p>
                     </div>
                     <div class="flex flex-col gap-1">
                       <label class="text-sm font-medium text-gray-700">Fecha límite 2º pago</label>
                       <DateInput v-model="form.secondPaymentDeadline" />
-                      <p class="text-xs text-gray-500">Si se deja vacío, se calcula 75 días antes del inicio.</p>
+                      <p class="text-xs text-gray-500">Si se deja vacío, se calcula desde los ajustes globales.</p>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                      <label class="text-sm font-medium text-gray-700">Fecha límite pago extras</label>
+                      <DateInput v-model="form.extrasPaymentDeadline" />
+                      <p class="text-xs text-gray-500">Si se deja vacío, se calcula desde los ajustes globales.</p>
                     </div>
                   </div>
                 </div>
