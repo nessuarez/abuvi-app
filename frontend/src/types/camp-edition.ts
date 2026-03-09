@@ -11,6 +11,7 @@ export interface CampEdition {
   endDate: string
   location: string
   description?: string
+  notes?: string
   pricePerAdult: number
   pricePerChild: number
   pricePerBaby: number
