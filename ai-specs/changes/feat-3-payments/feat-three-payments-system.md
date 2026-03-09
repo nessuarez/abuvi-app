@@ -137,7 +137,7 @@ Task SyncBaseInstallmentsAsync(
        P3.Amount = extrasAmount; P3.DueDate = dueDate; P3.UpdatedAt = now
        paymentsRepo.UpdateAsync(P3)
      else:
-       concept = "{prefix}-{year}-{familyName}-3" (truncate to 100)
+       concept = "{prefix}-{familyName}-3" (truncate to 100)
        create P3: InstallmentNumber=3, Amount=extrasAmount, Status=Pending, DueDate=dueDate, concept
        paymentsRepo.AddAsync(P3)
 6. if extrasAmount == 0 and P3 exists:
@@ -199,7 +199,7 @@ Task SyncBaseInstallmentsAsync(
 - [ ] When extras are updated, P3 amount and due date are updated
 - [ ] When all extras are removed, P3 is deleted
 - [ ] P1 and P2 amounts are not affected when only extras change
-- [ ] Transfer concept for P3 follows the format `{prefix}-{year}-{familyName}-3`
+- [ ] Transfer concept for P3 follows the format `{prefix}-{familyName}-3`
 - [ ] When members are updated and P1 is still `Pending`, both P1 and P2 are recalculated correctly
 - [ ] When members are updated and P1 is `Completed`, delta is absorbed into P2
 - [ ] Attempting to change extras when P3 is `PendingReview` or `Completed` throws a user-friendly error
