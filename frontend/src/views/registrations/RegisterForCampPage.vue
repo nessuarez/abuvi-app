@@ -18,6 +18,7 @@ import RegistrationExtrasSelector from '@/components/registrations/RegistrationE
 import RegistrationAccommodationSelector from '@/components/registrations/RegistrationAccommodationSelector.vue'
 import BankTransferInstructions from '@/components/payments/BankTransferInstructions.vue'
 import PaymentInstallmentCard from '@/components/payments/PaymentInstallmentCard.vue'
+import RegistrationPricingBreakdown from '@/components/registrations/RegistrationPricingBreakdown.vue'
 import { useCampEditions } from '@/composables/useCampEditions'
 import { useCampExtras } from '@/composables/useCampExtras'
 import { useCampAccommodations } from '@/composables/useCampAccommodations'
@@ -29,6 +30,7 @@ import type { CampEdition } from '@/types/camp-edition'
 import type { WizardMemberSelection, WizardExtrasSelection, WizardAccommodationPreference } from '@/types/registration'
 import type { PaymentResponse, PaymentSettings } from '@/types/payment'
 import { ATTENDANCE_PERIOD_LABELS, computePeriodDays } from '@/utils/registration'
+import { calculatePricingPreview } from '@/utils/registration-pricing'
 import { parseDateSafe } from '@/utils/date'
 
 const route = useRoute()
@@ -87,6 +89,17 @@ const weekendVisitIsValid = computed(() =>
 const canProceedFromStep1 = computed(
   () => selectedMembers.value.length > 0 && isRepresentative.value && weekendVisitIsValid.value
 )
+
+const pricingPreview = computed(() => {
+  if (!edition.value || selectedMembers.value.length === 0) return null
+  return calculatePricingPreview(
+    edition.value,
+    familyMembers.value,
+    selectedMembers.value,
+    extrasSelections.value,
+    campExtras.value
+  )
+})
 
 const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
@@ -407,6 +420,14 @@ onMounted(async () => {
                           {{ pref.accommodationName }}
                         </li>
                       </ol>
+                    </div>
+
+                    <!-- Pricing preview -->
+                    <div v-if="pricingPreview" class="mb-4">
+                      <RegistrationPricingBreakdown :pricing="pricingPreview" />
+                      <p class="mt-2 text-xs text-gray-400">
+                        * Precios estimados. El importe definitivo se confirmará tras completar la inscripción.
+                      </p>
                     </div>
 
                     <!-- Notes -->
