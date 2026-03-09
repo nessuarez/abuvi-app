@@ -14,7 +14,6 @@ import Message from 'primevue/message'
 import Container from '@/components/ui/Container.vue'
 import CampEditionStatusBadge from '@/components/camps/CampEditionStatusBadge.vue'
 import CampEditionStatusDialog from '@/components/camps/CampEditionStatusDialog.vue'
-import CampEditionUpdateDialog from '@/components/camps/CampEditionUpdateDialog.vue'
 import { useCampEditions } from '@/composables/useCampEditions'
 import { useCamps } from '@/composables/useCamps'
 import type { CampEdition, CampEditionStatus, CampEditionFilters } from '@/types/camp-edition'
@@ -46,7 +45,6 @@ const filters = reactive<{
 
 const selectedEdition = ref<CampEdition | null>(null)
 const showStatusDialog = ref(false)
-const showEditDialog = ref(false)
 const statusLoading = ref(false)
 
 const statusOptions: { label: string; value: CampEditionStatus | null }[] = [
@@ -97,8 +95,7 @@ const handleChangeStatus = (edition: CampEdition) => {
 }
 
 const handleEdit = (edition: CampEdition) => {
-  selectedEdition.value = edition
-  showEditDialog.value = true
+  router.push({ name: 'camp-edition-detail', params: { id: edition.id }, query: { edit: 'true' } })
 }
 
 const handleViewDetail = (edition: CampEdition) => {
@@ -132,15 +129,6 @@ const handleStatusConfirm = async (newStatus: CampEditionStatus, force?: boolean
   }
 }
 
-const handleEditionSaved = (_edition: CampEdition) => {
-  toast.add({
-    severity: 'success',
-    summary: 'Éxito',
-    detail: 'Edición actualizada correctamente',
-    life: 3000
-  })
-  fetchAllEditions(buildFilters())
-}
 </script>
 
 <template>
@@ -242,8 +230,5 @@ const handleEditionSaved = (_edition: CampEdition) => {
     <CampEditionStatusDialog v-if="selectedEdition" v-model:visible="showStatusDialog" :edition="selectedEdition"
       :loading="statusLoading" @confirm="handleStatusConfirm" />
 
-    <!-- Edit Dialog -->
-    <CampEditionUpdateDialog v-if="selectedEdition" v-model:visible="showEditDialog" :edition="selectedEdition"
-      @saved="handleEditionSaved" />
   </Container>
 </template>

@@ -67,18 +67,10 @@ describe('Camp Editions — Board management (/camps/editions)', () => {
     cy.contains('Estado actualizado correctamente').should('be.visible')
   })
 
-  it('should open edit dialog when clicking edit', () => {
+  it('should navigate to detail page in edit mode when clicking edit', () => {
     cy.get('[data-testid="edit-edition-btn"]').first().click()
-    cy.get('[data-testid="edition-dialog"]').should('be.visible')
-  })
-
-  it('should save changes and show success toast after editing', () => {
-    cy.intercept('PUT', '/api/camps/editions/*', { fixture: 'edition-updated.json' }).as('putEdition')
-    cy.get('[data-testid="edit-edition-btn"]').first().click()
-    cy.get('[data-testid="edition-dialog"]').should('be.visible')
-    cy.get('[data-testid="save-edition-btn"]').click()
-    cy.wait('@putEdition')
-    cy.contains('Edición actualizada correctamente').should('be.visible')
+    cy.url().should('include', '/camps/editions/')
+    cy.url().should('include', 'edit=true')
   })
 
   it('should redirect Member to /home when visiting /camps/editions', () => {
