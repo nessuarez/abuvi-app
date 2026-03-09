@@ -47,6 +47,11 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.Property(p => p.AdminNotes)
             .HasColumnName("admin_notes");
 
+        builder.Property(p => p.ConceptLinesSerialized)
+            .HasColumnName("concept_lines")
+            .HasColumnType("text")
+            .IsRequired(false);
+
         builder.Property(p => p.ConfirmedByUserId)
             .HasColumnName("confirmed_by_user_id");
 

@@ -147,6 +147,8 @@ public class PaymentsService_SyncTests
         var p2 = CreatePayment(2, PaymentStatus.Pending, 100m);
         _paymentsRepo.GetByRegistrationIdTrackedAsync(RegId, Arg.Any<CancellationToken>())
             .Returns([p1, p2]);
+        _registrationsRepo.GetByIdWithDetailsAsync(RegId, Arg.Any<CancellationToken>())
+            .Returns(CreateRegistration());
 
         await _sut.SyncBaseInstallmentsAsync(RegId, 300m, 200m, CancellationToken.None);
 
@@ -163,6 +165,8 @@ public class PaymentsService_SyncTests
         var p2 = CreatePayment(2, PaymentStatus.Pending, 101m);
         _paymentsRepo.GetByRegistrationIdTrackedAsync(RegId, Arg.Any<CancellationToken>())
             .Returns([p1, p2]);
+        _registrationsRepo.GetByIdWithDetailsAsync(RegId, Arg.Any<CancellationToken>())
+            .Returns(CreateRegistration());
 
         await _sut.SyncBaseInstallmentsAsync(RegId, 201m, 201m, CancellationToken.None);
 
@@ -177,6 +181,8 @@ public class PaymentsService_SyncTests
         var p2 = CreatePayment(2, PaymentStatus.Pending, 250m);
         _paymentsRepo.GetByRegistrationIdTrackedAsync(RegId, Arg.Any<CancellationToken>())
             .Returns([p1, p2]);
+        _registrationsRepo.GetByIdWithDetailsAsync(RegId, Arg.Any<CancellationToken>())
+            .Returns(CreateRegistration());
 
         await _sut.SyncBaseInstallmentsAsync(RegId, 600m, 500m, CancellationToken.None);
 
@@ -192,6 +198,8 @@ public class PaymentsService_SyncTests
         var p2 = CreatePayment(2, PaymentStatus.Pending, 250m);
         _paymentsRepo.GetByRegistrationIdTrackedAsync(RegId, Arg.Any<CancellationToken>())
             .Returns([p1, p2]);
+        _registrationsRepo.GetByIdWithDetailsAsync(RegId, Arg.Any<CancellationToken>())
+            .Returns(CreateRegistration());
 
         await _sut.SyncBaseInstallmentsAsync(RegId, 400m, 500m, CancellationToken.None);
 
@@ -205,6 +213,8 @@ public class PaymentsService_SyncTests
         var p2 = CreatePayment(2, PaymentStatus.Pending, 100m);
         _paymentsRepo.GetByRegistrationIdTrackedAsync(RegId, Arg.Any<CancellationToken>())
             .Returns([p1, p2]);
+        _registrationsRepo.GetByIdWithDetailsAsync(RegId, Arg.Any<CancellationToken>())
+            .Returns(CreateRegistration());
 
         // delta = 300 - 500 = -200; p2 = 100 - 200 = -100 → invalid
         var act = () => _sut.SyncBaseInstallmentsAsync(RegId, 300m, 500m, CancellationToken.None);
@@ -232,6 +242,8 @@ public class PaymentsService_SyncTests
         var p2 = CreatePayment(2, PaymentStatus.PendingReview, 250m);
         _paymentsRepo.GetByRegistrationIdTrackedAsync(RegId, Arg.Any<CancellationToken>())
             .Returns([p1, p2]);
+        _registrationsRepo.GetByIdWithDetailsAsync(RegId, Arg.Any<CancellationToken>())
+            .Returns(CreateRegistration());
 
         var act = () => _sut.SyncBaseInstallmentsAsync(RegId, 600m, 500m, CancellationToken.None);
 
