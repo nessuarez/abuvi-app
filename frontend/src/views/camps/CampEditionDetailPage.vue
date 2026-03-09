@@ -11,11 +11,6 @@ import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import Toast from 'primevue/toast'
-import Tabs from 'primevue/tabs'
-import TabList from 'primevue/tablist'
-import Tab from 'primevue/tab'
-import TabPanels from 'primevue/tabpanels'
-import TabPanel from 'primevue/tabpanel'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import ToggleSwitch from 'primevue/toggleswitch'
@@ -342,21 +337,28 @@ onMounted(async () => {
           {{ error }}
         </Message>
 
-        <!-- Tabbed layout -->
-        <Tabs v-model:value="activeTab">
-          <div class="flex flex-col gap-6 lg:flex-row">
-            <TabList class="flex overflow-x-auto lg:w-48 lg:shrink-0 lg:flex-col lg:overflow-visible">
-              <Tab v-for="s in sections" :key="s.value" :value="s.value" class="whitespace-nowrap">
-                <div class="flex items-center gap-2">
-                  <i :class="s.icon" />
-                  <span>{{ s.label }}</span>
-                </div>
-              </Tab>
-            </TabList>
+        <!-- Sidebar + Content layout -->
+        <div class="flex flex-col gap-6 lg:flex-row">
+          <!-- Sidebar navigation -->
+          <nav class="flex gap-1 overflow-x-auto lg:w-48 lg:shrink-0 lg:flex-col lg:overflow-visible">
+            <button
+              v-for="s in sections"
+              :key="s.value"
+              class="flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-left text-sm transition-colors"
+              :class="activeTab === s.value
+                ? 'bg-primary-50 font-semibold text-primary-700'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'"
+              @click="activeTab = s.value"
+            >
+              <i :class="s.icon" />
+              <span>{{ s.label }}</span>
+            </button>
+          </nav>
 
-            <TabPanels class="min-w-0 flex-1">
-              <!-- Tab 0: General Information -->
-              <TabPanel value="0">
+          <!-- Content panels -->
+          <div class="min-w-0 flex-1">
+            <!-- Tab 0: General Information -->
+            <div v-if="activeTab === '0'">
                 <div class="rounded-lg border border-gray-200 bg-white p-6">
                   <h2 class="mb-4 text-lg font-semibold text-gray-900">Información General</h2>
 
@@ -405,10 +407,10 @@ onMounted(async () => {
                     </div>
                   </div>
                 </div>
-              </TabPanel>
+            </div>
 
-              <!-- Tab 1: Pricing -->
-              <TabPanel value="1">
+            <!-- Tab 1: Pricing -->
+            <div v-if="activeTab === '1'">
                 <div class="rounded-lg border border-gray-200 bg-white p-6">
                   <h2 class="mb-4 text-lg font-semibold text-gray-900">Precios</h2>
 
@@ -445,10 +447,10 @@ onMounted(async () => {
                     </div>
                   </div>
                 </div>
-              </TabPanel>
+            </div>
 
-              <!-- Tab 2: Partial Attendance (Weeks) -->
-              <TabPanel value="2">
+            <!-- Tab 2: Partial Attendance (Weeks) -->
+            <div v-if="activeTab === '2'">
                 <div class="rounded-lg border border-gray-200 bg-white p-6">
                   <h2 class="mb-4 text-lg font-semibold text-gray-900">Inscripción por semanas</h2>
 
@@ -504,10 +506,10 @@ onMounted(async () => {
                     </div>
                   </div>
                 </div>
-              </TabPanel>
+            </div>
 
-              <!-- Tab 3: Weekend Visits -->
-              <TabPanel value="3">
+            <!-- Tab 3: Weekend Visits -->
+            <div v-if="activeTab === '3'">
                 <div class="rounded-lg border border-gray-200 bg-white p-6">
                   <h2 class="mb-4 text-lg font-semibold text-gray-900">Visitas de fin de semana</h2>
 
@@ -584,10 +586,10 @@ onMounted(async () => {
                     </div>
                   </div>
                 </div>
-              </TabPanel>
+            </div>
 
-              <!-- Tab 4: Custom Age Ranges -->
-              <TabPanel value="4">
+            <!-- Tab 4: Custom Age Ranges -->
+            <div v-if="activeTab === '4'">
                 <div class="rounded-lg border border-gray-200 bg-white p-6">
                   <h2 class="mb-4 text-lg font-semibold text-gray-900">Rangos de edad</h2>
 
@@ -642,10 +644,10 @@ onMounted(async () => {
                     </div>
                   </div>
                 </div>
-              </TabPanel>
+            </div>
 
-              <!-- Tab 5: Payment Deadlines -->
-              <TabPanel value="5">
+            <!-- Tab 5: Payment Deadlines -->
+            <div v-if="activeTab === '5'">
                 <div class="rounded-lg border border-gray-200 bg-white p-6">
                   <h2 class="mb-4 text-lg font-semibold text-gray-900">Fechas de pago</h2>
 
@@ -673,10 +675,10 @@ onMounted(async () => {
                     </div>
                   </div>
                 </div>
-              </TabPanel>
+            </div>
 
-              <!-- Tab 6: Notes & Description -->
-              <TabPanel value="6">
+            <!-- Tab 6: Notes & Description -->
+            <div v-if="activeTab === '6'">
                 <div class="rounded-lg border border-gray-200 bg-white p-6">
                   <h2 class="mb-4 text-lg font-semibold text-gray-900">Notas y descripción</h2>
 
@@ -705,30 +707,29 @@ onMounted(async () => {
                     </div>
                   </div>
                 </div>
-              </TabPanel>
+            </div>
 
-              <!-- Tab 7: Accommodations (no inline edit — has its own CRUD) -->
-              <TabPanel value="7">
+            <!-- Tab 7: Accommodations (no inline edit — has its own CRUD) -->
+            <div v-if="activeTab === '7'">
                 <div v-if="isBoard">
                   <CampEditionAccommodationsPanel :edition-id="edition.id" />
                 </div>
                 <div v-else class="rounded-lg border border-gray-200 bg-white p-6">
                   <p class="text-sm text-gray-500">Solo visible para la Junta Directiva y administradores.</p>
                 </div>
-              </TabPanel>
+            </div>
 
-              <!-- Tab 8: Extras (no inline edit — has its own CRUD) -->
-              <TabPanel value="8">
+            <!-- Tab 8: Extras (no inline edit — has its own CRUD) -->
+            <div v-if="activeTab === '8'">
                 <div class="rounded-lg border border-gray-200 bg-white p-6" data-testid="edition-extras-section">
                   <CampEditionExtrasList
                     :edition-id="edition.id"
                     :edition-status="edition.status"
                   />
                 </div>
-              </TabPanel>
-            </TabPanels>
+            </div>
           </div>
-        </Tabs>
+        </div>
       </div>
     </div>
   </Container>
