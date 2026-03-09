@@ -1,6 +1,7 @@
 using Abuvi.API.Features.Camps;
 using FluentAssertions;
 using NSubstitute;
+using NSubstitute.ReturnsExtensions;
 using Xunit;
 
 namespace Abuvi.Tests.Unit.Features.Camps;
@@ -13,13 +14,17 @@ public class CampEditionsServiceTests
 {
     private readonly ICampEditionsRepository _repository;
     private readonly ICampsRepository _campsRepository;
+    private readonly IAssociationSettingsRepository _settingsRepo;
     private readonly CampEditionsService _sut;
 
     public CampEditionsServiceTests()
     {
         _repository = Substitute.For<ICampEditionsRepository>();
         _campsRepository = Substitute.For<ICampsRepository>();
-        _sut = new CampEditionsService(_repository, _campsRepository);
+        _settingsRepo = Substitute.For<IAssociationSettingsRepository>();
+        _settingsRepo.GetByKeyAsync("payment_settings", Arg.Any<CancellationToken>())
+            .ReturnsNull();
+        _sut = new CampEditionsService(_repository, _campsRepository, _settingsRepo);
     }
 
     #region ProposeAsync Tests
@@ -299,6 +304,152 @@ public class CampEditionsServiceTests
         // Assert
         capturedEdition.Should().NotBeNull();
         capturedEdition!.ProposalReason.Should().Be("Annual summer camp proposal");
+    }
+
+    #endregion
+
+    #region ProposeAsync — Payment Deadline Materialization Tests
+
+    [Fact]
+    public async Task ProposeAsync_MaterializesDeadlinesFromDefaultSettings()
+    {
+        // Arrange
+        var camp = new Camp { Id = Guid.NewGuid(), Name = "Test Camp", PricePerAdult = 100m, PricePerChild = 80m, PricePerBaby = 0m, IsActive = true };
+        _campsRepository.GetByIdAsync(camp.Id, Arg.Any<CancellationToken>()).Returns(camp);
+
+        var startDate = new DateTime(2026, 8, 15, 0, 0, 0, DateTimeKind.Utc);
+        var request = new ProposeCampEditionRequest(
+            CampId: camp.Id, Year: 2026,
+            StartDate: startDate, EndDate: new DateTime(2026, 8, 30, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult: null, PricePerChild: null, PricePerBaby: null,
+            UseCustomAgeRanges: false, CustomBabyMaxAge: null, CustomChildMinAge: null,
+            CustomChildMaxAge: null, CustomAdultMinAge: null, MaxCapacity: 50, Notes: null);
+
+        CampEdition? capturedEdition = null;
+        _repository.CreateAsync(Arg.Do<CampEdition>(e => capturedEdition = e), Arg.Any<CancellationToken>())
+            .Returns(args => args.Arg<CampEdition>());
+
+        // Act
+        await _sut.ProposeAsync(request);
+
+        // Assert — defaults: FirstInstallmentDaysBefore=30, SecondInstallmentDaysBefore=15, ExtrasInstallmentDaysFromCampStart=0
+        capturedEdition.Should().NotBeNull();
+        capturedEdition!.FirstPaymentDeadline.Should().Be(startDate.AddDays(-30));
+        capturedEdition.SecondPaymentDeadline.Should().Be(startDate.AddDays(-15));
+        capturedEdition.ExtrasPaymentDeadline.Should().Be(startDate);
+    }
+
+    [Fact]
+    public async Task ProposeAsync_MaterializesDeadlinesFromCustomSettings()
+    {
+        // Arrange
+        var camp = new Camp { Id = Guid.NewGuid(), Name = "Test Camp", PricePerAdult = 100m, PricePerChild = 80m, PricePerBaby = 0m, IsActive = true };
+        _campsRepository.GetByIdAsync(camp.Id, Arg.Any<CancellationToken>()).Returns(camp);
+
+        var settingsJson = """{"FirstInstallmentDaysBefore":60,"SecondInstallmentDaysBefore":30,"ExtrasInstallmentDaysFromCampStart":7}""";
+        _settingsRepo.GetByKeyAsync("payment_settings", Arg.Any<CancellationToken>())
+            .Returns(new AssociationSettings { Id = Guid.NewGuid(), SettingKey = "payment_settings", SettingValue = settingsJson, UpdatedAt = DateTime.UtcNow });
+
+        var startDate = new DateTime(2026, 8, 15, 0, 0, 0, DateTimeKind.Utc);
+        var request = new ProposeCampEditionRequest(
+            CampId: camp.Id, Year: 2026,
+            StartDate: startDate, EndDate: new DateTime(2026, 8, 30, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult: null, PricePerChild: null, PricePerBaby: null,
+            UseCustomAgeRanges: false, CustomBabyMaxAge: null, CustomChildMinAge: null,
+            CustomChildMaxAge: null, CustomAdultMinAge: null, MaxCapacity: 50, Notes: null);
+
+        CampEdition? capturedEdition = null;
+        _repository.CreateAsync(Arg.Do<CampEdition>(e => capturedEdition = e), Arg.Any<CancellationToken>())
+            .Returns(args => args.Arg<CampEdition>());
+
+        // Act
+        await _sut.ProposeAsync(request);
+
+        // Assert
+        capturedEdition.Should().NotBeNull();
+        capturedEdition!.FirstPaymentDeadline.Should().Be(startDate.AddDays(-60));
+        capturedEdition.SecondPaymentDeadline.Should().Be(startDate.AddDays(-30));
+        capturedEdition.ExtrasPaymentDeadline.Should().Be(startDate.AddDays(7));
+    }
+
+    #endregion
+
+    #region UpdateAsync — Payment Deadline Re-derivation Tests
+
+    [Fact]
+    public async Task UpdateAsync_NullDeadlines_RederivesFromSettings()
+    {
+        // Arrange
+        var editionId = Guid.NewGuid();
+        var startDate = new DateTime(2026, 8, 15, 0, 0, 0, DateTimeKind.Utc);
+        var edition = new CampEdition
+        {
+            Id = editionId, CampId = Guid.NewGuid(), Year = 2026,
+            StartDate = startDate, EndDate = new DateTime(2026, 8, 30, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult = 100m, PricePerChild = 80m, PricePerBaby = 0m,
+            Status = CampEditionStatus.Proposed,
+            Camp = new Camp { Id = Guid.NewGuid(), Name = "Test Camp" }
+        };
+
+        _repository.GetByIdAsync(editionId, Arg.Any<CancellationToken>()).Returns(edition);
+        _repository.UpdateAsync(Arg.Any<CampEdition>(), Arg.Any<CancellationToken>())
+            .Returns(args => args.Arg<CampEdition>());
+
+        var request = new UpdateCampEditionRequest(
+            StartDate: startDate, EndDate: new DateTime(2026, 8, 30, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult: 100m, PricePerChild: 80m, PricePerBaby: 0m,
+            UseCustomAgeRanges: false,
+            CustomBabyMaxAge: null, CustomChildMinAge: null, CustomChildMaxAge: null, CustomAdultMinAge: null,
+            MaxCapacity: 50, Notes: null,
+            FirstPaymentDeadline: null, SecondPaymentDeadline: null, ExtrasPaymentDeadline: null);
+
+        // Act
+        var result = await _sut.UpdateAsync(editionId, request);
+
+        // Assert — defaults applied: 30, 15, 0
+        result.FirstPaymentDeadline.Should().Be(startDate.AddDays(-30));
+        result.SecondPaymentDeadline.Should().Be(startDate.AddDays(-15));
+        result.ExtrasPaymentDeadline.Should().Be(startDate);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ExplicitDeadlines_UsesProvidedValues()
+    {
+        // Arrange
+        var editionId = Guid.NewGuid();
+        var startDate = new DateTime(2026, 8, 15, 0, 0, 0, DateTimeKind.Utc);
+        var edition = new CampEdition
+        {
+            Id = editionId, CampId = Guid.NewGuid(), Year = 2026,
+            StartDate = startDate, EndDate = new DateTime(2026, 8, 30, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult = 100m, PricePerChild = 80m, PricePerBaby = 0m,
+            Status = CampEditionStatus.Proposed,
+            Camp = new Camp { Id = Guid.NewGuid(), Name = "Test Camp" }
+        };
+
+        _repository.GetByIdAsync(editionId, Arg.Any<CancellationToken>()).Returns(edition);
+        _repository.UpdateAsync(Arg.Any<CampEdition>(), Arg.Any<CancellationToken>())
+            .Returns(args => args.Arg<CampEdition>());
+
+        var customFirst = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc);
+        var customSecond = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var customExtras = new DateTime(2026, 8, 20, 0, 0, 0, DateTimeKind.Utc);
+
+        var request = new UpdateCampEditionRequest(
+            StartDate: startDate, EndDate: new DateTime(2026, 8, 30, 0, 0, 0, DateTimeKind.Utc),
+            PricePerAdult: 100m, PricePerChild: 80m, PricePerBaby: 0m,
+            UseCustomAgeRanges: false,
+            CustomBabyMaxAge: null, CustomChildMinAge: null, CustomChildMaxAge: null, CustomAdultMinAge: null,
+            MaxCapacity: 50, Notes: null,
+            FirstPaymentDeadline: customFirst, SecondPaymentDeadline: customSecond, ExtrasPaymentDeadline: customExtras);
+
+        // Act
+        var result = await _sut.UpdateAsync(editionId, request);
+
+        // Assert
+        result.FirstPaymentDeadline.Should().Be(customFirst);
+        result.SecondPaymentDeadline.Should().Be(customSecond);
+        result.ExtrasPaymentDeadline.Should().Be(customExtras);
     }
 
     #endregion

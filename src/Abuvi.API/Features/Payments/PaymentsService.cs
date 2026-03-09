@@ -36,9 +36,11 @@ public class PaymentsService(
         if (concept1.Length > 100) concept1 = concept1[..100];
         if (concept2.Length > 100) concept2 = concept2[..100];
 
-        var dueDate1 = registration.CampEdition.FirstPaymentDeadline ?? DateTime.UtcNow;
-        var dueDate2 = registration.CampEdition.SecondPaymentDeadline
-            ?? registration.CampEdition.StartDate.AddDays(-settings.SecondInstallmentDaysBefore);
+        var edition = registration.CampEdition;
+        var dueDate1 = edition.FirstPaymentDeadline
+            ?? edition.StartDate.AddDays(-settings.FirstInstallmentDaysBefore);
+        var dueDate2 = edition.SecondPaymentDeadline
+            ?? edition.StartDate.AddDays(-settings.SecondInstallmentDaysBefore);
 
         var payments = new List<Payment>
         {
@@ -250,7 +252,10 @@ public class PaymentsService(
         var settings = await LoadPaymentSettingsAsync(ct);
         return new PaymentSettingsResponse(
             settings.Iban, settings.BankName, settings.AccountHolder,
-            settings.SecondInstallmentDaysBefore, settings.TransferConceptPrefix);
+            settings.FirstInstallmentDaysBefore,
+            settings.SecondInstallmentDaysBefore,
+            settings.ExtrasInstallmentDaysFromCampStart,
+            settings.TransferConceptPrefix);
     }
 
     public async Task<PaymentSettingsResponse> UpdatePaymentSettingsAsync(
@@ -261,7 +266,9 @@ public class PaymentsService(
             Iban = request.Iban,
             BankName = request.BankName,
             AccountHolder = request.AccountHolder,
+            FirstInstallmentDaysBefore = request.FirstInstallmentDaysBefore,
             SecondInstallmentDaysBefore = request.SecondInstallmentDaysBefore,
+            ExtrasInstallmentDaysFromCampStart = request.ExtrasInstallmentDaysFromCampStart,
             TransferConceptPrefix = request.TransferConceptPrefix
         };
 
@@ -292,7 +299,10 @@ public class PaymentsService(
 
         return new PaymentSettingsResponse(
             request.Iban, request.BankName, request.AccountHolder,
-            request.SecondInstallmentDaysBefore, request.TransferConceptPrefix);
+            request.FirstInstallmentDaysBefore,
+            request.SecondInstallmentDaysBefore,
+            request.ExtrasInstallmentDaysFromCampStart,
+            request.TransferConceptPrefix);
     }
 
     // --- Private helpers ---
@@ -366,8 +376,9 @@ public class PaymentsService(
         var payments = await paymentsRepo.GetByRegistrationIdTrackedAsync(registrationId, ct);
         var p3 = payments.FirstOrDefault(p => p.InstallmentNumber == 3);
 
+        var settings = await LoadPaymentSettingsAsync(ct);
         var dueDate = registration.CampEdition.ExtrasPaymentDeadline
-            ?? registration.CampEdition.StartDate;
+            ?? registration.CampEdition.StartDate.AddDays(settings.ExtrasInstallmentDaysFromCampStart);
 
         if (extrasAmount > 0)
         {
@@ -384,7 +395,6 @@ public class PaymentsService(
             }
             else
             {
-                var settings = await LoadPaymentSettingsAsync(ct);
                 var familyName = NormalizeName(registration.FamilyUnit.Name);
                 var concept = $"{settings.TransferConceptPrefix}-{familyName}-3";
                 if (concept.Length > 100) concept = concept[..100];

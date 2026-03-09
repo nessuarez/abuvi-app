@@ -101,7 +101,7 @@ public class PaymentsServiceTests
     }
 
     [Fact]
-    public async Task CreateInstallmentsAsync_ValidRegistration_SetsCorrectDueDates()
+    public async Task CreateInstallmentsAsync_NoDeadlinesSet_FallsBackToSettings()
     {
         var registration = CreateRegistration(totalAmount: 200m);
         _registrationsRepo.GetByIdWithDetailsAsync(RegistrationId, Arg.Any<CancellationToken>())
@@ -111,9 +111,31 @@ public class PaymentsServiceTests
 
         var result = await _sut.CreateInstallmentsAsync(RegistrationId, CancellationToken.None);
 
-        result[0].DueDate.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+        // Default FirstInstallmentDaysBefore = 30, SecondInstallmentDaysBefore = 15
+        result[0].DueDate.Should().BeCloseTo(
+            registration.CampEdition.StartDate.AddDays(-30), TimeSpan.FromMinutes(1));
         result[1].DueDate.Should().BeCloseTo(
             registration.CampEdition.StartDate.AddDays(-15), TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    public async Task CreateInstallmentsAsync_DeadlinesSetOnEdition_UsesEditionDates()
+    {
+        var registration = CreateRegistration(totalAmount: 200m);
+        var firstDeadline = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc);
+        var secondDeadline = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        registration.CampEdition.FirstPaymentDeadline = firstDeadline;
+        registration.CampEdition.SecondPaymentDeadline = secondDeadline;
+
+        _registrationsRepo.GetByIdWithDetailsAsync(RegistrationId, Arg.Any<CancellationToken>())
+            .Returns(registration);
+        _settingsRepo.GetByKeyAsync("payment_settings", Arg.Any<CancellationToken>())
+            .ReturnsNull();
+
+        var result = await _sut.CreateInstallmentsAsync(RegistrationId, CancellationToken.None);
+
+        result[0].DueDate.Should().Be(firstDeadline);
+        result[1].DueDate.Should().Be(secondDeadline);
     }
 
     [Fact]
@@ -342,7 +364,9 @@ public class PaymentsServiceTests
         var result = await _sut.GetPaymentSettingsAsync(CancellationToken.None);
 
         result.TransferConceptPrefix.Should().Be("CAMP");
+        result.FirstInstallmentDaysBefore.Should().Be(30);
         result.SecondInstallmentDaysBefore.Should().Be(15);
+        result.ExtrasInstallmentDaysFromCampStart.Should().Be(0);
     }
 
     [Fact]
@@ -372,7 +396,7 @@ public class PaymentsServiceTests
             .ReturnsNull();
 
         var request = new PaymentSettingsRequest(
-            "ES1234567890123456789012", "Test Bank", "Test Holder", 20, "CAMP");
+            "ES1234567890123456789012", "Test Bank", "Test Holder", 30, 20, 5, "CAMP");
 
         var result = await _sut.UpdatePaymentSettingsAsync(
             request, AdminUserId, CancellationToken.None);
