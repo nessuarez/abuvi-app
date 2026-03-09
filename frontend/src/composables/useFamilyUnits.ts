@@ -242,6 +242,7 @@ export function useFamilyUnits() {
     search?: string
     sortBy?: string
     sortOrder?: 'asc' | 'desc'
+    membershipStatus?: 'all' | 'active' | 'none'
   } = {}): Promise<void> => {
     loading.value = true
     error.value = null
@@ -253,6 +254,8 @@ export function useFamilyUnits() {
       if (params.search) queryParams.set('search', params.search)
       if (params.sortBy) queryParams.set('sortBy', params.sortBy)
       if (params.sortOrder) queryParams.set('sortOrder', params.sortOrder)
+      if (params.membershipStatus && params.membershipStatus !== 'all')
+        queryParams.set('membershipStatus', params.membershipStatus)
 
       const response = await api.get<ApiResponse<PagedResult<FamilyUnitResponse>>>(
         `/family-units?${queryParams.toString()}`
@@ -407,6 +410,30 @@ export function useFamilyUnits() {
     }
   }
 
+  /**
+   * Update family number for a family unit (Admin/Board only)
+   */
+  const updateFamilyNumber = async (
+    familyUnitId: string,
+    familyNumber: number
+  ): Promise<FamilyUnitResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.put<ApiResponse<FamilyUnitResponse>>(
+        `/family-units/${familyUnitId}/family-number`,
+        { familyNumber }
+      )
+      return response.data.data
+    } catch (err: unknown) {
+      const apiErr = err as { response?: { data?: { error?: { message?: string } } } }
+      error.value = apiErr?.response?.data?.error?.message || 'Error al actualizar el número de familia'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     // State
     familyUnit,
@@ -423,6 +450,7 @@ export function useFamilyUnits() {
     updateFamilyUnit,
     deleteFamilyUnit,
     fetchAllFamilyUnits,
+    updateFamilyNumber,
 
     // Family Member Methods
     createFamilyMember,
