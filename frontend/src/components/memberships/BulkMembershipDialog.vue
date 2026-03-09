@@ -83,7 +83,7 @@ const handleClose = () => {
     <div v-if="!result" class="mb-4 space-y-1 text-sm text-gray-600">
       <p>
         <strong>{{ membersWithoutMembership.length }}</strong>
-        miembro(s) sin membresía activa.
+        miembro(s) sin alta de socio/a.
       </p>
       <p v-if="membersAlreadyActive.length > 0">
         <strong>{{ membersAlreadyActive.length }}</strong>
