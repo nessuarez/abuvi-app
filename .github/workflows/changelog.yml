@@ -1,0 +1,93 @@
+name: Generate Changelog
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag (e.g., v1.2.0)'
+        required: true
+      previous_tag:
+        description: 'Previous tag (auto-detected if empty)'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  generate-changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Determine tags
+        id: tags
+        run: |
+          CURRENT_TAG="${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
+          echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+
+          PREVIOUS_TAG="${{ github.event.inputs.previous_tag }}"
+          if [ -z "$PREVIOUS_TAG" ]; then
+            PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -A1 "^${CURRENT_TAG}$" | tail -1)
+          fi
+          if [ -z "$PREVIOUS_TAG" ] || [ "$PREVIOUS_TAG" = "$CURRENT_TAG" ]; then
+            PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD | head -1)
+          fi
+          echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+          echo "Current tag: $CURRENT_TAG"
+          echo "Previous tag: $PREVIOUS_TAG"
+
+      - name: Collect merged PRs
+        id: prs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CURRENT_TAG="${{ steps.tags.outputs.current_tag }}"
+          PREVIOUS_TAG="${{ steps.tags.outputs.previous_tag }}"
+
+          PR_NUMBERS=$(git log "${PREVIOUS_TAG}..${CURRENT_TAG}" --oneline \
+            | grep -oP '#\K[0-9]+' | sort -un)
+
+          echo "Found PR numbers: $PR_NUMBERS"
+
+          echo "[]" > /tmp/pr_data.json
+
+          for PR_NUM in $PR_NUMBERS; do
+            PR_JSON=$(gh pr view "$PR_NUM" --json number,title,body,labels,author 2>/dev/null || echo "")
+            if [ -n "$PR_JSON" ]; then
+              # Merge PR JSON into the array
+              jq --argjson pr "$PR_JSON" '. += [$pr]' /tmp/pr_data.json > /tmp/pr_data_tmp.json \
+                && mv /tmp/pr_data_tmp.json /tmp/pr_data.json
+            fi
+          done
+
+          echo "Collected $(jq length /tmp/pr_data.json) PRs"
+
+      - name: Generate changelog with Claude
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          node .github/scripts/generate-changelog.js \
+            --pr-data /tmp/pr_data.json \
+            --current-tag "${{ steps.tags.outputs.current_tag }}" \
+            --previous-tag "${{ steps.tags.outputs.previous_tag }}" \
+            > /tmp/changelog.md
+
+          echo "--- Generated changelog ---"
+          cat /tmp/changelog.md
+
+      - name: Update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${{ steps.tags.outputs.current_tag }}" \
+            --notes-file /tmp/changelog.md
