@@ -17,19 +17,8 @@ const tocEntries = [
 </script>
 
 <template>
-  <LegalPageLayout
-    title="Política de Privacidad"
-    last-updated="Febrero 2026"
-    :toc-entries="tocEntries"
-    :show-toc="true"
-  >
-    <!-- Mock-up notice -->
-    <Message severity="warn" :closable="false" class="mb-6">
-      Contenido pendiente de revisión legal. Este documento es un borrador y no constituye
-      una política de privacidad oficial hasta su aprobación por el responsable legal de la
-      asociación.
-    </Message>
-
+  <LegalPageLayout title="Política de Privacidad" last-updated="Febrero 2026" :toc-entries="tocEntries"
+    :show-toc="true">
     <p class="mb-8 leading-relaxed text-gray-600">
       En cumplimiento del Reglamento (UE) 2016/679, General de Protección de Datos (RGPD), y
       la Ley Orgánica 3/2018, de Protección de Datos Personales y garantía de los derechos
@@ -81,7 +70,7 @@ const tocEntries = [
           contactos de emergencia y datos de los menores a cargo.
         </li>
         <li>
-          <strong>Datos de socios:</strong> información de membresía, historial de participación
+          <strong>Datos de socios/as:</strong> información de membresía, historial de participación
           y cuotas.
         </li>
         <li>
@@ -99,7 +88,7 @@ const tocEntries = [
           <h3 class="mb-2 text-base font-semibold text-gray-800">Ejecución del contrato</h3>
           <p class="text-sm leading-relaxed text-gray-700">
             Tratamos sus datos para gestionar la inscripción al campamento y la membresía de
-            socio, en base a la relación contractual establecida.
+            socio/a, en base a la relación contractual establecida.
           </p>
         </div>
         <div class="rounded-lg border border-gray-200 p-4">
@@ -136,7 +125,7 @@ const tocEntries = [
       </p>
       <ul class="mt-4 list-disc space-y-2 pl-6 text-gray-700">
         <li>
-          <strong>Datos de socios activos:</strong> durante la vigencia de la membresía y
+          <strong>Datos de socios/as activos:</strong> durante la vigencia de la membresía y
           hasta 5 años después de la baja.
         </li>
         <li>
@@ -283,12 +272,8 @@ const tocEntries = [
         </p>
         <p class="text-sm text-gray-600">C/ Jorge Juan, 6, 28001 Madrid</p>
         <p class="text-sm">
-          <a
-            href="https://www.aepd.es"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-primary-600 hover:underline"
-          >
+          <a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer"
+            class="text-primary-600 hover:underline">
             www.aepd.es
           </a>
         </p>
