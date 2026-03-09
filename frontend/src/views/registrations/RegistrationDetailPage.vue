@@ -10,7 +10,6 @@ import RegistrationStatusBadge from '@/components/registrations/RegistrationStat
 import RegistrationPricingBreakdown from '@/components/registrations/RegistrationPricingBreakdown.vue'
 import RegistrationCancelDialog from '@/components/registrations/RegistrationCancelDialog.vue'
 import RegistrationDeleteDialog from '@/components/registrations/RegistrationDeleteDialog.vue'
-import RegistrationDeleteDialog from '@/components/registrations/RegistrationDeleteDialog.vue'
 import BankTransferInstructions from '@/components/payments/BankTransferInstructions.vue'
 import PaymentInstallmentCard from '@/components/payments/PaymentInstallmentCard.vue'
 import { useRegistrations } from '@/composables/useRegistrations'
@@ -30,14 +29,11 @@ const {
   getRegistrationById,
   cancelRegistration,
   deleteRegistration,
-  deleteRegistration,
   getAccommodationPreferences
 } = useRegistrations()
 const { getRegistrationPayments, getPaymentSettings } = usePayments()
 const showCancelDialog = ref(false)
 const cancelling = ref(false)
-const showDeleteDialog = ref(false)
-const deleting = ref(false)
 const showDeleteDialog = ref(false)
 const deleting = ref(false)
 const installments = ref<PaymentResponse[]>([])
@@ -124,29 +120,6 @@ const handleCancel = async () => {
     })
   } else {
     toast.add({ severity: 'error', summary: 'Error', detail: error.value, life: 5000 })
-  }
-}
-
-const handleDelete = async () => {
-  deleting.value = true
-  const success = await deleteRegistration(registrationId.value)
-  deleting.value = false
-  showDeleteDialog.value = false
-  if (success) {
-    toast.add({
-      severity: 'success',
-      summary: 'Registration deleted',
-      detail: 'Your registration has been deleted. You can register again for this camp edition.',
-      life: 4000
-    })
-    router.push('/registrations')
-  } else {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: error.value || 'Could not delete the registration.',
-      life: 5000
-    })
   }
 }
 
@@ -325,7 +298,7 @@ onMounted(async () => {
           <RegistrationCancelDialog v-model:visible="showCancelDialog" :registration-id="registrationId"
             :loading="cancelling" @confirm="handleCancel" />
           <RegistrationDeleteDialog v-model:visible="showDeleteDialog" :loading="deleting" @confirm="handleDelete" />
-          <RegistrationDeleteDialog v-model:visible="showDeleteDialog" :loading="deleting" @confirm="handleDelete" />
+        </div>
       </template>
     </div>
   </Container>

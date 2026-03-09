@@ -510,6 +510,7 @@ onMounted(() => {
 | `driver.js` | `^1.3.x` | Lightweight (~5 KB), MIT license, zero dependencies, TypeScript support, active maintenance |
 
 **PrimeVue Components Used**:
+
 - `Button` — help trigger
 - `Menu` — tour selection dropdown
 
