@@ -176,7 +176,7 @@ public class AuthService : IAuthService
         await _usersRepository.UpdateAsync(user, ct);
 
         // Send welcome email after successful verification
-        await _emailService.SendWelcomeEmailAsync(user.Email, user.FirstName, ct);
+        await _emailService.SendWelcomeEmailAsync(user.Email, user.FirstName, user.LastName, ct);
 
         _logger.LogInformation("User {Email} email verified successfully", user.Email);
     }

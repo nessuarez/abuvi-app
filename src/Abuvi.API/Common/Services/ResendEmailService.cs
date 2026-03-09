@@ -17,6 +17,7 @@ public class ResendEmailService : IEmailService
     private readonly string _fromEmail;
     private readonly string _fromName;
     private readonly string _frontendUrl;
+    private readonly string _boardBccEmail;
 
     public ResendEmailService(
         IConfiguration configuration,
@@ -32,6 +33,7 @@ public class ResendEmailService : IEmailService
         _fromEmail = configuration["Resend:FromEmail"] ?? "noreply@abuvi.org";
         _fromName = configuration["Resend:FromName"] ?? "Abuvi Camps";
         _frontendUrl = configuration["FrontendUrl"] ?? "http://localhost:5173";
+        _boardBccEmail = configuration["Resend:BoardBccEmail"] ?? "junta.abuvi@gmail.com";
 
         _resend = resendClient;
     }
@@ -96,6 +98,7 @@ public class ResendEmailService : IEmailService
     public async Task SendWelcomeEmailAsync(
         string toEmail,
         string firstName,
+        string lastName,
         CancellationToken ct)
     {
         var dashboardUrl = $"{_frontendUrl}/home";
@@ -104,7 +107,8 @@ public class ResendEmailService : IEmailService
         {
             From = $"{_fromName} <{_fromEmail}>",
             To = toEmail,
-            Subject = "¡Bienvenido a Abuvi!",
+            Bcc = _boardBccEmail,
+            Subject = $"¡Bienvenido/a a Abuvi! — {firstName} {lastName}",
             HtmlBody = $@"
                 <html>
                 <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
