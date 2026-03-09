@@ -40,6 +40,7 @@ public class FamilyUnitsServiceTests_GetAll
                 Name: $"{namePrefix} {i}",
                 RepresentativeUserId: Guid.NewGuid(),
                 RepresentativeName: $"Rep User {i}",
+                FamilyNumber: null,
                 MembersCount: i,
                 CreatedAt: DateTime.UtcNow.AddDays(-i),
                 UpdatedAt: DateTime.UtcNow.AddDays(-i)
@@ -56,12 +57,12 @@ public class FamilyUnitsServiceTests_GetAll
     {
         // Arrange
         var items = BuildProjections(20);
-        _repository.GetAllPagedAsync(1, 20, null, null, null, Arg.Any<CancellationToken>())
+        _repository.GetAllPagedAsync(1, 20, null, null, null, null, Arg.Any<CancellationToken>())
             .Returns((items, 25));
 
         // Act
         var result = await _sut.GetAllFamilyUnitsAsync(page: 1, pageSize: 20, search: null,
-            sortBy: null, sortOrder: null, ct: default);
+            sortBy: null, sortOrder: null, membershipStatus: null, ct: default);
 
         // Assert
         result.Should().NotBeNull();
@@ -81,12 +82,12 @@ public class FamilyUnitsServiceTests_GetAll
     {
         // Arrange
         var items = BuildProjections(5);
-        _repository.GetAllPagedAsync(2, 20, null, null, null, Arg.Any<CancellationToken>())
+        _repository.GetAllPagedAsync(2, 20, null, null, null, null, Arg.Any<CancellationToken>())
             .Returns((items, 25));
 
         // Act
         var result = await _sut.GetAllFamilyUnitsAsync(page: 2, pageSize: 20, search: null,
-            sortBy: null, sortOrder: null, ct: default);
+            sortBy: null, sortOrder: null, membershipStatus: null, ct: default);
 
         // Assert
         result.Items.Should().HaveCount(5);
@@ -104,17 +105,17 @@ public class FamilyUnitsServiceTests_GetAll
     {
         // Arrange
         var items = BuildProjections(2, namePrefix: "Garcia");
-        _repository.GetAllPagedAsync(1, 20, "Garcia", null, null, Arg.Any<CancellationToken>())
+        _repository.GetAllPagedAsync(1, 20, "Garcia", null, null, null, Arg.Any<CancellationToken>())
             .Returns((items, 2));
 
         // Act
         var result = await _sut.GetAllFamilyUnitsAsync(page: 1, pageSize: 20, search: "Garcia",
-            sortBy: null, sortOrder: null, ct: default);
+            sortBy: null, sortOrder: null, membershipStatus: null, ct: default);
 
         // Assert
         result.Items.Should().HaveCount(2);
         result.TotalCount.Should().Be(2);
-        await _repository.Received(1).GetAllPagedAsync(1, 20, "Garcia", null, null, Arg.Any<CancellationToken>());
+        await _repository.Received(1).GetAllPagedAsync(1, 20, "Garcia", null, null, null, Arg.Any<CancellationToken>());
     }
 
     // ---------------------------------------------------------------------------
@@ -126,16 +127,16 @@ public class FamilyUnitsServiceTests_GetAll
     {
         // Arrange
         var items = BuildProjections(1);
-        _repository.GetAllPagedAsync(1, 20, "Juan", null, null, Arg.Any<CancellationToken>())
+        _repository.GetAllPagedAsync(1, 20, "Juan", null, null, null, Arg.Any<CancellationToken>())
             .Returns((items, 1));
 
         // Act
         var result = await _sut.GetAllFamilyUnitsAsync(page: 1, pageSize: 20, search: "Juan",
-            sortBy: null, sortOrder: null, ct: default);
+            sortBy: null, sortOrder: null, membershipStatus: null, ct: default);
 
         // Assert
         result.Items.Should().HaveCount(1);
-        await _repository.Received(1).GetAllPagedAsync(1, 20, "Juan", null, null, Arg.Any<CancellationToken>());
+        await _repository.Received(1).GetAllPagedAsync(1, 20, "Juan", null, null, null, Arg.Any<CancellationToken>());
     }
 
     // ---------------------------------------------------------------------------
@@ -146,15 +147,15 @@ public class FamilyUnitsServiceTests_GetAll
     public async Task GetAllFamilyUnitsAsync_SortByNameAscending_PassesSortToRepository()
     {
         // Arrange
-        _repository.GetAllPagedAsync(1, 20, null, "name", "asc", Arg.Any<CancellationToken>())
+        _repository.GetAllPagedAsync(1, 20, null, "name", "asc", null, Arg.Any<CancellationToken>())
             .Returns((BuildProjections(3), 3));
 
         // Act
         await _sut.GetAllFamilyUnitsAsync(page: 1, pageSize: 20, search: null,
-            sortBy: "name", sortOrder: "asc", ct: default);
+            sortBy: "name", sortOrder: "asc", membershipStatus: null, ct: default);
 
         // Assert
-        await _repository.Received(1).GetAllPagedAsync(1, 20, null, "name", "asc", Arg.Any<CancellationToken>());
+        await _repository.Received(1).GetAllPagedAsync(1, 20, null, "name", "asc", null, Arg.Any<CancellationToken>());
     }
 
     // ---------------------------------------------------------------------------
@@ -165,15 +166,15 @@ public class FamilyUnitsServiceTests_GetAll
     public async Task GetAllFamilyUnitsAsync_SortByCreatedAtDescending_PassesSortToRepository()
     {
         // Arrange
-        _repository.GetAllPagedAsync(1, 20, null, "createdAt", "desc", Arg.Any<CancellationToken>())
+        _repository.GetAllPagedAsync(1, 20, null, "createdAt", "desc", null, Arg.Any<CancellationToken>())
             .Returns((BuildProjections(3), 3));
 
         // Act
         await _sut.GetAllFamilyUnitsAsync(page: 1, pageSize: 20, search: null,
-            sortBy: "createdAt", sortOrder: "desc", ct: default);
+            sortBy: "createdAt", sortOrder: "desc", membershipStatus: null, ct: default);
 
         // Assert
-        await _repository.Received(1).GetAllPagedAsync(1, 20, null, "createdAt", "desc", Arg.Any<CancellationToken>());
+        await _repository.Received(1).GetAllPagedAsync(1, 20, null, "createdAt", "desc", null, Arg.Any<CancellationToken>());
     }
 
     // ---------------------------------------------------------------------------
@@ -184,12 +185,12 @@ public class FamilyUnitsServiceTests_GetAll
     public async Task GetAllFamilyUnitsAsync_EmptyDatabase_ReturnsEmptyListWithZeroTotals()
     {
         // Arrange
-        _repository.GetAllPagedAsync(1, 20, null, null, null, Arg.Any<CancellationToken>())
+        _repository.GetAllPagedAsync(1, 20, null, null, null, null, Arg.Any<CancellationToken>())
             .Returns((new List<FamilyUnitAdminProjection>(), 0));
 
         // Act
         var result = await _sut.GetAllFamilyUnitsAsync(page: 1, pageSize: 20, search: null,
-            sortBy: null, sortOrder: null, ct: default);
+            sortBy: null, sortOrder: null, membershipStatus: null, ct: default);
 
         // Assert
         result.Items.Should().BeEmpty();
@@ -205,15 +206,15 @@ public class FamilyUnitsServiceTests_GetAll
     public async Task GetAllFamilyUnitsAsync_InvalidPage_ClampsToOne()
     {
         // Arrange
-        _repository.GetAllPagedAsync(1, 20, null, null, null, Arg.Any<CancellationToken>())
+        _repository.GetAllPagedAsync(1, 20, null, null, null, null, Arg.Any<CancellationToken>())
             .Returns((BuildProjections(5), 5));
 
         // Act
         var result = await _sut.GetAllFamilyUnitsAsync(page: 0, pageSize: 20, search: null,
-            sortBy: null, sortOrder: null, ct: default);
+            sortBy: null, sortOrder: null, membershipStatus: null, ct: default);
 
         // Assert
         result.Page.Should().Be(1);
-        await _repository.Received(1).GetAllPagedAsync(1, 20, null, null, null, Arg.Any<CancellationToken>());
+        await _repository.Received(1).GetAllPagedAsync(1, 20, null, null, null, null, Arg.Any<CancellationToken>());
     }
 }

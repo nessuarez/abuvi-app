@@ -8,6 +8,7 @@ public class FamilyUnit
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public Guid RepresentativeUserId { get; set; }
+    public int? FamilyNumber { get; set; }  // Assigned when first member gets membership activated
     public string? ProfilePhotoUrl { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -58,6 +59,8 @@ public record CreateFamilyUnitRequest(string Name);
 
 public record UpdateFamilyUnitRequest(string Name);
 
+public record UpdateFamilyNumberRequest(int FamilyNumber);
+
 public record CreateFamilyMemberRequest(
     string FirstName,
     string LastName,
@@ -87,6 +90,7 @@ public record FamilyUnitResponse(
     Guid Id,
     string Name,
     Guid RepresentativeUserId,
+    int? FamilyNumber,
     string? ProfilePhotoUrl,
     DateTime CreatedAt,
     DateTime UpdatedAt
@@ -121,6 +125,7 @@ public record FamilyUnitAdminProjection(
     string Name,
     Guid RepresentativeUserId,
     string RepresentativeName,
+    int? FamilyNumber,
     int MembersCount,
     DateTime CreatedAt,
     DateTime UpdatedAt
@@ -134,6 +139,7 @@ public record FamilyUnitListItemResponse(
     string Name,
     Guid RepresentativeUserId,
     string RepresentativeName,
+    int? FamilyNumber,
     int MembersCount,
     DateTime CreatedAt,
     DateTime UpdatedAt
@@ -158,6 +164,7 @@ public static class FamilyUnitExtensions
             unit.Id,
             unit.Name,
             unit.RepresentativeUserId,
+            unit.FamilyNumber,
             unit.ProfilePhotoUrl,
             unit.CreatedAt,
             unit.UpdatedAt

@@ -12,6 +12,7 @@ public class Membership
     public DateTime StartDate { get; set; }
     public DateTime? EndDate { get; set; }    // Nullable for active memberships
     public bool IsActive { get; set; }
+    public int? MemberNumber { get; set; }  // Assigned on membership activation
 
     // Navigation
     public FamilyMember FamilyMember { get; set; } = null!;
@@ -56,6 +57,8 @@ public enum FeeStatus
 // Request DTOs
 public record CreateMembershipRequest(int Year);
 
+public record UpdateMemberNumberRequest(int MemberNumber);
+
 // Fee management DTOs
 public record PayFeeRequest(
     DateTime PaidDate,
@@ -66,6 +69,7 @@ public record PayFeeRequest(
 public record MembershipResponse(
     Guid Id,
     Guid FamilyMemberId,
+    int? MemberNumber,
     DateTime StartDate,
     DateTime? EndDate,
     bool IsActive,

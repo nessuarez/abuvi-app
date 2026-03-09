@@ -28,6 +28,10 @@ public interface IFamilyUnitsRepository
     Task<User?> GetUserByEmailAsync(string email, CancellationToken ct);
     Task UpdateUserFamilyUnitIdAsync(Guid userId, Guid? familyUnitId, CancellationToken ct);
 
+    // Family number operations
+    Task<int> GetNextFamilyNumberAsync(CancellationToken ct);
+    Task<bool> IsFamilyNumberTakenAsync(int familyNumber, Guid? excludeId, CancellationToken ct);
+
     // Admin list
     /// <summary>
     /// Returns a paginated list of all family units with representative name and member count.
@@ -39,6 +43,7 @@ public interface IFamilyUnitsRepository
         string? search,
         string? sortBy,
         string? sortOrder,
+        string? membershipStatus,
         CancellationToken ct);
 }
 
@@ -132,8 +137,24 @@ public class FamilyUnitsRepository(AbuviDbContext db) : IFamilyUnitsRepository
                 .SetProperty(u => u.UpdatedAt, DateTime.UtcNow), ct);
     }
 
+    public async Task<int> GetNextFamilyNumberAsync(CancellationToken ct)
+    {
+        var max = await db.FamilyUnits
+            .Where(fu => fu.FamilyNumber != null)
+            .MaxAsync(fu => (int?)fu.FamilyNumber, ct);
+        return (max ?? 0) + 1;
+    }
+
+    public async Task<bool> IsFamilyNumberTakenAsync(int familyNumber, Guid? excludeId, CancellationToken ct)
+    {
+        return await db.FamilyUnits
+            .AnyAsync(fu => fu.FamilyNumber == familyNumber
+                && (!excludeId.HasValue || fu.Id != excludeId.Value), ct);
+    }
+
     public async Task<(List<FamilyUnitAdminProjection> Items, int TotalCount)> GetAllPagedAsync(
-        int page, int pageSize, string? search, string? sortBy, string? sortOrder, CancellationToken ct)
+        int page, int pageSize, string? search, string? sortBy, string? sortOrder,
+        string? membershipStatus, CancellationToken ct)
     {
         var query = from fu in db.FamilyUnits
                     join user in db.Users on fu.RepresentativeUserId equals user.Id into userGroup
@@ -146,6 +167,7 @@ public class FamilyUnitsRepository(AbuviDbContext db) : IFamilyUnitsRepository
                         RepresentativeName = u != null
                             ? u.FirstName + " " + u.LastName
                             : string.Empty,
+                        fu.FamilyNumber,
                         MembersCount = db.FamilyMembers.Count(m => m.FamilyUnitId == fu.Id),
                         fu.CreatedAt,
                         fu.UpdatedAt
@@ -157,6 +179,19 @@ public class FamilyUnitsRepository(AbuviDbContext db) : IFamilyUnitsRepository
             query = query.Where(x =>
                 x.Name.ToLower().Contains(term) ||
                 x.RepresentativeName.ToLower().Contains(term));
+        }
+
+        if (membershipStatus == "active")
+        {
+            query = query.Where(x =>
+                db.Memberships.Any(m => m.IsActive &&
+                    db.FamilyMembers.Any(fm => fm.FamilyUnitId == x.Id && fm.Id == m.FamilyMemberId)));
+        }
+        else if (membershipStatus == "none")
+        {
+            query = query.Where(x =>
+                !db.Memberships.Any(m => m.IsActive &&
+                    db.FamilyMembers.Any(fm => fm.FamilyUnitId == x.Id && fm.Id == m.FamilyMemberId)));
         }
 
         var totalCount = await query.CountAsync(ct);
@@ -176,7 +211,7 @@ public class FamilyUnitsRepository(AbuviDbContext db) : IFamilyUnitsRepository
 
         var projections = items.Select(x => new FamilyUnitAdminProjection(
             x.Id, x.Name, x.RepresentativeUserId,
-            x.RepresentativeName, x.MembersCount, x.CreatedAt, x.UpdatedAt
+            x.RepresentativeName, x.FamilyNumber, x.MembersCount, x.CreatedAt, x.UpdatedAt
         )).ToList();
 
         return (projections, totalCount);
