@@ -36,8 +36,9 @@ public class PaymentsService(
         if (concept1.Length > 100) concept1 = concept1[..100];
         if (concept2.Length > 100) concept2 = concept2[..100];
 
-        var dueDate2 = registration.CampEdition.StartDate
-            .AddDays(-settings.SecondInstallmentDaysBefore);
+        var dueDate1 = registration.CampEdition.FirstPaymentDeadline ?? DateTime.UtcNow;
+        var dueDate2 = registration.CampEdition.SecondPaymentDeadline
+            ?? registration.CampEdition.StartDate.AddDays(-settings.SecondInstallmentDaysBefore);
 
         var payments = new List<Payment>
         {
@@ -50,7 +51,7 @@ public class PaymentsService(
                 Method = PaymentMethod.Transfer,
                 Status = PaymentStatus.Pending,
                 InstallmentNumber = 1,
-                DueDate = DateTime.UtcNow,
+                DueDate = dueDate1,
                 TransferConcept = concept1,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -354,6 +355,127 @@ public class PaymentsService(
         logger.LogInformation(
             "All payments deleted for registration {RegistrationId} during registration cleanup",
             registrationId);
+    }
+
+    public async Task<PaymentResponse?> SyncExtrasInstallmentAsync(
+        Guid registrationId, decimal extrasAmount, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var payments = await paymentsRepo.GetByRegistrationIdTrackedAsync(registrationId, ct);
+        var p3 = payments.FirstOrDefault(p => p.InstallmentNumber == 3);
+
+        var dueDate = registration.CampEdition.ExtrasPaymentDeadline
+            ?? registration.CampEdition.StartDate;
+
+        if (extrasAmount > 0)
+        {
+            if (p3 != null)
+            {
+                if (p3.Status is PaymentStatus.PendingReview or PaymentStatus.Completed)
+                    throw new BusinessRuleException(
+                        "No se puede modificar el pago de extras porque ya tiene un justificante en revisión o está confirmado.");
+
+                p3.Amount = extrasAmount;
+                p3.DueDate = dueDate;
+                p3.UpdatedAt = DateTime.UtcNow;
+                await paymentsRepo.UpdateAsync(p3, ct);
+            }
+            else
+            {
+                var settings = await LoadPaymentSettingsAsync(ct);
+                var familyName = NormalizeName(registration.FamilyUnit.Name);
+                var concept = $"{settings.TransferConceptPrefix}-{familyName}-3";
+                if (concept.Length > 100) concept = concept[..100];
+
+                var newP3 = new Payment
+                {
+                    Id = Guid.NewGuid(),
+                    RegistrationId = registrationId,
+                    Amount = extrasAmount,
+                    PaymentDate = DateTime.UtcNow,
+                    Method = PaymentMethod.Transfer,
+                    Status = PaymentStatus.Pending,
+                    InstallmentNumber = 3,
+                    DueDate = dueDate,
+                    TransferConcept = concept,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await paymentsRepo.AddAsync(newP3, ct);
+                p3 = newP3;
+            }
+
+            logger.LogInformation(
+                "SyncExtrasInstallment: P3 synced for registration {RegistrationId}, amount={Amount}",
+                registrationId, extrasAmount);
+
+            return MapToResponse(p3);
+        }
+        else
+        {
+            if (p3 != null)
+            {
+                if (p3.Status is PaymentStatus.PendingReview or PaymentStatus.Completed)
+                    throw new BusinessRuleException(
+                        "No se puede eliminar el pago de extras porque ya tiene un justificante en revisión o está confirmado.");
+
+                await paymentsRepo.DeleteAsync(p3.Id, ct);
+
+                logger.LogInformation(
+                    "SyncExtrasInstallment: P3 deleted for registration {RegistrationId}",
+                    registrationId);
+            }
+
+            return null;
+        }
+    }
+
+    public async Task SyncBaseInstallmentsAsync(
+        Guid registrationId, decimal newBaseTotalAmount, decimal oldBaseTotalAmount, CancellationToken ct)
+    {
+        var payments = await paymentsRepo.GetByRegistrationIdTrackedAsync(registrationId, ct);
+        var p1 = payments.FirstOrDefault(p => p.InstallmentNumber == 1)
+            ?? throw new InvalidOperationException($"P1 not found for registration {registrationId}");
+        var p2 = payments.FirstOrDefault(p => p.InstallmentNumber == 2)
+            ?? throw new InvalidOperationException($"P2 not found for registration {registrationId}");
+
+        if (p1.Status == PaymentStatus.PendingReview)
+            throw new BusinessRuleException(
+                "No se pueden modificar los miembros porque el primer pago tiene un justificante en revisión.");
+
+        if (p1.Status == PaymentStatus.Pending)
+        {
+            var newP1 = Math.Ceiling(newBaseTotalAmount / 2m);
+            var newP2 = newBaseTotalAmount - newP1;
+            p1.Amount = newP1;
+            p2.Amount = newP2;
+            await paymentsRepo.UpdateAsync(p1, ct);
+            await paymentsRepo.UpdateAsync(p2, ct);
+
+            logger.LogInformation(
+                "SyncBaseInstallments: Both pending — recalculated P1={P1}, P2={P2} for registration {RegistrationId}",
+                newP1, newP2, registrationId);
+        }
+        else if (p1.Status == PaymentStatus.Completed)
+        {
+            if (p2.Status is PaymentStatus.PendingReview or PaymentStatus.Completed)
+                throw new BusinessRuleException(
+                    "No se pueden modificar los miembros porque el segundo pago ya está confirmado o en revisión.");
+
+            var delta = newBaseTotalAmount - oldBaseTotalAmount;
+            if (p2.Amount + delta <= 0)
+                throw new BusinessRuleException(
+                    "El cambio en los miembros haría que el segundo plazo fuera negativo o cero. Contacta al administrador.");
+
+            p2.Amount += delta;
+            await paymentsRepo.UpdateAsync(p2, ct);
+
+            logger.LogInformation(
+                "SyncBaseInstallments: P1 completed — absorbed delta={Delta} into P2={P2} for registration {RegistrationId}",
+                delta, p2.Amount, registrationId);
+        }
     }
 
     private static string ExtractBlobKey(string fileUrl)
