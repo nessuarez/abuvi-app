@@ -101,6 +101,38 @@ public static class MembershipsEndpoints
         return Results.Ok(ApiResponse<BulkActivateMembershipResponse>.Ok(result));
     }
 
+    public static void MapMembershipAdminEndpoints(this IEndpointRouteBuilder app)
+    {
+        var adminGroup = app.MapGroup("/api/memberships/{membershipId:guid}")
+            .WithTags("Memberships")
+            .RequireAuthorization();
+
+        adminGroup.MapPut("/member-number", UpdateMemberNumber)
+            .WithName("UpdateMemberNumber")
+            .WithSummary("Update member number (Admin/Board only)")
+            .AddEndpointFilter<ValidationFilter<UpdateMemberNumberRequest>>()
+            .Produces<ApiResponse<MembershipResponse>>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status409Conflict);
+    }
+
+    private static async Task<IResult> UpdateMemberNumber(
+        [FromRoute] Guid membershipId,
+        [FromBody] UpdateMemberNumberRequest request,
+        ClaimsPrincipal user,
+        MembershipsService service,
+        CancellationToken ct)
+    {
+        var userRole = user.GetUserRole();
+        var isAdminOrBoard = userRole == "Admin" || userRole == "Board";
+        if (!isAdminOrBoard)
+            return Results.Forbid();
+
+        var result = await service.UpdateMemberNumberAsync(membershipId, request, ct);
+        return Results.Ok(ApiResponse<MembershipResponse>.Ok(result));
+    }
+
     public static void MapMembershipFeeEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/memberships/{membershipId:guid}/fees")

@@ -16,7 +16,7 @@ import Textarea from 'primevue/textarea'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { useCampEditions } from '@/composables/useCampEditions'
 import { useAuthStore } from '@/stores/auth'
-import { parseDateLocal, formatDateLocal } from '@/utils/date'
+import { parseDateSafe, formatDateLocal } from '@/utils/date'
 import type { CampEdition, UpdateCampEditionRequest } from '@/types/camp-edition'
 
 const route = useRoute()
@@ -104,7 +104,7 @@ const form = reactive<FormModel>({
 const formatDate = (dateStr: string | null | undefined): string => {
   if (!dateStr) return '—'
   return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(
-    parseDateLocal(dateStr)
+    parseDateSafe(dateStr)
   )
 }
 
@@ -117,8 +117,8 @@ const startEditing = () => {
   if (!edition.value) return
   const ed = edition.value
 
-  form.startDate = ed.startDate ? parseDateLocal(ed.startDate) : null
-  form.endDate = ed.endDate ? parseDateLocal(ed.endDate) : null
+  form.startDate = ed.startDate ? parseDateSafe(ed.startDate) : null
+  form.endDate = ed.endDate ? parseDateSafe(ed.endDate) : null
   form.pricePerAdult = ed.pricePerAdult
   form.pricePerChild = ed.pricePerChild
   form.pricePerBaby = ed.pricePerBaby
@@ -131,13 +131,13 @@ const startEditing = () => {
   form.notes = ed.notes ?? ''
   form.description = ed.description ?? ''
   form.allowPartialAttendance = ed.pricePerAdultWeek != null
-  form.halfDate = ed.halfDate ? parseDateLocal(ed.halfDate) : null
+  form.halfDate = ed.halfDate ? parseDateSafe(ed.halfDate) : null
   form.pricePerAdultWeek = ed.pricePerAdultWeek ?? null
   form.pricePerChildWeek = ed.pricePerChildWeek ?? null
   form.pricePerBabyWeek = ed.pricePerBabyWeek ?? null
   form.allowWeekendVisit = ed.weekendStartDate != null
-  form.weekendStartDate = ed.weekendStartDate ? parseDateLocal(ed.weekendStartDate) : null
-  form.weekendEndDate = ed.weekendEndDate ? parseDateLocal(ed.weekendEndDate) : null
+  form.weekendStartDate = ed.weekendStartDate ? parseDateSafe(ed.weekendStartDate) : null
+  form.weekendEndDate = ed.weekendEndDate ? parseDateSafe(ed.weekendEndDate) : null
   form.pricePerAdultWeekend = ed.pricePerAdultWeekend ?? null
   form.pricePerChildWeekend = ed.pricePerChildWeekend ?? null
   form.pricePerBabyWeekend = ed.pricePerBabyWeekend ?? null

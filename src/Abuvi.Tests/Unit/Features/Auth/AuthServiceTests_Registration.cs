@@ -179,6 +179,7 @@ public class AuthServiceTests_Registration
         await _emailService.Received(1).SendWelcomeEmailAsync(
             user.Email,
             user.FirstName,
+            user.LastName,
             Arg.Any<CancellationToken>()
         );
     }

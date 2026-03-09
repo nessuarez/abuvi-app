@@ -29,6 +29,14 @@ public class MembershipConfiguration : IEntityTypeConfiguration<Membership>
             .HasForeignKey(f => f.MembershipId)
             .OnDelete(DeleteBehavior.Cascade);  // Delete fees when membership deleted
 
+        // Member number: optional, unique when assigned
+        builder.Property(m => m.MemberNumber)
+            .HasColumnName("member_number");
+
+        builder.HasIndex(m => m.MemberNumber)
+            .IsUnique()
+            .HasFilter("member_number IS NOT NULL");
+
         // Audit fields
         builder.Property(m => m.CreatedAt).IsRequired();
         builder.Property(m => m.UpdatedAt).IsRequired();

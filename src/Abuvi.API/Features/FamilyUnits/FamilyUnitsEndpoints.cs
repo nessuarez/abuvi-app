@@ -34,6 +34,15 @@ public static class FamilyUnitsEndpoints
             .Produces(401)
             .Produces(403);
 
+        adminGroup.MapPut("/{id:guid}/family-number", UpdateFamilyNumber)
+            .WithName("UpdateFamilyNumber")
+            .WithSummary("Update family number (Admin/Board only)")
+            .AddEndpointFilter<ValidationFilter<UpdateFamilyNumberRequest>>()
+            .Produces<ApiResponse<FamilyUnitResponse>>()
+            .Produces(400)
+            .Produces(404)
+            .Produces(409);
+
         // Family Unit endpoints
         group.MapPost("/", CreateFamilyUnit)
             .WithName("CreateFamilyUnit")
@@ -411,10 +420,32 @@ public static class FamilyUnitsEndpoints
         [Microsoft.AspNetCore.Mvc.FromQuery] string? search = null,
         [Microsoft.AspNetCore.Mvc.FromQuery] string? sortBy = null,
         [Microsoft.AspNetCore.Mvc.FromQuery] string? sortOrder = null,
+        [Microsoft.AspNetCore.Mvc.FromQuery] string? membershipStatus = null,
         CancellationToken ct = default)
     {
-        var result = await service.GetAllFamilyUnitsAsync(page, pageSize, search, sortBy, sortOrder, ct);
+        var result = await service.GetAllFamilyUnitsAsync(page, pageSize, search, sortBy, sortOrder, membershipStatus, ct);
         return TypedResults.Ok(ApiResponse<PagedFamilyUnitsResponse>.Ok(result));
+    }
+
+    private static async Task<IResult> UpdateFamilyNumber(
+        [Microsoft.AspNetCore.Mvc.FromRoute] Guid id,
+        [Microsoft.AspNetCore.Mvc.FromBody] UpdateFamilyNumberRequest request,
+        FamilyUnitsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await service.UpdateFamilyNumberAsync(id, request, ct);
+            return TypedResults.Ok(ApiResponse<FamilyUnitResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.Conflict(ApiResponse<object>.Fail(ex.Message, "DUPLICATE_FAMILY_NUMBER"));
+        }
     }
 
     private static async Task<IResult> DeleteFamilyMember(

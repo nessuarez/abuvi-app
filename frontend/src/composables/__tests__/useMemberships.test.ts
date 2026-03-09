@@ -6,6 +6,7 @@ vi.mock('@/utils/api', () => ({
   api: {
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
     delete: vi.fn(),
   },
 }))
@@ -83,6 +84,47 @@ describe('useMemberships', () => {
         '/family-units/fu1/members/fm1/membership',
         { year: 2025 },
       )
+    })
+  })
+
+  describe('updateMemberNumber', () => {
+    it('should call PUT endpoint with correct params', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: {
+            id: 'm1',
+            familyMemberId: 'fm1',
+            memberNumber: 7,
+            startDate: '2025-01-01T00:00:00Z',
+            isActive: true,
+            fees: [],
+            createdAt: '2025-01-01',
+            updatedAt: '2025-01-01',
+          },
+        },
+      }
+
+      vi.mocked(api.put).mockResolvedValueOnce(mockResponse)
+
+      const { updateMemberNumber, membership } = useMemberships()
+      const result = await updateMemberNumber('m1', 7)
+
+      expect(result).toEqual(mockResponse.data.data)
+      expect(membership.value).toEqual(mockResponse.data.data)
+      expect(api.put).toHaveBeenCalledWith('/memberships/m1/member-number', { memberNumber: 7 })
+    })
+
+    it('should set error and return null on failure', async () => {
+      vi.mocked(api.put).mockRejectedValueOnce({
+        response: { data: { error: { message: 'Número de socio/a duplicado' } } },
+      })
+
+      const { updateMemberNumber, error } = useMemberships()
+      const result = await updateMemberNumber('m1', 7)
+
+      expect(result).toBeNull()
+      expect(error.value).toBe('Número de socio/a duplicado')
     })
   })
 })
