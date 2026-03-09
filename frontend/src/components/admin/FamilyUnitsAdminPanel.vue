@@ -9,6 +9,7 @@ import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
+import SelectButton from 'primevue/selectbutton'
 import type { DataTablePageEvent } from 'primevue/datatable'
 
 const router = useRouter()
@@ -16,17 +17,36 @@ const { allFamilyUnits, familyUnitsPagination, loading, error, fetchAllFamilyUni
   useFamilyUnits()
 
 const searchQuery = ref('')
+const membershipFilter = ref<string>('all')
+const membershipFilterOptions = [
+  { label: 'Todas', value: 'all' },
+  { label: 'Socias', value: 'active' },
+  { label: 'No socias', value: 'none' }
+]
 
 const debouncedSearch = useDebounceFn((val: string) => {
-  fetchAllFamilyUnits({ search: val, page: 1 })
+  fetchAllFamilyUnits({ search: val, page: 1, membershipStatus: membershipFilter.value as 'all' | 'active' | 'none' })
 }, 300)
 
 watch(searchQuery, debouncedSearch)
 
-onMounted(() => { fetchAllFamilyUnits() })
+watch(membershipFilter, () => {
+  fetchAllFamilyUnits({
+    search: searchQuery.value,
+    page: 1,
+    membershipStatus: membershipFilter.value as 'all' | 'active' | 'none'
+  })
+})
+
+onMounted(() => { fetchAllFamilyUnits({ membershipStatus: membershipFilter.value as 'all' | 'active' | 'none' }) })
 
 const onPage = (event: DataTablePageEvent) => {
-  fetchAllFamilyUnits({ page: event.page + 1, pageSize: event.rows, search: searchQuery.value })
+  fetchAllFamilyUnits({
+    page: event.page + 1,
+    pageSize: event.rows,
+    search: searchQuery.value,
+    membershipStatus: membershipFilter.value as 'all' | 'active' | 'none'
+  })
 }
 
 const formatDate = (dateStr: string) =>
@@ -48,6 +68,14 @@ const formatDate = (dateStr: string) =>
             class="w-64"
           />
         </span>
+        <SelectButton
+          v-model="membershipFilter"
+          :options="membershipFilterOptions"
+          option-label="label"
+          option-value="value"
+          :allow-empty="false"
+          data-testid="membership-filter"
+        />
       </div>
     </div>
 
@@ -83,6 +111,11 @@ const formatDate = (dateStr: string) =>
       <Column field="name" header="Nombre Familia" sortable>
         <template #body="{ data }">
           <span class="font-medium">{{ data.name }}</span>
+        </template>
+      </Column>
+      <Column field="familyNumber" header="Nº Familia">
+        <template #body="{ data }">
+          <span class="text-gray-600">{{ data.familyNumber ?? '—' }}</span>
         </template>
       </Column>
       <Column field="representativeName" header="Representante">

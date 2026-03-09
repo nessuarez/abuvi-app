@@ -32,6 +32,7 @@ export interface MembershipFeeResponse {
 export interface MembershipResponse {
   id: string
   familyMemberId: string
+  memberNumber: number | null
   startDate: string // ISO 8601 date string (YYYY-MM-DD)
   endDate: string | null
   isActive: boolean
@@ -47,6 +48,11 @@ export interface CreateMembershipRequest {
 export interface PayFeeRequest {
   paidDate: string // ISO 8601 date string — must not be in the future
   paymentReference?: string | null
+}
+
+// Request to update member number (Admin/Board only)
+export interface UpdateMemberNumberRequest {
+  memberNumber: number
 }
 
 export type BulkMembershipResultStatus = 'Activated' | 'Skipped' | 'Failed'

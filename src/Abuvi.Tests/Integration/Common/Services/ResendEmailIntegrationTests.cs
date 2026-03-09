@@ -114,6 +114,7 @@ public class ResendEmailIntegrationTests
         await emailService.SendWelcomeEmailAsync(
             testEmail,
             testFirstName,
+            "TestLastName",
             CancellationToken.None);
 
         // Assert
