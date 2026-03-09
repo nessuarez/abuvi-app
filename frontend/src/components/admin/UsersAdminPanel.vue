@@ -2,10 +2,12 @@
 import { onMounted, ref, computed } from 'vue'
 import { useUsers } from '@/composables/useUsers'
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
+import ConfirmDialog from 'primevue/confirmdialog'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import Tag from 'primevue/tag'
@@ -18,7 +20,8 @@ import UserRoleDialog from '@/components/users/UserRoleDialog.vue'
 import type { CreateUserRequest, User } from '@/types/user'
 
 const toast = useToast()
-const { users, loading, error, fetchUsers, createUser, clearError } = useUsers()
+const confirm = useConfirm()
+const { users, loading, error, fetchUsers, createUser, toggleUserActive, deleteUser, clearError } = useUsers()
 
 const searchQuery = ref('')
 
@@ -69,6 +72,50 @@ const handleRoleUpdated = (updatedUser: User) => {
     summary: 'Rol actualizado',
     detail: `El rol de ${updatedUser.firstName} ${updatedUser.lastName} ha sido actualizado`,
     life: 5000
+  })
+}
+
+const handleToggleActive = async (user: User) => {
+  const action = user.isActive ? 'desactivar' : 'activar'
+  confirm.require({
+    message: `¿Estás seguro de que deseas ${action} al usuario ${user.firstName} ${user.lastName}?`,
+    header: `Confirmar ${action}`,
+    icon: user.isActive ? 'pi pi-exclamation-triangle' : 'pi pi-check-circle',
+    acceptLabel: 'Sí',
+    rejectLabel: 'No',
+    accept: async () => {
+      const updated = await toggleUserActive(user)
+      if (updated) {
+        toast.add({
+          severity: 'success',
+          summary: updated.isActive ? 'Usuario activado' : 'Usuario desactivado',
+          detail: `${updated.firstName} ${updated.lastName} ha sido ${updated.isActive ? 'activado' : 'desactivado'}`,
+          life: 5000
+        })
+      }
+    }
+  })
+}
+
+const handleDeleteUser = (user: User) => {
+  confirm.require({
+    message: `¿Estás seguro de que deseas eliminar permanentemente al usuario ${user.firstName} ${user.lastName}? Esta acción no se puede deshacer.`,
+    header: 'Confirmar eliminación',
+    icon: 'pi pi-trash',
+    acceptLabel: 'Eliminar',
+    rejectLabel: 'Cancelar',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      const deleted = await deleteUser(user.id)
+      if (deleted) {
+        toast.add({
+          severity: 'success',
+          summary: 'Usuario eliminado',
+          detail: `${user.firstName} ${user.lastName} ha sido eliminado`,
+          life: 5000
+        })
+      }
+    }
   })
 }
 
@@ -148,6 +195,34 @@ const formatDate = (dateString: string) =>
           <span class="text-sm text-gray-600">{{ formatDate(data.createdAt) }}</span>
         </template>
       </Column>
+      <Column header="Acciones" :exportable="false" class="w-32">
+        <template #body="{ data }">
+          <div class="flex items-center gap-1">
+            <Button
+              :icon="data.isActive ? 'pi pi-ban' : 'pi pi-check'"
+              :severity="data.isActive ? 'warn' : 'success'"
+              text
+              rounded
+              size="small"
+              :aria-label="data.isActive ? 'Desactivar usuario' : 'Activar usuario'"
+              v-tooltip.top="data.isActive ? 'Desactivar' : 'Activar'"
+              :data-testid="`toggle-active-${data.id}`"
+              @click="handleToggleActive(data)"
+            />
+            <Button
+              icon="pi pi-trash"
+              severity="danger"
+              text
+              rounded
+              size="small"
+              aria-label="Eliminar usuario"
+              v-tooltip.top="'Eliminar'"
+              :data-testid="`delete-user-${data.id}`"
+              @click="handleDeleteUser(data)"
+            />
+          </div>
+        </template>
+      </Column>
       <template #empty>
         <span class="text-gray-500">No se encontraron usuarios que coincidan con la búsqueda.</span>
       </template>
@@ -170,6 +245,9 @@ const formatDate = (dateString: string) =>
         {{ error }}
       </Message>
     </Dialog>
+
+    <!-- Confirm Dialog for activate/deactivate/delete -->
+    <ConfirmDialog />
 
     <!-- Role Update Dialog -->
     <UserRoleDialog
