@@ -55,8 +55,14 @@ describe('getMemberDataWarnings', () => {
     expect(result).toEqual({ missingDni: true, missingEmail: true, invalidBirthDate: false })
   })
 
-  it('returns warning for invalid birth date year before 1900', () => {
+  it('returns warning for invalid birth date year before 1920', () => {
     const member = { ...baseMember, dateOfBirth: '0001-01-01' }
+    const result = getMemberDataWarnings(member, true)
+    expect(result).toEqual({ missingDni: false, missingEmail: false, invalidBirthDate: true })
+  })
+
+  it('returns warning for default placeholder birth date 1901-01-01', () => {
+    const member = { ...baseMember, dateOfBirth: '1901-01-01' }
     const result = getMemberDataWarnings(member, true)
     expect(result).toEqual({ missingDni: false, missingEmail: false, invalidBirthDate: true })
   })

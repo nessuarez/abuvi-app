@@ -14,7 +14,7 @@ export function getMemberDataWarnings(
   const missingEmail = isAdult && (!member.email || member.email.trim() === '')
 
   const birthYear = parseInt(member.dateOfBirth.split('-')[0], 10)
-  const invalidBirthDate = isNaN(birthYear) || birthYear < 1900 || birthYear > new Date().getFullYear()
+  const invalidBirthDate = isNaN(birthYear) || birthYear < 1920 || birthYear > new Date().getFullYear()
 
   if (!missingDni && !missingEmail && !invalidBirthDate) {
     return null
