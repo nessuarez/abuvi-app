@@ -3,6 +3,12 @@ export enum FamilyRelationship {
   Child = 'Child',
   Sibling = 'Sibling',
   Spouse = 'Spouse',
+  Grandparent = 'Grandparent',
+  Grandchild = 'Grandchild',
+  UncleAunt = 'UncleAunt',
+  NephewNiece = 'NephewNiece',
+  Cousin = 'Cousin',
+  InLaw = 'InLaw',
   Other = 'Other'
 }
 
@@ -86,5 +92,11 @@ export const FamilyRelationshipLabels: Record<FamilyRelationship, string> = {
   [FamilyRelationship.Child]: 'Hijo/Hija',
   [FamilyRelationship.Sibling]: 'Hermano/Hermana',
   [FamilyRelationship.Spouse]: 'Cónyuge',
+  [FamilyRelationship.Grandparent]: 'Abuelo/Abuela',
+  [FamilyRelationship.Grandchild]: 'Nieto/Nieta',
+  [FamilyRelationship.UncleAunt]: 'Tío/Tía',
+  [FamilyRelationship.NephewNiece]: 'Sobrino/Sobrina',
+  [FamilyRelationship.Cousin]: 'Primo/Prima',
+  [FamilyRelationship.InLaw]: 'Familia política',
   [FamilyRelationship.Other]: 'Otro'
 }
