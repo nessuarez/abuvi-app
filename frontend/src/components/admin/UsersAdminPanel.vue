@@ -163,6 +163,8 @@ const formatDate = (dateString: string) =>
       paginator
       :rows="10"
       :rows-per-page-options="[5, 10, 20, 50]"
+      scrollable
+      scroll-height="flex"
       class="rounded-lg"
       data-testid="users-table"
     >
@@ -195,7 +197,7 @@ const formatDate = (dateString: string) =>
           <span class="text-sm text-gray-600">{{ formatDate(data.createdAt) }}</span>
         </template>
       </Column>
-      <Column header="Acciones" :exportable="false" class="w-32">
+      <Column header="Acciones" :exportable="false" frozen align-frozen="right" class="w-32">
         <template #body="{ data }">
           <div class="flex items-center gap-1">
             <Button
