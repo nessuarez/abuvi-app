@@ -4,10 +4,12 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
+import Message from 'primevue/message'
 import ProfilePhotoAvatar from '@/components/family-units/ProfilePhotoAvatar.vue'
 import { FamilyRelationshipLabels } from '@/types/family-unit'
 import type { FamilyMemberResponse } from '@/types/family-unit'
 import { parseDateLocal } from '@/utils/date'
+import { getMemberDataWarnings, getWarningMessage } from '@/utils/member-validation'
 
 const props = defineProps<{
   members: FamilyMemberResponse[]
@@ -28,9 +30,14 @@ const emit = defineEmits<{
 const membersWithAge = computed(() => {
   return props.members.map((member) => {
     const age = calculateAge(member.dateOfBirth)
-    return { ...member, age }
+    const warnings = getMemberDataWarnings(member, age >= 18)
+    return { ...member, age, warnings }
   })
 })
+
+const hasWarnings = computed(() =>
+  !props.readOnly && membersWithAge.value.some((m) => m.warnings !== null)
+)
 
 const calculateAge = (dateOfBirth: string): number => {
   const birthDate = parseDateLocal(dateOfBirth)
@@ -97,7 +104,15 @@ const handleDelete = (member: FamilyMemberResponse) => {
               @remove="() => emit('removePhoto', data.id)"
             />
             <div>
-              <div class="font-medium">{{ data.firstName }} {{ data.lastName }}</div>
+              <div class="font-medium">
+                {{ data.firstName }} {{ data.lastName }}
+                <i
+                  v-if="data.warnings"
+                  class="pi pi-exclamation-triangle text-orange-500 ml-1 text-xs"
+                  v-tooltip.top="getWarningMessage(data.warnings)"
+                  data-testid="member-warning-icon"
+                />
+              </div>
               <div v-if="data.userId" class="text-xs text-gray-500">
                 <i class="pi pi-user text-xs"></i> Usuario vinculado
               </div>
@@ -172,5 +187,11 @@ const handleDelete = (member: FamilyMemberResponse) => {
         </template>
       </Column>
     </DataTable>
+    <Message v-if="hasWarnings" severity="warn" :closable="false" class="mt-3" data-testid="member-warnings-banner">
+      Algunos miembros adultos tienen datos incompletos (DNI, email o fecha de nacimiento).
+      Estos datos son necesarios para la inscripción oficial en el campamento
+      por motivos legales y de seguro. Asegúrate de que cada nombre, apellido,
+      DNI y email sea correcto y único.
+    </Message>
   </div>
 </template>

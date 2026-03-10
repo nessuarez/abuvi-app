@@ -52,9 +52,9 @@ const closeCreateDialog = () => {
   clearError()
 }
 
-const handleCreateUser = async (data: CreateUserRequest) => {
+const handleCreateUser = async (data: CreateUserRequest | import('@/types/user').UpdateUserRequest) => {
   creatingUser.value = true
-  const newUser = await createUser(data)
+  const newUser = await createUser(data as CreateUserRequest)
   creatingUser.value = false
   if (newUser) {
     closeCreateDialog()
