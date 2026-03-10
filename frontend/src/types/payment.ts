@@ -1,5 +1,23 @@
 import type { PaymentMethod, PaymentStatus } from './registration'
 
+export interface PaymentConceptLine {
+  personFullName: string
+  ageCategory: string
+  attendancePeriod: string
+  individualAmount: number
+  amountInPayment: number
+  percentage: number
+}
+
+export interface PaymentExtraConceptLine {
+  extraName: string
+  quantity: number
+  unitPrice: number
+  totalAmount: number
+  userInput: string | null
+  pricingType: string
+}
+
 export interface PaymentResponse {
   id: string
   registrationId: string
@@ -14,6 +32,8 @@ export interface PaymentResponse {
   proofUploadedAt: string | null
   adminNotes: string | null
   createdAt: string
+  conceptLines: PaymentConceptLine[] | null
+  extraConceptLines: PaymentExtraConceptLine[] | null
 }
 
 export interface AdminPaymentResponse extends PaymentResponse {

@@ -55,6 +55,8 @@ public class PaymentsService(
                 InstallmentNumber = 1,
                 DueDate = dueDate1,
                 TransferConcept = concept1,
+                ConceptLinesSerialized = SerializeBaseConceptLines(
+                    registration.Members, installment1Amount, registration.BaseTotalAmount),
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             },
@@ -69,6 +71,8 @@ public class PaymentsService(
                 InstallmentNumber = 2,
                 DueDate = dueDate2,
                 TransferConcept = concept2,
+                ConceptLinesSerialized = SerializeBaseConceptLines(
+                    registration.Members, installment2Amount, registration.BaseTotalAmount),
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             }
@@ -324,20 +328,113 @@ public class PaymentsService(
         }
     }
 
-    private static PaymentResponse MapToResponse(Payment p) => new(
-        p.Id, p.RegistrationId, p.InstallmentNumber, p.Amount, p.DueDate,
-        p.Method, p.Status, p.TransferConcept, p.ProofFileUrl, p.ProofFileName,
-        p.ProofUploadedAt, p.AdminNotes, p.CreatedAt);
+    private static PaymentResponse MapToResponse(Payment p)
+    {
+        var (memberLines, extraLines) = DeserializeConceptLines(p.ConceptLinesSerialized);
+        return new PaymentResponse(
+            p.Id, p.RegistrationId, p.InstallmentNumber, p.Amount, p.DueDate,
+            p.Method, p.Status, p.TransferConcept, p.ProofFileUrl, p.ProofFileName,
+            p.ProofUploadedAt, p.AdminNotes, p.CreatedAt, memberLines, extraLines);
+    }
 
-    private static AdminPaymentResponse MapToAdminResponse(Payment p) => new(
-        p.Id, p.RegistrationId,
-        p.Registration.FamilyUnit.Name,
-        p.Registration.CampEdition.Camp.Name,
-        p.InstallmentNumber, p.Amount, p.DueDate,
-        p.Status, p.TransferConcept, p.ProofFileUrl, p.ProofFileName,
-        p.ProofUploadedAt, p.AdminNotes,
-        null, // ConfirmedByUserName - would need user lookup, kept null for now
-        p.ConfirmedAt, p.CreatedAt);
+    private static AdminPaymentResponse MapToAdminResponse(Payment p)
+    {
+        var (memberLines, extraLines) = DeserializeConceptLines(p.ConceptLinesSerialized);
+        return new AdminPaymentResponse(
+            p.Id, p.RegistrationId,
+            p.Registration.FamilyUnit.Name,
+            p.Registration.CampEdition.Camp.Name,
+            p.InstallmentNumber, p.Amount, p.DueDate,
+            p.Status, p.TransferConcept, p.ProofFileUrl, p.ProofFileName,
+            p.ProofUploadedAt, p.AdminNotes,
+            null, // ConfirmedByUserName - would need user lookup, kept null for now
+            p.ConfirmedAt, p.CreatedAt, memberLines, extraLines);
+    }
+
+    private static (List<PaymentConceptLine>?, List<PaymentExtraConceptLine>?) DeserializeConceptLines(
+        string? json)
+    {
+        if (json is null) return (null, null);
+        try
+        {
+            var data = JsonSerializer.Deserialize<PaymentConceptLinesJson>(json);
+            return (data?.MemberLines, data?.ExtraLines);
+        }
+        catch (JsonException)
+        {
+            return (null, null);
+        }
+    }
+
+    internal static string SerializeBaseConceptLines(
+        ICollection<RegistrationMember> members, decimal installmentAmount, decimal baseTotalAmount)
+    {
+        if (baseTotalAmount == 0)
+            return JsonSerializer.Serialize(new PaymentConceptLinesJson([], null));
+
+        var percentage = Math.Round(installmentAmount / baseTotalAmount * 100m, 2);
+        var lines = new List<PaymentConceptLine>();
+        var runningTotal = 0m;
+
+        var memberList = members.ToList();
+        for (var i = 0; i < memberList.Count; i++)
+        {
+            var m = memberList[i];
+            decimal amountInPayment;
+
+            if (i == memberList.Count - 1)
+            {
+                // Last member gets the remainder to avoid rounding drift
+                amountInPayment = installmentAmount - runningTotal;
+            }
+            else
+            {
+                amountInPayment = Math.Round(m.IndividualAmount * installmentAmount / baseTotalAmount, 2);
+                runningTotal += amountInPayment;
+            }
+
+            lines.Add(new PaymentConceptLine(
+                $"{m.FamilyMember.FirstName} {m.FamilyMember.LastName}",
+                MapAgeCategory(m.AgeCategory),
+                MapAttendancePeriod(m.AttendancePeriod),
+                m.IndividualAmount,
+                amountInPayment,
+                percentage));
+        }
+
+        return JsonSerializer.Serialize(new PaymentConceptLinesJson(lines, null));
+    }
+
+    internal static string SerializeExtrasConceptLines(ICollection<RegistrationExtra> extras)
+    {
+        var lines = extras.Select(e => new PaymentExtraConceptLine(
+            e.CampEditionExtra.Name,
+            e.Quantity,
+            e.UnitPrice,
+            e.TotalAmount,
+            e.UserInput,
+            e.CampEditionExtra.PricingType.ToString()
+        )).ToList();
+
+        return JsonSerializer.Serialize(new PaymentConceptLinesJson(null, lines));
+    }
+
+    private static string MapAgeCategory(AgeCategory category) => category switch
+    {
+        AgeCategory.Baby => "Bebé",
+        AgeCategory.Child => "Niño",
+        AgeCategory.Adult => "Adulto",
+        _ => category.ToString()
+    };
+
+    private static string MapAttendancePeriod(AttendancePeriod period) => period switch
+    {
+        AttendancePeriod.Complete => "Completo",
+        AttendancePeriod.FirstWeek => "1ª Semana",
+        AttendancePeriod.SecondWeek => "2ª Semana",
+        AttendancePeriod.WeekendVisit => "Fin de semana",
+        _ => period.ToString()
+    };
 
     private static string NormalizeName(string name)
     {
@@ -390,6 +487,7 @@ public class PaymentsService(
 
                 p3.Amount = extrasAmount;
                 p3.DueDate = dueDate;
+                p3.ConceptLinesSerialized = SerializeExtrasConceptLines(registration.Extras);
                 p3.UpdatedAt = DateTime.UtcNow;
                 await paymentsRepo.UpdateAsync(p3, ct);
             }
@@ -410,6 +508,7 @@ public class PaymentsService(
                     InstallmentNumber = 3,
                     DueDate = dueDate,
                     TransferConcept = concept,
+                    ConceptLinesSerialized = SerializeExtrasConceptLines(registration.Extras),
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -455,12 +554,20 @@ public class PaymentsService(
             throw new BusinessRuleException(
                 "No se pueden modificar los miembros porque el primer pago tiene un justificante en revisión.");
 
+        // Load registration with members for concept line regeneration
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
         if (p1.Status == PaymentStatus.Pending)
         {
             var newP1 = Math.Ceiling(newBaseTotalAmount / 2m);
             var newP2 = newBaseTotalAmount - newP1;
             p1.Amount = newP1;
+            p1.ConceptLinesSerialized = SerializeBaseConceptLines(
+                registration.Members, newP1, newBaseTotalAmount);
             p2.Amount = newP2;
+            p2.ConceptLinesSerialized = SerializeBaseConceptLines(
+                registration.Members, newP2, newBaseTotalAmount);
             await paymentsRepo.UpdateAsync(p1, ct);
             await paymentsRepo.UpdateAsync(p2, ct);
 
@@ -480,6 +587,8 @@ public class PaymentsService(
                     "El cambio en los miembros haría que el segundo plazo fuera negativo o cero. Contacta al administrador.");
 
             p2.Amount += delta;
+            p2.ConceptLinesSerialized = SerializeBaseConceptLines(
+                registration.Members, p2.Amount, newBaseTotalAmount);
             await paymentsRepo.UpdateAsync(p2, ct);
 
             logger.LogInformation(

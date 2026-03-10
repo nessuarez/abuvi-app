@@ -288,12 +288,12 @@ public class RegistrationsService(
         // 7-8. Recalculate and update
         var oldBaseTotalAmount = registration.BaseTotalAmount;
         var baseTotalAmount = newMembers.Sum(m => m.IndividualAmount);
-        registration.Members = newMembers;
         registration.BaseTotalAmount = baseTotalAmount;
         registration.TotalAmount = baseTotalAmount + registration.ExtrasAmount;
 
-        // 9. Save
+        // 9. Save registration scalars, then add new members separately
         await registrationsRepo.UpdateAsync(registration, ct);
+        await registrationsRepo.AddMembersAsync(newMembers, ct);
 
         // 10. Sync P1/P2 installments to reflect new base total
         await paymentsService.SyncBaseInstallmentsAsync(
@@ -720,7 +720,7 @@ public class RegistrationsService(
                 });
             }
 
-            registration.Members = newMembers;
+            await registrationsRepo.AddMembersAsync(newMembers, ct);
             registration.BaseTotalAmount = newMembers.Sum(m => m.IndividualAmount);
             registration.TotalAmount = registration.BaseTotalAmount + registration.ExtrasAmount;
         }

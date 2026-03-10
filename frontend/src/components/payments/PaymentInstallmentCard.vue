@@ -2,6 +2,7 @@
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import PaymentStatusBadge from './PaymentStatusBadge.vue'
+import PaymentConceptLines from './PaymentConceptLines.vue'
 import ProofUploader from './ProofUploader.vue'
 import type { PaymentResponse } from '@/types/payment'
 import { parseDateSafe } from '@/utils/date'
@@ -91,6 +92,12 @@ const handleProofUpdated = (updated: PaymentResponse) => {
         </div>
       </div>
     </div>
+
+    <!-- Concept lines breakdown -->
+    <PaymentConceptLines
+      :concept-lines="payment.conceptLines"
+      :extra-concept-lines="payment.extraConceptLines"
+    />
 
     <!-- Proof upload area -->
     <div v-if="showUpload" class="border-t border-gray-100 pt-3">

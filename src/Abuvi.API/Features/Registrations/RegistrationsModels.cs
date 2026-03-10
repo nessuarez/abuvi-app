@@ -98,6 +98,7 @@ public class Payment
     public string? ProofFileName { get; set; }
     public DateTime? ProofUploadedAt { get; set; }
     public string? AdminNotes { get; set; }
+    public string? ConceptLinesSerialized { get; set; }
     public Guid? ConfirmedByUserId { get; set; }
     public DateTime? ConfirmedAt { get; set; }
     public DateTime CreatedAt { get; set; }

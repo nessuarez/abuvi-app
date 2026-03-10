@@ -2,6 +2,31 @@ using Abuvi.API.Features.Registrations;
 
 namespace Abuvi.API.Features.Payments;
 
+// --- Concept line records (serialized as JSON in Payment.ConceptLinesSerialized) ---
+
+public record PaymentConceptLine(
+    string PersonFullName,
+    string AgeCategory,
+    string AttendancePeriod,
+    decimal IndividualAmount,
+    decimal AmountInPayment,
+    decimal Percentage
+);
+
+public record PaymentExtraConceptLine(
+    string ExtraName,
+    int Quantity,
+    decimal UnitPrice,
+    decimal TotalAmount,
+    string? UserInput,
+    string PricingType
+);
+
+public record PaymentConceptLinesJson(
+    List<PaymentConceptLine>? MemberLines,
+    List<PaymentExtraConceptLine>? ExtraLines
+);
+
 // --- User-facing response ---
 public record PaymentResponse(
     Guid Id,
@@ -16,7 +41,9 @@ public record PaymentResponse(
     string? ProofFileName,
     DateTime? ProofUploadedAt,
     string? AdminNotes,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    List<PaymentConceptLine>? ConceptLines = null,
+    List<PaymentExtraConceptLine>? ExtraConceptLines = null
 );
 
 // --- Admin-facing response (extends with context) ---
@@ -36,7 +63,9 @@ public record AdminPaymentResponse(
     string? AdminNotes,
     string? ConfirmedByUserName,
     DateTime? ConfirmedAt,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    List<PaymentConceptLine>? ConceptLines = null,
+    List<PaymentExtraConceptLine>? ExtraConceptLines = null
 );
 
 // --- Requests ---
