@@ -69,9 +69,11 @@ export function getWarningMessage(warnings: MemberDataWarning): string {
 **File**: `frontend/src/components/family-units/FamilyMemberList.vue`
 
 **Changes**:
+
 - Import `getMemberDataWarnings`, `getWarningMessage` from `@/utils/member-validation`
 - In the `membersWithAge` computed, add a `warnings` property to each member using `getMemberDataWarnings(member, age >= 18)`
 - In the Name column template (`<Column field="firstName">`), after the name `<div>`, add:
+
   ```vue
   <i
     v-if="data.warnings"
@@ -79,6 +81,7 @@ export function getWarningMessage(warnings: MemberDataWarning): string {
     v-tooltip.top="getWarningMessage(data.warnings)"
   />
   ```
+
 - Add a new `Message` component (severity `warn`) below the DataTable when any member has warnings, encouraging users to complete data. Text example:
   > "Algunos miembros adultos tienen datos incompletos (DNI, email o fecha de nacimiento). Estos datos son necesarios para la inscripción oficial en el campamento por motivos legales y de seguro. Por favor, asegúrate de que cada nombre, apellido, DNI y email sea correcto y no esté repetido."
 
@@ -87,11 +90,13 @@ export function getWarningMessage(warnings: MemberDataWarning): string {
 **File**: `frontend/src/components/registrations/RegistrationMemberSelector.vue`
 
 **Changes**:
+
 - Import `getMemberDataWarnings`, `getWarningMessage` from `@/utils/member-validation`
 - Import `Message` from `primevue/message`
 - Import `RouterLink` from `vue-router` (or use `router.push`)
 - Add `isMinor` already exists in the component — reuse it
 - In each member card, after the name `<span>`, add the warning icon:
+
   ```vue
   <i
     v-if="getMemberWarnings(member)"
@@ -99,8 +104,10 @@ export function getWarningMessage(warnings: MemberDataWarning): string {
     v-tooltip.top="getWarningMessage(getMemberWarnings(member)!)"
   />
   ```
+
   Where `getMemberWarnings` is a helper method calling `getMemberDataWarnings(member, !isMinor(member))`
 - **Above the member grid** (`<div class="grid ...">`) add a conditional `Message` banner:
+
   ```vue
   <Message v-if="hasIncompleteSelectedMembers" severity="warn" :closable="false">
     Algunos miembros tienen datos incompletos (DNI, email o fecha de nacimiento) que son necesarios
@@ -110,6 +117,7 @@ export function getWarningMessage(warnings: MemberDataWarning): string {
     </RouterLink>
   </Message>
   ```
+
   Where `hasIncompleteSelectedMembers` is a computed that checks if any selected adult member has warnings.
 
 #### 4. Verify the family unit page route
