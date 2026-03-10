@@ -66,6 +66,26 @@ const isRepresentative = computed(
   () => !!familyUnit.value && familyUnit.value.representativeUserId === auth.user?.id
 )
 
+const canGoBack = computed(
+  () => currentStep.value > 1 && currentStep.value !== paymentStepValue.value
+)
+const canGoForward = computed(() => {
+  if (currentStep.value === 1) return canProceedFromStep1.value
+  if (currentStep.value === confirmStepValue.value || currentStep.value === paymentStepValue.value) return false
+  return true
+})
+const goBack = () => {
+  if (currentStep.value === 2) currentStep.value = 1
+  else if (currentStep.value === accommodationStepValue) currentStep.value = 2
+  else if (currentStep.value === confirmStepValue.value)
+    currentStep.value = hasActiveAccommodations.value ? accommodationStepValue : 2
+}
+const goForward = () => {
+  if (currentStep.value === 1) currentStep.value = 2
+  else if (currentStep.value === 2) currentStep.value = stepAfterExtras.value
+  else if (currentStep.value === accommodationStepValue) currentStep.value = confirmStepValue.value
+}
+
 // FamilyMemberResponse objects for the selected wizard members
 const selectedMemberDetails = computed(() =>
   familyMembers.value.filter((m) => selectedMembers.value.some((s) => s.memberId === m.id))
@@ -230,12 +250,32 @@ onMounted(async () => {
         <div class="mb-6 flex items-center gap-3">
           <Button icon="pi pi-arrow-left" severity="secondary" text @click="router.push({ name: 'camp' })"
             aria-label="Volver" />
-          <div>
+          <div class="flex-1">
             <h1 class="text-2xl font-bold text-gray-900">Nueva inscripción</h1>
             <p v-if="edition" class="text-sm text-gray-500">
               {{ edition.name ?? 'Campamento' }} {{ edition.year }} ·
               {{ formatDate(edition.startDate) }} — {{ formatDate(edition.endDate) }}
             </p>
+          </div>
+          <div class="flex items-center gap-1">
+            <Button
+              icon="pi pi-arrow-left"
+              severity="secondary"
+              text
+              rounded
+              :disabled="!canGoBack"
+              aria-label="Paso anterior"
+              @click="goBack"
+            />
+            <Button
+              icon="pi pi-arrow-right"
+              severity="secondary"
+              text
+              rounded
+              :disabled="!canGoForward"
+              aria-label="Paso siguiente"
+              @click="goForward"
+            />
           </div>
         </div>
 
