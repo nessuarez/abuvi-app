@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import Checkbox from 'primevue/checkbox'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
+import Message from 'primevue/message'
 import DateInput from '@/components/shared/DateInput.vue'
 
 import type { FamilyMemberResponse, FamilyRelationship } from '@/types/family-unit'
@@ -11,6 +13,7 @@ import type { CampEdition } from '@/types/camp-edition'
 import type { WizardMemberSelection, AttendancePeriod } from '@/types/registration'
 import { ATTENDANCE_PERIOD_LABELS, getAllowedPeriods } from '@/utils/registration'
 import { formatDateLocal, parseDateLocal } from '@/utils/date'
+import { getMemberDataWarnings, getWarningMessage } from '@/utils/member-validation'
 
 const props = defineProps<{
   members: FamilyMemberResponse[]
@@ -231,9 +234,29 @@ const firstSelectedAdult = computed(() => {
 
 const relationshipLabel = (rel: FamilyRelationship): string =>
   FamilyRelationshipLabels[rel] ?? rel
+
+const getMemberWarnings = (member: FamilyMemberResponse) =>
+  getMemberDataWarnings(member, !isMinor(member))
+
+const hasIncompleteSelectedMembers = computed(() =>
+  props.modelValue.some((sel) => {
+    const member = props.members.find((m) => m.id === sel.memberId)
+    return member && getMemberWarnings(member) !== null
+  })
+)
 </script>
 
 <template>
+  <Message v-if="hasIncompleteSelectedMembers" severity="warn" :closable="false" class="mb-3"
+    data-testid="incomplete-data-banner">
+    Algunos miembros tienen datos incompletos (DNI, email o fecha de nacimiento)
+    necesarios para la inscripción oficial por motivos legales y de seguro.
+    Por favor, asegúrate de que los datos sean correctos y no se repitan.
+    <RouterLink to="/family-unit" class="font-semibold underline ml-1">
+      Actualizar datos de la familia
+    </RouterLink>
+  </Message>
+
   <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
     <div v-for="member in members" :key="member.id"
       class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 transition hover:border-blue-300 hover:bg-blue-50"
@@ -249,6 +272,13 @@ const relationshipLabel = (rel: FamilyRelationship): string =>
           <span class="font-medium text-gray-900">
             {{ member.firstName }} {{ member.lastName }}
           </span>
+          <i
+            v-if="getMemberWarnings(member)"
+            class="pi pi-exclamation-triangle text-orange-500"
+            v-tooltip.top="getWarningMessage(getMemberWarnings(member)!)"
+            data-testid="member-warning-icon"
+            @click.stop
+          />
         </div>
         <p class="mt-0.5 text-xs text-gray-500">
           {{ relationshipLabel(member.relationship) }} · {{ formatDate(member.dateOfBirth) }}

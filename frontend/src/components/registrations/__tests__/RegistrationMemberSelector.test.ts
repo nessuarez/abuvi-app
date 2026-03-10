@@ -97,6 +97,23 @@ const mockEditionWithPeriods = {
   weekendEndDate: '2025-07-07'
 } as unknown as CampEdition
 
+const completeAdultMember: FamilyMemberResponse = {
+  id: 'member-complete',
+  familyUnitId: 'fu-1',
+  userId: null,
+  firstName: 'Carlos',
+  lastName: 'López',
+  dateOfBirth: '1985-03-20',
+  relationship: FamilyRelationship.Parent,
+  documentNumber: '99999999Z',
+  email: 'carlos@example.com',
+  phone: '+34612345678',
+  hasMedicalNotes: false,
+  hasAllergies: false,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z'
+}
+
 const mountComponent = (
   modelValue: WizardMemberSelection[] = [],
   edition: CampEdition = mockEditionComplete,
@@ -104,7 +121,7 @@ const mountComponent = (
 ) =>
   mount(RegistrationMemberSelector, {
     props: { members, modelValue, edition },
-    global: { plugins: [PrimeVue] }
+    global: { plugins: [PrimeVue], stubs: { RouterLink: true } }
   })
 
 describe('RegistrationMemberSelector', () => {
@@ -415,6 +432,57 @@ describe('RegistrationMemberSelector', () => {
       expect(minor2!.guardianDocumentNumber).toBe('12345678A')
       expect(minor4!.guardianName).toBe('Juan García')
       expect(minor4!.guardianDocumentNumber).toBe('12345678A')
+    })
+  })
+
+  describe('data completeness warnings', () => {
+    it('should show warning icon for adult member missing email', () => {
+      // mockMembers[0] (Juan García) is adult with email: null
+      const wrapper = mountComponent([], mockEditionComplete, mockMembers)
+      const icons = wrapper.findAll('[data-testid="member-warning-icon"]')
+      expect(icons.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('should not show warning icon for minor member missing DNI and email', () => {
+      // Only a minor with no DNI/email — should not show warning
+      const wrapper = mountComponent([], mockEditionComplete, [mockMembers[1]])
+      expect(wrapper.find('[data-testid="member-warning-icon"]').exists()).toBe(false)
+    })
+
+    it('should not show warning icon for adult with complete data', () => {
+      const wrapper = mountComponent([], mockEditionComplete, [completeAdultMember])
+      expect(wrapper.find('[data-testid="member-warning-icon"]').exists()).toBe(false)
+    })
+
+    it('should show incomplete data banner when a selected adult has missing data', () => {
+      const selected: WizardMemberSelection[] = [
+        { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
+      ]
+      const wrapper = mountComponent(selected, mockEditionComplete, mockMembers)
+      expect(wrapper.find('[data-testid="incomplete-data-banner"]').exists()).toBe(true)
+    })
+
+    it('should not show incomplete data banner when no members are selected', () => {
+      const wrapper = mountComponent([], mockEditionComplete, mockMembers)
+      expect(wrapper.find('[data-testid="incomplete-data-banner"]').exists()).toBe(false)
+    })
+
+    it('should not show incomplete data banner when selected adults have complete data', () => {
+      const selected: WizardMemberSelection[] = [
+        { memberId: 'member-complete', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
+      ]
+      const wrapper = mountComponent(selected, mockEditionComplete, [completeAdultMember])
+      expect(wrapper.find('[data-testid="incomplete-data-banner"]').exists()).toBe(false)
+    })
+
+    it('should contain link to family unit page in the banner', () => {
+      const selected: WizardMemberSelection[] = [
+        { memberId: 'member-1', attendancePeriod: 'Complete', visitStartDate: null, visitEndDate: null, guardianName: null, guardianDocumentNumber: null }
+      ]
+      const wrapper = mountComponent(selected, mockEditionComplete, mockMembers)
+      const link = wrapper.find('[data-testid="incomplete-data-banner"] router-link-stub')
+      expect(link.exists()).toBe(true)
+      expect(link.attributes('to')).toBe('/family-unit')
     })
   })
 })

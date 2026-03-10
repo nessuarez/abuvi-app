@@ -40,6 +40,42 @@ const mockMember: FamilyMemberResponse = {
   updatedAt: '2026-01-01T00:00:00Z',
 }
 
+const completeMember: FamilyMemberResponse = {
+  id: 'member-2',
+  familyUnitId: 'unit-1',
+  firstName: 'Carlos',
+  lastName: 'López',
+  dateOfBirth: '1985-03-20',
+  relationship: FamilyRelationship.Parent,
+  documentNumber: '12345678A',
+  email: 'carlos@example.com',
+  phone: '+34612345678',
+  hasMedicalNotes: false,
+  hasAllergies: false,
+  profilePhotoUrl: null,
+  userId: null,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+}
+
+const minorMember: FamilyMemberResponse = {
+  id: 'member-3',
+  familyUnitId: 'unit-1',
+  firstName: 'Lucía',
+  lastName: 'García',
+  dateOfBirth: '2015-08-10',
+  relationship: FamilyRelationship.Child,
+  documentNumber: null,
+  email: null,
+  phone: null,
+  hasMedicalNotes: false,
+  hasAllergies: false,
+  profilePhotoUrl: null,
+  userId: null,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+}
+
 const globalConfig = {
   plugins: [[PrimeVue, { unstyled: true }]] as [unknown],
   directives: { tooltip: Tooltip },
@@ -83,5 +119,55 @@ describe('FamilyMemberList — manageMembership', () => {
       firstName: 'Ana',
       lastName: 'García',
     })
+  })
+})
+
+describe('FamilyMemberList — data completeness warnings', () => {
+  it('shows warning icon for adult member missing DNI and email', () => {
+    const wrapper = mount(FamilyMemberList, {
+      props: { members: [mockMember], loading: false },
+      global: globalConfig,
+    })
+    expect(wrapper.find('[data-testid="member-warning-icon"]').exists()).toBe(true)
+  })
+
+  it('does not show warning icon for adult member with complete data', () => {
+    const wrapper = mount(FamilyMemberList, {
+      props: { members: [completeMember], loading: false },
+      global: globalConfig,
+    })
+    expect(wrapper.find('[data-testid="member-warning-icon"]').exists()).toBe(false)
+  })
+
+  it('does not show warning icon for minor member missing DNI and email', () => {
+    const wrapper = mount(FamilyMemberList, {
+      props: { members: [minorMember], loading: false },
+      global: globalConfig,
+    })
+    expect(wrapper.find('[data-testid="member-warning-icon"]').exists()).toBe(false)
+  })
+
+  it('shows warning banner when any member has incomplete data', () => {
+    const wrapper = mount(FamilyMemberList, {
+      props: { members: [mockMember], loading: false },
+      global: globalConfig,
+    })
+    expect(wrapper.find('[data-testid="member-warnings-banner"]').exists()).toBe(true)
+  })
+
+  it('does not show warning banner when all members have complete data', () => {
+    const wrapper = mount(FamilyMemberList, {
+      props: { members: [completeMember], loading: false },
+      global: globalConfig,
+    })
+    expect(wrapper.find('[data-testid="member-warnings-banner"]').exists()).toBe(false)
+  })
+
+  it('does not show warning banner in readOnly mode', () => {
+    const wrapper = mount(FamilyMemberList, {
+      props: { members: [mockMember], loading: false, readOnly: true },
+      global: globalConfig,
+    })
+    expect(wrapper.find('[data-testid="member-warnings-banner"]').exists()).toBe(false)
   })
 })
