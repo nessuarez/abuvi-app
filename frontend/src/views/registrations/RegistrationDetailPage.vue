@@ -118,16 +118,6 @@ const sortedInstallments = computed(() =>
   [...installments.value].sort((a, b) => a.installmentNumber - b.installmentNumber)
 )
 
-const isPaymentLocked = (payment: PaymentResponse, index: number): boolean => {
-  // If backend provides isActionable, defer to it
-  if (payment.isActionable !== undefined) return false
-  // First payment is never locked
-  if (index === 0) return false
-  // Locked if any previous payment is not Completed
-  const previous = sortedInstallments.value.slice(0, index)
-  return previous.some((p) => p.status !== 'Completed')
-}
-
 const installmentLabel = (payment: PaymentResponse): string => {
   if (payment.isManual && payment.manualConceptLine) {
     return payment.manualConceptLine.description
@@ -554,7 +544,7 @@ onMounted(async () => {
 
           <!-- Installment cards -->
           <div v-if="sortedInstallments.length > 0" class="space-y-4">
-            <div v-for="(payment, idx) in sortedInstallments" :key="payment.id">
+            <div v-for="payment in sortedInstallments" :key="payment.id">
               <p
                 v-if="payment.installmentNumber === 3 || payment.isManual"
                 class="mb-1 text-xs font-medium"
@@ -564,7 +554,6 @@ onMounted(async () => {
               </p>
               <PaymentInstallmentCard
                 :payment="payment"
-                :locked="isPaymentLocked(payment, idx)"
                 @updated="handleInstallmentUpdated"
               />
             </div>
