@@ -18,6 +18,11 @@ export interface PaymentExtraConceptLine {
   pricingType: string
 }
 
+export interface ManualPaymentConceptLine {
+  description: string
+  amount: number
+}
+
 export interface PaymentResponse {
   id: string
   registrationId: string
@@ -32,8 +37,11 @@ export interface PaymentResponse {
   proofUploadedAt: string | null
   adminNotes: string | null
   createdAt: string
+  isActionable: boolean
+  isManual: boolean
   conceptLines: PaymentConceptLine[] | null
   extraConceptLines: PaymentExtraConceptLine[] | null
+  manualConceptLine: ManualPaymentConceptLine | null
 }
 
 export interface AdminPaymentResponse extends PaymentResponse {
@@ -75,4 +83,18 @@ export interface AdminPaymentsPagedResponse {
   totalCount: number
   page: number
   pageSize: number
+}
+
+export interface CreateManualPaymentRequest {
+  amount: number
+  description: string
+  dueDate?: string | null
+  adminNotes?: string | null
+}
+
+export interface UpdateManualPaymentRequest {
+  amount?: number | null
+  description?: string | null
+  dueDate?: string | null
+  adminNotes?: string | null
 }

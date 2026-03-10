@@ -14,6 +14,7 @@ import RegistrationCancelDialog from '@/components/registrations/RegistrationCan
 import RegistrationDeleteDialog from '@/components/registrations/RegistrationDeleteDialog.vue'
 import BankTransferInstructions from '@/components/payments/BankTransferInstructions.vue'
 import PaymentInstallmentCard from '@/components/payments/PaymentInstallmentCard.vue'
+import ManualPaymentDialog from '@/components/admin/ManualPaymentDialog.vue'
 import { useRegistrations } from '@/composables/useRegistrations'
 import { usePayments } from '@/composables/usePayments'
 import { useFamilyUnits } from '@/composables/useFamilyUnits'
@@ -54,6 +55,7 @@ const showCancelDialog = ref(false)
 const cancelling = ref(false)
 const showDeleteDialog = ref(false)
 const deleting = ref(false)
+const showManualPaymentDialog = ref(false)
 const installments = ref<PaymentResponse[]>([])
 const paymentSettingsData = ref<PaymentSettings | null>(null)
 const accommodationPrefs = ref<AccommodationPreferenceResponse[]>([])
@@ -116,8 +118,11 @@ const sortedInstallments = computed(() =>
   [...installments.value].sort((a, b) => a.installmentNumber - b.installmentNumber)
 )
 
-const installmentLabel = (installmentNumber: number): string => {
-  switch (installmentNumber) {
+const installmentLabel = (payment: PaymentResponse): string => {
+  if (payment.isManual && payment.manualConceptLine) {
+    return payment.manualConceptLine.description
+  }
+  switch (payment.installmentNumber) {
     case 1:
       return 'Primer pago'
     case 2:
@@ -125,7 +130,7 @@ const installmentLabel = (installmentNumber: number): string => {
     case 3:
       return 'Pago de extras'
     default:
-      return `Plazo ${installmentNumber}`
+      return `Plazo ${payment.installmentNumber}`
   }
 }
 
@@ -301,6 +306,17 @@ const handleDelete = async () => {
 const handleInstallmentUpdated = (updated: PaymentResponse) => {
   const index = installments.value.findIndex((p) => p.id === updated.id)
   if (index !== -1) installments.value[index] = updated
+}
+
+const handleManualPaymentCreated = async () => {
+  await refreshInstallments()
+  await getRegistrationById(registrationId.value)
+  toast.add({
+    severity: 'success',
+    summary: 'Pago manual creado',
+    detail: 'Se ha añadido un nuevo pago a la inscripción.',
+    life: 3000
+  })
 }
 
 onMounted(async () => {
@@ -503,7 +519,18 @@ onMounted(async () => {
 
         <!-- Payments -->
         <div class="mb-6">
-          <h2 class="mb-3 text-base font-semibold text-gray-900">Pagos</h2>
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-base font-semibold text-gray-900">Pagos</h2>
+            <Button
+              v-if="isAdminOrBoard"
+              label="Añadir pago manual"
+              icon="pi pi-plus"
+              size="small"
+              severity="secondary"
+              outlined
+              @click="showManualPaymentDialog = true"
+            />
+          </div>
 
           <!-- Bank transfer instructions (collapsible) -->
           <div v-if="paymentSettingsData" class="mb-4">
@@ -519,10 +546,11 @@ onMounted(async () => {
           <div v-if="sortedInstallments.length > 0" class="space-y-4">
             <div v-for="payment in sortedInstallments" :key="payment.id">
               <p
-                v-if="payment.installmentNumber === 3"
-                class="mb-1 text-xs font-medium text-purple-600"
+                v-if="payment.installmentNumber === 3 || payment.isManual"
+                class="mb-1 text-xs font-medium"
+                :class="payment.isManual ? 'text-purple-600' : 'text-purple-600'"
               >
-                {{ installmentLabel(payment.installmentNumber) }}
+                {{ installmentLabel(payment) }}
               </p>
               <PaymentInstallmentCard
                 :payment="payment"
@@ -584,6 +612,14 @@ onMounted(async () => {
           v-model:visible="showDeleteDialog"
           :loading="deleting"
           @confirm="handleDelete"
+        />
+
+        <ManualPaymentDialog
+          v-if="registration"
+          v-model:visible="showManualPaymentDialog"
+          :registration-id="registrationId"
+          :family-unit-name="registration.familyUnit.name"
+          @created="handleManualPaymentCreated"
         />
       </template>
     </div>
