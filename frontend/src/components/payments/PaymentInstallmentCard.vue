@@ -12,8 +12,9 @@ const props = withDefaults(
   defineProps<{
     payment: PaymentResponse
     showUpload?: boolean
+    locked?: boolean
   }>(),
-  { showUpload: true }
+  { showUpload: true, locked: false }
 )
 
 const emit = defineEmits<{
@@ -22,7 +23,13 @@ const emit = defineEmits<{
 
 const toast = useToast()
 
-const isLocked = computed(() => !props.payment.isActionable && props.payment.status === 'Pending')
+const isLocked = computed(() => {
+  // Use backend isActionable if available, otherwise fall back to parent-provided locked prop
+  if (props.payment.isActionable !== undefined) {
+    return !props.payment.isActionable && props.payment.status === 'Pending'
+  }
+  return props.locked && props.payment.status === 'Pending'
+})
 
 const installmentTitle = computed(() => {
   if (props.payment.isManual && props.payment.manualConceptLine) {
@@ -137,7 +144,7 @@ const handleProofUpdated = (updated: PaymentResponse) => {
         :proof-uploaded-at="payment.proofUploadedAt"
         :status="payment.status"
         :admin-notes="payment.adminNotes"
-        :disabled="!payment.isActionable"
+        :disabled="isLocked"
         @uploaded="handleProofUpdated"
         @removed="handleProofUpdated"
       />

@@ -52,6 +52,11 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .HasColumnType("text")
             .IsRequired(false);
 
+        builder.Property(p => p.IsManual)
+            .HasColumnName("is_manual")
+            .IsRequired()
+            .HasDefaultValue(false);
+
         builder.Property(p => p.ConfirmedByUserId)
             .HasColumnName("confirmed_by_user_id");
 
