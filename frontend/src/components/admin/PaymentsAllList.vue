@@ -8,6 +8,7 @@ import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import PaymentStatusBadge from '@/components/payments/PaymentStatusBadge.vue'
+import PaymentConceptLines from '@/components/payments/PaymentConceptLines.vue'
 import { usePayments } from '@/composables/usePayments'
 import { useCampEditions } from '@/composables/useCampEditions'
 import type { AdminPaymentResponse, PaymentFilterParams } from '@/types/payment'
@@ -20,6 +21,7 @@ const { allEditions, fetchAllEditions } = useCampEditions()
 const payments = ref<AdminPaymentResponse[]>([])
 const totalRecords = ref(0)
 const initialLoading = ref(true)
+const expandedRows = ref<AdminPaymentResponse[]>([])
 
 // Filters
 const selectedStatus = ref<PaymentStatus | null>(null)
@@ -145,6 +147,7 @@ onMounted(async () => {
 
     <DataTable
       v-else
+      v-model:expanded-rows="expandedRows"
       :value="payments"
       :loading="loading"
       lazy
@@ -154,8 +157,10 @@ onMounted(async () => {
       :rows-per-page-options="[10, 20, 50]"
       striped-rows
       size="small"
+      data-key="id"
       @page="onPageChange"
     >
+      <Column expander style="width: 2rem" />
       <Column field="familyUnitName" header="Familia" />
       <Column field="campEditionName" header="Edición" />
       <Column field="installmentNumber" header="Plazo" style="width: 4rem">
@@ -198,6 +203,14 @@ onMounted(async () => {
       <Column field="createdAt" header="Fecha" style="width: 7rem">
         <template #body="{ data }">{{ formatDate(data.createdAt) }}</template>
       </Column>
+      <template #expansion="{ data }">
+        <div class="p-3">
+          <PaymentConceptLines
+            :concept-lines="data.conceptLines"
+            :extra-concept-lines="data.extraConceptLines"
+          />
+        </div>
+      </template>
     </DataTable>
 
     <Message v-if="error" severity="error" :closable="false" class="mt-4">

@@ -7,6 +7,7 @@ import Textarea from 'primevue/textarea'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import PaymentStatusBadge from '@/components/payments/PaymentStatusBadge.vue'
+import PaymentConceptLines from '@/components/payments/PaymentConceptLines.vue'
 import { usePayments } from '@/composables/usePayments'
 import type { AdminPaymentResponse } from '@/types/payment'
 
@@ -157,6 +158,12 @@ onMounted(async () => {
             </a>
           </div>
         </div>
+
+        <!-- Concept lines -->
+        <PaymentConceptLines
+          :concept-lines="payment.conceptLines"
+          :extra-concept-lines="payment.extraConceptLines"
+        />
 
         <!-- Actions -->
         <div class="mt-3 flex justify-end gap-2 border-t border-gray-100 pt-3">

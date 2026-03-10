@@ -31,6 +31,8 @@ const makePayment = (overrides: Partial<PaymentResponse> = {}): PaymentResponse 
   proofUploadedAt: null,
   adminNotes: null,
   createdAt: '2026-03-06T00:00:00Z',
+  conceptLines: null,
+  extraConceptLines: null,
   ...overrides
 })
 
@@ -65,5 +67,28 @@ describe('PaymentInstallmentCard', () => {
   it('shows "Inmediato" when dueDate is null', () => {
     const wrapper = mount(makePayment({ dueDate: null }))
     expect(wrapper.text()).toContain('Inmediato')
+  })
+
+  it('renders PaymentConceptLines when concept data is present', () => {
+    const wrapper = mount(
+      makePayment({
+        conceptLines: [
+          {
+            personFullName: 'Test Person',
+            ageCategory: 'Adulto',
+            attendancePeriod: 'Completo',
+            individualAmount: 500,
+            amountInPayment: 250,
+            percentage: 50
+          }
+        ]
+      })
+    )
+    expect(wrapper.findComponent({ name: 'PaymentConceptLines' }).exists()).toBe(true)
+  })
+
+  it('renders PaymentConceptLines even when concept data is null', () => {
+    const wrapper = mount(makePayment())
+    expect(wrapper.findComponent({ name: 'PaymentConceptLines' }).exists()).toBe(true)
   })
 })
