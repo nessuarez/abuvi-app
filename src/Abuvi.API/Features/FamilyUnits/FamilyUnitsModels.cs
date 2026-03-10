@@ -51,6 +51,12 @@ public enum FamilyRelationship
     Child,
     Sibling,
     Spouse,
+    Grandparent,
+    Grandchild,
+    UncleAunt,
+    NephewNiece,
+    Cousin,
+    InLaw,
     Other
 }
 
