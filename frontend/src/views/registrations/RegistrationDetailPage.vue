@@ -8,14 +8,28 @@ import Button from 'primevue/button'
 import Container from '@/components/ui/Container.vue'
 import RegistrationStatusBadge from '@/components/registrations/RegistrationStatusBadge.vue'
 import RegistrationPricingBreakdown from '@/components/registrations/RegistrationPricingBreakdown.vue'
+import RegistrationMemberSelector from '@/components/registrations/RegistrationMemberSelector.vue'
+import RegistrationExtrasSelector from '@/components/registrations/RegistrationExtrasSelector.vue'
 import RegistrationCancelDialog from '@/components/registrations/RegistrationCancelDialog.vue'
 import RegistrationDeleteDialog from '@/components/registrations/RegistrationDeleteDialog.vue'
 import BankTransferInstructions from '@/components/payments/BankTransferInstructions.vue'
 import PaymentInstallmentCard from '@/components/payments/PaymentInstallmentCard.vue'
+import ManualPaymentDialog from '@/components/admin/ManualPaymentDialog.vue'
 import { useRegistrations } from '@/composables/useRegistrations'
 import { usePayments } from '@/composables/usePayments'
+import { useFamilyUnits } from '@/composables/useFamilyUnits'
+import { useCampEditions } from '@/composables/useCampEditions'
 import { useAuthStore } from '@/stores/auth'
+import { api } from '@/utils/api'
 import type { PaymentResponse, PaymentSettings } from '@/types/payment'
+import type {
+  AccommodationPreferenceResponse,
+  WizardMemberSelection,
+  WizardExtrasSelection
+} from '@/types/registration'
+import type { AccommodationType, CampEdition, CampEditionExtra } from '@/types/camp-edition'
+import type { FamilyMemberResponse } from '@/types/family-unit'
+import type { ApiResponse } from '@/types/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -27,22 +41,38 @@ const {
   loading,
   error,
   getRegistrationById,
+  updateMembers,
+  setExtras,
   cancelRegistration,
   deleteRegistration,
   getAccommodationPreferences
 } = useRegistrations()
 const { getRegistrationPayments, getPaymentSettings } = usePayments()
+const { getFamilyMembers } = useFamilyUnits()
+const { getEditionById } = useCampEditions()
+
 const showCancelDialog = ref(false)
 const cancelling = ref(false)
 const showDeleteDialog = ref(false)
 const deleting = ref(false)
+const showManualPaymentDialog = ref(false)
 const installments = ref<PaymentResponse[]>([])
 const paymentSettingsData = ref<PaymentSettings | null>(null)
-
-import type { AccommodationPreferenceResponse } from '@/types/registration'
-import type { AccommodationType } from '@/types/camp-edition'
-
 const accommodationPrefs = ref<AccommodationPreferenceResponse[]>([])
+
+// Edit mode state
+const isEditingMembers = ref(false)
+const isEditingExtras = ref(false)
+const savingMembers = ref(false)
+const savingExtras = ref(false)
+const loadingEditData = ref(false)
+
+// Data for edit mode (loaded on demand)
+const familyMembersData = ref<FamilyMemberResponse[]>([])
+const campEditionData = ref<CampEdition | null>(null)
+const campExtrasData = ref<CampEditionExtra[]>([])
+const memberSelections = ref<WizardMemberSelection[]>([])
+const extrasSelections = ref<WizardExtrasSelection[]>([])
 
 const ACCOMMODATION_TYPE_LABELS: Record<AccommodationType, string> = {
   Lodge: 'Refugio',
@@ -62,6 +92,14 @@ const isAdminOrBoard = computed(() => auth.isAdmin || auth.isBoard)
 
 const isDraft = computed(() => registration.value?.status === 'Draft')
 
+const canEdit = computed(() => {
+  if (!registration.value) return false
+  const status = registration.value.status
+  if (status !== 'Pending' && status !== 'Draft') return false
+  if (!isRepresentative.value) return false
+  return !installments.value.some((p) => p.proofFileUrl != null)
+})
+
 const canCancel = computed(
   () =>
     registration.value?.status === 'Pending' ||
@@ -76,6 +114,26 @@ const canDelete = computed(() => {
   return isRepresentative.value || isAdminOrBoard.value
 })
 
+const sortedInstallments = computed(() =>
+  [...installments.value].sort((a, b) => a.installmentNumber - b.installmentNumber)
+)
+
+const installmentLabel = (payment: PaymentResponse): string => {
+  if (payment.isManual && payment.manualConceptLine) {
+    return payment.manualConceptLine.description
+  }
+  switch (payment.installmentNumber) {
+    case 1:
+      return 'Primer pago'
+    case 2:
+      return 'Segundo pago'
+    case 3:
+      return 'Pago de extras'
+    default:
+      return `Plazo ${payment.installmentNumber}`
+  }
+}
+
 const formatDate = (dateStr: string): string =>
   new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(
     new Date(dateStr)
@@ -84,27 +142,126 @@ const formatDate = (dateStr: string): string =>
 const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
 
-const formatPaymentDate = (dateStr: string): string =>
-  new Intl.DateTimeFormat('es-ES', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(new Date(dateStr))
+// --- Edit mode helpers ---
 
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  Card: 'Tarjeta',
-  Transfer: 'Transferencia',
-  Cash: 'Efectivo'
+const loadEditData = async () => {
+  if (!registration.value || familyMembersData.value.length > 0) return
+  loadingEditData.value = true
+  try {
+    const familyUnitId = registration.value.familyUnit.id
+    const campEditionId = registration.value.campEdition.id
+
+    const [members, edition, extrasRes] = await Promise.all([
+      getFamilyMembers(familyUnitId),
+      getEditionById(campEditionId),
+      api.get<ApiResponse<CampEditionExtra[]>>(`/camps/editions/${campEditionId}/extras`, {
+        params: { activeOnly: true }
+      })
+    ])
+
+    familyMembersData.value = members
+    campEditionData.value = edition
+    campExtrasData.value = extrasRes.data.success ? (extrasRes.data.data ?? []) : []
+  } finally {
+    loadingEditData.value = false
+  }
 }
 
-const PAYMENT_STATUS_LABELS: Record<string, string> = {
-  Pending: 'Pendiente',
-  Completed: 'Completado',
-  Failed: 'Fallido',
-  Refunded: 'Reembolsado'
+const startEditingMembers = async () => {
+  await loadEditData()
+  if (!registration.value || !campEditionData.value) return
+  memberSelections.value = registration.value.pricing.members.map((m) => ({
+    memberId: m.familyMemberId,
+    attendancePeriod: m.attendancePeriod,
+    visitStartDate: m.visitStartDate ?? null,
+    visitEndDate: m.visitEndDate ?? null,
+    guardianName: m.guardianName ?? null,
+    guardianDocumentNumber: m.guardianDocumentNumber ?? null
+  }))
+  isEditingMembers.value = true
 }
+
+const startEditingExtras = async () => {
+  await loadEditData()
+  if (!registration.value) return
+  extrasSelections.value = registration.value.pricing.extras.map((e) => ({
+    campEditionExtraId: e.campEditionExtraId,
+    name: e.name,
+    quantity: e.quantity,
+    unitPrice: e.unitPrice,
+    userInput: e.userInput
+  }))
+  isEditingExtras.value = true
+}
+
+const refreshInstallments = async () => {
+  installments.value = await getRegistrationPayments(registrationId.value)
+}
+
+const handleSaveMembers = async () => {
+  savingMembers.value = true
+  const result = await updateMembers(registrationId.value, {
+    members: memberSelections.value.map((s) => ({
+      memberId: s.memberId,
+      attendancePeriod: s.attendancePeriod,
+      visitStartDate: s.visitStartDate,
+      visitEndDate: s.visitEndDate,
+      guardianName: s.guardianName,
+      guardianDocumentNumber: s.guardianDocumentNumber
+    }))
+  })
+  savingMembers.value = false
+  if (result) {
+    await refreshInstallments()
+    isEditingMembers.value = false
+    toast.add({
+      severity: 'success',
+      summary: 'Éxito',
+      detail: 'Miembros actualizados',
+      life: 3000
+    })
+  } else {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.value ?? 'Error al actualizar miembros',
+      life: 5000
+    })
+  }
+}
+
+const handleSaveExtras = async () => {
+  savingExtras.value = true
+  const result = await setExtras(registrationId.value, {
+    extras: extrasSelections.value
+      .filter((e) => e.quantity > 0)
+      .map((e) => ({
+        campEditionExtraId: e.campEditionExtraId,
+        quantity: e.quantity,
+        userInput: e.userInput
+      }))
+  })
+  savingExtras.value = false
+  if (result) {
+    await refreshInstallments()
+    isEditingExtras.value = false
+    toast.add({
+      severity: 'success',
+      summary: 'Éxito',
+      detail: 'Extras actualizados',
+      life: 3000
+    })
+  } else {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.value ?? 'Error al actualizar extras',
+      life: 5000
+    })
+  }
+}
+
+// --- Cancel / Delete ---
 
 const handleCancel = async () => {
   cancelling.value = true
@@ -131,8 +288,8 @@ const handleDelete = async () => {
   if (success) {
     toast.add({
       severity: 'success',
-      summary: 'Registration deleted',
-      detail: 'Your registration has been deleted. You can register again for this camp edition.',
+      summary: 'Inscripción eliminada',
+      detail: 'Tu inscripción ha sido eliminada. Puedes volver a inscribirte.',
       life: 4000
     })
     router.push('/registrations')
@@ -140,7 +297,7 @@ const handleDelete = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.value || 'Could not delete the registration.',
+      detail: error.value || 'No se pudo eliminar la inscripción.',
       life: 5000
     })
   }
@@ -149,6 +306,17 @@ const handleDelete = async () => {
 const handleInstallmentUpdated = (updated: PaymentResponse) => {
   const index = installments.value.findIndex((p) => p.id === updated.id)
   if (index !== -1) installments.value[index] = updated
+}
+
+const handleManualPaymentCreated = async () => {
+  await refreshInstallments()
+  await getRegistrationById(registrationId.value)
+  toast.add({
+    severity: 'success',
+    summary: 'Pago manual creado',
+    detail: 'Se ha añadido un nuevo pago a la inscripción.',
+    life: 3000
+  })
 }
 
 onMounted(async () => {
@@ -183,8 +351,13 @@ onMounted(async () => {
       <template v-else-if="registration">
         <!-- Header -->
         <div class="mb-6 flex items-start gap-3">
-          <Button icon="pi pi-arrow-left" severity="secondary" text @click="router.push({ name: 'registrations' })"
-            aria-label="Volver a mis inscripciones" />
+          <Button
+            icon="pi pi-arrow-left"
+            severity="secondary"
+            text
+            @click="router.push({ name: 'registrations' })"
+            aria-label="Volver a mis inscripciones"
+          />
           <div class="flex-1">
             <div class="flex flex-wrap items-center gap-3">
               <h1 class="text-2xl font-bold text-gray-900">
@@ -204,7 +377,19 @@ onMounted(async () => {
 
         <!-- Draft banner -->
         <Message v-if="isDraft" severity="warn" :closable="false" class="mb-6" data-testid="draft-banner">
-          Esta inscripción fue modificada por un administrador. El representante familiar debe volver a confirmarla.
+          Esta inscripción fue modificada por un administrador. El representante familiar debe
+          volver a confirmarla.
+        </Message>
+
+        <!-- Draft info for representative -->
+        <Message
+          v-if="isDraft && isRepresentative"
+          severity="info"
+          :closable="false"
+          class="mb-6"
+          data-testid="draft-edit-hint"
+        >
+          Puedes revisar y editar los miembros o extras antes de confirmar.
         </Message>
 
         <!-- Notes -->
@@ -214,8 +399,10 @@ onMounted(async () => {
         </div>
 
         <!-- Preference fields -->
-        <div v-if="registration.specialNeeds || registration.campatesPreference"
-          class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <div
+          v-if="registration.specialNeeds || registration.campatesPreference"
+          class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4"
+        >
           <h2 class="mb-3 text-sm font-semibold text-gray-700">Informacion adicional</h2>
           <dl class="space-y-2 text-sm">
             <div v-if="registration.specialNeeds" class="flex flex-col gap-0.5">
@@ -244,28 +431,138 @@ onMounted(async () => {
 
         <!-- Pricing breakdown -->
         <div class="mb-6">
-          <h2 class="mb-3 text-base font-semibold text-gray-900">Desglose de precio</h2>
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-base font-semibold text-gray-900">Desglose de precio</h2>
+          </div>
           <RegistrationPricingBreakdown :pricing="registration.pricing" />
+        </div>
+
+        <!-- Edit members -->
+        <div v-if="canEdit" class="mb-6">
+          <template v-if="!isEditingMembers">
+            <Button
+              label="Editar miembros"
+              icon="pi pi-users"
+              severity="secondary"
+              outlined
+              :loading="loadingEditData"
+              data-testid="edit-members-btn"
+              @click="startEditingMembers"
+            />
+          </template>
+          <template v-else>
+            <div class="rounded-lg border border-blue-200 bg-blue-50/30 p-4">
+              <h3 class="mb-3 text-sm font-semibold text-gray-900">Editar miembros</h3>
+              <RegistrationMemberSelector
+                v-if="campEditionData"
+                v-model="memberSelections"
+                :members="familyMembersData"
+                :edition="campEditionData"
+              />
+              <div class="mt-4 flex gap-2">
+                <Button
+                  label="Guardar"
+                  icon="pi pi-check"
+                  :loading="savingMembers"
+                  @click="handleSaveMembers"
+                />
+                <Button
+                  label="Cancelar"
+                  severity="secondary"
+                  text
+                  :disabled="savingMembers"
+                  @click="isEditingMembers = false"
+                />
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Edit extras -->
+        <div v-if="canEdit" class="mb-6">
+          <template v-if="!isEditingExtras">
+            <Button
+              label="Editar extras"
+              icon="pi pi-box"
+              severity="secondary"
+              outlined
+              :loading="loadingEditData"
+              data-testid="edit-extras-btn"
+              @click="startEditingExtras"
+            />
+          </template>
+          <template v-else>
+            <div class="rounded-lg border border-blue-200 bg-blue-50/30 p-4">
+              <h3 class="mb-3 text-sm font-semibold text-gray-900">Editar extras</h3>
+              <RegistrationExtrasSelector
+                v-model="extrasSelections"
+                :extras="campExtrasData"
+              />
+              <div class="mt-4 flex gap-2">
+                <Button
+                  label="Guardar"
+                  icon="pi pi-check"
+                  :loading="savingExtras"
+                  @click="handleSaveExtras"
+                />
+                <Button
+                  label="Cancelar"
+                  severity="secondary"
+                  text
+                  :disabled="savingExtras"
+                  @click="isEditingExtras = false"
+                />
+              </div>
+            </div>
+          </template>
         </div>
 
         <!-- Payments -->
         <div class="mb-6">
-          <h2 class="mb-3 text-base font-semibold text-gray-900">Pagos</h2>
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-base font-semibold text-gray-900">Pagos</h2>
+            <Button
+              v-if="isAdminOrBoard"
+              label="Añadir pago manual"
+              icon="pi pi-plus"
+              size="small"
+              severity="secondary"
+              outlined
+              @click="showManualPaymentDialog = true"
+            />
+          </div>
 
           <!-- Bank transfer instructions (collapsible) -->
           <div v-if="paymentSettingsData" class="mb-4">
-            <BankTransferInstructions :iban="paymentSettingsData.iban" :bank-name="paymentSettingsData.bankName"
-              :account-holder="paymentSettingsData.accountHolder" collapsible />
+            <BankTransferInstructions
+              :iban="paymentSettingsData.iban"
+              :bank-name="paymentSettingsData.bankName"
+              :account-holder="paymentSettingsData.accountHolder"
+              collapsible
+            />
           </div>
 
           <!-- Installment cards -->
-          <div v-if="installments.length > 0" class="space-y-4">
-            <PaymentInstallmentCard v-for="payment in installments" :key="payment.id" :payment="payment"
-              @updated="handleInstallmentUpdated" />
+          <div v-if="sortedInstallments.length > 0" class="space-y-4">
+            <div v-for="payment in sortedInstallments" :key="payment.id">
+              <p
+                v-if="payment.installmentNumber === 3 || payment.isManual"
+                class="mb-1 text-xs font-medium"
+                :class="payment.isManual ? 'text-purple-600' : 'text-purple-600'"
+              >
+                {{ installmentLabel(payment) }}
+              </p>
+              <PaymentInstallmentCard
+                :payment="payment"
+                @updated="handleInstallmentUpdated"
+              />
+            </div>
           </div>
 
-          <div v-else
-            class="rounded-lg border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-400">
+          <div
+            v-else
+            class="rounded-lg border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-400"
+          >
             Sin pagos registrados
           </div>
 
@@ -275,7 +572,10 @@ onMounted(async () => {
           </div>
           <div class="mt-1 flex justify-between rounded-lg bg-gray-50 px-4 py-3 text-sm">
             <span class="text-gray-600">Pendiente de pago</span>
-            <span class="font-medium" :class="registration.amountRemaining > 0 ? 'text-red-600' : 'text-gray-600'">
+            <span
+              class="font-medium"
+              :class="registration.amountRemaining > 0 ? 'text-red-600' : 'text-gray-600'"
+            >
               {{ formatCurrency(registration.amountRemaining) }}
             </span>
           </div>
@@ -283,22 +583,44 @@ onMounted(async () => {
 
         <!-- Actions -->
         <div v-if="(isRepresentative && canCancel) || canDelete" class="flex justify-end gap-2">
-          <Button v-if="isRepresentative && canCancel" label="Cancelar inscripción" severity="danger" outlined
-            icon="pi pi-times" @click="showCancelDialog = true" data-testid="cancel-registration-btn" />
-          <Button v-if="canDelete" label="Delete registration" severity="danger" icon="pi pi-trash"
-            @click="showDeleteDialog = true" data-testid="delete-registration-btn" />
-          <!-- Actions -->
-          <div v-if="(isRepresentative && canCancel) || canDelete" class="flex justify-end gap-2">
-            <Button v-if="isRepresentative && canCancel" label="Cancelar inscripción" severity="danger" outlined
-              icon="pi pi-times" @click="showCancelDialog = true" data-testid="cancel-registration-btn" />
-            <Button v-if="canDelete" label="Delete registration" severity="danger" icon="pi pi-trash"
-              @click="showDeleteDialog = true" data-testid="delete-registration-btn" />
-          </div>
-
-          <RegistrationCancelDialog v-model:visible="showCancelDialog" :registration-id="registrationId"
-            :loading="cancelling" @confirm="handleCancel" />
-          <RegistrationDeleteDialog v-model:visible="showDeleteDialog" :loading="deleting" @confirm="handleDelete" />
+          <Button
+            v-if="isRepresentative && canCancel"
+            label="Cancelar inscripción"
+            severity="danger"
+            outlined
+            icon="pi pi-times"
+            data-testid="cancel-registration-btn"
+            @click="showCancelDialog = true"
+          />
+          <Button
+            v-if="canDelete"
+            label="Eliminar inscripción"
+            severity="danger"
+            icon="pi pi-trash"
+            data-testid="delete-registration-btn"
+            @click="showDeleteDialog = true"
+          />
         </div>
+
+        <RegistrationCancelDialog
+          v-model:visible="showCancelDialog"
+          :registration-id="registrationId"
+          :loading="cancelling"
+          @confirm="handleCancel"
+        />
+        <RegistrationDeleteDialog
+          v-model:visible="showDeleteDialog"
+          :loading="deleting"
+          @confirm="handleDelete"
+        />
+
+        <ManualPaymentDialog
+          v-if="registration"
+          v-model:visible="showManualPaymentDialog"
+          :registration-id="registrationId"
+          :family-unit-name="registration.familyUnit.name"
+          @created="handleManualPaymentCreated"
+        />
       </template>
     </div>
   </Container>

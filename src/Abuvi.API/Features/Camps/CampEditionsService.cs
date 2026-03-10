@@ -1,3 +1,6 @@
+using System.Text.Json;
+using Abuvi.API.Features.Payments;
+
 namespace Abuvi.API.Features.Camps;
 
 /// <summary>
@@ -7,13 +10,18 @@ public class CampEditionsService
 {
     private readonly ICampEditionsRepository _repository;
     private readonly ICampsRepository _campsRepository;
+    private readonly IAssociationSettingsRepository _settingsRepo;
+
+    private const string PaymentSettingsKey = "payment_settings";
 
     public CampEditionsService(
         ICampEditionsRepository repository,
-        ICampsRepository campsRepository)
+        ICampsRepository campsRepository,
+        IAssociationSettingsRepository settingsRepo)
     {
         _repository = repository;
         _campsRepository = campsRepository;
+        _settingsRepo = settingsRepo;
     }
 
     /// <summary>
@@ -88,6 +96,12 @@ public class CampEditionsService
             PricePerBabyWeekend = request.PricePerBabyWeekend,
             MaxWeekendCapacity = request.MaxWeekendCapacity
         };
+
+        // Materialize payment deadlines from global settings
+        var paymentSettings = await LoadPaymentSettingsAsync(cancellationToken);
+        edition.FirstPaymentDeadline = edition.StartDate.AddDays(-paymentSettings.FirstInstallmentDaysBefore);
+        edition.SecondPaymentDeadline = edition.StartDate.AddDays(-paymentSettings.SecondInstallmentDaysBefore);
+        edition.ExtrasPaymentDeadline = edition.StartDate.AddDays(paymentSettings.ExtrasInstallmentDaysFromCampStart);
 
         edition.SetAccommodationCapacity(request.AccommodationCapacity);
 
@@ -262,8 +276,14 @@ public class CampEditionsService
         edition.PricePerChildWeekend = request.PricePerChildWeekend;
         edition.PricePerBabyWeekend = request.PricePerBabyWeekend;
         edition.MaxWeekendCapacity = request.MaxWeekendCapacity;
-        edition.FirstPaymentDeadline = request.FirstPaymentDeadline;
-        edition.SecondPaymentDeadline = request.SecondPaymentDeadline;
+        // Re-derive deadlines from settings when null (reset to default), otherwise use explicit value
+        var updatePaymentSettings = await LoadPaymentSettingsAsync(cancellationToken);
+        edition.FirstPaymentDeadline = request.FirstPaymentDeadline
+            ?? edition.StartDate.AddDays(-updatePaymentSettings.FirstInstallmentDaysBefore);
+        edition.SecondPaymentDeadline = request.SecondPaymentDeadline
+            ?? edition.StartDate.AddDays(-updatePaymentSettings.SecondInstallmentDaysBefore);
+        edition.ExtrasPaymentDeadline = request.ExtrasPaymentDeadline
+            ?? edition.StartDate.AddDays(updatePaymentSettings.ExtrasInstallmentDaysFromCampStart);
 
         var updated = await _repository.UpdateAsync(edition, cancellationToken);
         return MapToCampEditionResponse(updated, updated.Camp.Name);
@@ -372,7 +392,8 @@ public class CampEditionsService
             CalculatedTotalBedCapacity: bedCapacity,
             Extras: extras,
             FirstPaymentDeadline: edition.FirstPaymentDeadline,
-            SecondPaymentDeadline: edition.SecondPaymentDeadline
+            SecondPaymentDeadline: edition.SecondPaymentDeadline,
+            ExtrasPaymentDeadline: edition.ExtrasPaymentDeadline
         );
     }
 
@@ -421,7 +442,8 @@ public class CampEditionsService
             CreatedAt: edition.CreatedAt,
             UpdatedAt: edition.UpdatedAt,
             FirstPaymentDeadline: edition.FirstPaymentDeadline,
-            SecondPaymentDeadline: edition.SecondPaymentDeadline
+            SecondPaymentDeadline: edition.SecondPaymentDeadline,
+            ExtrasPaymentDeadline: edition.ExtrasPaymentDeadline
         );
     }
 
@@ -492,7 +514,24 @@ public class CampEditionsService
             PricePerBabyWeekend: edition.PricePerBabyWeekend,
             MaxWeekendCapacity: edition.MaxWeekendCapacity,
             FirstPaymentDeadline: edition.FirstPaymentDeadline,
-            SecondPaymentDeadline: edition.SecondPaymentDeadline
+            SecondPaymentDeadline: edition.SecondPaymentDeadline,
+            ExtrasPaymentDeadline: edition.ExtrasPaymentDeadline
         );
+    }
+
+    private async Task<PaymentSettingsJson> LoadPaymentSettingsAsync(CancellationToken ct)
+    {
+        var setting = await _settingsRepo.GetByKeyAsync(PaymentSettingsKey, ct);
+        if (setting is null) return new PaymentSettingsJson();
+
+        try
+        {
+            return JsonSerializer.Deserialize<PaymentSettingsJson>(setting.SettingValue)
+                   ?? new PaymentSettingsJson();
+        }
+        catch (JsonException)
+        {
+            return new PaymentSettingsJson();
+        }
     }
 }

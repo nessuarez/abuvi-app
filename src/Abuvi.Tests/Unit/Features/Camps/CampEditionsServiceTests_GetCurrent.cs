@@ -1,6 +1,7 @@
 using Abuvi.API.Features.Camps;
 using FluentAssertions;
 using NSubstitute;
+using NSubstitute.ReturnsExtensions;
 using Xunit;
 
 namespace Abuvi.Tests.Unit.Features.Camps;
@@ -13,6 +14,7 @@ public class CampEditionsServiceTests_GetCurrent
 {
     private readonly ICampEditionsRepository _repository;
     private readonly ICampsRepository _campsRepository;
+    private readonly IAssociationSettingsRepository _settingsRepo;
     private readonly CampEditionsService _sut;
 
     private static readonly int CurrentYear = DateTime.UtcNow.Year;
@@ -22,7 +24,10 @@ public class CampEditionsServiceTests_GetCurrent
     {
         _repository = Substitute.For<ICampEditionsRepository>();
         _campsRepository = Substitute.For<ICampsRepository>();
-        _sut = new CampEditionsService(_repository, _campsRepository);
+        _settingsRepo = Substitute.For<IAssociationSettingsRepository>();
+        _settingsRepo.GetByKeyAsync("payment_settings", Arg.Any<CancellationToken>())
+            .ReturnsNull();
+        _sut = new CampEditionsService(_repository, _campsRepository, _settingsRepo);
     }
 
     // ---------------------------------------------------------------------------

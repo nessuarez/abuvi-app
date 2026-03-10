@@ -229,14 +229,13 @@ public class RegistrationsServiceTests
         existing.Status = RegistrationStatus.Pending;
 
         SetupGlobalAgeRanges();
-        _repo.GetByIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>())
+            .Returns(existing, BuildFullRegistration(registrationId, familyUnit, edition, [member], edition.PricePerAdult));
         _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
         _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
         _familyUnitsRepo.GetFamilyMemberByIdAsync(MemberId, Arg.Any<CancellationToken>()).Returns(member);
         _repo.DeleteMembersByRegistrationIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
         _repo.UpdateAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
-        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>())
-            .Returns(BuildFullRegistration(registrationId, familyUnit, edition, [member], edition.PricePerAdult));
 
         var request = new UpdateRegistrationMembersRequest([new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)]);
 
@@ -256,7 +255,7 @@ public class RegistrationsServiceTests
         var existing = CreateRegistrationWithFamilyUnit(registrationId, familyUnit, edition);
         existing.Status = RegistrationStatus.Confirmed;
 
-        _repo.GetByIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
         _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
 
         var request = new UpdateRegistrationMembersRequest([new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)]);
@@ -277,7 +276,7 @@ public class RegistrationsServiceTests
         var existing = CreateRegistrationWithFamilyUnit(registrationId, familyUnit, edition);
         existing.Status = RegistrationStatus.Cancelled;
 
-        _repo.GetByIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
         _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
 
         var request = new UpdateRegistrationMembersRequest([new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete)]);
@@ -946,16 +945,14 @@ public class RegistrationsServiceTests
         existing.Status = RegistrationStatus.Pending;
 
         SetupGlobalAgeRanges();
-        _repo.GetByIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
+        Registration? captured = null;
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>())
+            .Returns(existing, BuildFullRegistration(registrationId, familyUnit, edition, [member], edition.PricePerBaby));
         _familyUnitsRepo.GetFamilyUnitByIdAsync(FamilyUnitId, Arg.Any<CancellationToken>()).Returns(familyUnit);
         _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
         _familyUnitsRepo.GetFamilyMemberByIdAsync(MemberId, Arg.Any<CancellationToken>()).Returns(member);
         _repo.DeleteMembersByRegistrationIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
-
-        Registration? captured = null;
         _repo.UpdateAsync(Arg.Do<Registration>(r => captured = r), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
-        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>())
-            .Returns(BuildFullRegistration(registrationId, familyUnit, edition, [member], edition.PricePerBaby));
 
         var request = new UpdateRegistrationMembersRequest([
             new MemberAttendanceRequest(MemberId, AttendancePeriod.Complete,

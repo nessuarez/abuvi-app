@@ -1,5 +1,28 @@
 import type { PaymentMethod, PaymentStatus } from './registration'
 
+export interface PaymentConceptLine {
+  personFullName: string
+  ageCategory: string
+  attendancePeriod: string
+  individualAmount: number
+  amountInPayment: number
+  percentage: number
+}
+
+export interface PaymentExtraConceptLine {
+  extraName: string
+  quantity: number
+  unitPrice: number
+  totalAmount: number
+  userInput: string | null
+  pricingType: string
+}
+
+export interface ManualPaymentConceptLine {
+  description: string
+  amount: number
+}
+
 export interface PaymentResponse {
   id: string
   registrationId: string
@@ -14,6 +37,11 @@ export interface PaymentResponse {
   proofUploadedAt: string | null
   adminNotes: string | null
   createdAt: string
+  isActionable: boolean
+  isManual: boolean
+  conceptLines: PaymentConceptLine[] | null
+  extraConceptLines: PaymentExtraConceptLine[] | null
+  manualConceptLine: ManualPaymentConceptLine | null
 }
 
 export interface AdminPaymentResponse extends PaymentResponse {
@@ -27,7 +55,9 @@ export interface PaymentSettings {
   iban: string
   bankName: string
   accountHolder: string
+  firstInstallmentDaysBefore: number
   secondInstallmentDaysBefore: number
+  extrasInstallmentDaysFromCampStart: number
   transferConceptPrefix: string
 }
 
@@ -53,4 +83,18 @@ export interface AdminPaymentsPagedResponse {
   totalCount: number
   page: number
   pageSize: number
+}
+
+export interface CreateManualPaymentRequest {
+  amount: number
+  description: string
+  dueDate?: string | null
+  adminNotes?: string | null
+}
+
+export interface UpdateManualPaymentRequest {
+  amount?: number | null
+  description?: string | null
+  dueDate?: string | null
+  adminNotes?: string | null
 }

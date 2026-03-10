@@ -179,8 +179,8 @@ public class RegistrationsService(
     public async Task<RegistrationResponse> UpdateMembersAsync(
         Guid registrationId, Guid userId, UpdateRegistrationMembersRequest request, CancellationToken ct)
     {
-        // 1. Load registration
-        var registration = await registrationsRepo.GetByIdAsync(registrationId, ct)
+        // 1. Load registration with payments for proof guard
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
             ?? throw new NotFoundException("Inscripción", registrationId);
 
         // 2. Load FamilyUnit and verify representative
@@ -190,9 +190,13 @@ public class RegistrationsService(
         if (familyUnit.RepresentativeUserId != userId)
             throw new BusinessRuleException("No tienes permiso para modificar esta inscripción");
 
-        // 3. Verify status
-        if (registration.Status != RegistrationStatus.Pending)
-            throw new BusinessRuleException("Solo se pueden modificar inscripciones en estado Pendiente");
+        // 3. Verify status (Pending or Draft are both editable for the representative)
+        if (registration.Status != RegistrationStatus.Pending && registration.Status != RegistrationStatus.Draft)
+            throw new BusinessRuleException("Solo se pueden modificar inscripciones en estado Pendiente o Borrador");
+
+        // 3b. Guard: block if any payment has a proof uploaded
+        if (registration.Payments?.Any(p => p.ProofFileUrl != null) == true)
+            throw new BusinessRuleException("No se pueden modificar los miembros porque ya hay un justificante de pago subido.");
 
         // 4. Load edition for pricing
         var edition = await campEditionsRepo.GetByIdAsync(registration.CampEditionId, ct)
@@ -282,15 +286,20 @@ public class RegistrationsService(
         await registrationsRepo.DeleteMembersByRegistrationIdAsync(registrationId, ct);
 
         // 7-8. Recalculate and update
+        var oldBaseTotalAmount = registration.BaseTotalAmount;
         var baseTotalAmount = newMembers.Sum(m => m.IndividualAmount);
-        registration.Members = newMembers;
         registration.BaseTotalAmount = baseTotalAmount;
         registration.TotalAmount = baseTotalAmount + registration.ExtrasAmount;
 
-        // 9. Save
+        // 9. Save registration scalars, then add new members separately
         await registrationsRepo.UpdateAsync(registration, ct);
+        await registrationsRepo.AddMembersAsync(newMembers, ct);
 
-        // 10. Reload and return
+        // 10. Sync P1/P2 installments to reflect new base total
+        await paymentsService.SyncBaseInstallmentsAsync(
+            registrationId, baseTotalAmount, oldBaseTotalAmount, ct);
+
+        // 11. Reload and return
         var detailed = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
             ?? throw new NotFoundException("Inscripción", registrationId);
 
@@ -312,9 +321,13 @@ public class RegistrationsService(
         if (registration.FamilyUnit.RepresentativeUserId != userId)
             throw new BusinessRuleException("No tienes permiso para modificar esta inscripción");
 
-        // 3. Verify status
-        if (registration.Status != RegistrationStatus.Pending)
-            throw new BusinessRuleException("Solo se pueden modificar inscripciones en estado Pendiente");
+        // 3. Verify status (Pending or Draft are both editable for the representative)
+        if (registration.Status != RegistrationStatus.Pending && registration.Status != RegistrationStatus.Draft)
+            throw new BusinessRuleException("Solo se pueden modificar inscripciones en estado Pendiente o Borrador");
+
+        // 3b. Guard: block if any payment has a proof uploaded
+        if (registration.Payments?.Any(p => p.ProofFileUrl != null) == true)
+            throw new BusinessRuleException("No se pueden modificar los extras porque ya hay un justificante de pago subido.");
 
         // 4. Calculate duration
         var campDurationDays = (registration.CampEdition.EndDate - registration.CampEdition.StartDate).Days;
@@ -357,11 +370,15 @@ public class RegistrationsService(
         await extrasRepo.AddRangeAsync(newExtras, ct);
 
         // 7. Update totals
-        registration.ExtrasAmount = newExtras.Sum(e => e.TotalAmount);
-        registration.TotalAmount = registration.BaseTotalAmount + registration.ExtrasAmount;
+        var newExtrasAmount = newExtras.Sum(e => e.TotalAmount);
+        registration.ExtrasAmount = newExtrasAmount;
+        registration.TotalAmount = registration.BaseTotalAmount + newExtrasAmount;
         await registrationsRepo.UpdateAsync(registration, ct);
 
-        // 8. Reload and return
+        // 8. Sync P3 extras installment
+        await paymentsService.SyncExtrasInstallmentAsync(registrationId, newExtrasAmount, ct);
+
+        // 9. Reload and return
         var detailed = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
             ?? throw new NotFoundException("Inscripción", registrationId);
 
@@ -659,6 +676,9 @@ public class RegistrationsService(
         var edition = await campEditionsRepo.GetByIdAsync(registration.CampEditionId, ct)
             ?? throw new NotFoundException("Edición de Campamento", registration.CampEditionId);
 
+        // Capture old values before any mutation (needed for sync)
+        var oldBaseTotalAmount = registration.BaseTotalAmount;
+
         // Update members if provided
         if (request.Members != null)
         {
@@ -700,7 +720,7 @@ public class RegistrationsService(
                 });
             }
 
-            registration.Members = newMembers;
+            await registrationsRepo.AddMembersAsync(newMembers, ct);
             registration.BaseTotalAmount = newMembers.Sum(m => m.IndividualAmount);
             registration.TotalAmount = registration.BaseTotalAmount + registration.ExtrasAmount;
         }
@@ -769,6 +789,15 @@ public class RegistrationsService(
         registration.AdminModifiedAt = DateTime.UtcNow;
 
         await registrationsRepo.UpdateAsync(registration, ct);
+
+        // Sync payments after save
+        if (request.Members != null)
+            await paymentsService.SyncBaseInstallmentsAsync(
+                registrationId, registration.BaseTotalAmount, oldBaseTotalAmount, ct);
+
+        if (request.Extras != null)
+            await paymentsService.SyncExtrasInstallmentAsync(
+                registrationId, registration.ExtrasAmount, ct);
 
         // Reload with full details for response
         var updated = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)

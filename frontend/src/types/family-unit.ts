@@ -11,6 +11,7 @@ export interface FamilyUnitResponse {
   id: string
   name: string
   representativeUserId: string
+  familyNumber: number | null
   profilePhotoUrl: string | null
   createdAt: string
   updatedAt: string
@@ -27,6 +28,11 @@ export interface CreateFamilyUnitRequest {
 // Request to update family unit
 export interface UpdateFamilyUnitRequest {
   name: string
+}
+
+// Request to update family number (Admin/Board only)
+export interface UpdateFamilyNumberRequest {
+  familyNumber: number
 }
 
 // Response from backend

@@ -166,6 +166,31 @@ export function useMemberships() {
     }
   }
 
+  /**
+   * Update member number for a membership (Admin/Board only)
+   */
+  const updateMemberNumber = async (
+    membershipId: string,
+    memberNumber: number
+  ): Promise<MembershipResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.put<ApiResponse<MembershipResponse>>(
+        `/memberships/${membershipId}/member-number`,
+        { memberNumber }
+      )
+      membership.value = response.data.data
+      return response.data.data
+    } catch (err: unknown) {
+      const apiErr = err as { response?: { data?: { error?: { message?: string } } } }
+      error.value = apiErr?.response?.data?.error?.message || 'Error al actualizar el número de socio/a'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     membership,
     fees,
@@ -177,5 +202,6 @@ export function useMemberships() {
     bulkActivateMemberships,
     getFees,
     payFee,
+    updateMemberNumber,
   }
 }

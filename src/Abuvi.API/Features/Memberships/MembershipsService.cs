@@ -29,9 +29,18 @@ public class MembershipsService(
             FamilyMemberId = familyMemberId,
             StartDate = new DateTime(request.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             IsActive = true,
+            MemberNumber = await repository.GetNextMemberNumberAsync(ct),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+
+        // Assign family number if this is the first membership for the family
+        var familyUnit = await familyUnitsRepository.GetFamilyUnitByIdAsync(familyMember.FamilyUnitId, ct);
+        if (familyUnit is not null && familyUnit.FamilyNumber is null)
+        {
+            familyUnit.FamilyNumber = await familyUnitsRepository.GetNextFamilyNumberAsync(ct);
+            await familyUnitsRepository.UpdateFamilyUnitAsync(familyUnit, ct);
+        }
 
         await repository.AddAsync(membership, ct);
 
@@ -48,6 +57,8 @@ public class MembershipsService(
             throw new NotFoundException(nameof(FamilyUnit), familyUnitId);
 
         var members = await familyUnitsRepository.GetFamilyMembersByFamilyUnitIdAsync(familyUnitId, ct);
+
+        bool familyNumberAssigned = familyUnit.FamilyNumber is not null;
 
         var results = new List<BulkMembershipMemberResult>();
         int activated = 0, skipped = 0;
@@ -74,9 +85,19 @@ public class MembershipsService(
                     FamilyMemberId = member.Id,
                     StartDate = startDate,
                     IsActive = true,
+                    MemberNumber = await repository.GetNextMemberNumberAsync(ct),
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
+
+                // Assign family number on first successful activation
+                if (!familyNumberAssigned)
+                {
+                    familyUnit.FamilyNumber = await familyUnitsRepository.GetNextFamilyNumberAsync(ct);
+                    await familyUnitsRepository.UpdateFamilyUnitAsync(familyUnit, ct);
+                    familyNumberAssigned = true;
+                }
+
                 await repository.AddAsync(membership, ct);
                 results.Add(new(member.Id, memberName, BulkMembershipResultStatus.Activated));
                 activated++;
@@ -133,6 +154,28 @@ public class MembershipsService(
         return fee.ToResponse();
     }
 
+    public async Task<MembershipResponse> UpdateMemberNumberAsync(
+        Guid membershipId,
+        UpdateMemberNumberRequest request,
+        CancellationToken ct)
+    {
+        var membership = await repository.GetByIdAsync(membershipId, ct);
+        if (membership is null)
+            throw new NotFoundException(nameof(Membership), membershipId);
+
+        // Check uniqueness
+        var isTaken = await repository.IsMemberNumberTakenAsync(request.MemberNumber, membershipId, ct);
+        if (isTaken)
+            throw new BusinessRuleException($"El número de socio/a {request.MemberNumber} ya está en uso");
+
+        membership.MemberNumber = request.MemberNumber;
+        membership.UpdatedAt = DateTime.UtcNow;
+
+        await repository.UpdateAsync(membership, ct);
+
+        return membership.ToResponse();
+    }
+
     public async Task<MembershipFeeResponse> PayFeeAsync(
         Guid feeId,
         PayFeeRequest request,
@@ -163,6 +206,7 @@ public static class MembershipExtensions
         => new(
             membership.Id,
             membership.FamilyMemberId,
+            membership.MemberNumber,
             membership.StartDate,
             membership.EndDate,
             membership.IsActive,

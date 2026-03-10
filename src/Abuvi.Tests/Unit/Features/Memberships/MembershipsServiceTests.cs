@@ -32,6 +32,12 @@ public class MembershipsServiceTests
             .Returns(familyMember);
         _membershipsRepository.GetByFamilyMemberIdAsync(familyMemberId, Arg.Any<CancellationToken>())
             .Returns((Membership?)null);
+        _membershipsRepository.GetNextMemberNumberAsync(Arg.Any<CancellationToken>())
+            .Returns(1);
+        _familyUnitsRepository.GetFamilyUnitByIdAsync(familyMember.FamilyUnitId, Arg.Any<CancellationToken>())
+            .Returns(CreateTestFamilyUnit(familyMember.FamilyUnitId));
+        _familyUnitsRepository.GetNextFamilyNumberAsync(Arg.Any<CancellationToken>())
+            .Returns(1);
 
         // Act
         var result = await _service.CreateAsync(familyMemberId, request, CancellationToken.None);
@@ -59,6 +65,12 @@ public class MembershipsServiceTests
             .Returns(familyMember);
         _membershipsRepository.GetByFamilyMemberIdAsync(familyMemberId, Arg.Any<CancellationToken>())
             .Returns((Membership?)null);
+        _membershipsRepository.GetNextMemberNumberAsync(Arg.Any<CancellationToken>())
+            .Returns(1);
+        _familyUnitsRepository.GetFamilyUnitByIdAsync(familyMember.FamilyUnitId, Arg.Any<CancellationToken>())
+            .Returns(CreateTestFamilyUnit(familyMember.FamilyUnitId));
+        _familyUnitsRepository.GetNextFamilyNumberAsync(Arg.Any<CancellationToken>())
+            .Returns(1);
 
         // Act
         var result = await _service.CreateAsync(familyMemberId, request, CancellationToken.None);
@@ -371,6 +383,10 @@ public class MembershipsServiceTests
             .Returns(members as IReadOnlyList<FamilyMember>);
         _membershipsRepository.GetByFamilyMemberIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((Membership?)null);
+        _membershipsRepository.GetNextMemberNumberAsync(Arg.Any<CancellationToken>())
+            .Returns(1, 2);
+        _familyUnitsRepository.GetNextFamilyNumberAsync(Arg.Any<CancellationToken>())
+            .Returns(1);
 
         // Act
         var result = await _service.BulkActivateAsync(familyUnitId, request, CancellationToken.None);
@@ -402,6 +418,10 @@ public class MembershipsServiceTests
             .Returns((Membership?)null);
         _membershipsRepository.GetByFamilyMemberIdAsync(member2.Id, Arg.Any<CancellationToken>())
             .Returns(existingMembership);
+        _membershipsRepository.GetNextMemberNumberAsync(Arg.Any<CancellationToken>())
+            .Returns(1);
+        _familyUnitsRepository.GetNextFamilyNumberAsync(Arg.Any<CancellationToken>())
+            .Returns(1);
 
         // Act
         var result = await _service.BulkActivateAsync(familyUnitId, request, CancellationToken.None);
@@ -430,6 +450,10 @@ public class MembershipsServiceTests
             .Returns(new[] { member } as IReadOnlyList<FamilyMember>);
         _membershipsRepository.GetByFamilyMemberIdAsync(member.Id, Arg.Any<CancellationToken>())
             .Returns((Membership?)null);
+        _membershipsRepository.GetNextMemberNumberAsync(Arg.Any<CancellationToken>())
+            .Returns(1);
+        _familyUnitsRepository.GetNextFamilyNumberAsync(Arg.Any<CancellationToken>())
+            .Returns(1);
 
         // Act
         await _service.BulkActivateAsync(familyUnitId, request, CancellationToken.None);

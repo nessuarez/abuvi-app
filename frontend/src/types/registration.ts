@@ -188,6 +188,7 @@ export interface AvailableCampEditionResponse {
   // Payment deadlines:
   firstPaymentDeadline: string | null
   secondPaymentDeadline: string | null
+  extrasPaymentDeadline: string | null
 }
 
 // Request types

@@ -394,6 +394,7 @@ app.MapGooglePlacesEndpoints();
 app.MapFamilyUnitsEndpoints();
 app.MapGuestsEndpoints();
 app.MapMembershipsEndpoints();
+app.MapMembershipAdminEndpoints();
 app.MapMembershipFeeEndpoints();
 app.MapRegistrationsEndpoints();
 app.MapPaymentsEndpoints();

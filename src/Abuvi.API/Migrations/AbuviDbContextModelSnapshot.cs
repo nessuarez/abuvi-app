@@ -389,6 +389,10 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("end_date");
 
+                    b.Property<DateTime?>("ExtrasPaymentDeadline")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("extras_payment_deadline");
+
                     b.Property<DateTime?>("FirstPaymentDeadline")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("first_payment_deadline");
@@ -917,6 +921,10 @@ namespace Abuvi.API.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("NOW()");
 
+                    b.Property<int?>("FamilyNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("family_number");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -939,6 +947,10 @@ namespace Abuvi.API.Migrations
                         .HasDefaultValueSql("NOW()");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("FamilyNumber")
+                        .IsUnique()
+                        .HasFilter("family_number IS NOT NULL");
 
                     b.HasIndex("RepresentativeUserId")
                         .IsUnique();
@@ -1129,6 +1141,10 @@ namespace Abuvi.API.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("MemberNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("member_number");
+
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -1139,6 +1155,10 @@ namespace Abuvi.API.Migrations
 
                     b.HasIndex("FamilyMemberId")
                         .IsUnique();
+
+                    b.HasIndex("MemberNumber")
+                        .IsUnique()
+                        .HasFilter("member_number IS NOT NULL");
 
                     b.ToTable("memberships", (string)null);
                 });
@@ -1270,6 +1290,10 @@ namespace Abuvi.API.Migrations
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("amount");
+
+                    b.Property<string>("ConceptLinesSerialized")
+                        .HasColumnType("text")
+                        .HasColumnName("concept_lines");
 
                     b.Property<DateTime?>("ConfirmedAt")
                         .HasColumnType("timestamp with time zone")

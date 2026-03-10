@@ -242,6 +242,8 @@ public class CampEdition
     // Payment deadlines for this edition (null = use defaults: 117 / 75 days before StartDate)
     public DateTime? FirstPaymentDeadline { get; set; }
     public DateTime? SecondPaymentDeadline { get; set; }
+    // null = use CampEdition.StartDate as fallback
+    public DateTime? ExtrasPaymentDeadline { get; set; }
 
     public string? AccommodationCapacityJson { get; set; }
 
@@ -704,7 +706,8 @@ public record ActiveCampEditionResponse(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     DateTime? FirstPaymentDeadline,
-    DateTime? SecondPaymentDeadline
+    DateTime? SecondPaymentDeadline,
+    DateTime? ExtrasPaymentDeadline
 );
 
 /// <summary>
@@ -751,7 +754,8 @@ public record CurrentCampEditionResponse(
     int? CalculatedTotalBedCapacity,
     IReadOnlyList<CampEditionExtraResponse> Extras,
     DateTime? FirstPaymentDeadline,
-    DateTime? SecondPaymentDeadline
+    DateTime? SecondPaymentDeadline,
+    DateTime? ExtrasPaymentDeadline
 );
 
 /// <summary>
@@ -785,7 +789,8 @@ public record UpdateCampEditionRequest(
     int? MaxWeekendCapacity = null,
     // Payment deadlines (null = use defaults: 117/75 days before StartDate):
     DateTime? FirstPaymentDeadline = null,
-    DateTime? SecondPaymentDeadline = null
+    DateTime? SecondPaymentDeadline = null,
+    DateTime? ExtrasPaymentDeadline = null
 );
 
 /// <summary>
@@ -829,7 +834,8 @@ public record CampEditionResponse(
     int? MaxWeekendCapacity,
     // Payment deadlines:
     DateTime? FirstPaymentDeadline,
-    DateTime? SecondPaymentDeadline
+    DateTime? SecondPaymentDeadline,
+    DateTime? ExtrasPaymentDeadline
 );
 
 /// <summary>

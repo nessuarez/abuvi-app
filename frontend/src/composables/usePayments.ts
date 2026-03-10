@@ -6,7 +6,9 @@ import type {
   AdminPaymentResponse,
   AdminPaymentsPagedResponse,
   PaymentSettings,
-  PaymentFilterParams
+  PaymentFilterParams,
+  CreateManualPaymentRequest,
+  UpdateManualPaymentRequest
 } from '@/types/payment'
 
 type ApiErrorShape = { response?: { data?: { error?: { message?: string } }; status?: number } }
@@ -193,6 +195,73 @@ export function usePayments() {
     }
   }
 
+  // Manual payment methods (admin only)
+
+  const createManualPayment = async (
+    registrationId: string,
+    request: CreateManualPaymentRequest
+  ): Promise<AdminPaymentResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post<ApiResponse<AdminPaymentResponse>>(
+        `/admin/registrations/${registrationId}/payments/manual`,
+        request
+      )
+      if (response.data.success && response.data.data) return response.data.data
+      error.value = response.data.error?.message ?? 'Error al crear el pago manual'
+      return null
+    } catch (err: unknown) {
+      error.value = extractError(err, 'Error al crear el pago manual')
+      console.error('Failed to create manual payment:', err)
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const updateManualPayment = async (
+    paymentId: string,
+    request: UpdateManualPaymentRequest
+  ): Promise<AdminPaymentResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.put<ApiResponse<AdminPaymentResponse>>(
+        `/admin/payments/${paymentId}/manual`,
+        request
+      )
+      if (response.data.success && response.data.data) return response.data.data
+      error.value = response.data.error?.message ?? 'Error al actualizar el pago manual'
+      return null
+    } catch (err: unknown) {
+      error.value = extractError(err, 'Error al actualizar el pago manual')
+      console.error('Failed to update manual payment:', err)
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const deleteManualPayment = async (paymentId: string): Promise<boolean> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.delete<ApiResponse<object>>(
+        `/admin/payments/${paymentId}/manual`
+      )
+      if (response.data.success) return true
+      error.value = response.data.error?.message ?? 'Error al eliminar el pago manual'
+      return false
+    } catch (err: unknown) {
+      error.value = extractError(err, 'Error al eliminar el pago manual')
+      console.error('Failed to delete manual payment:', err)
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Settings
 
   const getPaymentSettings = async (): Promise<PaymentSettings | null> => {
@@ -236,6 +305,9 @@ export function usePayments() {
     getAllPayments,
     confirmPayment,
     rejectPayment,
+    createManualPayment,
+    updateManualPayment,
+    deleteManualPayment,
     getPaymentSettings,
     updatePaymentSettings
   }

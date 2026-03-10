@@ -165,6 +165,53 @@ export function useUsers() {
   }
 
   /**
+   * Toggle user active status
+   */
+  const toggleUserActive = async (user: User): Promise<User | null> => {
+    error.value = null
+    try {
+      const response = await api.put<ApiResponse<User>>(`/users/${user.id}`, {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        isActive: !user.isActive
+      })
+      if (response.data.data) {
+        const index = users.value.findIndex((u) => u.id === user.id)
+        if (index !== -1) {
+          users.value[index] = response.data.data
+        }
+        return response.data.data
+      }
+      return null
+    } catch (err: any) {
+      error.value = 'Failed to update user status. Please try again.'
+      console.error('toggleUserActive error:', err)
+      return null
+    }
+  }
+
+  /**
+   * Delete a user (Admin only)
+   */
+  const deleteUser = async (id: string): Promise<boolean> => {
+    error.value = null
+    try {
+      await api.delete(`/users/${id}`)
+      users.value = users.value.filter((u) => u.id !== id)
+      return true
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        error.value = 'User not found.'
+      } else {
+        error.value = 'Failed to delete user. Please try again.'
+      }
+      console.error('deleteUser error:', err)
+      return false
+    }
+  }
+
+  /**
    * Clear error state
    */
   const clearError = () => {
@@ -181,6 +228,8 @@ export function useUsers() {
     createUser,
     updateUser,
     updateUserRole,
+    toggleUserActive,
+    deleteUser,
     clearError
   }
 }

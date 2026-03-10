@@ -7,6 +7,7 @@ import Textarea from 'primevue/textarea'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import PaymentStatusBadge from '@/components/payments/PaymentStatusBadge.vue'
+import PaymentConceptLines from '@/components/payments/PaymentConceptLines.vue'
 import { usePayments } from '@/composables/usePayments'
 import type { AdminPaymentResponse } from '@/types/payment'
 
@@ -118,6 +119,12 @@ onMounted(async () => {
             <div class="flex items-center gap-2">
               <span class="font-semibold text-gray-900">{{ payment.familyUnitName }}</span>
               <PaymentStatusBadge :status="payment.status" />
+              <span
+                v-if="payment.isManual"
+                class="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-[0.65rem] font-medium text-purple-700"
+              >
+                Manual
+              </span>
             </div>
             <p class="mt-0.5 text-sm text-gray-500">
               {{ payment.campEditionName }} · Plazo {{ payment.installmentNumber }}
@@ -157,6 +164,13 @@ onMounted(async () => {
             </a>
           </div>
         </div>
+
+        <!-- Concept lines -->
+        <PaymentConceptLines
+          :concept-lines="payment.conceptLines"
+          :extra-concept-lines="payment.extraConceptLines"
+          :manual-concept-line="payment.manualConceptLine"
+        />
 
         <!-- Actions -->
         <div class="mt-3 flex justify-end gap-2 border-t border-gray-100 pt-3">

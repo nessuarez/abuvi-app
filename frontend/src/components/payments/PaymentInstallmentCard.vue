@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import PaymentStatusBadge from './PaymentStatusBadge.vue'
+import PaymentConceptLines from './PaymentConceptLines.vue'
 import ProofUploader from './ProofUploader.vue'
 import type { PaymentResponse } from '@/types/payment'
 import { parseDateSafe } from '@/utils/date'
@@ -19,6 +21,15 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+
+const isLocked = computed(() => !props.payment.isActionable && props.payment.status === 'Pending')
+
+const installmentTitle = computed(() => {
+  if (props.payment.isManual && props.payment.manualConceptLine) {
+    return props.payment.manualConceptLine.description
+  }
+  return `Plazo ${props.payment.installmentNumber}`
+})
 
 const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
@@ -53,13 +64,31 @@ const handleProofUpdated = (updated: PaymentResponse) => {
 </script>
 
 <template>
-  <div class="rounded-lg border border-gray-200 bg-white p-4">
+  <div
+    class="rounded-lg border bg-white p-4"
+    :class="isLocked ? 'border-gray-200 opacity-60' : 'border-gray-200'"
+  >
     <!-- Header -->
     <div class="mb-3 flex items-center justify-between">
-      <h3 class="text-sm font-semibold text-gray-900">
-        Plazo {{ payment.installmentNumber }}
-      </h3>
+      <div class="flex items-center gap-2">
+        <i v-if="isLocked" class="pi pi-lock text-xs text-gray-400" />
+        <h3 class="text-sm font-semibold text-gray-900">
+          {{ installmentTitle }}
+        </h3>
+        <span
+          v-if="payment.isManual"
+          class="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-[0.65rem] font-medium text-purple-700"
+        >
+          Manual
+        </span>
+      </div>
       <PaymentStatusBadge :status="payment.status" />
+    </div>
+
+    <!-- Locked message -->
+    <div v-if="isLocked" class="mb-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
+      <i class="pi pi-info-circle mr-1" />
+      Debes completar el pago anterior antes de realizar este.
     </div>
 
     <!-- Details -->
@@ -92,6 +121,13 @@ const handleProofUpdated = (updated: PaymentResponse) => {
       </div>
     </div>
 
+    <!-- Concept lines breakdown -->
+    <PaymentConceptLines
+      :concept-lines="payment.conceptLines"
+      :extra-concept-lines="payment.extraConceptLines"
+      :manual-concept-line="payment.manualConceptLine"
+    />
+
     <!-- Proof upload area -->
     <div v-if="showUpload" class="border-t border-gray-100 pt-3">
       <ProofUploader
@@ -101,6 +137,7 @@ const handleProofUpdated = (updated: PaymentResponse) => {
         :proof-uploaded-at="payment.proofUploadedAt"
         :status="payment.status"
         :admin-notes="payment.adminNotes"
+        :disabled="!payment.isActionable"
         @uploaded="handleProofUpdated"
         @removed="handleProofUpdated"
       />

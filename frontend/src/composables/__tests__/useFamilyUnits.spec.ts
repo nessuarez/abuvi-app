@@ -432,6 +432,39 @@ describe('useFamilyUnits', () => {
       expect(api.get).toHaveBeenCalledWith(expect.stringContaining('search=Garcia'))
     })
 
+    it('should pass membershipStatus parameter when not "all"', async () => {
+      vi.mocked(api.get).mockResolvedValueOnce({
+        data: { success: true, data: { items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 }, error: null }
+      })
+
+      const { fetchAllFamilyUnits } = useFamilyUnits()
+      await fetchAllFamilyUnits({ membershipStatus: 'active' })
+
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining('membershipStatus=active'))
+    })
+
+    it('should not pass membershipStatus when set to "all"', async () => {
+      vi.mocked(api.get).mockResolvedValueOnce({
+        data: { success: true, data: { items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 }, error: null }
+      })
+
+      const { fetchAllFamilyUnits } = useFamilyUnits()
+      await fetchAllFamilyUnits({ membershipStatus: 'all' })
+
+      expect(api.get).toHaveBeenCalledWith(expect.not.stringContaining('membershipStatus'))
+    })
+
+    it('should pass membershipStatus "none" parameter', async () => {
+      vi.mocked(api.get).mockResolvedValueOnce({
+        data: { success: true, data: { items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 }, error: null }
+      })
+
+      const { fetchAllFamilyUnits } = useFamilyUnits()
+      await fetchAllFamilyUnits({ membershipStatus: 'none' })
+
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining('membershipStatus=none'))
+    })
+
     it('should set error message on failure', async () => {
       vi.mocked(api.get).mockRejectedValueOnce({
         response: { data: { error: { message: 'No autorizado' } } }
@@ -441,6 +474,45 @@ describe('useFamilyUnits', () => {
       await fetchAllFamilyUnits()
 
       expect(error.value).toBe('No autorizado')
+    })
+  })
+
+  describe('updateFamilyNumber', () => {
+    it('should call PUT endpoint with correct params', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: {
+            id: 'unit-1',
+            name: 'Garcia Family',
+            representativeUserId: 'user-1',
+            familyNumber: 42,
+            profilePhotoUrl: null,
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z'
+          }
+        }
+      }
+
+      vi.mocked(api.put).mockResolvedValueOnce(mockResponse)
+
+      const { updateFamilyNumber } = useFamilyUnits()
+      const result = await updateFamilyNumber('unit-1', 42)
+
+      expect(result).toEqual(mockResponse.data.data)
+      expect(api.put).toHaveBeenCalledWith('/family-units/unit-1/family-number', { familyNumber: 42 })
+    })
+
+    it('should set error on failure', async () => {
+      vi.mocked(api.put).mockRejectedValueOnce({
+        response: { data: { error: { message: 'Número de familia duplicado' } } }
+      })
+
+      const { updateFamilyNumber, error } = useFamilyUnits()
+      const result = await updateFamilyNumber('unit-1', 42)
+
+      expect(result).toBeNull()
+      expect(error.value).toBe('Número de familia duplicado')
     })
   })
 })

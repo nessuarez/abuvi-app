@@ -60,6 +60,7 @@ Groups people who attend camp together as a family. A User acts as the represent
 - `id`: Unique identifier for the FamilyUnit entity (Primary Key, UUID)
 - `name`: Family display name, e.g. "Garcia Family" (required, max 200 characters)
 - `representativeUserId`: User who manages this family unit (required, FK -> User)
+- `familyNumber`: Sequential human-readable family number ("número de familia socia") (optional, int, unique when not null, auto-assigned on first membership activation in the family)
 - `profilePhotoUrl`: URL of the family unit's profile photo thumbnail (optional, max 2048 characters)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
@@ -127,6 +128,7 @@ Represents an active membership for a family member. Members pay annual fees and
 
 - `id`: Unique identifier for the Membership entity (Primary Key, UUID)
 - `familyMemberId`: The family member who holds this membership (required, FK -> FamilyMember, unique)
+- `memberNumber`: Sequential human-readable member number ("número de socio/a") (optional, int, unique when not null, auto-assigned on membership creation)
 - `startDate`: When the membership became active (required, TIMESTAMP). Always normalized to January 1st of the membership year (`{year}-01-01T00:00:00Z`). The API accepts `{ year: int }` and the backend normalizes it — the raw date within the year has no business meaning.
 - `endDate`: When the membership ended (optional, TIMESTAMP, null if currently active)
 - `isActive`: Whether the membership is currently active (required, BOOLEAN)
@@ -482,8 +484,9 @@ A specific annual edition of a camp (e.g., Camp 2026). Defines dates, pricing, c
 - `accommodationCapacityJson`: JSON-serialized `AccommodationCapacity` for this specific edition (optional, stored as `text`). When set, auto-syncs to parent `Camp.accommodationCapacityJson`.
 - `proposalReason`: Reason provided when proposing the edition (optional, used in Proposed → Draft flow)
 - `proposalNotes`: Additional notes provided at proposal time (optional)
-- `firstPaymentDeadline`: Explicit deadline for the 1st payment installment (optional, datetime UTC). When null, defaults to `startDate - 117 days`.
-- `secondPaymentDeadline`: Explicit deadline for the 2nd payment installment (optional, datetime UTC). When null, defaults to `startDate - 75 days`.
+- `firstPaymentDeadline`: Deadline for the 1st payment installment (optional, datetime UTC). Materialized at creation from `PaymentSettings.FirstInstallmentDaysBefore` (default 30). When null (legacy), falls back to `startDate - settings offset`.
+- `secondPaymentDeadline`: Deadline for the 2nd payment installment (optional, datetime UTC). Materialized at creation from `PaymentSettings.SecondInstallmentDaysBefore` (default 15). When null (legacy), falls back to `startDate - settings offset`.
+- `extrasPaymentDeadline`: Deadline for the extras (3rd) payment installment (optional, datetime UTC). Materialized at creation from `PaymentSettings.ExtrasInstallmentDaysFromCampStart` (default 0). When null (legacy), falls back to `startDate + settings offset`.
 - `contactEmail`: Contact email for this edition (optional)
 - `contactPhone`: Contact phone for this edition (optional)
 - `createdAt`: Record creation timestamp (required, auto-generated)
@@ -691,8 +694,18 @@ A partial or full payment for a registration. Supports multiple payments per reg
 - `amount`: Payment amount in euros (required, decimal, > 0)
 - `paymentDate`: When the payment was made (required, datetime)
 - `method`: Payment method used (required, enum: `Card` | `Transfer` | `Cash`)
-- `status`: Current payment status (required, enum: `Pending` | `Completed` | `Failed` | `Refunded`)
+- `status`: Current payment status (required, enum: `Pending` | `PendingReview` | `Completed` | `Failed` | `Refunded`)
 - `externalReference`: Payment gateway transaction ID, e.g. Redsys reference (optional, max 255 characters)
+- `installmentNumber`: Which installment this payment represents (required, integer, 1-3)
+- `dueDate`: Payment deadline (optional, datetime UTC)
+- `transferConcept`: Bank transfer reference identifier (optional, max 100 chars, e.g., "CAMP-GAR-1")
+- `proofFileUrl`: URL to uploaded proof of transfer in blob storage (optional, max 500 chars)
+- `proofFileName`: Original filename of the uploaded proof (optional, max 255 chars)
+- `proofUploadedAt`: When the proof was uploaded (optional, datetime UTC)
+- `adminNotes`: Internal admin notes about the payment (optional, text)
+- `conceptLinesSerialized`: JSON-serialized breakdown of what this payment covers (optional, text). Contains a `PaymentConceptLinesJson` wrapper with `MemberLines` (for P1/P2: per-member lines with name, age category, attendance period, amounts) and `ExtraLines` (for P3: per-extra lines with name, quantity, pricing type). Generated at write time, regenerated on recalculation.
+- `confirmedByUserId`: Which admin user confirmed the payment (optional, FK -> User)
+- `confirmedAt`: When the payment was confirmed by an admin (optional, datetime UTC)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
@@ -1179,6 +1192,7 @@ erDiagram
         boolean isArchived
         datetime firstPaymentDeadline
         datetime secondPaymentDeadline
+        datetime extrasPaymentDeadline
         datetime createdAt
         datetime updatedAt
     }
