@@ -13,6 +13,7 @@ import Textarea from 'primevue/textarea'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import Container from '@/components/ui/Container.vue'
+import RegistrationCard from '@/components/registrations/RegistrationCard.vue'
 import RegistrationMemberSelector from '@/components/registrations/RegistrationMemberSelector.vue'
 import RegistrationExtrasSelector from '@/components/registrations/RegistrationExtrasSelector.vue'
 import RegistrationAccommodationSelector from '@/components/registrations/RegistrationAccommodationSelector.vue'
@@ -27,7 +28,7 @@ import { useRegistrations } from '@/composables/useRegistrations'
 import { usePayments } from '@/composables/usePayments'
 import { useAuthStore } from '@/stores/auth'
 import type { CampEdition } from '@/types/camp-edition'
-import type { WizardMemberSelection, WizardExtrasSelection, WizardAccommodationPreference } from '@/types/registration'
+import type { WizardMemberSelection, WizardExtrasSelection, WizardAccommodationPreference, RegistrationListItem } from '@/types/registration'
 import type { PaymentResponse, PaymentSettings } from '@/types/payment'
 import { ATTENDANCE_PERIOD_LABELS, computePeriodDays } from '@/utils/registration'
 import { calculatePricingPreview } from '@/utils/registration-pricing'
@@ -44,7 +45,7 @@ const { getEditionById } = useCampEditions()
 const { familyUnit, familyMembers, getCurrentUserFamilyUnit, getFamilyMembers } = useFamilyUnits()
 const { extras: campExtras, fetchExtras } = useCampExtras(editionId.value)
 const { accommodations: campAccommodations, fetchAccommodations } = useCampAccommodations(editionId.value)
-const { createRegistration, setExtras, setAccommodationPreferences, loading, error } = useRegistrations()
+const { fetchMyRegistrations, registrations, createRegistration, setExtras, setAccommodationPreferences, loading, error } = useRegistrations()
 const { getRegistrationPayments, getPaymentSettings } = usePayments()
 
 const currentStep = ref(1)
@@ -61,6 +62,7 @@ const pageLoading = ref(true)
 const createdRegistrationId = ref<string | null>(null)
 const installments = ref<PaymentResponse[]>([])
 const paymentSettings = ref<PaymentSettings | null>(null)
+const existingRegistration = ref<RegistrationListItem | null>(null)
 
 const isRepresentative = computed(
   () => !!familyUnit.value && familyUnit.value.representativeUserId === auth.user?.id
@@ -231,10 +233,16 @@ onMounted(async () => {
   }
 
   await getCurrentUserFamilyUnit()
-  if (familyUnit.value) {
+  await fetchMyRegistrations()
+  existingRegistration.value = registrations.value.find(
+    (r: RegistrationListItem) => r.campEdition.id === editionId.value && r.status !== 'Cancelled'
+  ) ?? null
+
+  if (!existingRegistration.value && familyUnit.value) {
     await getFamilyMembers(familyUnit.value.id)
+    await fetchExtras()
+    await fetchAccommodations()
   }
-  await Promise.all([fetchExtras(), fetchAccommodations()])
   pageLoading.value = false
 })
 </script>
@@ -279,8 +287,21 @@ onMounted(async () => {
           </div>
         </div>
 
+        <!-- Existing registration for this edition -->
+        <template v-if="existingRegistration">
+          <Message severity="info" :closable="false" class="mb-6">
+            Ya tienes una inscripción en este campamento. No es posible crear una segunda inscripción para la misma edición.
+          </Message>
+          <div class="mx-auto max-w-2xl">
+            <RegistrationCard
+              :registration="existingRegistration"
+              @view="router.push({ name: 'registration-detail', params: { id: $event } })"
+            />
+          </div>
+        </template>
+
         <!-- No family unit message -->
-        <Message v-if="!familyUnit" severity="info" :closable="false" class="mb-6">
+        <Message v-else-if="!familyUnit" severity="info" :closable="false" class="mb-6">
           En primer lugar, define tu unidad familiar para poder inscribirte.
           <RouterLink to="/family-unit" class="ml-1 font-semibold text-blue-600 underline">
             Crear unidad familiar
@@ -293,7 +314,7 @@ onMounted(async () => {
           familia, contacta con el representante.
         </Message>
 
-        <div class="mx-auto max-w-2xl">
+        <div v-else class="mx-auto max-w-2xl">
           <Stepper v-model:value="currentStep" linear data-onboarding="registration-stepper">
             <StepList>
               <Step :value="1">Participantes</Step>
