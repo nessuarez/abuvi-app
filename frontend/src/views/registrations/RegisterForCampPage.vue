@@ -314,15 +314,6 @@ onMounted(async () => {
                         data-testid="special-needs" />
                     </div>
 
-                    <!-- Campmates preference -->
-                    <div class="mb-5">
-                      <label class="mb-1 block text-sm font-medium text-gray-700">
-                        Preferencia de acampantes
-                      </label>
-                      <Textarea v-model="campatesPreference" :rows="2" :maxlength="500"
-                        placeholder="Con quien te gustaria acampar cerca..." class="w-full"
-                        data-testid="campates-preference" />
-                    </div>
 
                     <!-- Pet -->
                     <div class="mb-5 flex items-center gap-2">
