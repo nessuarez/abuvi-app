@@ -84,7 +84,7 @@ public class PaymentsService(
             "Created {Count} installments for registration {RegistrationId}",
             2, registrationId);
 
-        return payments.Select(MapToResponse).ToList();
+        return payments.Select(p => MapToResponse(p, payments)).ToList();
     }
 
     public async Task<PaymentResponse> UploadProofAsync(
@@ -98,6 +98,11 @@ public class PaymentsService(
 
         if (payment.Status != PaymentStatus.Pending)
             throw new BusinessRuleException("Solo se puede subir comprobante para pagos pendientes");
+
+        // Sequential payment enforcement
+        var allPayments = await paymentsRepo.GetByRegistrationIdAsync(payment.RegistrationId, ct);
+        if (!ComputeIsActionable(payment, allPayments))
+            throw new BusinessRuleException("Debes completar el pago anterior antes de subir un comprobante.");
 
         await using var stream = file.OpenReadStream();
         var result = await blobStorageService.UploadAsync(
@@ -115,7 +120,7 @@ public class PaymentsService(
             "Proof uploaded for payment {PaymentId}, status changed to PendingReview",
             paymentId);
 
-        return MapToResponse(payment);
+        return MapToResponse(payment, allPayments);
     }
 
     public async Task<PaymentResponse> RemoveProofAsync(
@@ -147,7 +152,8 @@ public class PaymentsService(
             "Proof removed for payment {PaymentId}, status reset to Pending",
             paymentId);
 
-        return MapToResponse(payment);
+        var allPayments = await paymentsRepo.GetByRegistrationIdAsync(payment.RegistrationId, ct);
+        return MapToResponse(payment, allPayments);
     }
 
     public async Task<PaymentResponse> ConfirmPaymentAsync(
@@ -185,7 +191,7 @@ public class PaymentsService(
                 payment.RegistrationId);
         }
 
-        return MapToResponse(payment);
+        return MapToResponse(payment, allPayments);
     }
 
     public async Task<PaymentResponse> RejectPaymentAsync(
@@ -208,7 +214,8 @@ public class PaymentsService(
             "Payment {PaymentId} rejected by admin {AdminUserId}: {Reason}",
             paymentId, adminUserId, notes);
 
-        return MapToResponse(payment);
+        var allPayments = await paymentsRepo.GetByRegistrationIdAsync(payment.RegistrationId, ct);
+        return MapToResponse(payment, allPayments);
     }
 
     public async Task<List<PaymentResponse>> GetByRegistrationAsync(
@@ -222,7 +229,7 @@ public class PaymentsService(
             throw new BusinessRuleException("No tienes permiso para ver los pagos de esta inscripción");
 
         var payments = await paymentsRepo.GetByRegistrationIdAsync(registrationId, ct);
-        return payments.Select(MapToResponse).ToList();
+        return payments.Select(p => MapToResponse(p, payments)).ToList();
     }
 
     public async Task<PaymentResponse> GetByIdAsync(
@@ -235,21 +242,180 @@ public class PaymentsService(
             payment.Registration.RegisteredByUserId != userId)
             throw new BusinessRuleException("No tienes permiso para ver este pago");
 
-        return MapToResponse(payment);
+        var allPayments = await paymentsRepo.GetByRegistrationIdAsync(payment.RegistrationId, ct);
+        return MapToResponse(payment, allPayments);
     }
 
     public async Task<List<AdminPaymentResponse>> GetPendingReviewAsync(CancellationToken ct)
     {
         var payments = await paymentsRepo.GetPendingReviewAsync(ct);
-        return payments.Select(MapToAdminResponse).ToList();
+        return payments.Select(p => MapToAdminResponse(p, payments)).ToList();
     }
 
     public async Task<(List<AdminPaymentResponse> Items, int TotalCount)> GetAllPaymentsAsync(
         PaymentFilterRequest filter, CancellationToken ct)
     {
         var (items, totalCount) = await paymentsRepo.GetFilteredAsync(filter, ct);
-        return (items.Select(MapToAdminResponse).ToList(), totalCount);
+        // Group by registration to compute IsActionable per registration context
+        var grouped = items.GroupBy(p => p.RegistrationId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        var mapped = items.Select(p => MapToAdminResponse(p, grouped[p.RegistrationId])).ToList();
+        return (mapped, totalCount);
     }
+
+    // --- Manual payment methods (admin only) ---
+
+    public async Task<AdminPaymentResponse> CreateManualPaymentAsync(
+        Guid registrationId, CreateManualPaymentRequest request, Guid adminUserId, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var maxInstallment = registration.Payments.Any()
+            ? registration.Payments.Max(p => p.InstallmentNumber)
+            : 0;
+        var nextInstallment = maxInstallment + 1;
+
+        var settings = await LoadPaymentSettingsAsync(ct);
+
+        var familyName = NormalizeName(registration.FamilyUnit.Name);
+        var concept = $"{settings.TransferConceptPrefix}-{familyName}-{nextInstallment}";
+        if (concept.Length > 100) concept = concept[..100];
+
+        var conceptLines = new PaymentConceptLinesJson(
+            MemberLines: null,
+            ExtraLines: null,
+            ManualLine: new ManualPaymentConceptLine(request.Description, request.Amount)
+        );
+
+        var payment = new Payment
+        {
+            Id = Guid.NewGuid(),
+            RegistrationId = registrationId,
+            Amount = request.Amount,
+            PaymentDate = DateTime.UtcNow,
+            Method = PaymentMethod.Transfer,
+            Status = PaymentStatus.Pending,
+            InstallmentNumber = nextInstallment,
+            DueDate = request.DueDate,
+            TransferConcept = concept,
+            AdminNotes = request.AdminNotes,
+            IsManual = true,
+            ConceptLinesSerialized = JsonSerializer.Serialize(conceptLines),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        await paymentsRepo.AddAsync(payment, ct);
+
+        registration.TotalAmount += request.Amount;
+        await registrationsRepo.UpdateAsync(registration, ct);
+
+        logger.LogInformation(
+            "Manual payment created for registration {RegistrationId}, amount={Amount}, installment={Installment}",
+            registrationId, request.Amount, nextInstallment);
+
+        // Re-load to get navigation properties for admin response
+        var created = await paymentsRepo.GetByIdWithRegistrationAsync(payment.Id, ct);
+        var allPayments = await paymentsRepo.GetByRegistrationIdAsync(registrationId, ct);
+        return MapToAdminResponse(created!, allPayments);
+    }
+
+    public async Task<AdminPaymentResponse> UpdateManualPaymentAsync(
+        Guid paymentId, UpdateManualPaymentRequest request, Guid adminUserId, CancellationToken ct)
+    {
+        var payment = await paymentsRepo.GetByIdWithRegistrationAsync(paymentId, ct)
+            ?? throw new NotFoundException("Pago", paymentId);
+
+        if (!payment.IsManual)
+            throw new BusinessRuleException("Solo se pueden editar pagos manuales.");
+
+        if (payment.Status != PaymentStatus.Pending)
+            throw new BusinessRuleException("Solo se pueden editar pagos en estado Pendiente.");
+
+        var oldAmount = payment.Amount;
+
+        if (request.Amount.HasValue)
+            payment.Amount = request.Amount.Value;
+
+        if (request.Description is not null)
+        {
+            var conceptLines = new PaymentConceptLinesJson(
+                MemberLines: null,
+                ExtraLines: null,
+                ManualLine: new ManualPaymentConceptLine(
+                    request.Description, request.Amount ?? payment.Amount)
+            );
+            payment.ConceptLinesSerialized = JsonSerializer.Serialize(conceptLines);
+        }
+        else if (request.Amount.HasValue)
+        {
+            var (_, _, manualLine) = DeserializeConceptLines(payment.ConceptLinesSerialized);
+            if (manualLine is not null)
+            {
+                var conceptLines = new PaymentConceptLinesJson(
+                    MemberLines: null,
+                    ExtraLines: null,
+                    ManualLine: manualLine with { Amount = request.Amount.Value }
+                );
+                payment.ConceptLinesSerialized = JsonSerializer.Serialize(conceptLines);
+            }
+        }
+
+        if (request.DueDate.HasValue)
+            payment.DueDate = request.DueDate.Value;
+
+        if (request.AdminNotes is not null)
+            payment.AdminNotes = request.AdminNotes;
+
+        payment.UpdatedAt = DateTime.UtcNow;
+        await paymentsRepo.UpdateAsync(payment, ct);
+
+        if (request.Amount.HasValue && request.Amount.Value != oldAmount)
+        {
+            var registration = await registrationsRepo.GetByIdAsync(payment.RegistrationId, ct);
+            if (registration is not null)
+            {
+                registration.TotalAmount += (request.Amount.Value - oldAmount);
+                await registrationsRepo.UpdateAsync(registration, ct);
+            }
+        }
+
+        logger.LogInformation(
+            "Manual payment {PaymentId} updated by admin {AdminUserId}",
+            paymentId, adminUserId);
+
+        var allPayments = await paymentsRepo.GetByRegistrationIdAsync(payment.RegistrationId, ct);
+        return MapToAdminResponse(payment, allPayments);
+    }
+
+    public async Task DeleteManualPaymentAsync(
+        Guid paymentId, Guid adminUserId, CancellationToken ct)
+    {
+        var payment = await paymentsRepo.GetByIdAsync(paymentId, ct)
+            ?? throw new NotFoundException("Pago", paymentId);
+
+        if (!payment.IsManual)
+            throw new BusinessRuleException("Solo se pueden eliminar pagos manuales.");
+
+        if (payment.Status != PaymentStatus.Pending)
+            throw new BusinessRuleException("Solo se pueden eliminar pagos en estado Pendiente.");
+
+        var registration = await registrationsRepo.GetByIdAsync(payment.RegistrationId, ct);
+        if (registration is not null)
+        {
+            registration.TotalAmount -= payment.Amount;
+            await registrationsRepo.UpdateAsync(registration, ct);
+        }
+
+        await paymentsRepo.DeleteAsync(payment.Id, ct);
+
+        logger.LogInformation(
+            "Manual payment {PaymentId} deleted by admin {AdminUserId}",
+            paymentId, adminUserId);
+    }
+
+    // --- Payment settings ---
 
     public async Task<PaymentSettingsResponse> GetPaymentSettingsAsync(CancellationToken ct)
     {
@@ -311,6 +477,37 @@ public class PaymentsService(
 
     // --- Private helpers ---
 
+    private static bool ComputeIsActionable(Payment payment, List<Payment> allPayments)
+    {
+        // Manual payments are always actionable if Pending
+        if (payment.IsManual)
+            return payment.Status == PaymentStatus.Pending;
+
+        // Non-pending payments are not actionable
+        if (payment.Status != PaymentStatus.Pending)
+            return false;
+
+        // P1 is always actionable
+        if (payment.InstallmentNumber == 1)
+            return true;
+
+        // P2 requires P1 Completed
+        if (payment.InstallmentNumber == 2)
+        {
+            var p1 = allPayments.FirstOrDefault(p => p.InstallmentNumber == 1 && !p.IsManual);
+            return p1?.Status == PaymentStatus.Completed;
+        }
+
+        // P3 requires P2 Completed
+        if (payment.InstallmentNumber == 3)
+        {
+            var p2 = allPayments.FirstOrDefault(p => p.InstallmentNumber == 2 && !p.IsManual);
+            return p2?.Status == PaymentStatus.Completed;
+        }
+
+        return false;
+    }
+
     private async Task<PaymentSettingsJson> LoadPaymentSettingsAsync(CancellationToken ct)
     {
         var setting = await settingsRepo.GetByKeyAsync(PaymentSettingsKey, ct);
@@ -328,18 +525,20 @@ public class PaymentsService(
         }
     }
 
-    private static PaymentResponse MapToResponse(Payment p)
+    private static PaymentResponse MapToResponse(Payment p, List<Payment> allPayments)
     {
-        var (memberLines, extraLines) = DeserializeConceptLines(p.ConceptLinesSerialized);
+        var (memberLines, extraLines, manualLine) = DeserializeConceptLines(p.ConceptLinesSerialized);
         return new PaymentResponse(
             p.Id, p.RegistrationId, p.InstallmentNumber, p.Amount, p.DueDate,
             p.Method, p.Status, p.TransferConcept, p.ProofFileUrl, p.ProofFileName,
-            p.ProofUploadedAt, p.AdminNotes, p.CreatedAt, memberLines, extraLines);
+            p.ProofUploadedAt, p.AdminNotes, p.CreatedAt,
+            ComputeIsActionable(p, allPayments), p.IsManual,
+            memberLines, extraLines, manualLine);
     }
 
-    private static AdminPaymentResponse MapToAdminResponse(Payment p)
+    private static AdminPaymentResponse MapToAdminResponse(Payment p, List<Payment> allPayments)
     {
-        var (memberLines, extraLines) = DeserializeConceptLines(p.ConceptLinesSerialized);
+        var (memberLines, extraLines, manualLine) = DeserializeConceptLines(p.ConceptLinesSerialized);
         return new AdminPaymentResponse(
             p.Id, p.RegistrationId,
             p.Registration.FamilyUnit.Name,
@@ -348,21 +547,23 @@ public class PaymentsService(
             p.Status, p.TransferConcept, p.ProofFileUrl, p.ProofFileName,
             p.ProofUploadedAt, p.AdminNotes,
             null, // ConfirmedByUserName - would need user lookup, kept null for now
-            p.ConfirmedAt, p.CreatedAt, memberLines, extraLines);
+            p.ConfirmedAt, p.CreatedAt,
+            ComputeIsActionable(p, allPayments), p.IsManual,
+            memberLines, extraLines, manualLine);
     }
 
-    private static (List<PaymentConceptLine>?, List<PaymentExtraConceptLine>?) DeserializeConceptLines(
+    private static (List<PaymentConceptLine>?, List<PaymentExtraConceptLine>?, ManualPaymentConceptLine?) DeserializeConceptLines(
         string? json)
     {
-        if (json is null) return (null, null);
+        if (json is null) return (null, null, null);
         try
         {
             var data = JsonSerializer.Deserialize<PaymentConceptLinesJson>(json);
-            return (data?.MemberLines, data?.ExtraLines);
+            return (data?.MemberLines, data?.ExtraLines, data?.ManualLine);
         }
         catch (JsonException)
         {
-            return (null, null);
+            return (null, null, null);
         }
     }
 
@@ -471,7 +672,7 @@ public class PaymentsService(
             ?? throw new NotFoundException("Inscripción", registrationId);
 
         var payments = await paymentsRepo.GetByRegistrationIdTrackedAsync(registrationId, ct);
-        var p3 = payments.FirstOrDefault(p => p.InstallmentNumber == 3);
+        var p3 = payments.FirstOrDefault(p => p.InstallmentNumber == 3 && !p.IsManual);
 
         var settings = await LoadPaymentSettingsAsync(ct);
         var dueDate = registration.CampEdition.ExtrasPaymentDeadline
@@ -520,7 +721,8 @@ public class PaymentsService(
                 "SyncExtrasInstallment: P3 synced for registration {RegistrationId}, amount={Amount}",
                 registrationId, extrasAmount);
 
-            return MapToResponse(p3);
+            var allPayments = await paymentsRepo.GetByRegistrationIdAsync(registrationId, ct);
+            return MapToResponse(p3, allPayments);
         }
         else
         {
@@ -545,9 +747,10 @@ public class PaymentsService(
         Guid registrationId, decimal newBaseTotalAmount, decimal oldBaseTotalAmount, CancellationToken ct)
     {
         var payments = await paymentsRepo.GetByRegistrationIdTrackedAsync(registrationId, ct);
-        var p1 = payments.FirstOrDefault(p => p.InstallmentNumber == 1)
+        var basePayments = payments.Where(p => !p.IsManual).ToList();
+        var p1 = basePayments.FirstOrDefault(p => p.InstallmentNumber == 1)
             ?? throw new InvalidOperationException($"P1 not found for registration {registrationId}");
-        var p2 = payments.FirstOrDefault(p => p.InstallmentNumber == 2)
+        var p2 = basePayments.FirstOrDefault(p => p.InstallmentNumber == 2)
             ?? throw new InvalidOperationException($"P2 not found for registration {registrationId}");
 
         if (p1.Status == PaymentStatus.PendingReview)

@@ -22,9 +22,15 @@ public record PaymentExtraConceptLine(
     string PricingType
 );
 
+public record ManualPaymentConceptLine(
+    string Description,
+    decimal Amount
+);
+
 public record PaymentConceptLinesJson(
     List<PaymentConceptLine>? MemberLines,
-    List<PaymentExtraConceptLine>? ExtraLines
+    List<PaymentExtraConceptLine>? ExtraLines,
+    ManualPaymentConceptLine? ManualLine = null
 );
 
 // --- User-facing response ---
@@ -42,8 +48,11 @@ public record PaymentResponse(
     DateTime? ProofUploadedAt,
     string? AdminNotes,
     DateTime CreatedAt,
+    bool IsActionable,
+    bool IsManual,
     List<PaymentConceptLine>? ConceptLines = null,
-    List<PaymentExtraConceptLine>? ExtraConceptLines = null
+    List<PaymentExtraConceptLine>? ExtraConceptLines = null,
+    ManualPaymentConceptLine? ManualConceptLine = null
 );
 
 // --- Admin-facing response (extends with context) ---
@@ -64,8 +73,11 @@ public record AdminPaymentResponse(
     string? ConfirmedByUserName,
     DateTime? ConfirmedAt,
     DateTime CreatedAt,
+    bool IsActionable,
+    bool IsManual,
     List<PaymentConceptLine>? ConceptLines = null,
-    List<PaymentExtraConceptLine>? ExtraConceptLines = null
+    List<PaymentExtraConceptLine>? ExtraConceptLines = null,
+    ManualPaymentConceptLine? ManualConceptLine = null
 );
 
 // --- Requests ---
@@ -80,6 +92,20 @@ public record PaymentFilterRequest(
     DateTime? ToDate = null,
     int Page = 1,
     int PageSize = 20
+);
+
+public record CreateManualPaymentRequest(
+    decimal Amount,
+    string Description,
+    DateTime? DueDate = null,
+    string? AdminNotes = null
+);
+
+public record UpdateManualPaymentRequest(
+    decimal? Amount = null,
+    string? Description = null,
+    DateTime? DueDate = null,
+    string? AdminNotes = null
 );
 
 // --- Payment Settings (stored in AssociationSettings as JSON) ---

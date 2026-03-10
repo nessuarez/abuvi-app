@@ -696,14 +696,15 @@ A partial or full payment for a registration. Supports multiple payments per reg
 - `method`: Payment method used (required, enum: `Card` | `Transfer` | `Cash`)
 - `status`: Current payment status (required, enum: `Pending` | `PendingReview` | `Completed` | `Failed` | `Refunded`)
 - `externalReference`: Payment gateway transaction ID, e.g. Redsys reference (optional, max 255 characters)
-- `installmentNumber`: Which installment this payment represents (required, integer, 1-3)
+- `installmentNumber`: Which installment this payment represents (required, integer, 1+ for auto-generated, 4+ for manual)
 - `dueDate`: Payment deadline (optional, datetime UTC)
 - `transferConcept`: Bank transfer reference identifier (optional, max 100 chars, e.g., "CAMP-GAR-1")
+- `isManual`: Whether this payment was manually created by an admin (required, boolean, default false)
 - `proofFileUrl`: URL to uploaded proof of transfer in blob storage (optional, max 500 chars)
 - `proofFileName`: Original filename of the uploaded proof (optional, max 255 chars)
 - `proofUploadedAt`: When the proof was uploaded (optional, datetime UTC)
 - `adminNotes`: Internal admin notes about the payment (optional, text)
-- `conceptLinesSerialized`: JSON-serialized breakdown of what this payment covers (optional, text). Contains a `PaymentConceptLinesJson` wrapper with `MemberLines` (for P1/P2: per-member lines with name, age category, attendance period, amounts) and `ExtraLines` (for P3: per-extra lines with name, quantity, pricing type). Generated at write time, regenerated on recalculation.
+- `conceptLinesSerialized`: JSON-serialized breakdown of what this payment covers (optional, text). Contains a `PaymentConceptLinesJson` wrapper with `MemberLines` (for P1/P2: per-member lines with name, age category, attendance period, amounts), `ExtraLines` (for P3: per-extra lines with name, quantity, pricing type), and `ManualLine` (for manual payments: description and amount). Generated at write time, regenerated on recalculation.
 - `confirmedByUserId`: Which admin user confirmed the payment (optional, FK -> User)
 - `confirmedAt`: When the payment was confirmed by an admin (optional, datetime UTC)
 - `createdAt`: Record creation timestamp (required, auto-generated)

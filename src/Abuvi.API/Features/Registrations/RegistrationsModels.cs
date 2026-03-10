@@ -99,6 +99,7 @@ public class Payment
     public DateTime? ProofUploadedAt { get; set; }
     public string? AdminNotes { get; set; }
     public string? ConceptLinesSerialized { get; set; }
+    public bool IsManual { get; set; } = false;
     public Guid? ConfirmedByUserId { get; set; }
     public DateTime? ConfirmedAt { get; set; }
     public DateTime CreatedAt { get; set; }
