@@ -400,7 +400,7 @@ onMounted(async () => {
 
         <!-- Preference fields -->
         <div
-          v-if="registration.specialNeeds || registration.campatesPreference"
+          v-if="registration.specialNeeds || registration.campatesPreference || registration.hasPet"
           class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4"
         >
           <h2 class="mb-3 text-sm font-semibold text-gray-700">Informacion adicional</h2>
@@ -412,6 +412,10 @@ onMounted(async () => {
             <div v-if="registration.campatesPreference" class="flex flex-col gap-0.5">
               <dt class="font-medium text-gray-600">Preferencia de acampantes</dt>
               <dd class="text-gray-800">{{ registration.campatesPreference }}</dd>
+            </div>
+            <div v-if="registration.hasPet" class="flex flex-col gap-0.5">
+              <dt class="font-medium text-gray-600">Mascota</dt>
+              <dd class="text-gray-800">Sí, asiste con mascota</dd>
             </div>
           </dl>
         </div>
