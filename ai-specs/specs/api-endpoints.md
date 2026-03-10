@@ -2653,7 +2653,8 @@ Edit a registration as Admin/Board. Sets the registration status to `Draft` and 
   ],
   "notes": "Updated notes",
   "specialNeeds": "Updated special needs",
-  "campatesPreference": "Updated preference"
+  "campatesPreference": "Updated preference",
+  "hasPet": true
 }
 ```
 

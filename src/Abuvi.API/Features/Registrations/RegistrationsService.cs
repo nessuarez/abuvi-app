@@ -141,6 +141,7 @@ public class RegistrationsService(
             Notes = request.Notes,
             SpecialNeeds = request.SpecialNeeds,
             CampatesPreference = request.CampatesPreference,
+            HasPet = request.HasPet,
             Members = registrationMembers
         };
 
@@ -783,6 +784,7 @@ public class RegistrationsService(
         if (request.Notes != null) registration.Notes = request.Notes;
         if (request.SpecialNeeds != null) registration.SpecialNeeds = request.SpecialNeeds;
         if (request.CampatesPreference != null) registration.CampatesPreference = request.CampatesPreference;
+        if (request.HasPet != null) registration.HasPet = request.HasPet.Value;
 
         // Set status to Draft and record admin modification
         registration.Status = RegistrationStatus.Draft;
