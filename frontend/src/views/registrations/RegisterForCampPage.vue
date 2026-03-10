@@ -54,6 +54,7 @@ const accommodationPreferences = ref<WizardAccommodationPreference[]>([])
 const notes = ref<string>('')
 const specialNeeds = ref<string>('')
 const campatesPreference = ref<string>('')
+const hasPet = ref<boolean>(false)
 const edition = ref<CampEdition | null>(null)
 const acceptTerms = ref(false)
 const pageLoading = ref(true)
@@ -125,7 +126,8 @@ const handleConfirm = async () => {
     })),
     notes: notes.value || null,
     specialNeeds: specialNeeds.value || null,
-    campatesPreference: campatesPreference.value || null
+    campatesPreference: campatesPreference.value || null,
+    hasPet: hasPet.value
   })
 
   if (!created) {
@@ -321,6 +323,14 @@ onMounted(async () => {
                         placeholder="Con quien te gustaria acampar cerca..." class="w-full"
                         data-testid="campates-preference" />
                     </div>
+
+                    <!-- Pet -->
+                    <div class="mb-5 flex items-center gap-2">
+                      <Checkbox v-model="hasPet" :binary="true" input-id="has-pet" data-testid="has-pet" />
+                      <label for="has-pet" class="text-sm font-medium text-gray-700">
+                        ¿Viene con mascota?
+                      </label>
+                    </div>
                   </div>
 
                   <div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
@@ -441,7 +451,7 @@ onMounted(async () => {
                     </div>
 
                     <!-- Preference fields summary -->
-                    <div v-if="specialNeeds || campatesPreference" class="mb-4 rounded-lg border border-gray-200 p-4">
+                    <div v-if="specialNeeds || campatesPreference || hasPet" class="mb-4 rounded-lg border border-gray-200 p-4">
                       <h3 class="mb-2 text-sm font-semibold text-gray-700">Informacion adicional</h3>
                       <dl class="space-y-1 text-sm">
                         <div v-if="specialNeeds" class="flex gap-2">
@@ -451,6 +461,10 @@ onMounted(async () => {
                         <div v-if="campatesPreference" class="flex gap-2">
                           <dt class="text-gray-500">Acampantes:</dt>
                           <dd class="text-gray-800">{{ campatesPreference }}</dd>
+                        </div>
+                        <div v-if="hasPet" class="flex gap-2">
+                          <dt class="text-gray-500">Mascota:</dt>
+                          <dd class="text-gray-800">Sí, asiste con mascota</dd>
                         </div>
                       </dl>
                     </div>
