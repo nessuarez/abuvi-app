@@ -152,7 +152,6 @@ frontend/
 │   │       ├── NoticeLegalPage.vue    # Aviso Legal (/legal/notice)
 │   │       ├── PrivacyPage.vue        # Política de Privacidad (/legal/privacy)
 │   │       ├── BylawsPage.vue         # Estatutos (/legal/bylaws)
-│   │       └── TransparencyPage.vue   # Transparencia (/legal/transparency)
 │   ├── pages/                  # Legacy route components (to be migrated to views/)
 │   │   ├── HomePage.vue
 │   │   ├── LoginPage.vue
