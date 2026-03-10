@@ -119,6 +119,12 @@ onMounted(async () => {
             <div class="flex items-center gap-2">
               <span class="font-semibold text-gray-900">{{ payment.familyUnitName }}</span>
               <PaymentStatusBadge :status="payment.status" />
+              <span
+                v-if="payment.isManual"
+                class="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-[0.65rem] font-medium text-purple-700"
+              >
+                Manual
+              </span>
             </div>
             <p class="mt-0.5 text-sm text-gray-500">
               {{ payment.campEditionName }} · Plazo {{ payment.installmentNumber }}
@@ -163,6 +169,7 @@ onMounted(async () => {
         <PaymentConceptLines
           :concept-lines="payment.conceptLines"
           :extra-concept-lines="payment.extraConceptLines"
+          :manual-concept-line="payment.manualConceptLine"
         />
 
         <!-- Actions -->

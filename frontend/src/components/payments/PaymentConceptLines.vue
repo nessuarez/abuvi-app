@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { PaymentConceptLine, PaymentExtraConceptLine } from '@/types/payment'
+import type { PaymentConceptLine, PaymentExtraConceptLine, ManualPaymentConceptLine } from '@/types/payment'
 
 const props = defineProps<{
   conceptLines: PaymentConceptLine[] | null
   extraConceptLines: PaymentExtraConceptLine[] | null
+  manualConceptLine?: ManualPaymentConceptLine | null
 }>()
 
 const expanded = ref(false)
@@ -12,7 +13,8 @@ const expanded = ref(false)
 const hasContent = computed(
   () =>
     (props.conceptLines && props.conceptLines.length > 0) ||
-    (props.extraConceptLines && props.extraConceptLines.length > 0)
+    (props.extraConceptLines && props.extraConceptLines.length > 0) ||
+    !!props.manualConceptLine
 )
 
 const memberTotal = computed(() =>
@@ -89,6 +91,21 @@ const pricingTypeLabel = (type: string): string =>
         </div>
         <div class="mt-1 flex justify-end border-t border-gray-100 pt-1 text-xs font-semibold text-gray-900">
           Total: {{ formatCurrency(extrasTotal) }}
+        </div>
+      </div>
+
+      <!-- Manual concept line -->
+      <div v-if="manualConceptLine" class="py-1.5 text-xs">
+        <div class="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center gap-2">
+            <span class="font-medium text-gray-900">{{ manualConceptLine.description }}</span>
+            <span class="inline-flex items-center rounded-full bg-purple-100 px-1.5 py-0.5 text-[0.6rem] font-medium text-purple-700">
+              Manual
+            </span>
+          </div>
+          <div class="font-medium text-gray-900">
+            {{ formatCurrency(manualConceptLine.amount) }}
+          </div>
         </div>
       </div>
     </div>
