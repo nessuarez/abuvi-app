@@ -137,7 +137,7 @@ const handleProofUpdated = (updated: PaymentResponse) => {
         :proof-uploaded-at="payment.proofUploadedAt"
         :status="payment.status"
         :admin-notes="payment.adminNotes"
-        :disabled="!payment.isActionable"
+        :disabled="isLocked"
         @uploaded="handleProofUpdated"
         @removed="handleProofUpdated"
       />

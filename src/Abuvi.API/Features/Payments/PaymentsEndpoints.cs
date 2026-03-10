@@ -77,6 +77,32 @@ public static class PaymentsEndpoints
             .Produces<ApiResponse<PaymentResponse>>()
             .Produces(403).Produces(404).Produces(422);
 
+        // Manual payment management (admin only)
+        var adminReg = app.MapGroup("/api/admin/registrations")
+            .WithTags("Payments Admin")
+            .WithOpenApi()
+            .RequireAuthorization();
+
+        adminReg.MapPost("/{registrationId:guid}/payments/manual", CreateManualPayment)
+            .WithName("CreateManualPayment")
+            .WithSummary("Create a manual payment for a registration (admin)")
+            .AddEndpointFilter<ValidationFilter<CreateManualPaymentRequest>>()
+            .Produces<ApiResponse<AdminPaymentResponse>>(201)
+            .Produces(403).Produces(404).Produces(422);
+
+        admin.MapPut("/{paymentId:guid}/manual", UpdateManualPayment)
+            .WithName("UpdateManualPayment")
+            .WithSummary("Update a manual payment (admin)")
+            .AddEndpointFilter<ValidationFilter<UpdateManualPaymentRequest>>()
+            .Produces<ApiResponse<AdminPaymentResponse>>()
+            .Produces(403).Produces(404).Produces(422);
+
+        admin.MapDelete("/{paymentId:guid}/manual", DeleteManualPayment)
+            .WithName("DeleteManualPayment")
+            .WithSummary("Delete a manual payment (admin)")
+            .Produces<ApiResponse<object>>()
+            .Produces(403).Produces(404).Produces(422);
+
         // Payment settings
         var settings = app.MapGroup("/api/settings/payment")
             .WithTags("Payment Settings")
@@ -315,5 +341,92 @@ public static class PaymentsEndpoints
 
         var result = await service.UpdatePaymentSettingsAsync(request, userId, ct);
         return TypedResults.Ok(ApiResponse<PaymentSettingsResponse>.Ok(result));
+    }
+
+    // --- Manual payment handlers ---
+
+    private static async Task<IResult> CreateManualPayment(
+        Guid registrationId,
+        CreateManualPaymentRequest request,
+        ClaimsPrincipal user,
+        IPaymentsService service,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
+
+        if (userRole is not ("Admin" or "Board"))
+            return TypedResults.Forbid();
+
+        try
+        {
+            var result = await service.CreateManualPaymentAsync(registrationId, request, userId, ct);
+            return TypedResults.Created($"/api/admin/payments/{result.Id}",
+                ApiResponse<AdminPaymentResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> UpdateManualPayment(
+        Guid paymentId,
+        UpdateManualPaymentRequest request,
+        ClaimsPrincipal user,
+        IPaymentsService service,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
+
+        if (userRole is not ("Admin" or "Board"))
+            return TypedResults.Forbid();
+
+        try
+        {
+            var result = await service.UpdateManualPaymentAsync(paymentId, request, userId, ct);
+            return TypedResults.Ok(ApiResponse<AdminPaymentResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.UnprocessableEntity(
+                ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE"));
+        }
+    }
+
+    private static async Task<IResult> DeleteManualPayment(
+        Guid paymentId,
+        ClaimsPrincipal user,
+        IPaymentsService service,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
+
+        if (userRole is not ("Admin" or "Board"))
+            return TypedResults.Forbid();
+
+        try
+        {
+            await service.DeleteManualPaymentAsync(paymentId, userId, ct);
+            return TypedResults.Ok(ApiResponse<object>.Ok(null!));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.UnprocessableEntity(
+                ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE"));
+        }
     }
 }

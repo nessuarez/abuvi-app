@@ -2896,3 +2896,82 @@ Returns storage usage statistics. Results are cached server-side for 5 minutes t
 
 - **401 Unauthorized**: No valid Bearer token.
 - **403 Forbidden**: Authenticated user does not have Admin role.
+
+---
+
+## Manual Payment Management (Admin)
+
+### POST /api/admin/registrations/{registrationId}/payments/manual
+
+Create a manual/custom payment for a registration. Admin or Board role required.
+
+**Request Body:**
+
+```json
+{
+  "amount": 50.00,
+  "description": "Custom payment for extra activity",
+  "dueDate": "2026-07-15T00:00:00Z",
+  "adminNotes": "Requested by family"
+}
+```
+
+**Validation:**
+- `amount`: Required, must be > 0
+- `description`: Required, max 500 characters
+- `dueDate`: Optional
+- `adminNotes`: Optional, max 2000 characters
+
+**Response (HTTP 201):** `ApiResponse<AdminPaymentResponse>` with the created payment. The payment is assigned the next available `installmentNumber` and `isManual = true`. Registration `totalAmount` is updated.
+
+**Error Responses:**
+- **400 Bad Request**: Validation failure
+- **403 Forbidden**: User is not Admin or Board
+- **404 Not Found**: Registration not found
+
+### PUT /api/admin/payments/{paymentId}/manual
+
+Update a manual payment. Only Pending manual payments can be edited. Admin or Board role required.
+
+**Request Body (all fields optional — partial update):**
+
+```json
+{
+  "amount": 75.00,
+  "description": "Updated description",
+  "dueDate": "2026-08-01T00:00:00Z",
+  "adminNotes": "Updated notes"
+}
+```
+
+**Response (HTTP 200):** `ApiResponse<AdminPaymentResponse>` with the updated payment. If `amount` changes, Registration `totalAmount` is adjusted.
+
+**Error Responses:**
+- **403 Forbidden**: User is not Admin or Board
+- **404 Not Found**: Payment not found
+- **422 Unprocessable Entity**: Payment is not manual, or not in Pending status
+
+### DELETE /api/admin/payments/{paymentId}/manual
+
+Delete a manual payment. Only Pending manual payments can be deleted. Admin or Board role required.
+
+**Response (HTTP 200):** `ApiResponse<object>` with success message. Registration `totalAmount` is decreased by the deleted payment amount.
+
+**Error Responses:**
+- **403 Forbidden**: User is not Admin or Board
+- **404 Not Found**: Payment not found
+- **422 Unprocessable Entity**: Payment is not manual, or not in Pending status
+
+---
+
+## Sequential Payment Enforcement
+
+Payments must be completed in order: P1 before P2, P2 before P3. Manual payments are always actionable regardless of other payment statuses.
+
+**Computed `isActionable` flag** is included in all `PaymentResponse` and `AdminPaymentResponse` objects:
+- P1: Always actionable when Pending
+- P2: Actionable when Pending AND P1 is Completed
+- P3: Actionable when Pending AND P2 is Completed
+- Manual payments: Always actionable when Pending
+
+**Server-side enforcement:** Uploading proof for a non-actionable payment returns **422 Unprocessable Entity** with message "Debes completar el pago anterior antes de subir un comprobante."

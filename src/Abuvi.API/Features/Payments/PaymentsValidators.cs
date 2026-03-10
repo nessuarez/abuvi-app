@@ -55,3 +55,33 @@ public class PaymentFilterRequestValidator : AbstractValidator<PaymentFilterRequ
         RuleFor(x => x.PageSize).InclusiveBetween(1, 100);
     }
 }
+
+public class CreateManualPaymentValidator : AbstractValidator<CreateManualPaymentRequest>
+{
+    public CreateManualPaymentValidator()
+    {
+        RuleFor(x => x.Amount).GreaterThan(0)
+            .WithMessage("El importe debe ser mayor que 0.");
+        RuleFor(x => x.Description).NotEmpty()
+            .WithMessage("La descripción es obligatoria.")
+            .MaximumLength(500);
+        RuleFor(x => x.AdminNotes).MaximumLength(2000)
+            .When(x => x.AdminNotes != null);
+    }
+}
+
+public class UpdateManualPaymentValidator : AbstractValidator<UpdateManualPaymentRequest>
+{
+    public UpdateManualPaymentValidator()
+    {
+        RuleFor(x => x.Amount).GreaterThan(0)
+            .When(x => x.Amount.HasValue)
+            .WithMessage("El importe debe ser mayor que 0.");
+        RuleFor(x => x.Description).NotEmpty()
+            .When(x => x.Description != null)
+            .WithMessage("La descripción no puede estar vacía.")
+            .MaximumLength(500);
+        RuleFor(x => x.AdminNotes).MaximumLength(2000)
+            .When(x => x.AdminNotes != null);
+    }
+}
