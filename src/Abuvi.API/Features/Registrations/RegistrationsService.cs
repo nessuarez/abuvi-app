@@ -390,6 +390,34 @@ public class RegistrationsService(
         return detailed.ToResponse(amountPaid);
     }
 
+    public async Task<RegistrationResponse> UpdateInfoAsync(
+        Guid registrationId, Guid userId, UpdateRegistrationInfoRequest request, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var familyUnit = await familyUnitsRepo.GetFamilyUnitByIdAsync(registration.FamilyUnitId, ct)
+            ?? throw new NotFoundException("Unidad Familiar", registration.FamilyUnitId);
+
+        if (familyUnit.RepresentativeUserId != userId)
+            throw new BusinessRuleException("No tienes permiso para modificar esta inscripción");
+
+        if (registration.Status != RegistrationStatus.Pending && registration.Status != RegistrationStatus.Draft)
+            throw new BusinessRuleException("Solo se pueden modificar inscripciones en estado Pendiente o Borrador");
+
+        registration.SpecialNeeds = string.IsNullOrWhiteSpace(request.SpecialNeeds) ? null : request.SpecialNeeds.Trim();
+        registration.HasPet = request.HasPet;
+        registration.UpdatedAt = DateTime.UtcNow;
+
+        await registrationsRepo.UpdateAsync(registration, ct);
+
+        var amountPaid = registration.Payments
+            .Where(p => p.Status == PaymentStatus.Completed)
+            .Sum(p => p.Amount);
+
+        return registration.ToResponse(amountPaid);
+    }
+
     public async Task<CancelRegistrationResponse> CancelAsync(
         Guid registrationId, Guid userId, bool isAdminOrBoard, CancellationToken ct)
     {
