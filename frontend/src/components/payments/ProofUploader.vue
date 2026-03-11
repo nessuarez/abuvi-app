@@ -34,6 +34,7 @@ const isImage = computed(() => {
   return /\.(jpg|jpeg|png|webp)$/i.test(props.proofFileName)
 })
 const wasRejected = computed(() => props.status === 'Pending' && !!props.adminNotes)
+const hasConfirmationNote = computed(() => props.status === 'Completed' && !!props.adminNotes)
 
 const formatDate = (dateStr: string): string =>
   new Intl.DateTimeFormat('es-ES', {
@@ -73,6 +74,14 @@ const handleRemove = async () => {
         <strong>Justificante rechazado:</strong>
         <p class="mt-1 text-sm">{{ adminNotes }}</p>
         <p class="mt-1 text-xs text-gray-600">Puedes subir un nuevo justificante a continuación.</p>
+      </div>
+    </Message>
+
+    <!-- Confirmation note -->
+    <Message v-if="hasConfirmationNote" severity="success" :closable="false">
+      <div>
+        <strong>Nota de la administración:</strong>
+        <p class="mt-1 text-sm">{{ adminNotes }}</p>
       </div>
     </Message>
 

@@ -114,6 +114,9 @@ export function useOnboarding(): UseOnboardingReturn {
       const driverInstance = createDriver({
         showProgress: true,
         showButtons: ['next', 'previous', 'close'],
+        nextBtnText: 'Siguiente →',
+        prevBtnText: '← Anterior',
+        doneBtnText: 'Finalizar',
         animate: true,
         allowClose: true,
         overlayColor: 'rgba(0, 0, 0, 0.5)',
