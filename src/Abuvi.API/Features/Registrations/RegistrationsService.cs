@@ -559,8 +559,16 @@ public class RegistrationsService(
         var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
             ?? throw new NotFoundException("Inscripción", registrationId);
 
-        if (!isAdminOrBoard && registration.FamilyUnit.RepresentativeUserId != userId)
-            throw new BusinessRuleException("No tienes permiso para ver esta inscripción");
+        if (!isAdminOrBoard)
+        {
+            var isRepresentative = registration.FamilyUnit.RepresentativeUserId == userId;
+            if (!isRepresentative)
+            {
+                var memberUnit = await familyUnitsRepo.GetFamilyUnitByMemberUserIdAsync(userId, ct);
+                if (memberUnit?.Id != registration.FamilyUnitId)
+                    throw new BusinessRuleException("No tienes permiso para ver esta inscripción");
+            }
+        }
 
         var amountPaid = registration.Payments
             .Where(p => p.Status == PaymentStatus.Completed)
@@ -571,7 +579,8 @@ public class RegistrationsService(
 
     public async Task<List<RegistrationListResponse>> GetByFamilyUnitAsync(Guid userId, CancellationToken ct)
     {
-        var familyUnit = await familyUnitsRepo.GetFamilyUnitByRepresentativeIdAsync(userId, ct);
+        var familyUnit = await familyUnitsRepo.GetFamilyUnitByRepresentativeIdAsync(userId, ct)
+                      ?? await familyUnitsRepo.GetFamilyUnitByMemberUserIdAsync(userId, ct);
         if (familyUnit is null) return [];
 
         var registrations = await registrationsRepo.GetByFamilyUnitAsync(familyUnit.Id, ct);

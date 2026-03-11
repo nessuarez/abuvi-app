@@ -50,9 +50,9 @@ const {
 
 const auth = useAuthStore()
 
-// Read-only mode when viewing another user's family unit
+// Read-only mode for non-representative members (and admins viewing via /admin)
 const isViewingOther = computed(() =>
-  !!route.params.id && familyUnit.value?.representativeUserId !== auth.user?.id
+  familyUnit.value !== null && familyUnit.value.representativeUserId !== auth.user?.id
 )
 
 // UI State
@@ -304,7 +304,7 @@ async function onRemoveMemberPhoto(memberId: string) {
 
     <div class="mb-6">
       <Button
-        v-if="isViewingOther"
+        v-if="isViewingOther && (auth.isAdmin || auth.isBoard)"
         icon="pi pi-arrow-left"
         label="Volver a Administración"
         text
