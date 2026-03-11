@@ -2,6 +2,7 @@
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Container from '@/components/ui/Container.vue'
+import RegistrationCard from '@/components/registrations/RegistrationCard.vue'
 import CampEditionStatusBadge from '@/components/camps/CampEditionStatusBadge.vue'
 import CampPlacesGallery from '@/components/camps/CampPlacesGallery.vue'
 import CampLocationMap from '@/components/camps/CampLocationMap.vue'
@@ -10,6 +11,7 @@ import PricingBreakdown from '@/components/camps/PricingBreakdown.vue'
 import CampExtrasSection from '@/components/camps/CampExtrasSection.vue'
 import { useCampEditions } from '@/composables/useCampEditions'
 import { useFamilyUnits } from '@/composables/useFamilyUnits'
+import { useRegistrations } from '@/composables/useRegistrations'
 import { useAssociationSettings } from '@/composables/useAssociationSettings'
 import { useAuthStore } from '@/stores/auth'
 import type { AgeRangeSettings } from '@/types/association-settings'
@@ -23,7 +25,16 @@ const router = useRouter()
 const auth = useAuthStore()
 const { currentCampEdition, loading, error, fetchCurrentCampEdition } = useCampEditions()
 const { familyUnit, getCurrentUserFamilyUnit } = useFamilyUnits()
+const { registrations, fetchMyRegistrations } = useRegistrations()
 const { ageRanges: globalAgeRanges, fetchAgeRanges } = useAssociationSettings()
+
+const existingRegistration = computed(() =>
+  currentCampEdition.value
+    ? registrations.value.find(
+        (r) => r.campEdition.id === currentCampEdition.value!.id && r.status !== 'Cancelled'
+      ) ?? null
+    : null
+)
 
 const defaultAgeRanges: AgeRangeSettings = { babyMaxAge: 2, childMinAge: 3, childMaxAge: 12, adultMinAge: 13 }
 
@@ -107,6 +118,7 @@ onMounted(() => {
   fetchCurrentCampEdition()
   getCurrentUserFamilyUnit()
   fetchAgeRanges()
+  fetchMyRegistrations()
 })
 </script>
 
@@ -199,32 +211,45 @@ onMounted(() => {
             </Message>
 
             <!-- CTA -->
-            <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <!-- Open + representative -->
-              <template v-if="currentCampEdition.status === 'Open'">
-                <Button
-                  v-if="isRepresentative"
-                  label="Inscripciones Abiertas"
-                  icon="pi pi-user-plus"
-                  size="large"
-                  data-testid="register-button"
-                  @click="goToRegister"
+            <div class="mt-6 flex flex-col gap-3">
+              <!-- Already registered -->
+              <template v-if="existingRegistration">
+                <p class="text-sm font-medium text-green-700">
+                  <i class="pi pi-check-circle mr-1" />Tu familia ya está inscrita en este campamento.
+                </p>
+                <RegistrationCard
+                  :registration="existingRegistration"
+                  @view="router.push({ name: 'registration-detail', params: { id: $event } })"
                 />
-                <div v-else-if="!hasFamilyUnit" class="rounded-md bg-blue-50 px-4 py-3 text-sm text-blue-700">
-                  <i class="pi pi-info-circle mr-2" />
-                  En primer lugar, define tu unidad familiar para poder inscribirte.
-                  <RouterLink to="/family-unit" class="ml-1 font-semibold text-blue-700 underline hover:text-blue-900">
-                    Crear unidad familiar
-                  </RouterLink>
+              </template>
+
+              <!-- Open + not yet registered -->
+              <template v-else-if="currentCampEdition.status === 'Open'">
+                <div class="flex flex-wrap items-center gap-3">
+                  <Button
+                    v-if="isRepresentative"
+                    label="Inscripciones Abiertas"
+                    icon="pi pi-user-plus"
+                    size="large"
+                    data-testid="register-button"
+                    @click="goToRegister"
+                  />
+                  <div v-else-if="!hasFamilyUnit" class="rounded-md bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                    <i class="pi pi-info-circle mr-2" />
+                    En primer lugar, define tu unidad familiar para poder inscribirte.
+                    <RouterLink to="/family-unit" class="ml-1 font-semibold text-blue-700 underline hover:text-blue-900">
+                      Crear unidad familiar
+                    </RouterLink>
+                  </div>
+                  <Button
+                    v-else
+                    label="Solo el representante puede inscribirse"
+                    icon="pi pi-info-circle"
+                    severity="secondary"
+                    size="large"
+                    disabled
+                  />
                 </div>
-                <Button
-                  v-else
-                  label="Solo el representante puede inscribirse"
-                  icon="pi pi-info-circle"
-                  severity="secondary"
-                  size="large"
-                  disabled
-                />
               </template>
 
               <!-- Closed -->
@@ -242,19 +267,11 @@ onMounted(() => {
                 <i class="pi pi-check-circle mr-2" />
                 Este campamento ha finalizado
               </div>
-
-              <!-- Link to registrations (always visible) -->
-              <RouterLink
-                :to="{ name: 'registrations' }"
-                class="text-sm text-blue-600 underline hover:text-blue-800"
-              >
-                Ver mis inscripciones
-              </RouterLink>
             </div>
 
             <!-- Non-representative notice -->
             <p
-              v-if="currentCampEdition.status === 'Open' && !isRepresentative && familyUnit"
+              v-if="!existingRegistration && currentCampEdition.status === 'Open' && !isRepresentative && familyUnit"
               class="mt-2 text-xs text-amber-600"
             >
               Solo el representante de la unidad familiar puede inscribir a la familia.
@@ -403,7 +420,15 @@ onMounted(() => {
       <!-- ── BOTTOM CTA ─────────────────────────────────────────────────────────── -->
       <Container>
         <div class="mt-6 mb-10 flex flex-col items-center gap-3 rounded-lg border border-gray-200 bg-white p-6 text-center sm:flex-row sm:justify-center">
-          <template v-if="currentCampEdition.status === 'Open'">
+          <template v-if="existingRegistration">
+            <RouterLink
+              :to="{ name: 'registration-detail', params: { id: existingRegistration.id } }"
+              class="text-sm text-blue-600 underline hover:text-blue-800"
+            >
+              Ver mi inscripción
+            </RouterLink>
+          </template>
+          <template v-else-if="currentCampEdition.status === 'Open'">
             <Button
               v-if="isRepresentative"
               label="Inscribirse al campamento"
@@ -419,12 +444,14 @@ onMounted(() => {
               para poder inscribirte.
             </div>
           </template>
-          <RouterLink
-            :to="{ name: 'registrations' }"
-            class="text-sm text-blue-600 underline hover:text-blue-800"
-          >
-            Ver mis inscripciones
-          </RouterLink>
+          <template v-else>
+            <RouterLink
+              :to="{ name: 'registrations' }"
+              class="text-sm text-blue-600 underline hover:text-blue-800"
+            >
+              Ver mis inscripciones
+            </RouterLink>
+          </template>
         </div>
       </Container>
 

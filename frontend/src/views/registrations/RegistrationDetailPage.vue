@@ -5,6 +5,8 @@ import { useToast } from 'primevue/usetoast'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import Button from 'primevue/button'
+import Textarea from 'primevue/textarea'
+import Checkbox from 'primevue/checkbox'
 import Container from '@/components/ui/Container.vue'
 import RegistrationStatusBadge from '@/components/registrations/RegistrationStatusBadge.vue'
 import RegistrationPricingBreakdown from '@/components/registrations/RegistrationPricingBreakdown.vue'
@@ -25,7 +27,8 @@ import type { PaymentResponse, PaymentSettings } from '@/types/payment'
 import type {
   AccommodationPreferenceResponse,
   WizardMemberSelection,
-  WizardExtrasSelection
+  WizardExtrasSelection,
+  UpdateRegistrationInfoRequest
 } from '@/types/registration'
 import type { AccommodationType, CampEdition, CampEditionExtra } from '@/types/camp-edition'
 import type { FamilyMemberResponse } from '@/types/family-unit'
@@ -43,6 +46,7 @@ const {
   getRegistrationById,
   updateMembers,
   setExtras,
+  updateInfo,
   cancelRegistration,
   deleteRegistration,
   getAccommodationPreferences
@@ -63,9 +67,13 @@ const accommodationPrefs = ref<AccommodationPreferenceResponse[]>([])
 // Edit mode state
 const isEditingMembers = ref(false)
 const isEditingExtras = ref(false)
+const isEditingInfo = ref(false)
 const savingMembers = ref(false)
 const savingExtras = ref(false)
+const savingInfo = ref(false)
 const loadingEditData = ref(false)
+const editSpecialNeeds = ref('')
+const editHasPet = ref(false)
 
 // Data for edit mode (loaded on demand)
 const familyMembersData = ref<FamilyMemberResponse[]>([])
@@ -179,6 +187,28 @@ const startEditingMembers = async () => {
     guardianDocumentNumber: m.guardianDocumentNumber ?? null
   }))
   isEditingMembers.value = true
+}
+
+const startEditingInfo = () => {
+  editSpecialNeeds.value = registration.value?.specialNeeds ?? ''
+  editHasPet.value = registration.value?.hasPet ?? false
+  isEditingInfo.value = true
+}
+
+const handleSaveInfo = async () => {
+  savingInfo.value = true
+  const request: UpdateRegistrationInfoRequest = {
+    specialNeeds: editSpecialNeeds.value.trim() || null,
+    hasPet: editHasPet.value
+  }
+  const result = await updateInfo(registrationId.value, request)
+  savingInfo.value = false
+  if (result) {
+    isEditingInfo.value = false
+    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Información actualizada', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error', detail: error.value ?? 'Error al actualizar', life: 5000 })
+  }
 }
 
 const startEditingExtras = async () => {
@@ -399,25 +429,60 @@ onMounted(async () => {
         </div>
 
         <!-- Preference fields -->
-        <div
-          v-if="registration.specialNeeds || registration.campatesPreference || registration.hasPet"
-          class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4"
-        >
-          <h2 class="mb-3 text-sm font-semibold text-gray-700">Informacion adicional</h2>
-          <dl class="space-y-2 text-sm">
-            <div v-if="registration.specialNeeds" class="flex flex-col gap-0.5">
-              <dt class="font-medium text-gray-600">Necesidades especiales</dt>
-              <dd class="whitespace-pre-line text-gray-800">{{ registration.specialNeeds }}</dd>
+        <div class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-gray-700">Información adicional</h2>
+            <Button
+              v-if="canEdit && !isEditingInfo"
+              icon="pi pi-pencil"
+              label="Editar"
+              size="small"
+              severity="secondary"
+              outlined
+              @click="startEditingInfo"
+            />
+          </div>
+
+          <!-- Edit form -->
+          <template v-if="isEditingInfo">
+            <div class="space-y-4">
+              <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Necesidades especiales</label>
+                <Textarea v-model="editSpecialNeeds" :rows="3" :maxlength="2000"
+                  placeholder="Dietas especiales, necesidades de movilidad, etc." class="w-full" />
+              </div>
+              <div class="flex items-center gap-2">
+                <Checkbox v-model="editHasPet" :binary="true" input-id="edit-has-pet" />
+                <label for="edit-has-pet" class="cursor-pointer text-sm text-gray-700">¿Viene con mascota?</label>
+              </div>
             </div>
-            <div v-if="registration.campatesPreference" class="flex flex-col gap-0.5">
-              <dt class="font-medium text-gray-600">Preferencia de acampantes</dt>
-              <dd class="text-gray-800">{{ registration.campatesPreference }}</dd>
+            <div class="mt-4 flex gap-2">
+              <Button label="Guardar" icon="pi pi-check" :loading="savingInfo" @click="handleSaveInfo" />
+              <Button label="Cancelar" severity="secondary" text :disabled="savingInfo" @click="isEditingInfo = false" />
             </div>
-            <div v-if="registration.hasPet" class="flex flex-col gap-0.5">
-              <dt class="font-medium text-gray-600">Mascota</dt>
-              <dd class="text-gray-800">Sí, asiste con mascota</dd>
-            </div>
-          </dl>
+          </template>
+
+          <!-- Read view -->
+          <template v-else>
+            <p
+              v-if="!registration.specialNeeds && !registration.campatesPreference && !registration.hasPet"
+              class="text-sm text-gray-400 italic"
+            >Sin información adicional registrada.</p>
+            <dl v-else class="space-y-2 text-sm">
+              <div v-if="registration.specialNeeds" class="flex flex-col gap-0.5">
+                <dt class="font-medium text-gray-600">Necesidades especiales</dt>
+                <dd class="whitespace-pre-line text-gray-800">{{ registration.specialNeeds }}</dd>
+              </div>
+              <div v-if="registration.campatesPreference" class="flex flex-col gap-0.5">
+                <dt class="font-medium text-gray-600">Preferencia de acampantes</dt>
+                <dd class="text-gray-800">{{ registration.campatesPreference }}</dd>
+              </div>
+              <div v-if="registration.hasPet" class="flex flex-col gap-0.5">
+                <dt class="font-medium text-gray-600">Mascota</dt>
+                <dd class="text-gray-800">Sí, asiste con mascota</dd>
+              </div>
+            </dl>
+          </template>
         </div>
 
         <!-- Accommodation preferences -->
@@ -437,88 +502,56 @@ onMounted(async () => {
         <div class="mb-6">
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-base font-semibold text-gray-900">Desglose de precio</h2>
+            <div v-if="canEdit" class="flex gap-2">
+              <Button
+                label="Editar participantes"
+                icon="pi pi-pencil"
+                size="small"
+                severity="secondary"
+                outlined
+                :loading="loadingEditData && !isEditingMembers"
+                data-testid="edit-members-btn"
+                @click="startEditingMembers"
+              />
+              <Button
+                label="Editar extras"
+                icon="pi pi-pencil"
+                size="small"
+                severity="secondary"
+                outlined
+                :loading="loadingEditData && !isEditingExtras"
+                data-testid="edit-extras-btn"
+                @click="startEditingExtras"
+              />
+            </div>
           </div>
+
+          <!-- Edit members form -->
+          <div v-if="isEditingMembers" class="mb-4 rounded-lg border border-blue-200 bg-blue-50/30 p-4">
+            <h3 class="mb-3 text-sm font-semibold text-gray-900">Editar participantes</h3>
+            <RegistrationMemberSelector
+              v-if="campEditionData"
+              v-model="memberSelections"
+              :members="familyMembersData"
+              :edition="campEditionData"
+            />
+            <div class="mt-4 flex gap-2">
+              <Button label="Guardar" icon="pi pi-check" :loading="savingMembers" @click="handleSaveMembers" />
+              <Button label="Cancelar" severity="secondary" text :disabled="savingMembers" @click="isEditingMembers = false" />
+            </div>
+          </div>
+
+          <!-- Edit extras form -->
+          <div v-if="isEditingExtras" class="mb-4 rounded-lg border border-blue-200 bg-blue-50/30 p-4">
+            <h3 class="mb-3 text-sm font-semibold text-gray-900">Editar extras</h3>
+            <RegistrationExtrasSelector v-model="extrasSelections" :extras="campExtrasData" />
+            <div class="mt-4 flex gap-2">
+              <Button label="Guardar" icon="pi pi-check" :loading="savingExtras" @click="handleSaveExtras" />
+              <Button label="Cancelar" severity="secondary" text :disabled="savingExtras" @click="isEditingExtras = false" />
+            </div>
+          </div>
+
           <RegistrationPricingBreakdown :pricing="registration.pricing" />
-        </div>
-
-        <!-- Edit members -->
-        <div v-if="canEdit" class="mb-6">
-          <template v-if="!isEditingMembers">
-            <Button
-              label="Editar miembros"
-              icon="pi pi-users"
-              severity="secondary"
-              outlined
-              :loading="loadingEditData"
-              data-testid="edit-members-btn"
-              @click="startEditingMembers"
-            />
-          </template>
-          <template v-else>
-            <div class="rounded-lg border border-blue-200 bg-blue-50/30 p-4">
-              <h3 class="mb-3 text-sm font-semibold text-gray-900">Editar miembros</h3>
-              <RegistrationMemberSelector
-                v-if="campEditionData"
-                v-model="memberSelections"
-                :members="familyMembersData"
-                :edition="campEditionData"
-              />
-              <div class="mt-4 flex gap-2">
-                <Button
-                  label="Guardar"
-                  icon="pi pi-check"
-                  :loading="savingMembers"
-                  @click="handleSaveMembers"
-                />
-                <Button
-                  label="Cancelar"
-                  severity="secondary"
-                  text
-                  :disabled="savingMembers"
-                  @click="isEditingMembers = false"
-                />
-              </div>
-            </div>
-          </template>
-        </div>
-
-        <!-- Edit extras -->
-        <div v-if="canEdit" class="mb-6">
-          <template v-if="!isEditingExtras">
-            <Button
-              label="Editar extras"
-              icon="pi pi-box"
-              severity="secondary"
-              outlined
-              :loading="loadingEditData"
-              data-testid="edit-extras-btn"
-              @click="startEditingExtras"
-            />
-          </template>
-          <template v-else>
-            <div class="rounded-lg border border-blue-200 bg-blue-50/30 p-4">
-              <h3 class="mb-3 text-sm font-semibold text-gray-900">Editar extras</h3>
-              <RegistrationExtrasSelector
-                v-model="extrasSelections"
-                :extras="campExtrasData"
-              />
-              <div class="mt-4 flex gap-2">
-                <Button
-                  label="Guardar"
-                  icon="pi pi-check"
-                  :loading="savingExtras"
-                  @click="handleSaveExtras"
-                />
-                <Button
-                  label="Cancelar"
-                  severity="secondary"
-                  text
-                  :disabled="savingExtras"
-                  @click="isEditingExtras = false"
-                />
-              </div>
-            </div>
-          </template>
         </div>
 
         <!-- Payments -->
