@@ -551,6 +551,13 @@ async function onRemoveMemberPhoto(memberId: string) {
                     :data-testid="`membership-badge-${data.member.id}`"
                   />
 
+                  <span
+                    v-if="getMembershipBadge(data).severity === 'warn'"
+                    class="text-xs text-gray-500 italic"
+                  >
+                    La Junta actualizará la situación a medida que se comprueben las cuotas.
+                  </span>
+
                   <template v-if="getFeeBadge(data)">
                     <span class="text-xs text-gray-400" aria-hidden="true">|</span>
                     <Tag

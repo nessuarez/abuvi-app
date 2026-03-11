@@ -13,6 +13,7 @@ import Textarea from 'primevue/textarea'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import Container from '@/components/ui/Container.vue'
+import RegistrationCard from '@/components/registrations/RegistrationCard.vue'
 import RegistrationMemberSelector from '@/components/registrations/RegistrationMemberSelector.vue'
 import RegistrationExtrasSelector from '@/components/registrations/RegistrationExtrasSelector.vue'
 import RegistrationAccommodationSelector from '@/components/registrations/RegistrationAccommodationSelector.vue'
@@ -27,7 +28,7 @@ import { useRegistrations } from '@/composables/useRegistrations'
 import { usePayments } from '@/composables/usePayments'
 import { useAuthStore } from '@/stores/auth'
 import type { CampEdition } from '@/types/camp-edition'
-import type { WizardMemberSelection, WizardExtrasSelection, WizardAccommodationPreference } from '@/types/registration'
+import type { WizardMemberSelection, WizardExtrasSelection, WizardAccommodationPreference, RegistrationListItem } from '@/types/registration'
 import type { PaymentResponse, PaymentSettings } from '@/types/payment'
 import { ATTENDANCE_PERIOD_LABELS, computePeriodDays } from '@/utils/registration'
 import { calculatePricingPreview } from '@/utils/registration-pricing'
@@ -44,7 +45,7 @@ const { getEditionById } = useCampEditions()
 const { familyUnit, familyMembers, getCurrentUserFamilyUnit, getFamilyMembers } = useFamilyUnits()
 const { extras: campExtras, fetchExtras } = useCampExtras(editionId.value)
 const { accommodations: campAccommodations, fetchAccommodations } = useCampAccommodations(editionId.value)
-const { createRegistration, setExtras, setAccommodationPreferences, loading, error } = useRegistrations()
+const { fetchMyRegistrations, registrations, createRegistration, setExtras, setAccommodationPreferences, loading, error } = useRegistrations()
 const { getRegistrationPayments, getPaymentSettings } = usePayments()
 
 const currentStep = ref(1)
@@ -54,16 +55,38 @@ const accommodationPreferences = ref<WizardAccommodationPreference[]>([])
 const notes = ref<string>('')
 const specialNeeds = ref<string>('')
 const campatesPreference = ref<string>('')
+const hasPet = ref<boolean>(false)
 const edition = ref<CampEdition | null>(null)
 const acceptTerms = ref(false)
 const pageLoading = ref(true)
 const createdRegistrationId = ref<string | null>(null)
 const installments = ref<PaymentResponse[]>([])
 const paymentSettings = ref<PaymentSettings | null>(null)
+const existingRegistration = ref<RegistrationListItem | null>(null)
 
 const isRepresentative = computed(
   () => !!familyUnit.value && familyUnit.value.representativeUserId === auth.user?.id
 )
+
+const canGoBack = computed(
+  () => currentStep.value > 1 && currentStep.value !== paymentStepValue.value
+)
+const canGoForward = computed(() => {
+  if (currentStep.value === 1) return canProceedFromStep1.value
+  if (currentStep.value === confirmStepValue.value || currentStep.value === paymentStepValue.value) return false
+  return true
+})
+const goBack = () => {
+  if (currentStep.value === 2) currentStep.value = 1
+  else if (currentStep.value === accommodationStepValue) currentStep.value = 2
+  else if (currentStep.value === confirmStepValue.value)
+    currentStep.value = hasActiveAccommodations.value ? accommodationStepValue : 2
+}
+const goForward = () => {
+  if (currentStep.value === 1) currentStep.value = 2
+  else if (currentStep.value === 2) currentStep.value = stepAfterExtras.value
+  else if (currentStep.value === accommodationStepValue) currentStep.value = confirmStepValue.value
+}
 
 // FamilyMemberResponse objects for the selected wizard members
 const selectedMemberDetails = computed(() =>
@@ -125,7 +148,8 @@ const handleConfirm = async () => {
     })),
     notes: notes.value || null,
     specialNeeds: specialNeeds.value || null,
-    campatesPreference: campatesPreference.value || null
+    campatesPreference: campatesPreference.value || null,
+    hasPet: hasPet.value
   })
 
   if (!created) {
@@ -209,10 +233,16 @@ onMounted(async () => {
   }
 
   await getCurrentUserFamilyUnit()
-  if (familyUnit.value) {
+  await fetchMyRegistrations()
+  existingRegistration.value = registrations.value.find(
+    (r: RegistrationListItem) => r.campEdition.id === editionId.value && r.status !== 'Cancelled'
+  ) ?? null
+
+  if (!existingRegistration.value && familyUnit.value) {
     await getFamilyMembers(familyUnit.value.id)
+    await fetchExtras()
+    await fetchAccommodations()
   }
-  await Promise.all([fetchExtras(), fetchAccommodations()])
   pageLoading.value = false
 })
 </script>
@@ -228,17 +258,50 @@ onMounted(async () => {
         <div class="mb-6 flex items-center gap-3">
           <Button icon="pi pi-arrow-left" severity="secondary" text @click="router.push({ name: 'camp' })"
             aria-label="Volver" />
-          <div>
+          <div class="flex-1">
             <h1 class="text-2xl font-bold text-gray-900">Nueva inscripción</h1>
             <p v-if="edition" class="text-sm text-gray-500">
               {{ edition.name ?? 'Campamento' }} {{ edition.year }} ·
               {{ formatDate(edition.startDate) }} — {{ formatDate(edition.endDate) }}
             </p>
           </div>
+          <div class="flex items-center gap-1">
+            <Button
+              icon="pi pi-arrow-left"
+              severity="secondary"
+              text
+              rounded
+              :disabled="!canGoBack"
+              aria-label="Paso anterior"
+              @click="goBack"
+            />
+            <Button
+              icon="pi pi-arrow-right"
+              severity="secondary"
+              text
+              rounded
+              :disabled="!canGoForward"
+              aria-label="Paso siguiente"
+              @click="goForward"
+            />
+          </div>
         </div>
 
+        <!-- Existing registration for this edition -->
+        <template v-if="existingRegistration">
+          <Message severity="info" :closable="false" class="mb-6">
+            Ya tienes una inscripción en este campamento. No es posible crear una segunda inscripción para la misma edición.
+          </Message>
+          <div class="mx-auto max-w-2xl">
+            <RegistrationCard
+              :registration="existingRegistration"
+              @view="router.push({ name: 'registration-detail', params: { id: $event } })"
+            />
+          </div>
+        </template>
+
         <!-- No family unit message -->
-        <Message v-if="!familyUnit" severity="info" :closable="false" class="mb-6">
+        <Message v-else-if="!familyUnit" severity="info" :closable="false" class="mb-6">
           En primer lugar, define tu unidad familiar para poder inscribirte.
           <RouterLink to="/family-unit" class="ml-1 font-semibold text-blue-600 underline">
             Crear unidad familiar
@@ -251,7 +314,7 @@ onMounted(async () => {
           familia, contacta con el representante.
         </Message>
 
-        <div class="mx-auto max-w-2xl">
+        <div v-else class="mx-auto max-w-2xl">
           <Stepper v-model:value="currentStep" linear data-onboarding="registration-stepper">
             <StepList>
               <Step :value="1">Participantes</Step>
@@ -312,14 +375,13 @@ onMounted(async () => {
                         data-testid="special-needs" />
                     </div>
 
-                    <!-- Campmates preference -->
-                    <div class="mb-5">
-                      <label class="mb-1 block text-sm font-medium text-gray-700">
-                        Preferencia de acampantes
+
+                    <!-- Pet -->
+                    <div class="mb-5 flex items-center gap-2">
+                      <Checkbox v-model="hasPet" :binary="true" input-id="has-pet" data-testid="has-pet" />
+                      <label for="has-pet" class="text-sm font-medium text-gray-700">
+                        ¿Viene con mascota?
                       </label>
-                      <Textarea v-model="campatesPreference" :rows="2" :maxlength="500"
-                        placeholder="Con quien te gustaria acampar cerca..." class="w-full"
-                        data-testid="campates-preference" />
                     </div>
                   </div>
 
@@ -441,7 +503,7 @@ onMounted(async () => {
                     </div>
 
                     <!-- Preference fields summary -->
-                    <div v-if="specialNeeds || campatesPreference" class="mb-4 rounded-lg border border-gray-200 p-4">
+                    <div v-if="specialNeeds || campatesPreference || hasPet" class="mb-4 rounded-lg border border-gray-200 p-4">
                       <h3 class="mb-2 text-sm font-semibold text-gray-700">Informacion adicional</h3>
                       <dl class="space-y-1 text-sm">
                         <div v-if="specialNeeds" class="flex gap-2">
@@ -451,6 +513,10 @@ onMounted(async () => {
                         <div v-if="campatesPreference" class="flex gap-2">
                           <dt class="text-gray-500">Acampantes:</dt>
                           <dd class="text-gray-800">{{ campatesPreference }}</dd>
+                        </div>
+                        <div v-if="hasPet" class="flex gap-2">
+                          <dt class="text-gray-500">Mascota:</dt>
+                          <dd class="text-gray-800">Sí, asiste con mascota</dd>
                         </div>
                       </dl>
                     </div>

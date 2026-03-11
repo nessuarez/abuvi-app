@@ -101,7 +101,7 @@ const contactInfo = {
             © {{ currentYear }} Asociación ABUVI. Todos los derechos reservados.
           </p>
           <p class="mt-2 text-sm text-gray-500">
-            Hecha con ❤️ por Abuvinos para Abuvinos
+            Hecha con ❤️ por Abuvines para Abuvines
           </p>
         </div>
 

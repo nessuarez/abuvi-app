@@ -20,6 +20,7 @@ public class Registration
     // Extra fields from Google Forms 2026
     public string? SpecialNeeds { get; set; }
     public string? CampatesPreference { get; set; }
+    public bool HasPet { get; set; } = false;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public DateTime? AdminModifiedAt { get; set; }
@@ -139,7 +140,8 @@ public record CreateRegistrationRequest(
     List<MemberAttendanceRequest> Members,
     string? Notes,
     string? SpecialNeeds,
-    string? CampatesPreference
+    string? CampatesPreference,
+    bool HasPet = false
 );
 
 public record UpdateRegistrationMembersRequest(List<MemberAttendanceRequest> Members);
@@ -209,6 +211,7 @@ public record RegistrationResponse(
     DateTime UpdatedAt,
     string? SpecialNeeds,
     string? CampatesPreference,
+    bool HasPet,
     bool IsAdminModified
 );
 
@@ -339,7 +342,8 @@ public record AdminEditRegistrationRequest(
     List<AccommodationPreferenceRequest>? Preferences,
     string? Notes,
     string? SpecialNeeds,
-    string? CampatesPreference
+    string? CampatesPreference,
+    bool? HasPet
 );
 
 // ── Mapping Extensions ────────────────────────────────────────────────────────
@@ -391,6 +395,7 @@ public static class RegistrationMappingExtensions
         r.UpdatedAt,
         r.SpecialNeeds,
         r.CampatesPreference,
+        r.HasPet,
         r.AdminModifiedAt != null && r.Status == RegistrationStatus.Draft
     );
 

@@ -115,6 +115,7 @@ export interface RegistrationResponse {
   updatedAt: string
   specialNeeds: string | null
   campatesPreference: string | null
+  hasPet: boolean
 }
 
 // Admin registration list types
@@ -199,6 +200,7 @@ export interface CreateRegistrationRequest {
   notes?: string | null
   specialNeeds: string | null
   campatesPreference: string | null
+  hasPet: boolean
 }
 
 export interface UpdateRegistrationMembersRequest {

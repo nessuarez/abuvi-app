@@ -31,6 +31,8 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
             .HasMaxLength(2000).HasColumnName("special_needs");
         builder.Property(r => r.CampatesPreference)
             .HasMaxLength(500).HasColumnName("campates_preference");
+        builder.Property(r => r.HasPet)
+            .HasDefaultValue(false).HasColumnName("has_pet");
 
         builder.Property(r => r.AdminModifiedAt)
             .HasColumnName("admin_modified_at")
