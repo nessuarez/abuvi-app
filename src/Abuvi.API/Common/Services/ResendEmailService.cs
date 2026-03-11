@@ -272,7 +272,7 @@ public class ResendEmailService : IEmailService
             : "";
 
         var campatesHtml = !string.IsNullOrWhiteSpace(data.CampatesPreference)
-            ? $"<p style='margin: 5px 0;'><strong>Preferencia de compañeros:</strong> {WebUtility.HtmlEncode(data.CampatesPreference)}</p>"
+            ? $"<p style='margin: 5px 0;'><strong>Preferencia de habitación:</strong> {WebUtility.HtmlEncode(data.CampatesPreference)}</p>"
             : "";
 
         var message = new EmailMessage

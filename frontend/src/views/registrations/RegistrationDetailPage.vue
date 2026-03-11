@@ -73,6 +73,7 @@ const savingExtras = ref(false)
 const savingInfo = ref(false)
 const loadingEditData = ref(false)
 const editSpecialNeeds = ref('')
+const editCampatesPreference = ref('')
 const editHasPet = ref(false)
 
 // Data for edit mode (loaded on demand)
@@ -191,6 +192,7 @@ const startEditingMembers = async () => {
 
 const startEditingInfo = () => {
   editSpecialNeeds.value = registration.value?.specialNeeds ?? ''
+  editCampatesPreference.value = registration.value?.campatesPreference ?? ''
   editHasPet.value = registration.value?.hasPet ?? false
   isEditingInfo.value = true
 }
@@ -199,6 +201,7 @@ const handleSaveInfo = async () => {
   savingInfo.value = true
   const request: UpdateRegistrationInfoRequest = {
     specialNeeds: editSpecialNeeds.value.trim() || null,
+    campatesPreference: editCampatesPreference.value.trim() || null,
     hasPet: editHasPet.value
   }
   const result = await updateInfo(registrationId.value, request)
@@ -451,6 +454,11 @@ onMounted(async () => {
                 <Textarea v-model="editSpecialNeeds" :rows="3" :maxlength="2000"
                   placeholder="Dietas especiales, necesidades de movilidad, etc." class="w-full" />
               </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">¿Con quién quieres compartir habitación?</label>
+                <Textarea v-model="editCampatesPreference" :rows="2" :maxlength="500"
+                  placeholder="Indica con quién te gustaría compartir habitación..." class="w-full" />
+              </div>
               <div class="flex items-center gap-2">
                 <Checkbox v-model="editHasPet" :binary="true" input-id="edit-has-pet" />
                 <label for="edit-has-pet" class="cursor-pointer text-sm text-gray-700">¿Viene con mascota?</label>
@@ -474,7 +482,7 @@ onMounted(async () => {
                 <dd class="whitespace-pre-line text-gray-800">{{ registration.specialNeeds }}</dd>
               </div>
               <div v-if="registration.campatesPreference" class="flex flex-col gap-0.5">
-                <dt class="font-medium text-gray-600">Preferencia de acampantes</dt>
+                <dt class="font-medium text-gray-600">Preferencia de habitación</dt>
                 <dd class="text-gray-800">{{ registration.campatesPreference }}</dd>
               </div>
               <div v-if="registration.hasPet" class="flex flex-col gap-0.5">

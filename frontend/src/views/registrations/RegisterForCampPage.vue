@@ -376,6 +376,16 @@ onMounted(async () => {
                     </div>
 
 
+                    <!-- Roommate preference -->
+                    <div class="mb-5">
+                      <label class="mb-1 block text-sm font-medium text-gray-700">
+                        ¿Con quién quieres compartir habitación?
+                      </label>
+                      <Textarea v-model="campatesPreference" :rows="2" :maxlength="500"
+                        placeholder="Indica con quién te gustaría compartir habitación..." class="w-full"
+                        data-testid="campates-preference" />
+                    </div>
+
                     <!-- Pet -->
                     <div class="mb-5 flex items-center gap-2">
                       <Checkbox v-model="hasPet" :binary="true" input-id="has-pet" data-testid="has-pet" />
@@ -511,7 +521,7 @@ onMounted(async () => {
                           <dd class="text-gray-800">{{ specialNeeds }}</dd>
                         </div>
                         <div v-if="campatesPreference" class="flex gap-2">
-                          <dt class="text-gray-500">Acampantes:</dt>
+                          <dt class="text-gray-500">Habitación:</dt>
                           <dd class="text-gray-800">{{ campatesPreference }}</dd>
                         </div>
                         <div v-if="hasPet" class="flex gap-2">

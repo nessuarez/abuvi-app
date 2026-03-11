@@ -260,7 +260,7 @@ public class CreateRegistrationValidatorTests
         var result = await _sut.TestValidateAsync(request);
 
         result.ShouldHaveValidationErrorFor(x => x.CampatesPreference)
-            .WithErrorMessage("La preferencia de acampantes no puede superar los 500 caracteres");
+            .WithErrorMessage("La preferencia de habitación no puede superar los 500 caracteres");
     }
 
     [Fact]

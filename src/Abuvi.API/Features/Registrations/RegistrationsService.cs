@@ -406,6 +406,7 @@ public class RegistrationsService(
             throw new BusinessRuleException("Solo se pueden modificar inscripciones en estado Pendiente o Borrador");
 
         registration.SpecialNeeds = string.IsNullOrWhiteSpace(request.SpecialNeeds) ? null : request.SpecialNeeds.Trim();
+        registration.CampatesPreference = string.IsNullOrWhiteSpace(request.CampatesPreference) ? null : request.CampatesPreference.Trim();
         registration.HasPet = request.HasPet;
         registration.UpdatedAt = DateTime.UtcNow;
 
