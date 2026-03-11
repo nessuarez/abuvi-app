@@ -68,6 +68,7 @@ public enum RegistrationStatus
 **Design decision: `PartiallyPaid` instead of `InstallmentOnePaid` / `InstallmentTwoPaid`**
 
 Rationale:
+
 - The system supports 2, 3, or more installments (base + extras + manual). Hardcoding installment numbers in the enum is fragile.
 - The frontend can derive which installments are paid by inspecting the `payments` array (already returned in responses).
 - `PartiallyPaid` is semantically clear: "your registration is confirmed and we've received at least one payment."
@@ -225,10 +226,12 @@ Review and update all places that check registration status:
 ### User-Initiated Registration Edits with Admin Notification
 
 The user mentioned wanting to be notified when a family modifies their registration. Currently:
+
 - Only admins can edit registrations (via `AdminUpdateAsync`)
 - Users cannot edit their own registrations after creation (except cancellation)
 
 If user-editable registrations are desired, this would require:
+
 1. New endpoint: `PUT /api/registrations/{id}` (family representative)
 2. Status transition: `PartiallyPaid` or `Confirmed` → `PendingReview` (new status)
 3. Email notification to the board when a family edits their registration
@@ -253,6 +256,7 @@ This is a separate, larger feature and should be tracked independently.
 ## Files to Modify
 
 ### Backend
+
 - `src/Abuvi.API/Features/Registrations/RegistrationsModels.cs` — Add `PartiallyPaid` to enum
 - `src/Abuvi.API/Features/Payments/PaymentsService.cs` — Update `ConfirmPaymentAsync` transition logic + email sending
 - `src/Abuvi.API/Common/Services/IEmailService.cs` — Add new email method signatures + DTOs
@@ -260,12 +264,14 @@ This is a separate, larger feature and should be tracked independently.
 - New migration file for enum update
 
 ### Frontend
+
 - Registration types file — Add `'PartiallyPaid'` to status type
 - Status badge component — Add display for new status
 - Admin registration list — Update filters
 - Camp capacity component — Verify counting logic
 
 ### Tests
+
 - Unit tests for `ConfirmPaymentAsync` with partial and full payment scenarios
 - Unit tests for new email methods
 - Frontend component tests for new status display
