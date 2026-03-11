@@ -7,6 +7,7 @@ import type {
   CreateRegistrationRequest,
   UpdateRegistrationMembersRequest,
   UpdateRegistrationExtrasRequest,
+  UpdateRegistrationInfoRequest,
   UpdateAccommodationPreferencesRequest,
   AccommodationPreferenceResponse
 } from '@/types/registration'
@@ -230,6 +231,32 @@ export function useRegistrations() {
     }
   }
 
+  const updateInfo = async (
+    id: string,
+    request: UpdateRegistrationInfoRequest
+  ): Promise<RegistrationResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.patch<ApiResponse<RegistrationResponse>>(
+        `/registrations/${id}/info`,
+        request
+      )
+      if (response.data.success && response.data.data) {
+        const updated = response.data.data
+        if (registration.value?.id === id) registration.value = updated
+        return updated
+      }
+      return null
+    } catch (err: unknown) {
+      error.value = (err as { response?: { data?: { error?: { message?: string } } } })
+        ?.response?.data?.error?.message || 'Error al actualizar la información'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     registrations,
     registration,
@@ -240,6 +267,7 @@ export function useRegistrations() {
     createRegistration,
     updateMembers,
     setExtras,
+    updateInfo,
     setAccommodationPreferences,
     getAccommodationPreferences,
     cancelRegistration,

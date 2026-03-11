@@ -3,6 +3,7 @@ import { onMounted, ref, computed } from 'vue'
 import { useUsers } from '@/composables/useUsers'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+import { useAuthStore } from '@/stores/auth'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -21,6 +22,7 @@ import type { CreateUserRequest, User } from '@/types/user'
 
 const toast = useToast()
 const confirm = useConfirm()
+const auth = useAuthStore()
 const { users, loading, error, fetchUsers, createUser, toggleUserActive, deleteUser, clearError } = useUsers()
 
 const searchQuery = ref('')
@@ -140,7 +142,7 @@ const formatDate = (dateString: string) =>
             data-testid="users-search-input"
           />
         </IconField>
-        <Button label="Crear Usuario" icon="pi pi-plus" @click="openCreateDialog" />
+        <Button v-if="auth.isAdmin" label="Crear Usuario" icon="pi pi-plus" @click="openCreateDialog" />
       </div>
     </div>
 
@@ -201,6 +203,7 @@ const formatDate = (dateString: string) =>
         <template #body="{ data }">
           <div class="flex items-center gap-1">
             <Button
+              v-if="auth.isAdmin"
               :icon="data.isActive ? 'pi pi-ban' : 'pi pi-check'"
               :severity="data.isActive ? 'warn' : 'success'"
               text
@@ -212,6 +215,7 @@ const formatDate = (dateString: string) =>
               @click="handleToggleActive(data)"
             />
             <Button
+              v-if="auth.isAdmin"
               icon="pi pi-trash"
               severity="danger"
               text

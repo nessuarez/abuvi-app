@@ -60,6 +60,12 @@ public static class RegistrationsEndpoints
             .Produces<ApiResponse<RegistrationResponse>>()
             .Produces(400).Produces(403).Produces(404).Produces(422);
 
+        group.MapPatch("/{id:guid}/info", UpdateRegistrationInfo)
+            .WithName("UpdateRegistrationInfo")
+            .WithSummary("Update special needs and pet flag (representative only)")
+            .Produces<ApiResponse<RegistrationResponse>>()
+            .Produces(403).Produces(404).Produces(422);
+
         group.MapPost("/{id:guid}/cancel", CancelRegistration)
             .WithName("CancelRegistration")
             .WithSummary("Cancel registration (representative or Admin/Board)")
@@ -179,6 +185,32 @@ public static class RegistrationsEndpoints
             ex.Message.Contains("Ya existe") || ex.Message.Contains("capacidad"))
         {
             return TypedResults.Conflict(ApiResponse<object>.Fail(ex.Message, "REGISTRATION_CONFLICT"));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.UnprocessableEntity(
+                ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
+        }
+    }
+
+    private static async Task<IResult> UpdateRegistrationInfo(
+        Guid id,
+        UpdateRegistrationInfoRequest request,
+        RegistrationsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+
+        try
+        {
+            var result = await service.UpdateInfoAsync(id, userId, request, ct);
+            return TypedResults.Ok(ApiResponse<RegistrationResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
         }
         catch (BusinessRuleException ex)
         {

@@ -189,6 +189,7 @@ onMounted(() => fetchReleases())
 ```
 
 **Markdown styling note**: The `changelog-content` class needs basic styles for rendered markdown. Options:
+
 1. Add `@tailwindcss/typography` and use `prose` class
 2. Add a small scoped style block (against project convention but pragmatic for third-party HTML)
 3. Use a global CSS rule for `.changelog-content h3, .changelog-content ul, ...`

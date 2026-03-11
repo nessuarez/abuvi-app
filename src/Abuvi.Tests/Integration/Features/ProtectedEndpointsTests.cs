@@ -118,6 +118,38 @@ public class ProtectedEndpointsTests : IClassFixture<WebApplicationFactory<Progr
         return result!.Data!.Id;
     }
 
+    /// <summary>
+    /// Creates a board user in the database and returns a JWT token
+    /// </summary>
+    private async Task<string> GetBoardTokenAsync()
+    {
+        var email = $"board-{Guid.NewGuid()}@example.com";
+        var registerRequest = new RegisterRequest(
+            Email: email,
+            Password: "BoardPass123!",
+            FirstName: "Board",
+            LastName: "User",
+            Phone: null
+        );
+
+        await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AbuviDbContext>();
+        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user != null)
+        {
+            user.Role = UserRole.Board;
+            await dbContext.SaveChangesAsync();
+        }
+
+        var loginRequest = new LoginRequest(email, "BoardPass123!");
+        var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", loginRequest);
+        var loginResult = await loginResponse.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>(JsonOptions);
+
+        return loginResult!.Data!.Token;
+    }
+
     #endregion
 
     #region GET /api/users (List All Users)
@@ -155,6 +187,24 @@ public class ProtectedEndpointsTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var adminToken = await GetAdminTokenAsync();
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        // Act
+        var response = await _client.GetAsync("/api/users");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<List<UserResponse>>>(JsonOptions);
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Data.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetAllUsers_WithBoardToken_Returns200()
+    {
+        // Arrange
+        var boardToken = await GetBoardTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", boardToken);
 
         // Act
         var response = await _client.GetAsync("/api/users");

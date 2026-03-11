@@ -12,6 +12,7 @@ public interface IFamilyUnitsRepository
     // Family Unit operations
     Task<FamilyUnit?> GetFamilyUnitByIdAsync(Guid id, CancellationToken ct);
     Task<FamilyUnit?> GetFamilyUnitByRepresentativeIdAsync(Guid userId, CancellationToken ct);
+    Task<FamilyUnit?> GetFamilyUnitByMemberUserIdAsync(Guid userId, CancellationToken ct);
     Task CreateFamilyUnitAsync(FamilyUnit familyUnit, CancellationToken ct);
     Task UpdateFamilyUnitAsync(FamilyUnit familyUnit, CancellationToken ct);
     Task DeleteFamilyUnitAsync(Guid id, CancellationToken ct);
@@ -62,6 +63,12 @@ public class FamilyUnitsRepository(AbuviDbContext db) : IFamilyUnitsRepository
         => await db.FamilyUnits
             .AsNoTracking()
             .FirstOrDefaultAsync(fu => fu.RepresentativeUserId == userId, ct);
+
+    public async Task<FamilyUnit?> GetFamilyUnitByMemberUserIdAsync(Guid userId, CancellationToken ct)
+        => await db.FamilyUnits
+            .AsNoTracking()
+            .Where(fu => db.FamilyMembers.Any(fm => fm.FamilyUnitId == fu.Id && fm.UserId == userId))
+            .FirstOrDefaultAsync(ct);
 
     public async Task CreateFamilyUnitAsync(FamilyUnit familyUnit, CancellationToken ct)
     {
