@@ -10,6 +10,25 @@
 
 ## Reglas de Negocio
 
+### Doble control de acceso a inscripciones
+
+El sistema aplica **dos controles independientes** para que una familia pueda inscribirse:
+
+1. **Control administrativo (`IsActive`)**: La unidad familiar debe estar activa. Admin/Board puede desactivar una familia por cualquier motivo (baja voluntaria, incidencia, etc.) independientemente de si ha pagado o no.
+2. **Control economico (cuota de membresia)**: Al menos un miembro de la familia debe tener la `MembershipFee` del año en curso con status `Paid`. Esto garantiza que solo familias al dia con sus cuotas puedan inscribirse.
+
+Ambas condiciones deben cumplirse para crear una inscripcion. Son independientes porque cubren escenarios distintos:
+
+- Una familia puede tener la cuota pagada pero estar desactivada por una incidencia administrativa.
+- Una familia puede estar activa pero no haber pagado la cuota del año (ej: renovacion pendiente).
+- Admin/Board puede marcar la cuota como pagada (flujo existente) para "abrir" el acceso economico.
+
+### Flujo Board para habilitar inscripcion de una familia
+
+1. Verificar que la familia tiene `IsActive = true` (si no, reactivarla via `PATCH /api/family-units/{id}/status`)
+2. Verificar que la cuota del año en curso esta pagada (si no, marcarla como pagada via `POST /api/memberships/{id}/fees/{feeId}/pay` — endpoint ya existente)
+3. Con ambos controles cumplidos, el representante puede crear inscripciones normalmente
+
 ### Eliminacion de Unidad Familiar
 
 | Condicion | Accion permitida |
@@ -51,6 +70,7 @@ builder.Property(fu => fu.IsActive)
 ```
 
 **Migracion SQL generada esperada:**
+
 ```sql
 ALTER TABLE family_units ADD COLUMN is_active boolean NOT NULL DEFAULT true;
 ```
@@ -186,8 +206,48 @@ public async Task<bool> MemberHasActiveRegistrationsAsync(Guid memberId, Cancell
 | Lugar | Cambio |
 |---|---|
 | `GET /api/family-units` (admin list) | Incluir campo `isActive` en response. Agregar filtro opcional `?isActive=true/false` |
-| `POST /api/registrations` | Validar que `FamilyUnit.IsActive == true` antes de crear inscription. Retornar 409 si esta desactivada |
+| `POST /api/registrations` | Validar que `FamilyUnit.IsActive == true` Y que la familia tenga la cuota del año pagada. Retornar 409 con mensaje especifico para cada caso |
 | `FamilyUnitResponse` DTO | Agregar `public bool IsActive { get; set; }` |
+
+### Backend — Validacion en `RegistrationsService.CreateAsync`
+
+Agregar dos validaciones nuevas despues de cargar la FamilyUnit (entre paso 1 y paso 2 actual):
+
+```csharp
+// 1. Load FamilyUnit
+var familyUnit = await familyUnitsRepo.GetFamilyUnitByIdAsync(request.FamilyUnitId, ct)
+    ?? throw new NotFoundException("Unidad Familiar", request.FamilyUnitId);
+
+// 1b. Validate family unit is active (NEW)
+if (!familyUnit.IsActive)
+    throw new BusinessRuleException("La unidad familiar está desactivada. Contacte al administrador.");
+
+// 1c. Validate current year membership fee is paid (NEW)
+var hasPaidCurrentYearFee = await membershipsRepo.HasPaidCurrentYearFeeForFamilyAsync(request.FamilyUnitId, ct);
+if (!hasPaidCurrentYearFee)
+    throw new BusinessRuleException("La cuota de membresía del año en curso no está pagada. Contacte al administrador.");
+
+// 2. Verify representative (existing)
+```
+
+### Nuevo metodo en `MembershipsRepository`
+
+```csharp
+/// Verifica si al menos un miembro de la familia tiene la cuota del año en curso pagada
+public async Task<bool> HasPaidCurrentYearFeeForFamilyAsync(Guid familyUnitId, CancellationToken ct)
+{
+    var currentYear = DateTime.UtcNow.Year;
+    return await db.MembershipFees
+        .AnyAsync(f => f.Membership.FamilyMember.FamilyUnitId == familyUnitId
+            && f.Year == currentYear
+            && f.Status == FeeStatus.Paid
+            && f.Membership.IsActive, ct);
+}
+```
+
+### Inyeccion de dependencia en `RegistrationsService`
+
+Agregar `IMembershipsRepository membershipsRepo` al constructor de `RegistrationsService` para poder consultar el estado de cuotas.
 
 ### Frontend — No bloquear la visualizacion
 
@@ -254,7 +314,8 @@ Agregar filtro por estado (Activas / Inactivas / Todas) al panel de administraci
 | `Features/FamilyUnits/FamilyUnitsService.cs` | Nuevos metodos: `AdminDeleteFamilyUnitAsync`, `UpdateFamilyUnitStatusAsync`. Modificar `DeleteFamilyMemberAsync` para aceptar Admin/Board |
 | `Features/FamilyUnits/FamilyUnitsEndpoints.cs` | Nuevos endpoints en `adminGroup`. Modificar auth en `DeleteFamilyMember` |
 | `Features/FamilyUnits/FamilyUnitsDtos.cs` | Agregar `IsActive` a `FamilyUnitResponse`. Nuevo `UpdateFamilyUnitStatusRequest` |
-| `Features/Registrations/RegistrationsService.cs` | Validar `FamilyUnit.IsActive` al crear registration |
+| `Features/Registrations/RegistrationsService.cs` | Validar `FamilyUnit.IsActive` y cuota de membresia del año pagada al crear registration. Inyectar `IMembershipsRepository` |
+| `Features/Memberships/MembershipsRepository.cs` | Nuevo metodo `HasPaidCurrentYearFeeForFamilyAsync` |
 | **Nueva migracion EF Core** | `AddIsActiveToFamilyUnits` |
 
 ### Frontend
@@ -273,6 +334,7 @@ Agregar filtro por estado (Activas / Inactivas / Todas) al panel de administraci
 | `Abuvi.Tests/Unit/Features/FamilyUnits/FamilyUnitsService_AdminDeleteAsync_Tests.cs` | Tests para delete: sin registrations OK, con registrations 409, not found 404 |
 | `Abuvi.Tests/Unit/Features/FamilyUnits/FamilyUnitsService_UpdateStatusAsync_Tests.cs` | Tests para activar/desactivar |
 | `Abuvi.Tests/Unit/Features/FamilyUnits/FamilyUnitsService_DeleteMemberAsync_Tests.cs` | Tests para delete member con nuevo auth Admin/Board y validacion de registrations activas |
+| `Abuvi.Tests/Unit/Features/Registrations/RegistrationsService_CreateAsync_MembershipValidation_Tests.cs` | Tests para validacion de IsActive y cuota pagada al crear registration |
 
 ---
 
@@ -282,7 +344,10 @@ Agregar filtro por estado (Activas / Inactivas / Todas) al panel de administraci
 - [ ] Al intentar eliminar una unidad con inscripciones, retorna 409 con mensaje claro
 - [ ] Admin/Board puede desactivar una unidad familiar con inscripciones
 - [ ] Admin/Board puede reactivar una unidad familiar desactivada
-- [ ] Una unidad desactivada no permite crear nuevas inscripciones (409 en POST /registrations)
+- [ ] Una unidad desactivada no permite crear nuevas inscripciones (409 en POST /registrations con mensaje "unidad desactivada")
+- [ ] Una familia sin cuota del año pagada no permite crear nuevas inscripciones (409 en POST /registrations con mensaje "cuota no pagada")
+- [ ] Una familia activa con cuota pagada puede inscribirse normalmente (ambos controles pasan)
+- [ ] Board puede "abrir" acceso: reactivar familia + marcar cuota como pagada (flujo de 2 pasos)
 - [ ] Las unidades desactivadas aparecen marcadas visualmente en el panel admin
 - [ ] Admin/Board puede eliminar miembros individuales de cualquier unidad familiar
 - [ ] No se puede eliminar al representante (409)
