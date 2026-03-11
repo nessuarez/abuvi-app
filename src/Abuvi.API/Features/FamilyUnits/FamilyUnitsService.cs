@@ -91,7 +91,8 @@ public class FamilyUnitsService(
     public async Task<FamilyUnitResponse> GetCurrentUserFamilyUnitAsync(Guid userId, CancellationToken ct)
     {
         var familyUnit = await repository.GetFamilyUnitByRepresentativeIdAsync(userId, ct)
-            ?? throw new NotFoundException("No se encontró unidad familiar para el usuario actual");
+              ?? await repository.GetFamilyUnitByMemberUserIdAsync(userId, ct)
+              ?? throw new NotFoundException("No se encontró unidad familiar para el usuario actual");
 
         return familyUnit.ToResponse();
     }
@@ -141,6 +142,15 @@ public class FamilyUnitsService(
     {
         var familyUnit = await repository.GetFamilyUnitByIdAsync(familyUnitId, ct);
         return familyUnit?.RepresentativeUserId == userId;
+    }
+
+    /// <summary>
+    /// Checks if the user is a linked family member (not necessarily representative) of the family unit
+    /// </summary>
+    public async Task<bool> IsFamilyMemberOfUnitAsync(Guid familyUnitId, Guid userId, CancellationToken ct)
+    {
+        var familyUnit = await repository.GetFamilyUnitByMemberUserIdAsync(userId, ct);
+        return familyUnit?.Id == familyUnitId;
     }
 
     #endregion

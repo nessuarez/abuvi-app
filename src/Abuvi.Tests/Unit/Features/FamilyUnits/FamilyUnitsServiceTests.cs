@@ -328,6 +328,120 @@ public class FamilyUnitsServiceTests
     #region Authorization Helper Tests
 
     [Fact]
+    public async Task GetCurrentUserFamilyUnitAsync_WhenUserIsMemberButNotRepresentative_ReturnsFamilyUnit()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var familyUnitId = Guid.NewGuid();
+        var familyUnit = new FamilyUnit
+        {
+            Id = familyUnitId,
+            Name = "Garcia Family",
+            RepresentativeUserId = Guid.NewGuid(), // Different user is representative
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _repository.GetFamilyUnitByRepresentativeIdAsync(userId, Arg.Any<CancellationToken>())
+            .ReturnsNull();
+        _repository.GetFamilyUnitByMemberUserIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(familyUnit);
+
+        // Act
+        var result = await _sut.GetCurrentUserFamilyUnitAsync(userId, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Id.Should().Be(familyUnitId);
+    }
+
+    [Fact]
+    public async Task GetCurrentUserFamilyUnitAsync_WhenUserIsNeitherRepresentativeNorMember_ThrowsNotFoundException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+
+        _repository.GetFamilyUnitByRepresentativeIdAsync(userId, Arg.Any<CancellationToken>())
+            .ReturnsNull();
+        _repository.GetFamilyUnitByMemberUserIdAsync(userId, Arg.Any<CancellationToken>())
+            .ReturnsNull();
+
+        // Act
+        var act = async () => await _sut.GetCurrentUserFamilyUnitAsync(userId, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<NotFoundException>()
+            .WithMessage("No se encontró unidad familiar para el usuario actual");
+    }
+
+    [Fact]
+    public async Task IsFamilyMemberOfUnitAsync_WhenUserIsLinkedMemberOfUnit_ReturnsTrue()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var familyUnitId = Guid.NewGuid();
+        var familyUnit = new FamilyUnit
+        {
+            Id = familyUnitId,
+            Name = "Test Family",
+            RepresentativeUserId = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _repository.GetFamilyUnitByMemberUserIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(familyUnit);
+
+        // Act
+        var result = await _sut.IsFamilyMemberOfUnitAsync(familyUnitId, userId, CancellationToken.None);
+
+        // Assert
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task IsFamilyMemberOfUnitAsync_WhenUserIsMemberOfDifferentUnit_ReturnsFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var familyUnitId = Guid.NewGuid();
+        var differentFamilyUnit = new FamilyUnit
+        {
+            Id = Guid.NewGuid(), // Different ID
+            Name = "Other Family",
+            RepresentativeUserId = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _repository.GetFamilyUnitByMemberUserIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(differentFamilyUnit);
+
+        // Act
+        var result = await _sut.IsFamilyMemberOfUnitAsync(familyUnitId, userId, CancellationToken.None);
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsFamilyMemberOfUnitAsync_WhenUserIsNotAMember_ReturnsFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var familyUnitId = Guid.NewGuid();
+
+        _repository.GetFamilyUnitByMemberUserIdAsync(userId, Arg.Any<CancellationToken>())
+            .ReturnsNull();
+
+        // Act
+        var result = await _sut.IsFamilyMemberOfUnitAsync(familyUnitId, userId, CancellationToken.None);
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task IsRepresentativeAsync_WhenUserIsRepresentative_ReturnsTrue()
     {
         // Arrange

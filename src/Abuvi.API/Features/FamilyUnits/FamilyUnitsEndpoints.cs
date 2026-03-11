@@ -217,11 +217,13 @@ public static class FamilyUnitsEndpoints
         {
             var result = await service.GetFamilyUnitByIdAsync(id, ct);
 
-            // Authorization: Representative OR Admin/Board
+            // Authorization: Representative OR linked family member OR Admin/Board
             var isRepresentative = result.RepresentativeUserId == userId;
             var isAdminOrBoard = userRole == "Admin" || userRole == "Board";
+            var isFamilyMember = !isRepresentative && !isAdminOrBoard
+                && await service.IsFamilyMemberOfUnitAsync(id, userId, ct);
 
-            if (!isRepresentative && !isAdminOrBoard)
+            if (!isRepresentative && !isFamilyMember && !isAdminOrBoard)
             {
                 return TypedResults.Forbid();
             }
@@ -337,8 +339,10 @@ public static class FamilyUnitsEndpoints
             var familyUnit = await service.GetFamilyUnitByIdAsync(familyUnitId, ct);
             var isRepresentative = familyUnit.RepresentativeUserId == userId;
             var isAdminOrBoard = userRole == "Admin" || userRole == "Board";
+            var isFamilyMember = !isRepresentative && !isAdminOrBoard
+                && await service.IsFamilyMemberOfUnitAsync(familyUnitId, userId, ct);
 
-            if (!isRepresentative && !isAdminOrBoard)
+            if (!isRepresentative && !isFamilyMember && !isAdminOrBoard)
             {
                 return TypedResults.Forbid();
             }
@@ -369,8 +373,10 @@ public static class FamilyUnitsEndpoints
             var familyUnit = await service.GetFamilyUnitByIdAsync(familyUnitId, ct);
             var isRepresentative = familyUnit.RepresentativeUserId == userId;
             var isAdminOrBoard = userRole == "Admin" || userRole == "Board";
+            var isFamilyMember = !isRepresentative && !isAdminOrBoard
+                && await service.IsFamilyMemberOfUnitAsync(familyUnitId, userId, ct);
 
-            if (!isRepresentative && !isAdminOrBoard)
+            if (!isRepresentative && !isFamilyMember && !isAdminOrBoard)
             {
                 return TypedResults.Forbid();
             }
