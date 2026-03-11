@@ -53,6 +53,15 @@ const router = createRouter({
 			}
 		},
 		{
+			path: "/changelog",
+			name: "changelog",
+			component: () => import("@/views/ChangelogPage.vue"),
+			meta: {
+				requiresAuth: true,
+				title: "ABUVI | Novedades"
+			}
+		},
+		{
 			path: "/admin",
 			component: () => import("@/views/AdminPage.vue"),
 			meta: {
