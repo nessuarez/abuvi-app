@@ -191,16 +191,16 @@ The command can use keyword matching on the spec name and content to suggest a c
 
 | Keywords in name/content | Suggested category |
 | --- | --- |
-| `auth`, `login`, `password`, `user`, `role`, `verify-email` | `02-auth-and-users` |
-| `family`, `member`, `membership`, `relationship` | `03-family-units` |
-| `camp`, `edition`, `camp-definition` | `04-camps-definition` |
-| `registration`, `accommodation`, `guardian`, `participant` | `05-camp-registration` |
-| `payment`, `pricing`, `price` | `06-payments` |
-| `layout`, `sidebar`, `hero`, `carousel`, `ux`, `input`, `profile` | `07-ui-ux-and-layout` |
-| `i18n`, `spanish`, `legal`, `inclusiv` | `08-i18n-legal-content` |
-| `email`, `notification`, `resend`, `welcome` | `09-email-notifications` |
-| `onboarding` | `10-onboarding` |
-| `tech-debt`, `deprecated`, `bug` | `11-tech-debt-and-qa` |
+| `auth`, `login`, `password`, `user`, `role`, `verify-email` | `auth-and-users` |
+| `family`, `member`, `membership`, `relationship` | `family-units` |
+| `camp`, `edition`, `camp-definition` | `camps-definition` |
+| `registration`, `accommodation`, `guardian`, `participant` | `camp-registration` |
+| `payment`, `pricing`, `price` | `payments` |
+| `layout`, `sidebar`, `hero`, `carousel`, `ux`, `input`, `profile` | `ui-ux-and-layout` |
+| `i18n`, `spanish`, `legal`, `inclusiv` | `i18n-legal-content` |
+| `email`, `notification`, `resend`, `welcome` | `email-notifications` |
+| `onboarding` | `onboarding` |
+| `tech-debt`, `deprecated`, `bug` | `tech-debt-and-qa` |
 | `logging`, `health`, `migrate`, `schema`, `scaffold`, `dbsetup`, `seq` | `01-infrastructure` |
 
 ---
