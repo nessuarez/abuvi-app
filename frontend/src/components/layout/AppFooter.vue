@@ -11,7 +11,8 @@ const linkGroups = [
     links: [
       { label: 'Camp 2026', path: '/camp' },
       { label: '50 Aniversario', path: '/anniversary' },
-      { label: 'Mi Perfil', path: '/profile' }
+      { label: 'Mi Perfil', path: '/profile' },
+      { label: 'Novedades', path: '/changelog' }
     ]
   },
   {
