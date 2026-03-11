@@ -11,7 +11,7 @@ public class AdminEditRegistrationValidatorTests
     [Fact]
     public void AllFieldsNull_ShouldPass()
     {
-        var request = new AdminEditRegistrationRequest(null, null, null, null, null, null);
+        var request = new AdminEditRegistrationRequest(null, null, null, null, null, null, null);
         var result = _validator.TestValidate(request);
         result.ShouldNotHaveAnyValidationErrors();
     }
@@ -19,7 +19,7 @@ public class AdminEditRegistrationValidatorTests
     [Fact]
     public void Notes_WhenExceeds1000Chars_ShouldFail()
     {
-        var request = new AdminEditRegistrationRequest(null, null, null, new string('a', 1001), null, null);
+        var request = new AdminEditRegistrationRequest(null, null, null, new string('a', 1001), null, null, null);
         var result = _validator.TestValidate(request);
         result.ShouldHaveValidationErrorFor(x => x.Notes);
     }
@@ -27,7 +27,7 @@ public class AdminEditRegistrationValidatorTests
     [Fact]
     public void SpecialNeeds_WhenExceeds2000Chars_ShouldFail()
     {
-        var request = new AdminEditRegistrationRequest(null, null, null, null, new string('a', 2001), null);
+        var request = new AdminEditRegistrationRequest(null, null, null, null, new string('a', 2001), null, null);
         var result = _validator.TestValidate(request);
         result.ShouldHaveValidationErrorFor(x => x.SpecialNeeds);
     }
@@ -35,7 +35,7 @@ public class AdminEditRegistrationValidatorTests
     [Fact]
     public void CampatesPreference_WhenExceeds500Chars_ShouldFail()
     {
-        var request = new AdminEditRegistrationRequest(null, null, null, null, null, new string('a', 501));
+        var request = new AdminEditRegistrationRequest(null, null, null, null, null, new string('a', 501), null);
         var result = _validator.TestValidate(request);
         result.ShouldHaveValidationErrorFor(x => x.CampatesPreference);
     }
@@ -43,7 +43,7 @@ public class AdminEditRegistrationValidatorTests
     [Fact]
     public void Members_WhenProvidedEmpty_ShouldFail()
     {
-        var request = new AdminEditRegistrationRequest([], null, null, null, null, null);
+        var request = new AdminEditRegistrationRequest([], null, null, null, null, null, null);
         var result = _validator.TestValidate(request);
         result.ShouldHaveValidationErrorFor(x => x.Members);
     }
@@ -55,7 +55,7 @@ public class AdminEditRegistrationValidatorTests
         {
             new(Guid.NewGuid(), AttendancePeriod.Complete)
         };
-        var request = new AdminEditRegistrationRequest(members, null, null, null, null, null);
+        var request = new AdminEditRegistrationRequest(members, null, null, null, null, null, null);
         var result = _validator.TestValidate(request);
         result.ShouldNotHaveAnyValidationErrors();
     }
@@ -67,7 +67,7 @@ public class AdminEditRegistrationValidatorTests
         {
             new(Guid.NewGuid(), 0)
         };
-        var request = new AdminEditRegistrationRequest(null, extras, null, null, null, null);
+        var request = new AdminEditRegistrationRequest(null, extras, null, null, null, null, null);
         var result = _validator.TestValidate(request);
         result.ShouldHaveAnyValidationError();
     }
@@ -79,7 +79,7 @@ public class AdminEditRegistrationValidatorTests
         {
             new(Guid.NewGuid(), 2)
         };
-        var request = new AdminEditRegistrationRequest(null, extras, null, null, null, null);
+        var request = new AdminEditRegistrationRequest(null, extras, null, null, null, null, null);
         var result = _validator.TestValidate(request);
         result.ShouldNotHaveAnyValidationErrors();
     }
@@ -91,7 +91,7 @@ public class AdminEditRegistrationValidatorTests
         {
             new(Guid.NewGuid(), 0)
         };
-        var request = new AdminEditRegistrationRequest(null, null, prefs, null, null, null);
+        var request = new AdminEditRegistrationRequest(null, null, prefs, null, null, null, null);
         var result = _validator.TestValidate(request);
         result.ShouldHaveAnyValidationError();
     }

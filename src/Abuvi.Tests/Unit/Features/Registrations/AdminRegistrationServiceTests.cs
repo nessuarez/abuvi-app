@@ -156,7 +156,7 @@ public class AdminRegistrationServiceTests
 
         var request = new AdminEditRegistrationRequest(
             Members: null, Extras: null, Preferences: null,
-            Notes: "Updated notes", SpecialNeeds: null, CampatesPreference: null);
+            Notes: "Updated notes", SpecialNeeds: null, CampatesPreference: null, HasPet: null);
 
         // Act
         var result = await _sut.AdminUpdateAsync(RegistrationId, request, CancellationToken.None);
@@ -176,7 +176,7 @@ public class AdminRegistrationServiceTests
 
         var request = new AdminEditRegistrationRequest(
             Members: null, Extras: null, Preferences: null,
-            Notes: "test", SpecialNeeds: null, CampatesPreference: null);
+            Notes: "test", SpecialNeeds: null, CampatesPreference: null, HasPet: null);
 
         // Act
         var act = () => _sut.AdminUpdateAsync(RegistrationId, request, CancellationToken.None);
@@ -195,7 +195,7 @@ public class AdminRegistrationServiceTests
 
         var request = new AdminEditRegistrationRequest(
             Members: null, Extras: null, Preferences: null,
-            Notes: "test", SpecialNeeds: null, CampatesPreference: null);
+            Notes: "test", SpecialNeeds: null, CampatesPreference: null, HasPet: null);
 
         // Act
         var act = () => _sut.AdminUpdateAsync(RegistrationId, request, CancellationToken.None);
@@ -225,7 +225,7 @@ public class AdminRegistrationServiceTests
 
         var request = new AdminEditRegistrationRequest(
             Members: null, Extras: null, Preferences: null,
-            Notes: "admin edit", SpecialNeeds: null, CampatesPreference: null);
+            Notes: "admin edit", SpecialNeeds: null, CampatesPreference: null, HasPet: null);
 
         // Act
         var act = () => _sut.AdminUpdateAsync(RegistrationId, request, CancellationToken.None);
