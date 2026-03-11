@@ -19,11 +19,11 @@ public static class UsersEndpoints
             .WithTags("Users")
             .WithOpenApi();
 
-        // GET /api/users - Get all users (Admin only)
+        // GET /api/users - Get all users (Admin/Board)
         group.MapGet("/", GetAllUsers)
             .WithName("GetAllUsers")
             .WithSummary("Get all users")
-            .RequireAuthorization(policy => policy.RequireRole("Admin"))
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"))
             .Produces<ApiResponse<List<UserResponse>>>()
             .Produces(401)
             .Produces(403);
