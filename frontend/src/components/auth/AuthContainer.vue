@@ -5,11 +5,18 @@ import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
+import Message from 'primevue/message'
 import LoginForm from './LoginForm.vue'
 import RegisterForm from './RegisterForm.vue'
 import logo from '@/assets/images/logo.svg'
 
 const activeTab = ref('login')
+const showFirstTimeHint = ref(!localStorage.getItem('auth_hint_dismissed'))
+
+function dismissHint() {
+  showFirstTimeHint.value = false
+  localStorage.setItem('auth_hint_dismissed', '1')
+}
 
 function switchToLogin() {
   activeTab.value = 'login'
@@ -19,16 +26,17 @@ function switchToLogin() {
 <template>
   <div class="w-full max-w-md rounded-lg bg-white/95 p-4 shadow-2xl backdrop-blur-sm sm:p-8">
     <div class="mb-4 text-center sm:mb-6">
-      <img
-        :src="logo"
-        alt="ABUVI"
-        class="mx-auto mb-3 max-w-[80px] sm:max-w-[120px]"
-      />
+      <img :src="logo" alt="ABUVI" class="mx-auto mb-3 max-w-[80px] sm:max-w-[120px]" />
       <h1 class="mb-2 text-2xl font-bold text-gray-900 sm:text-3xl">Te damos la bienvenida a ABUVI</h1>
       <p class="text-sm font-medium text-gray-700">
         Plataforma exclusiva para socios/as
       </p>
     </div>
+
+    <Message v-if="showFirstTimeHint" severity="info" :closable="true" class="mb-3 text-sm" @close="dismissHint">
+      Si es tu primera vez aquí, debes
+      <a href="#" class="font-semibold underline" @click.prevent="activeTab = 'register'; dismissHint()">registrarte</a>
+    </Message>
 
     <Tabs v-model:value="activeTab" class="auth-tabs">
       <TabList>
