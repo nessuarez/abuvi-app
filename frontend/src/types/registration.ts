@@ -217,6 +217,11 @@ export interface UpdateRegistrationExtrasRequest {
   extras: ExtraSelectionRequest[]
 }
 
+export interface UpdateRegistrationInfoRequest {
+  specialNeeds: string | null
+  hasPet: boolean
+}
+
 // Wizard-local state (not sent to API)
 export interface WizardExtrasSelection {
   campEditionExtraId: string
