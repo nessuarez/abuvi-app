@@ -18,12 +18,18 @@ export interface FamilyUnitResponse {
   name: string
   representativeUserId: string
   familyNumber: number | null
+  isActive: boolean
   profilePhotoUrl: string | null
   createdAt: string
   updatedAt: string
   // Optional: populated in admin list endpoint (GET /api/family-units)
   representativeName?: string
   membersCount?: number
+}
+
+// Request to update family unit active status (Admin/Board only)
+export interface UpdateFamilyUnitStatusRequest {
+  isActive: boolean
 }
 
 // Request to create family unit

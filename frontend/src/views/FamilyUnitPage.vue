@@ -212,8 +212,8 @@ const handleDeleteMember = (member: FamilyMemberResponse) => {
   if (!familyUnit.value) return
 
   confirm.require({
-    message: `¿Estás seguro de que quieres eliminar a ${member.firstName} ${member.lastName}?`,
-    header: 'Confirmar Eliminación',
+    message: `¿Eliminar al miembro "${member.firstName} ${member.lastName}"? Esta acción no se puede deshacer.`,
+    header: 'Confirmar eliminación de miembro',
     icon: 'pi pi-exclamation-triangle',
     acceptLabel: 'Eliminar',
     rejectLabel: 'Cancelar',
@@ -224,16 +224,16 @@ const handleDeleteMember = (member: FamilyMemberResponse) => {
       if (success) {
         toast.add({
           severity: 'success',
-          summary: 'Éxito',
-          detail: 'Miembro eliminado',
-          life: 3000
+          summary: 'Miembro eliminado',
+          detail: `${member.firstName} ${member.lastName} ha sido eliminado`,
+          life: 5000
         })
       } else {
         toast.add({
           severity: 'error',
-          summary: 'Error',
-          detail: error.value || 'Error al eliminar el miembro familiar',
-          life: 5000
+          summary: 'No se pudo eliminar',
+          detail: error.value || 'Error al eliminar el miembro',
+          life: 8000
         })
       }
     }
@@ -411,6 +411,8 @@ async function onRemoveMemberPhoto(memberId: string) {
             :loading="loading"
             :can-manage-memberships="auth.isBoard"
             :read-only="isViewingOther"
+            :is-admin-or-board="auth.isAdmin || auth.isBoard"
+            :representative-user-id="familyUnit?.representativeUserId"
             :uploading-member-id="uploadingMemberPhotoId"
             @edit="openEditMemberDialog"
             @delete="handleDeleteMember"
