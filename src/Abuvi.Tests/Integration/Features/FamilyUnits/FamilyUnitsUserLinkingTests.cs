@@ -8,6 +8,7 @@ using Abuvi.API.Data;
 using Abuvi.API.Features.Auth;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
+using Abuvi.API.Features.Memberships;
 using Abuvi.API.Features.Registrations;
 using Abuvi.API.Features.Users;
 using FluentAssertions;
@@ -296,6 +297,30 @@ public class FamilyUnitsUserLinkingTests : IClassFixture<WebApplicationFactory<P
                 UpdatedAt = DateTime.UtcNow
             };
             db.CampEditions.Add(edition);
+
+            // Seed membership with paid fee for registration validation
+            var membership = new Membership
+            {
+                Id = Guid.NewGuid(),
+                FamilyMemberId = representativeMemberId,
+                StartDate = DateTime.UtcNow.AddYears(-1),
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            db.Memberships.Add(membership);
+            db.MembershipFees.Add(new MembershipFee
+            {
+                Id = Guid.NewGuid(),
+                MembershipId = membership.Id,
+                Year = DateTime.UtcNow.Year,
+                Amount = 50m,
+                Status = FeeStatus.Paid,
+                PaidDate = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+
             await db.SaveChangesAsync();
             editionId = edition.Id;
         }
@@ -368,6 +393,30 @@ public class FamilyUnitsUserLinkingTests : IClassFixture<WebApplicationFactory<P
                 UpdatedAt = DateTime.UtcNow
             };
             db.CampEditions.Add(edition);
+
+            // Seed membership with paid fee for registration validation
+            var membership2 = new Membership
+            {
+                Id = Guid.NewGuid(),
+                FamilyMemberId = representativeMemberId,
+                StartDate = DateTime.UtcNow.AddYears(-1),
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            db.Memberships.Add(membership2);
+            db.MembershipFees.Add(new MembershipFee
+            {
+                Id = Guid.NewGuid(),
+                MembershipId = membership2.Id,
+                Year = DateTime.UtcNow.Year,
+                Amount = 50m,
+                Status = FeeStatus.Paid,
+                PaidDate = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+
             await db.SaveChangesAsync();
             editionId = edition.Id;
         }

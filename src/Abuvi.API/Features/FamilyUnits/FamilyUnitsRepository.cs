@@ -45,7 +45,14 @@ public interface IFamilyUnitsRepository
         string? sortBy,
         string? sortOrder,
         string? membershipStatus,
+        bool? isActive,
         CancellationToken ct);
+
+    // Admin operations
+    Task<bool> HasRegistrationsAsync(Guid familyUnitId, CancellationToken ct);
+    Task ClearAllUserFamilyUnitLinksAsync(Guid familyUnitId, CancellationToken ct);
+    Task UpdateFamilyUnitStatusAsync(Guid familyUnitId, bool isActive, CancellationToken ct);
+    Task<bool> MemberHasActiveRegistrationsAsync(Guid memberId, CancellationToken ct);
 }
 
 /// <summary>
@@ -161,7 +168,7 @@ public class FamilyUnitsRepository(AbuviDbContext db) : IFamilyUnitsRepository
 
     public async Task<(List<FamilyUnitAdminProjection> Items, int TotalCount)> GetAllPagedAsync(
         int page, int pageSize, string? search, string? sortBy, string? sortOrder,
-        string? membershipStatus, CancellationToken ct)
+        string? membershipStatus, bool? isActive, CancellationToken ct)
     {
         var query = from fu in db.FamilyUnits
                     join user in db.Users on fu.RepresentativeUserId equals user.Id into userGroup
@@ -175,6 +182,7 @@ public class FamilyUnitsRepository(AbuviDbContext db) : IFamilyUnitsRepository
                             ? u.FirstName + " " + u.LastName
                             : string.Empty,
                         fu.FamilyNumber,
+                        fu.IsActive,
                         MembersCount = db.FamilyMembers.Count(m => m.FamilyUnitId == fu.Id),
                         fu.CreatedAt,
                         fu.UpdatedAt
@@ -186,6 +194,11 @@ public class FamilyUnitsRepository(AbuviDbContext db) : IFamilyUnitsRepository
             query = query.Where(x =>
                 x.Name.ToLower().Contains(term) ||
                 x.RepresentativeName.ToLower().Contains(term));
+        }
+
+        if (isActive.HasValue)
+        {
+            query = query.Where(x => x.IsActive == isActive.Value);
         }
 
         if (membershipStatus == "active")
@@ -218,9 +231,41 @@ public class FamilyUnitsRepository(AbuviDbContext db) : IFamilyUnitsRepository
 
         var projections = items.Select(x => new FamilyUnitAdminProjection(
             x.Id, x.Name, x.RepresentativeUserId,
-            x.RepresentativeName, x.FamilyNumber, x.MembersCount, x.CreatedAt, x.UpdatedAt
+            x.RepresentativeName, x.FamilyNumber, x.IsActive, x.MembersCount, x.CreatedAt, x.UpdatedAt
         )).ToList();
 
         return (projections, totalCount);
+    }
+
+    // Admin operations
+
+    public async Task<bool> HasRegistrationsAsync(Guid familyUnitId, CancellationToken ct)
+    {
+        return await db.Registrations
+            .AnyAsync(r => r.FamilyUnitId == familyUnitId, ct);
+    }
+
+    public async Task ClearAllUserFamilyUnitLinksAsync(Guid familyUnitId, CancellationToken ct)
+    {
+        await db.Users
+            .Where(u => u.FamilyUnitId == familyUnitId)
+            .ExecuteUpdateAsync(u => u.SetProperty(x => x.FamilyUnitId, (Guid?)null), ct);
+    }
+
+    public async Task UpdateFamilyUnitStatusAsync(Guid familyUnitId, bool isActive, CancellationToken ct)
+    {
+        await db.FamilyUnits
+            .Where(fu => fu.Id == familyUnitId)
+            .ExecuteUpdateAsync(u => u
+                .SetProperty(x => x.IsActive, isActive)
+                .SetProperty(x => x.UpdatedAt, DateTime.UtcNow), ct);
+    }
+
+    public async Task<bool> MemberHasActiveRegistrationsAsync(Guid memberId, CancellationToken ct)
+    {
+        return await db.RegistrationMembers
+            .AnyAsync(rm => rm.FamilyMemberId == memberId
+                && (rm.Registration.Status == Registrations.RegistrationStatus.Pending
+                    || rm.Registration.Status == Registrations.RegistrationStatus.Confirmed), ct);
     }
 }

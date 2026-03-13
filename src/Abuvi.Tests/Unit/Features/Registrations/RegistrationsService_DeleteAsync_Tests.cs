@@ -2,6 +2,7 @@ using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Common.Services;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
+using Abuvi.API.Features.Memberships;
 using Abuvi.API.Features.Payments;
 using Abuvi.API.Features.Registrations;
 using Abuvi.API.Features.Users;
@@ -43,10 +44,13 @@ public class RegistrationsService_DeleteAsync_Tests
         _paymentsService = Substitute.For<IPaymentsService>();
         _logger = Substitute.For<ILogger<RegistrationsService>>();
         _pricingService = new RegistrationPricingService(_settingsRepo);
+        var membershipsRepo = Substitute.For<IMembershipsRepository>();
+        membershipsRepo.HasPaidCurrentYearFeeForFamilyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(true);
         _sut = new RegistrationsService(
             _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo,
             _editionsRepo, _accommodationsRepo, _pricingService, _emailService,
-            _paymentsService, _logger);
+            _paymentsService, membershipsRepo, _logger);
     }
 
     // ── Successful Cases ─────────────────────────────────────────────────────

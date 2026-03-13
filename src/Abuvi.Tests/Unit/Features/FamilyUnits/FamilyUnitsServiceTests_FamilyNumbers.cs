@@ -101,18 +101,18 @@ public class FamilyUnitsServiceTests_FamilyNumbers
     {
         // Arrange
         var items = BuildProjections(3);
-        _repository.GetAllPagedAsync(1, 20, null, null, null, "active", Arg.Any<CancellationToken>())
+        _repository.GetAllPagedAsync(1, 20, null, null, null, "active", null, Arg.Any<CancellationToken>())
             .Returns((items, 3));
 
         // Act
         var result = await _sut.GetAllFamilyUnitsAsync(
             page: 1, pageSize: 20, search: null,
-            sortBy: null, sortOrder: null, membershipStatus: "active", ct: default);
+            sortBy: null, sortOrder: null, membershipStatus: "active", isActive: null, ct: default);
 
         // Assert
         result.Items.Should().HaveCount(3);
         await _repository.Received(1).GetAllPagedAsync(
-            1, 20, null, null, null, "active", Arg.Any<CancellationToken>());
+            1, 20, null, null, null, "active", null, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -120,18 +120,18 @@ public class FamilyUnitsServiceTests_FamilyNumbers
     {
         // Arrange
         var items = BuildProjections(2);
-        _repository.GetAllPagedAsync(1, 20, null, null, null, "none", Arg.Any<CancellationToken>())
+        _repository.GetAllPagedAsync(1, 20, null, null, null, "none", null, Arg.Any<CancellationToken>())
             .Returns((items, 2));
 
         // Act
         var result = await _sut.GetAllFamilyUnitsAsync(
             page: 1, pageSize: 20, search: null,
-            sortBy: null, sortOrder: null, membershipStatus: "none", ct: default);
+            sortBy: null, sortOrder: null, membershipStatus: "none", isActive: null, ct: default);
 
         // Assert
         result.Items.Should().HaveCount(2);
         await _repository.Received(1).GetAllPagedAsync(
-            1, 20, null, null, null, "none", Arg.Any<CancellationToken>());
+            1, 20, null, null, null, "none", null, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -139,19 +139,19 @@ public class FamilyUnitsServiceTests_FamilyNumbers
     {
         // Arrange
         var items = BuildProjections(5);
-        _repository.GetAllPagedAsync(1, 20, null, null, null, null, Arg.Any<CancellationToken>())
+        _repository.GetAllPagedAsync(1, 20, null, null, null, null, null, Arg.Any<CancellationToken>())
             .Returns((items, 5));
 
         // Act
         var result = await _sut.GetAllFamilyUnitsAsync(
             page: 1, pageSize: 20, search: null,
-            sortBy: null, sortOrder: null, membershipStatus: null, ct: default);
+            sortBy: null, sortOrder: null, membershipStatus: null, isActive: null, ct: default);
 
         // Assert
         result.Items.Should().HaveCount(5);
         result.TotalCount.Should().Be(5);
         await _repository.Received(1).GetAllPagedAsync(
-            1, 20, null, null, null, null, Arg.Any<CancellationToken>());
+            1, 20, null, null, null, null, null, Arg.Any<CancellationToken>());
     }
 
     // -------------------------------------------------------------------------
@@ -176,6 +176,7 @@ public class FamilyUnitsServiceTests_FamilyNumbers
                 RepresentativeUserId: Guid.NewGuid(),
                 RepresentativeName: $"Rep {i}",
                 FamilyNumber: i,
+                IsActive: true,
                 MembersCount: i,
                 CreatedAt: DateTime.UtcNow.AddDays(-i),
                 UpdatedAt: DateTime.UtcNow.AddDays(-i)
