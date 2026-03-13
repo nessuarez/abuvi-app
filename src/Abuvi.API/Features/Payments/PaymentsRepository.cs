@@ -92,6 +92,14 @@ public class PaymentsRepository(AbuviDbContext db) : IPaymentsRepository
         if (filter.CampEditionId.HasValue)
             query = query.Where(p => p.Registration.CampEditionId == filter.CampEditionId.Value);
 
+        if (filter.InstallmentNumber.HasValue)
+        {
+            if (filter.InstallmentNumber.Value >= 3)
+                query = query.Where(p => p.InstallmentNumber >= 3);
+            else
+                query = query.Where(p => p.InstallmentNumber == filter.InstallmentNumber.Value);
+        }
+
         if (filter.FromDate.HasValue)
             query = query.Where(p => p.CreatedAt >= filter.FromDate.Value);
 

@@ -88,6 +88,7 @@ public record RejectPaymentRequest(string Notes);
 public record PaymentFilterRequest(
     PaymentStatus? Status = null,
     Guid? CampEditionId = null,
+    int? InstallmentNumber = null,
     DateTime? FromDate = null,
     DateTime? ToDate = null,
     int Page = 1,
