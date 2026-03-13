@@ -9,7 +9,7 @@ const drawerVisible = ref(false)
 </script>
 
 <template>
-  <Container>
+  <Container maxWidth="full">
     <div class="py-8">
       <div class="mb-6 flex items-center justify-between">
         <h1 class="text-3xl font-bold text-gray-900">Panel de Administración</h1>
