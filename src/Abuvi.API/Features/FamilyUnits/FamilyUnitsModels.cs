@@ -9,6 +9,7 @@ public class FamilyUnit
     public string Name { get; set; } = string.Empty;
     public Guid RepresentativeUserId { get; set; }
     public int? FamilyNumber { get; set; }  // Assigned when first member gets membership activated
+    public bool IsActive { get; set; } = true;
     public string? ProfilePhotoUrl { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -67,6 +68,8 @@ public record UpdateFamilyUnitRequest(string Name);
 
 public record UpdateFamilyNumberRequest(int FamilyNumber);
 
+public record UpdateFamilyUnitStatusRequest(bool IsActive);
+
 public record CreateFamilyMemberRequest(
     string FirstName,
     string LastName,
@@ -97,6 +100,7 @@ public record FamilyUnitResponse(
     string Name,
     Guid RepresentativeUserId,
     int? FamilyNumber,
+    bool IsActive,
     string? ProfilePhotoUrl,
     DateTime CreatedAt,
     DateTime UpdatedAt
@@ -132,6 +136,7 @@ public record FamilyUnitAdminProjection(
     Guid RepresentativeUserId,
     string RepresentativeName,
     int? FamilyNumber,
+    bool IsActive,
     int MembersCount,
     DateTime CreatedAt,
     DateTime UpdatedAt
@@ -146,6 +151,7 @@ public record FamilyUnitListItemResponse(
     Guid RepresentativeUserId,
     string RepresentativeName,
     int? FamilyNumber,
+    bool IsActive,
     int MembersCount,
     DateTime CreatedAt,
     DateTime UpdatedAt
@@ -171,6 +177,7 @@ public static class FamilyUnitExtensions
             unit.Name,
             unit.RepresentativeUserId,
             unit.FamilyNumber,
+            unit.IsActive,
             unit.ProfilePhotoUrl,
             unit.CreatedAt,
             unit.UpdatedAt

@@ -20,6 +20,9 @@ public interface IMembershipsRepository
     // Member number operations
     Task<int> GetNextMemberNumberAsync(CancellationToken ct);
     Task<bool> IsMemberNumberTakenAsync(int memberNumber, Guid? excludeId, CancellationToken ct);
+
+    // Family-level fee check
+    Task<bool> HasPaidCurrentYearFeeForFamilyAsync(Guid familyUnitId, CancellationToken ct);
 }
 
 public class MembershipsRepository(AbuviDbContext db) : IMembershipsRepository
@@ -111,5 +114,15 @@ public class MembershipsRepository(AbuviDbContext db) : IMembershipsRepository
         return await db.Memberships
             .AnyAsync(m => m.MemberNumber == memberNumber
                 && (!excludeId.HasValue || m.Id != excludeId.Value), ct);
+    }
+
+    public async Task<bool> HasPaidCurrentYearFeeForFamilyAsync(Guid familyUnitId, CancellationToken ct)
+    {
+        var currentYear = DateTime.UtcNow.Year;
+        return await db.MembershipFees
+            .AnyAsync(f => f.Membership.FamilyMember.FamilyUnitId == familyUnitId
+                && f.Year == currentYear
+                && f.Status == FeeStatus.Paid
+                && f.Membership.IsActive, ct);
     }
 }

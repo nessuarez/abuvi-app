@@ -34,6 +34,19 @@ public static class FamilyUnitsEndpoints
             .Produces(401)
             .Produces(403);
 
+        adminGroup.MapDelete("/{id:guid}/admin", AdminDeleteFamilyUnit)
+            .WithName("AdminDeleteFamilyUnit")
+            .WithSummary("Hard-delete a family unit (Admin/Board only, no registrations)")
+            .Produces(204)
+            .Produces(404)
+            .Produces(422);
+
+        adminGroup.MapPatch("/{id:guid}/status", UpdateFamilyUnitStatus)
+            .WithName("UpdateFamilyUnitStatus")
+            .WithSummary("Toggle family unit active status (Admin/Board only)")
+            .Produces<ApiResponse<FamilyUnitResponse>>()
+            .Produces(404);
+
         adminGroup.MapPut("/{id:guid}/family-number", UpdateFamilyNumber)
             .WithName("UpdateFamilyNumber")
             .WithSummary("Update family number (Admin/Board only)")
@@ -427,9 +440,10 @@ public static class FamilyUnitsEndpoints
         [Microsoft.AspNetCore.Mvc.FromQuery] string? sortBy = null,
         [Microsoft.AspNetCore.Mvc.FromQuery] string? sortOrder = null,
         [Microsoft.AspNetCore.Mvc.FromQuery] string? membershipStatus = null,
+        [Microsoft.AspNetCore.Mvc.FromQuery] bool? isActive = null,
         CancellationToken ct = default)
     {
-        var result = await service.GetAllFamilyUnitsAsync(page, pageSize, search, sortBy, sortOrder, membershipStatus, ct);
+        var result = await service.GetAllFamilyUnitsAsync(page, pageSize, search, sortBy, sortOrder, membershipStatus, isActive, ct);
         return TypedResults.Ok(ApiResponse<PagedFamilyUnitsResponse>.Ok(result));
     }
 
@@ -454,6 +468,44 @@ public static class FamilyUnitsEndpoints
         }
     }
 
+    private static async Task<IResult> AdminDeleteFamilyUnit(
+        Guid id,
+        FamilyUnitsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            await service.AdminDeleteFamilyUnitAsync(id, ct);
+            return TypedResults.NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.UnprocessableEntity(
+                ApiResponse<object>.Fail(ex.Message, "FAMILY_UNIT_HAS_REGISTRATIONS"));
+        }
+    }
+
+    private static async Task<IResult> UpdateFamilyUnitStatus(
+        Guid id,
+        UpdateFamilyUnitStatusRequest request,
+        FamilyUnitsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await service.UpdateFamilyUnitStatusAsync(id, request, ct);
+            return TypedResults.Ok(ApiResponse<FamilyUnitResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
     private static async Task<IResult> DeleteFamilyMember(
         Guid familyUnitId,
         Guid memberId,
@@ -463,17 +515,19 @@ public static class FamilyUnitsEndpoints
     {
         var userId = user.GetUserId()
             ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
+        var isAdminOrBoard = userRole == "Admin" || userRole == "Board";
 
         try
         {
-            // Check authorization
+            // Check authorization: representative OR Admin/Board
             var isRepresentative = await service.IsRepresentativeAsync(familyUnitId, userId, ct);
-            if (!isRepresentative)
+            if (!isRepresentative && !isAdminOrBoard)
             {
                 return TypedResults.Forbid();
             }
 
-            await service.DeleteFamilyMemberAsync(memberId, ct);
+            await service.DeleteFamilyMemberAsync(memberId, isAdminOrBoard, ct);
             return TypedResults.NoContent();
         }
         catch (NotFoundException ex)
@@ -483,7 +537,7 @@ public static class FamilyUnitsEndpoints
         catch (BusinessRuleException ex)
         {
             return TypedResults.Conflict(
-                ApiResponse<object>.Fail(ex.Message, "CANNOT_DELETE_REPRESENTATIVE"));
+                ApiResponse<object>.Fail(ex.Message, "CANNOT_DELETE_MEMBER"));
         }
     }
 

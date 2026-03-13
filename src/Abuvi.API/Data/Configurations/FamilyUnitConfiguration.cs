@@ -43,6 +43,12 @@ public class FamilyUnitConfiguration : IEntityTypeConfiguration<FamilyUnit>
             .IsUnique()
             .HasFilter("family_number IS NOT NULL");
 
+        // IsActive: required, default true
+        builder.Property(fu => fu.IsActive)
+            .HasColumnName("is_active")
+            .HasDefaultValue(true)
+            .IsRequired();
+
         // Profile photo URL: optional, max 2048
         builder.Property(fu => fu.ProfilePhotoUrl)
             .HasMaxLength(2048)
