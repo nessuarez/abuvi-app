@@ -1,5 +1,6 @@
 using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Common.Services;
+using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.Users;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -16,6 +17,7 @@ public class AuthService : IAuthService
     private readonly JwtTokenService _jwtTokenService;
     private readonly IEmailService _emailService;
     private readonly IConfiguration _configuration;
+    private readonly IFamilyUnitsRepository _familyUnitsRepository;
     private readonly ILogger<AuthService> _logger;
 
     public AuthService(
@@ -24,6 +26,7 @@ public class AuthService : IAuthService
         JwtTokenService jwtTokenService,
         IEmailService emailService,
         IConfiguration configuration,
+        IFamilyUnitsRepository familyUnitsRepository,
         ILogger<AuthService> logger)
     {
         _usersRepository = usersRepository;
@@ -31,6 +34,7 @@ public class AuthService : IAuthService
         _jwtTokenService = jwtTokenService;
         _emailService = emailService;
         _configuration = configuration;
+        _familyUnitsRepository = familyUnitsRepository;
         _logger = logger;
     }
 
@@ -175,10 +179,33 @@ public class AuthService : IAuthService
 
         await _usersRepository.UpdateAsync(user, ct);
 
+        // Auto-link any existing family members that were added with this email before the user registered
+        await LinkPendingFamilyMembersAsync(user, ct);
+
         // Send welcome email after successful verification
         await _emailService.SendWelcomeEmailAsync(user.Email, user.FirstName, user.LastName, ct);
 
         _logger.LogInformation("User {Email} email verified successfully", user.Email);
+    }
+
+    /// <summary>
+    /// Finds family members that were added with this user's email (before the user registered)
+    /// and links them by setting UserId on each matching family member.
+    /// </summary>
+    private async Task LinkPendingFamilyMembersAsync(User user, CancellationToken ct)
+    {
+        var pendingMembers = await _familyUnitsRepository.GetFamilyMembersByEmailAsync(user.Email, ct);
+        if (pendingMembers.Count == 0) return;
+
+        foreach (var member in pendingMembers)
+        {
+            member.UserId = user.Id;
+            await _familyUnitsRepository.UpdateFamilyMemberAsync(member, ct);
+
+            _logger.LogInformation(
+                "Auto-linked family member {MemberId} to newly verified user {UserId} by email {Email}",
+                member.Id, user.Id, user.Email);
+        }
     }
 
     /// <summary>

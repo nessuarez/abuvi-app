@@ -2,6 +2,7 @@ using FluentAssertions;
 using NSubstitute;
 using Xunit;
 using Abuvi.API.Features.Auth;
+using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.Users;
 using Abuvi.API.Common.Services;
 using Microsoft.Extensions.Configuration;
@@ -30,6 +31,7 @@ public class AuthServiceTests
         _jwtTokenService = Substitute.For<JwtTokenService>(Substitute.For<IConfiguration>());
         _emailService = Substitute.For<IEmailService>();
         _logger = Substitute.For<ILogger<AuthService>>();
+        var familyUnitsRepository = Substitute.For<IFamilyUnitsRepository>();
 
         var configDict = new Dictionary<string, string?>
         {
@@ -39,7 +41,7 @@ public class AuthServiceTests
             .AddInMemoryCollection(configDict)
             .Build();
 
-        _sut = new AuthService(_usersRepository, _passwordHasher, _jwtTokenService, _emailService, _configuration, _logger);
+        _sut = new AuthService(_usersRepository, _passwordHasher, _jwtTokenService, _emailService, _configuration, familyUnitsRepository, _logger);
     }
 
     #region LoginAsync Tests

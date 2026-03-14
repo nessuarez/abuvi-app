@@ -29,6 +29,11 @@ public interface IFamilyUnitsRepository
     Task<User?> GetUserByEmailAsync(string email, CancellationToken ct);
     Task UpdateUserFamilyUnitIdAsync(Guid userId, Guid? familyUnitId, CancellationToken ct);
 
+    /// <summary>
+    /// Finds all family members that have the given email (for post-registration linking).
+    /// </summary>
+    Task<IReadOnlyList<FamilyMember>> GetFamilyMembersByEmailAsync(string email, CancellationToken ct);
+
     // Family number operations
     Task<int> GetNextFamilyNumberAsync(CancellationToken ct);
     Task<bool> IsFamilyNumberTakenAsync(int familyNumber, Guid? excludeId, CancellationToken ct);
@@ -150,6 +155,11 @@ public class FamilyUnitsRepository(AbuviDbContext db) : IFamilyUnitsRepository
                 .SetProperty(u => u.FamilyUnitId, familyUnitId)
                 .SetProperty(u => u.UpdatedAt, DateTime.UtcNow), ct);
     }
+
+    public async Task<IReadOnlyList<FamilyMember>> GetFamilyMembersByEmailAsync(string email, CancellationToken ct)
+        => await db.FamilyMembers
+            .Where(fm => fm.Email == email && fm.UserId == null)
+            .ToListAsync(ct);
 
     public async Task<int> GetNextFamilyNumberAsync(CancellationToken ct)
     {
