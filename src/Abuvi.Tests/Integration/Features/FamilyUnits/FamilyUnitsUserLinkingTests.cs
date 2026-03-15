@@ -8,6 +8,7 @@ using Abuvi.API.Data;
 using Abuvi.API.Features.Auth;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
+using Abuvi.API.Features.Memberships;
 using Abuvi.API.Features.Registrations;
 using Abuvi.API.Features.Users;
 using FluentAssertions;
@@ -296,6 +297,30 @@ public class FamilyUnitsUserLinkingTests : IClassFixture<WebApplicationFactory<P
                 UpdatedAt = DateTime.UtcNow
             };
             db.CampEditions.Add(edition);
+
+            // Seed membership with paid fee for registration validation
+            var membership = new Membership
+            {
+                Id = Guid.NewGuid(),
+                FamilyMemberId = representativeMemberId,
+                StartDate = DateTime.UtcNow.AddYears(-1),
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            db.Memberships.Add(membership);
+            db.MembershipFees.Add(new MembershipFee
+            {
+                Id = Guid.NewGuid(),
+                MembershipId = membership.Id,
+                Year = DateTime.UtcNow.Year,
+                Amount = 50m,
+                Status = FeeStatus.Paid,
+                PaidDate = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+
             await db.SaveChangesAsync();
             editionId = edition.Id;
         }
@@ -368,6 +393,30 @@ public class FamilyUnitsUserLinkingTests : IClassFixture<WebApplicationFactory<P
                 UpdatedAt = DateTime.UtcNow
             };
             db.CampEditions.Add(edition);
+
+            // Seed membership with paid fee for registration validation
+            var membership2 = new Membership
+            {
+                Id = Guid.NewGuid(),
+                FamilyMemberId = representativeMemberId,
+                StartDate = DateTime.UtcNow.AddYears(-1),
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            db.Memberships.Add(membership2);
+            db.MembershipFees.Add(new MembershipFee
+            {
+                Id = Guid.NewGuid(),
+                MembershipId = membership2.Id,
+                Year = DateTime.UtcNow.Year,
+                Amount = 50m,
+                Status = FeeStatus.Paid,
+                PaidDate = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+
             await db.SaveChangesAsync();
             editionId = edition.Id;
         }
@@ -396,6 +445,117 @@ public class FamilyUnitsUserLinkingTests : IClassFixture<WebApplicationFactory<P
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var result = await DeserializeAsync<ApiResponse<RegistrationResponse>>(response);
         result!.Data!.Id.Should().Be(registrationId);
+    }
+
+    [Fact]
+    public async Task LinkedMember_CanGetFamilyMemberById()
+    {
+        // Arrange
+        var (_, user2Client, familyUnitId, user2MemberId) = await CreateFamilyWithLinkedMemberAsync();
+
+        // Act — User2 gets their own member record by ID
+        var response = await user2Client.GetAsync(
+            $"/api/family-units/{familyUnitId}/members/{user2MemberId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await DeserializeAsync<ApiResponse<FamilyMemberResponse>>(response);
+        result!.Data!.Id.Should().Be(user2MemberId);
+    }
+
+    [Fact]
+    public async Task LinkedMember_CannotCancelRegistration()
+    {
+        // Arrange — same setup as registration tests
+        var (user1Client, user2Client, familyUnitId, _) = await CreateFamilyWithLinkedMemberAsync();
+
+        var membersResponse = await user1Client.GetAsync($"/api/family-units/{familyUnitId}/members");
+        var membersResult = await DeserializeAsync<ApiResponse<IReadOnlyList<FamilyMemberResponse>>>(membersResponse);
+        var representativeMemberId = membersResult!.Data!.First().Id;
+
+        Guid editionId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AbuviDbContext>();
+            var camp = new Camp
+            {
+                Id = Guid.NewGuid(),
+                Name = $"IntegTest Camp {Guid.NewGuid()}",
+                Location = "Test Location",
+                PricePerAdult = 180m,
+                PricePerChild = 120m,
+                PricePerBaby = 60m,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            db.Camps.Add(camp);
+
+            var edition = new CampEdition
+            {
+                Id = Guid.NewGuid(),
+                CampId = camp.Id,
+                Year = 2092,
+                StartDate = new DateTime(2092, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+                EndDate = new DateTime(2092, 7, 10, 0, 0, 0, DateTimeKind.Utc),
+                Status = CampEditionStatus.Open,
+                MaxCapacity = 100,
+                PricePerAdult = 180m,
+                PricePerChild = 120m,
+                PricePerBaby = 60m,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            db.CampEditions.Add(edition);
+
+            var membership = new Membership
+            {
+                Id = Guid.NewGuid(),
+                FamilyMemberId = representativeMemberId,
+                StartDate = DateTime.UtcNow.AddYears(-1),
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            db.Memberships.Add(membership);
+            db.MembershipFees.Add(new MembershipFee
+            {
+                Id = Guid.NewGuid(),
+                MembershipId = membership.Id,
+                Year = DateTime.UtcNow.Year,
+                Amount = 50m,
+                Status = FeeStatus.Paid,
+                PaidDate = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+
+            await db.SaveChangesAsync();
+            editionId = edition.Id;
+        }
+
+        // User1 creates a registration
+        var createRegistrationRequest = new CreateRegistrationRequest(
+            CampEditionId: editionId,
+            FamilyUnitId: familyUnitId,
+            Members: new List<MemberAttendanceRequest>
+            {
+                new(representativeMemberId, AttendancePeriod.Complete)
+            },
+            Notes: null,
+            SpecialNeeds: null,
+            CampatesPreference: null
+        );
+        var registrationResponse = await user1Client.PostAsJsonAsync("/api/registrations", createRegistrationRequest);
+        registrationResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var registrationResult = await DeserializeAsync<ApiResponse<RegistrationResponse>>(registrationResponse);
+        var registrationId = registrationResult!.Data!.Id;
+
+        // Act — User2 (linked member) tries to cancel
+        var response = await user2Client.PostAsync($"/api/registrations/{registrationId}/cancel", null);
+
+        // Assert — should be rejected (only representative can cancel; BusinessRuleException → 422)
+        response.StatusCode.Should().BeOneOf(
+            HttpStatusCode.Forbidden, HttpStatusCode.BadRequest, HttpStatusCode.UnprocessableEntity);
     }
 
     [Fact]

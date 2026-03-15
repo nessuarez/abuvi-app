@@ -41,6 +41,7 @@ This follows **Vertical Slice Architecture** — all changes are scoped to the `
 - **Dependencies**: xUnit, NSubstitute, FluentAssertions (already available)
 
 Follow existing test patterns from `RegistrationsServiceTests.cs`:
+
 - Constructor setup with NSubstitute mocks for all `RegistrationsService` dependencies
 - AAA pattern (Arrange, Act, Assert)
 - Naming convention: `DeleteAsync_WhenCondition_ExpectedBehavior`
@@ -48,6 +49,7 @@ Follow existing test patterns from `RegistrationsServiceTests.cs`:
 **Test Cases**:
 
 #### Successful Cases
+
 1. `DeleteAsync_WhenPendingRegistrationWithinTimeWindow_ShouldDeleteSuccessfully`
    - Arrange: Registration with `Status = Pending`, `CreatedAt = 1 hour ago`, no payments, requester is representative
    - Act: Call `DeleteAsync`
@@ -61,37 +63,41 @@ Follow existing test patterns from `RegistrationsServiceTests.cs`:
    - Assert: Deletion succeeds despite expired time window
 
 #### Not Found
-4. `DeleteAsync_WhenRegistrationNotFound_ShouldThrowNotFoundException`
+
+1. `DeleteAsync_WhenRegistrationNotFound_ShouldThrowNotFoundException`
    - Arrange: `_registrationsRepo.GetByIdWithDetailsAsync()` returns `null`
    - Assert: Throws `NotFoundException`
 
 #### Authorization Errors
-5. `DeleteAsync_WhenUserIsNotRepresentativeOrAdmin_ShouldThrowUnauthorizedAccessException`
+
+1. `DeleteAsync_WhenUserIsNotRepresentativeOrAdmin_ShouldThrowUnauthorizedAccessException`
    - Arrange: Requester userId does not match `RegisteredByUserId`, `isAdminOrBoard = false`
    - Assert: Throws `UnauthorizedAccessException`
 
 #### Business Rule Violations
-6. `DeleteAsync_WhenStatusIsConfirmed_ShouldThrowBusinessRuleException`
+
+1. `DeleteAsync_WhenStatusIsConfirmed_ShouldThrowBusinessRuleException`
    - Arrange: `Status = Confirmed`
    - Assert: Throws `BusinessRuleException` with message about confirmed registrations
 
-7. `DeleteAsync_WhenStatusIsCancelled_ShouldThrowBusinessRuleException`
+2. `DeleteAsync_WhenStatusIsCancelled_ShouldThrowBusinessRuleException`
    - Arrange: `Status = Cancelled`
    - Assert: Throws `BusinessRuleException` with message about cancelled registrations
 
-8. `DeleteAsync_WhenPaymentsExist_ShouldThrowBusinessRuleException`
+3. `DeleteAsync_WhenPaymentsExist_ShouldThrowBusinessRuleException`
    - Arrange: Registration has 1+ payments in `Payments` collection
    - Assert: Throws `BusinessRuleException` with message about existing payments
 
-9. `DeleteAsync_WhenTimeWindowExpiredForRepresentative_ShouldThrowBusinessRuleException`
+4. `DeleteAsync_WhenTimeWindowExpiredForRepresentative_ShouldThrowBusinessRuleException`
    - Arrange: `CreatedAt = 25 hours ago`, `isAdminOrBoard = false`
    - Assert: Throws `BusinessRuleException` with message about 24-hour window
 
-10. `DeleteAsync_WhenAdminAndPaymentsExist_ShouldStillThrowBusinessRuleException`
+5. `DeleteAsync_WhenAdminAndPaymentsExist_ShouldStillThrowBusinessRuleException`
     - Arrange: `isAdminOrBoard = true`, registration has payments
     - Assert: Throws `BusinessRuleException` (payment guard applies to admins too)
 
 **Implementation Notes**:
+
 - Mock `_registrationsRepo.GetByIdWithDetailsAsync()` to return a `Registration` entity with all needed navigation properties (especially `Payments` collection and `FamilyUnit.RepresentativeUserId`)
 - Use `RegistrationBuilder` if available, otherwise construct manually
 - All tests should FAIL at this point (Red phase)
@@ -103,6 +109,7 @@ Follow existing test patterns from `RegistrationsServiceTests.cs`:
 - **File**: `src/Abuvi.API/Features/Registrations/IRegistrationsRepository.cs`
 - **Action**: Add method signature to interface
 - **Function Signature**:
+
   ```csharp
   Task DeleteAsync(Guid id, CancellationToken ct = default);
   ```
@@ -126,6 +133,7 @@ Follow existing test patterns from `RegistrationsServiceTests.cs`:
 - **File**: `src/Abuvi.API/Features/Registrations/IRegistrationsService.cs`
 - **Action**: Add method signature to interface
 - **Function Signature**:
+
   ```csharp
   Task DeleteAsync(Guid registrationId, Guid requestingUserId, bool isAdminOrBoard, CancellationToken ct = default);
   ```
@@ -135,6 +143,7 @@ Follow existing test patterns from `RegistrationsServiceTests.cs`:
 - **Implementation Steps**:
 
   1. **Load registration with details**:
+
      ```csharp
      var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct);
      if (registration is null)
@@ -142,6 +151,7 @@ Follow existing test patterns from `RegistrationsServiceTests.cs`:
      ```
 
   2. **Validate authorization** (follow `CancelAsync` pattern):
+
      ```csharp
      if (!isAdminOrBoard)
      {
@@ -152,6 +162,7 @@ Follow existing test patterns from `RegistrationsServiceTests.cs`:
      ```
 
   3. **Validate status** — only `Pending` or `Draft`:
+
      ```csharp
      if (registration.Status is RegistrationStatus.Confirmed)
          throw new BusinessRuleException("Confirmed registrations cannot be deleted. Please cancel first.");
@@ -160,12 +171,14 @@ Follow existing test patterns from `RegistrationsServiceTests.cs`:
      ```
 
   4. **Validate no payments exist**:
+
      ```csharp
      if (registration.Payments?.Any() == true)
          throw new BusinessRuleException("Cannot delete registration with existing payments. Please contact an administrator.");
      ```
 
   5. **Validate time window (representative only)**:
+
      ```csharp
      if (!isAdminOrBoard)
      {
@@ -176,11 +189,13 @@ Follow existing test patterns from `RegistrationsServiceTests.cs`:
      ```
 
   6. **Execute deletion**:
+
      ```csharp
      await registrationsRepo.DeleteAsync(registrationId, ct);
      ```
 
   7. **Log the action**:
+
      ```csharp
      logger.LogInformation(
          "Registration {RegistrationId} deleted by user {UserId} (Admin: {IsAdmin})",
@@ -202,6 +217,7 @@ Follow existing test patterns from `RegistrationsServiceTests.cs`:
 - **Implementation Steps**:
 
   1. **Add route mapping** (in the `MapRegistrationEndpoints` method, alongside existing endpoints):
+
      ```csharp
      group.MapDelete("/{id:guid}", DeleteRegistration)
          .WithName("DeleteRegistration")
@@ -215,6 +231,7 @@ Follow existing test patterns from `RegistrationsServiceTests.cs`:
      ```
 
   2. **Add handler method** (follow existing `CancelRegistration` pattern):
+
      ```csharp
      private static async Task<IResult> DeleteRegistration(
          [FromRoute] Guid id,
@@ -335,6 +352,7 @@ Follow existing test patterns from `RegistrationsServiceTests.cs`:
 | Time window expired | 422 | `REGISTRATION_DELETE_BLOCKED` | "Registration can only be deleted within 24 hours of creation." |
 
 All errors wrapped in `ApiResponse<object>` envelope:
+
 ```json
 {
   "success": false,

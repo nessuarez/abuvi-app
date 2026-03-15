@@ -131,6 +131,7 @@ export function usePayments() {
       const params = new URLSearchParams()
       if (filter.status) params.append('Status', filter.status)
       if (filter.campEditionId) params.append('CampEditionId', filter.campEditionId)
+      if (filter.installmentNumber) params.append('InstallmentNumber', String(filter.installmentNumber))
       if (filter.fromDate) params.append('FromDate', filter.fromDate)
       if (filter.toDate) params.append('ToDate', filter.toDate)
       if (filter.page) params.append('Page', String(filter.page))

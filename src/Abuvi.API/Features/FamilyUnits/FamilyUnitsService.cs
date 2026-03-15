@@ -301,26 +301,37 @@ public class FamilyUnitsService(
     }
 
     /// <summary>
-    /// Deletes a family member (cannot delete representative's own record)
+    /// Deletes a family member (cannot delete representative's own record).
+    /// When isAdminOrBoard is true, also checks for active registrations.
     /// </summary>
-    public async Task DeleteFamilyMemberAsync(Guid id, CancellationToken ct)
+    public async Task DeleteFamilyMemberAsync(Guid id, bool isAdminOrBoard, CancellationToken ct)
     {
         var member = await repository.GetFamilyMemberByIdAsync(id, ct)
             ?? throw new NotFoundException("Miembro Familiar", id);
 
-        // Check if this is the representative's own member record
-        if (member.UserId.HasValue)
+        // Check if this is the representative's member record
+        var familyUnit = await repository.GetFamilyUnitByIdAsync(member.FamilyUnitId, ct);
+        if (familyUnit != null && member.UserId.HasValue
+            && familyUnit.RepresentativeUserId == member.UserId.Value)
         {
-            var familyUnit = await repository.GetFamilyUnitByIdAsync(member.FamilyUnitId, ct);
-            if (familyUnit != null && familyUnit.RepresentativeUserId == member.UserId.Value)
-            {
-                throw new BusinessRuleException("No puedes eliminar tu propio perfil mientras seas representante");
-            }
+            throw new BusinessRuleException(
+                "No se puede eliminar al representante de la unidad familiar.");
+        }
+
+        // Admin/Board: check for active registrations before deleting
+        if (isAdminOrBoard)
+        {
+            var hasActiveRegs = await repository.MemberHasActiveRegistrationsAsync(id, ct);
+            if (hasActiveRegs)
+                throw new BusinessRuleException(
+                    "No se puede eliminar un miembro con inscripciones activas (Pendiente/Confirmada).");
         }
 
         await repository.DeleteFamilyMemberAsync(id, ct);
 
-        logger.LogInformation("Family member {MemberId} deleted", id);
+        logger.LogInformation(
+            "Deleted family member {MemberId} ({FirstName} {LastName}) from family unit {FamilyUnitId}",
+            id, member.FirstName, member.LastName, member.FamilyUnitId);
     }
 
     #endregion
@@ -338,26 +349,71 @@ public class FamilyUnitsService(
         string? sortBy,
         string? sortOrder,
         string? membershipStatus,
+        bool? isActive,
         CancellationToken ct)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
 
         var (items, totalCount) = await repository.GetAllPagedAsync(
-            page, pageSize, search, sortBy, sortOrder, membershipStatus, ct);
+            page, pageSize, search, sortBy, sortOrder, membershipStatus, isActive, ct);
 
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
 
         return new PagedFamilyUnitsResponse(
             Items: items.Select(p => new FamilyUnitListItemResponse(
                 p.Id, p.Name, p.RepresentativeUserId,
-                p.RepresentativeName, p.FamilyNumber, p.MembersCount, p.CreatedAt, p.UpdatedAt
+                p.RepresentativeName, p.FamilyNumber, p.IsActive, p.MembersCount, p.CreatedAt, p.UpdatedAt
             )).ToList(),
             TotalCount: totalCount,
             Page: page,
             PageSize: pageSize,
             TotalPages: totalPages
         );
+    }
+
+    /// <summary>
+    /// Admin hard-delete a family unit. Only allowed if no registrations exist.
+    /// </summary>
+    public async Task AdminDeleteFamilyUnitAsync(Guid familyUnitId, CancellationToken ct)
+    {
+        var familyUnit = await repository.GetFamilyUnitByIdAsync(familyUnitId, ct)
+            ?? throw new NotFoundException("Unidad Familiar", familyUnitId);
+
+        var hasRegistrations = await repository.HasRegistrationsAsync(familyUnitId, ct);
+        if (hasRegistrations)
+            throw new BusinessRuleException(
+                "No se puede eliminar una unidad familiar con inscripciones. Desactívela en su lugar.");
+
+        // Clear FamilyUnitId for all linked users
+        await repository.ClearAllUserFamilyUnitLinksAsync(familyUnitId, ct);
+
+        // Hard delete (cascade deletes members via EF config)
+        await repository.DeleteFamilyUnitAsync(familyUnitId, ct);
+
+        logger.LogInformation(
+            "Admin deleted family unit {FamilyUnitId} ({FamilyName})",
+            familyUnitId, familyUnit.Name);
+    }
+
+    /// <summary>
+    /// Toggle family unit active status (Admin/Board only)
+    /// </summary>
+    public async Task<FamilyUnitResponse> UpdateFamilyUnitStatusAsync(
+        Guid familyUnitId, UpdateFamilyUnitStatusRequest request, CancellationToken ct)
+    {
+        var familyUnit = await repository.GetFamilyUnitByIdAsync(familyUnitId, ct)
+            ?? throw new NotFoundException("Unidad Familiar", familyUnitId);
+
+        await repository.UpdateFamilyUnitStatusAsync(familyUnitId, request.IsActive, ct);
+
+        logger.LogInformation(
+            "Family unit {FamilyUnitId} ({FamilyName}) status changed to IsActive={IsActive}",
+            familyUnitId, familyUnit.Name, request.IsActive);
+
+        // Reload to return updated state
+        var updated = await repository.GetFamilyUnitByIdAsync(familyUnitId, ct);
+        return updated!.ToResponse();
     }
 
     public async Task<FamilyUnitResponse> UpdateFamilyNumberAsync(

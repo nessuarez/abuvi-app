@@ -804,7 +804,7 @@ public class FamilyUnitsServiceTests
             .Returns(familyUnit);
 
         // Act
-        await _sut.DeleteFamilyMemberAsync(memberId, CancellationToken.None);
+        await _sut.DeleteFamilyMemberAsync(memberId, false, CancellationToken.None);
 
         // Assert
         await _repository.Received(1).DeleteFamilyMemberAsync(memberId, Arg.Any<CancellationToken>());
@@ -846,11 +846,11 @@ public class FamilyUnitsServiceTests
             .Returns(familyUnit);
 
         // Act
-        var act = async () => await _sut.DeleteFamilyMemberAsync(memberId, CancellationToken.None);
+        var act = async () => await _sut.DeleteFamilyMemberAsync(memberId, false, CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<BusinessRuleException>()
-            .WithMessage("No puedes eliminar tu propio perfil mientras seas representante");
+            .WithMessage("No se puede eliminar al representante de la unidad familiar.");
 
         // Verify no deletion occurred
         await _repository.DidNotReceive().DeleteFamilyMemberAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -866,7 +866,7 @@ public class FamilyUnitsServiceTests
             .ReturnsNull();
 
         // Act
-        var act = async () => await _sut.DeleteFamilyMemberAsync(memberId, CancellationToken.None);
+        var act = async () => await _sut.DeleteFamilyMemberAsync(memberId, false, CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();

@@ -182,15 +182,33 @@ Add `'PartiallyPaid'` to the `RegistrationStatus` type union.
 
 **File:** Registration status badge/display component
 
-| Status | Label (ES) | Color | Icon |
-|--------|-----------|-------|------|
-| `Pending` | Pendiente | Yellow/Warning | Clock |
-| `PartiallyPaid` | Pago parcial confirmado | Blue/Info | CheckCircle |
-| `Confirmed` | Confirmada | Green/Success | CheckCircle |
-| `Cancelled` | Cancelada | Red/Danger | XCircle |
-| `Draft` | Borrador | Gray/Secondary | Edit |
+| Status | Badge Label (ES) | Detail Label (ES) | Color | Icon |
+|--------|------------------|-------------------|-------|------|
+| `Pending` | Pendiente | — | Yellow/Warning | Clock |
+| `PartiallyPaid` | Al corriente | "Plazo {N} de {Total} confirmado" | Blue/Info | CheckCircle |
+| `Confirmed` | Confirmada | "Todos los pagos completados" | Green/Success | CheckCircle |
+| `Cancelled` | Cancelada | — | Red/Danger | XCircle |
+| `Draft` | Borrador | — | Gray/Secondary | Edit |
 
-For `PartiallyPaid`, the badge tooltip or subtitle should show "Plazo {N} de {Total} confirmado" derived from the payments array in the registration response.
+**Key UX requirement for `PartiallyPaid`:**
+
+The user-facing display must transmit confidence that everything is correct. The label should NOT say "Pago parcial" (which sounds incomplete/negative). Instead:
+
+- **Badge principal**: "Al corriente" (Up to date) — conveys that the family is in good standing
+- **Detalle debajo del badge o en tooltip**: "Plazo 1 de 2 confirmado" / "Plazo 2 de 3 confirmado" — derived dynamically from the `payments` array by counting how many have `status === 'Completed'` vs total payments
+- **En la vista de detalle de inscripción (user-facing)**: mostrar una mini-timeline o checklist visual:
+  ```
+  ✅ Plazo 1 — 150,00 € — Confirmado
+  ⏳ Plazo 2 — 150,00 € — Pendiente (vence 15/06/2026)
+  ```
+  This gives the family full visibility of where they stand without ambiguity.
+
+**Derivation logic** (frontend, from registration response):
+```typescript
+const completedPayments = registration.payments.filter(p => p.status === 'Completed').length;
+const totalPayments = registration.payments.length;
+const detailLabel = `Plazo ${completedPayments} de ${totalPayments} confirmado`;
+```
 
 #### 5.3. Progress bar (camp capacity)
 

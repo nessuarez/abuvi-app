@@ -148,7 +148,7 @@ public record UpdateRegistrationMembersRequest(List<MemberAttendanceRequest> Mem
 
 public record UpdateRegistrationExtrasRequest(List<ExtraSelectionRequest> Extras);
 
-public record UpdateRegistrationInfoRequest(string? SpecialNeeds, bool HasPet);
+public record UpdateRegistrationInfoRequest(string? SpecialNeeds, bool HasPet, string? CampatesPreference = null);
 
 public record ExtraSelectionRequest(Guid CampEditionExtraId, int Quantity, string? UserInput = null);
 

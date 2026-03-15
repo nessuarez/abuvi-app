@@ -93,7 +93,7 @@ public class CreateRegistrationValidator : AbstractValidator<CreateRegistrationR
 
         RuleFor(x => x.CampatesPreference)
             .MaximumLength(500)
-            .WithMessage("La preferencia de acampantes no puede superar los 500 caracteres")
+            .WithMessage("La preferencia de habitación no puede superar los 500 caracteres")
             .When(x => x.CampatesPreference is not null);
     }
 }

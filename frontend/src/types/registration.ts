@@ -219,6 +219,7 @@ export interface UpdateRegistrationExtrasRequest {
 
 export interface UpdateRegistrationInfoRequest {
   specialNeeds: string | null
+  campatesPreference: string | null
   hasPet: boolean
 }
 

@@ -243,6 +243,7 @@ export function useFamilyUnits() {
     sortBy?: string
     sortOrder?: 'asc' | 'desc'
     membershipStatus?: 'all' | 'active' | 'none'
+    isActive?: boolean | null
   } = {}): Promise<void> => {
     loading.value = true
     error.value = null
@@ -256,6 +257,8 @@ export function useFamilyUnits() {
       if (params.sortOrder) queryParams.set('sortOrder', params.sortOrder)
       if (params.membershipStatus && params.membershipStatus !== 'all')
         queryParams.set('membershipStatus', params.membershipStatus)
+      if (params.isActive !== undefined && params.isActive !== null)
+        queryParams.set('isActive', String(params.isActive))
 
       const response = await api.get<ApiResponse<PagedResult<FamilyUnitResponse>>>(
         `/family-units?${queryParams.toString()}`
@@ -272,6 +275,45 @@ export function useFamilyUnits() {
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { error?: { message?: string } } } }
       error.value = apiErr?.response?.data?.error?.message || 'Error al obtener unidades familiares'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Admin hard-delete a family unit (Admin/Board only)
+   */
+  const adminDeleteFamilyUnit = async (id: string): Promise<boolean> => {
+    loading.value = true
+    error.value = null
+    try {
+      await api.delete(`/family-units/${id}/admin`)
+      return true
+    } catch (err: unknown) {
+      const apiErr = err as { response?: { data?: { error?: { message?: string } } } }
+      error.value = apiErr?.response?.data?.error?.message || 'Error al eliminar la unidad familiar'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Toggle family unit active status (Admin/Board only)
+   */
+  const updateFamilyUnitStatus = async (id: string, isActive: boolean): Promise<FamilyUnitResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.patch<ApiResponse<FamilyUnitResponse>>(
+        `/family-units/${id}/status`,
+        { isActive }
+      )
+      return response.data.data
+    } catch (err: unknown) {
+      const apiErr = err as { response?: { data?: { error?: { message?: string } } } }
+      error.value = apiErr?.response?.data?.error?.message || 'Error al actualizar el estado'
+      return null
     } finally {
       loading.value = false
     }
@@ -451,6 +493,8 @@ export function useFamilyUnits() {
     deleteFamilyUnit,
     fetchAllFamilyUnits,
     updateFamilyNumber,
+    adminDeleteFamilyUnit,
+    updateFamilyUnitStatus,
 
     // Family Member Methods
     createFamilyMember,

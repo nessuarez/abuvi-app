@@ -2,6 +2,7 @@ using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Common.Services;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
+using Abuvi.API.Features.Memberships;
 using Abuvi.API.Features.Payments;
 using Microsoft.Extensions.Logging;
 
@@ -17,6 +18,7 @@ public class RegistrationsService(
     RegistrationPricingService pricingService,
     IEmailService emailService,
     Payments.IPaymentsService paymentsService,
+    IMembershipsRepository membershipsRepo,
     ILogger<RegistrationsService> logger)
 {
     public async Task<RegistrationResponse> CreateAsync(
@@ -25,6 +27,18 @@ public class RegistrationsService(
         // 1. Load FamilyUnit
         var familyUnit = await familyUnitsRepo.GetFamilyUnitByIdAsync(request.FamilyUnitId, ct)
             ?? throw new NotFoundException("Unidad Familiar", request.FamilyUnitId);
+
+        // 1b. Validate family unit is active
+        if (!familyUnit.IsActive)
+            throw new BusinessRuleException(
+                "La unidad familiar está desactivada. Contacte al administrador.");
+
+        // 1c. Validate current year membership fee is paid
+        var hasPaidCurrentYearFee = await membershipsRepo
+            .HasPaidCurrentYearFeeForFamilyAsync(request.FamilyUnitId, ct);
+        if (!hasPaidCurrentYearFee)
+            throw new BusinessRuleException(
+                "La cuota de membresía del año en curso no está pagada. Contacte al administrador.");
 
         // 2. Verify representative
         if (familyUnit.RepresentativeUserId != userId)
@@ -406,6 +420,7 @@ public class RegistrationsService(
             throw new BusinessRuleException("Solo se pueden modificar inscripciones en estado Pendiente o Borrador");
 
         registration.SpecialNeeds = string.IsNullOrWhiteSpace(request.SpecialNeeds) ? null : request.SpecialNeeds.Trim();
+        registration.CampatesPreference = string.IsNullOrWhiteSpace(request.CampatesPreference) ? null : request.CampatesPreference.Trim();
         registration.HasPet = request.HasPet;
         registration.UpdatedAt = DateTime.UtcNow;
 

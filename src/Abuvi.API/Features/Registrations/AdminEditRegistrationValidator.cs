@@ -81,6 +81,6 @@ public class AdminEditRegistrationValidator : AbstractValidator<AdminEditRegistr
         RuleFor(x => x.SpecialNeeds).MaximumLength(2000)
             .WithMessage("Las necesidades especiales no pueden superar los 2000 caracteres");
         RuleFor(x => x.CampatesPreference).MaximumLength(500)
-            .WithMessage("La preferencia de acampantes no puede superar los 500 caracteres");
+            .WithMessage("La preferencia de habitación no puede superar los 500 caracteres");
     }
 }

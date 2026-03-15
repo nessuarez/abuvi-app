@@ -72,6 +72,7 @@ export interface RejectPaymentRequest {
 export interface PaymentFilterParams {
   status?: PaymentStatus
   campEditionId?: string
+  installmentNumber?: number
   fromDate?: string
   toDate?: string
   page?: number

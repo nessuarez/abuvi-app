@@ -2900,6 +2900,30 @@ Returns storage usage statistics. Results are cached server-side for 5 minutes t
 
 ---
 
+## Payment Listing (Admin)
+
+### GET /api/admin/payments
+
+List all payments with optional filters. Admin or Board role required. Returns paginated results.
+
+**Query Parameters:**
+
+- `Status` (optional): Filter by payment status (`Pending`, `PendingReview`, `Completed`, `Failed`, `Refunded`)
+- `CampEditionId` (optional): Filter by camp edition UUID
+- `InstallmentNumber` (optional): Filter by installment period. Values 1 and 2 are exact matches; value 3 or higher returns all payments with installment >= 3 (extras and manual payments)
+- `FromDate` (optional): Filter payments created on or after this date (ISO 8601)
+- `ToDate` (optional): Filter payments created on or before this date (ISO 8601)
+- `Page` (optional, default 1): Page number for pagination
+- `PageSize` (optional, default 20): Number of items per page
+
+**Response (HTTP 200):** `ApiResponse<{ Items: AdminPaymentResponse[], TotalCount: number, Page: number, PageSize: number }>`
+
+**Error Responses:**
+
+- **403 Forbidden**: User is not Admin or Board
+
+---
+
 ## Manual Payment Management (Admin)
 
 ### POST /api/admin/registrations/{registrationId}/payments/manual

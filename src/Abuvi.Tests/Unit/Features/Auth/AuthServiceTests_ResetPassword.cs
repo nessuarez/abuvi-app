@@ -3,6 +3,7 @@ namespace Abuvi.Tests.Unit.Features.Auth;
 using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Common.Services;
 using Abuvi.API.Features.Auth;
+using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.Users;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
@@ -28,6 +29,7 @@ public class AuthServiceTests_ResetPassword
         var jwtConfig = Substitute.For<IConfiguration>();
         _jwtTokenService = Substitute.For<JwtTokenService>(jwtConfig);
         _logger = Substitute.For<ILogger<AuthService>>();
+        var familyUnitsRepository = Substitute.For<IFamilyUnitsRepository>();
 
         var configDict = new Dictionary<string, string?>
         {
@@ -43,6 +45,7 @@ public class AuthServiceTests_ResetPassword
             _jwtTokenService,
             _emailService,
             configuration,
+            familyUnitsRepository,
             _logger);
     }
 

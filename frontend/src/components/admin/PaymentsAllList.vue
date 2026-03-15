@@ -4,6 +4,7 @@ import { useToast } from 'primevue/usetoast'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Select from 'primevue/select'
+import SelectButton from 'primevue/selectbutton'
 import DateInput from '@/components/shared/DateInput.vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -32,6 +33,8 @@ const expandedRows = ref<AdminPaymentResponse[]>([])
 // Filters
 const selectedStatus = ref<PaymentStatus | null>(null)
 const selectedEditionId = ref<string | null>(null)
+const selectedInstallment = ref<number | null>(null)
+const filterMode = ref<'installment' | 'dates'>('installment')
 const dateFrom = ref<Date | null>(null)
 const dateTo = ref<Date | null>(null)
 const currentPage = ref(1)
@@ -59,6 +62,18 @@ const statusOptions = [
   { label: 'Reembolsado', value: 'Refunded' }
 ]
 
+const installmentOptions = [
+  { label: 'Todos', value: null },
+  { label: 'Plazo 1', value: 1 },
+  { label: 'Plazo 2', value: 2 },
+  { label: 'Plazo 3+', value: 3 }
+]
+
+const filterModeOptions = [
+  { label: 'Por período', value: 'installment' },
+  { label: 'Por fechas', value: 'dates' }
+]
+
 const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
 
@@ -81,8 +96,13 @@ const fetchPayments = async () => {
   }
   if (selectedStatus.value) filter.status = selectedStatus.value
   if (selectedEditionId.value) filter.campEditionId = selectedEditionId.value
-  if (dateFrom.value) filter.fromDate = toIsoDate(dateFrom.value)
-  if (dateTo.value) filter.toDate = toIsoDate(dateTo.value)
+  if (filterMode.value === 'installment' && selectedInstallment.value) {
+    filter.installmentNumber = selectedInstallment.value
+  }
+  if (filterMode.value === 'dates') {
+    if (dateFrom.value) filter.fromDate = toIsoDate(dateFrom.value)
+    if (dateTo.value) filter.toDate = toIsoDate(dateTo.value)
+  }
 
   const result = await getAllPayments(filter)
   if (result) {
@@ -99,6 +119,8 @@ const onPageChange = (event: { page: number }) => {
 const resetFilters = () => {
   selectedStatus.value = null
   selectedEditionId.value = null
+  selectedInstallment.value = null
+  filterMode.value = 'installment'
   dateFrom.value = null
   dateTo.value = null
   currentPage.value = 1
@@ -148,9 +170,18 @@ const handleDelete = async () => {
   }
 }
 
-watch([selectedStatus, selectedEditionId, dateFrom, dateTo], () => {
+watch([selectedStatus, selectedEditionId, selectedInstallment, dateFrom, dateTo], () => {
   currentPage.value = 1
   fetchPayments()
+})
+
+watch(filterMode, (newMode) => {
+  if (newMode === 'installment') {
+    dateFrom.value = null
+    dateTo.value = null
+  } else {
+    selectedInstallment.value = null
+  }
 })
 
 onMounted(async () => {
@@ -186,13 +217,35 @@ onMounted(async () => {
         />
       </div>
       <div>
-        <label class="mb-1 block text-xs font-medium text-gray-600">Desde</label>
-        <DateInput v-model="dateFrom" placeholder="Desde" :show-calendar="false" />
+        <label class="mb-1 block text-xs font-medium text-gray-600">Filtrar por</label>
+        <SelectButton
+          v-model="filterMode"
+          :options="filterModeOptions"
+          option-label="label"
+          option-value="value"
+        />
       </div>
-      <div>
-        <label class="mb-1 block text-xs font-medium text-gray-600">Hasta</label>
-        <DateInput v-model="dateTo" placeholder="Hasta" :show-calendar="false" />
+      <div v-if="filterMode === 'installment'">
+        <label class="mb-1 block text-xs font-medium text-gray-600">Período de pago</label>
+        <Select
+          v-model="selectedInstallment"
+          :options="installmentOptions"
+          option-label="label"
+          option-value="value"
+          placeholder="Todos"
+          class="w-40"
+        />
       </div>
+      <template v-if="filterMode === 'dates'">
+        <div>
+          <label class="mb-1 block text-xs font-medium text-gray-600">Desde</label>
+          <DateInput v-model="dateFrom" placeholder="Desde" :show-calendar="false" />
+        </div>
+        <div>
+          <label class="mb-1 block text-xs font-medium text-gray-600">Hasta</label>
+          <DateInput v-model="dateTo" placeholder="Hasta" :show-calendar="false" />
+        </div>
+      </template>
       <Button
         icon="pi pi-filter-slash"
         severity="secondary"

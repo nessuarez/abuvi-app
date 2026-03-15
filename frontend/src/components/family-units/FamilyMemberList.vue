@@ -17,6 +17,8 @@ const props = defineProps<{
   canManageMemberships?: boolean
   readOnly?: boolean
   uploadingMemberId?: string | null
+  isAdminOrBoard?: boolean
+  representativeUserId?: string
 }>()
 
 const emit = defineEmits<{
@@ -71,6 +73,10 @@ const handleEdit = (member: FamilyMemberResponse) => {
 
 const handleDelete = (member: FamilyMemberResponse) => {
   emit('delete', member)
+}
+
+const isRepresentative = (member: FamilyMemberResponse) => {
+  return props.representativeUserId != null && member.userId === props.representativeUserId
 }
 </script>
 
@@ -175,13 +181,14 @@ const handleDelete = (member: FamilyMemberResponse) => {
               v-tooltip.top="'Editar'"
             />
             <Button
-              v-if="!props.readOnly"
+              v-if="!props.readOnly || props.isAdminOrBoard"
+              :disabled="isRepresentative(data)"
               icon="pi pi-trash"
               severity="danger"
               text
               rounded
               @click="handleDelete(data)"
-              v-tooltip.top="'Eliminar'"
+              v-tooltip.top="isRepresentative(data) ? 'No se puede eliminar al representante' : 'Eliminar'"
             />
           </div>
         </template>
