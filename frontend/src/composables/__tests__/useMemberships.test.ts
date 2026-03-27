@@ -87,6 +87,81 @@ describe('useMemberships', () => {
     })
   })
 
+  describe('createFee', () => {
+    it('should call the correct endpoint and return the fee', async () => {
+      const mockFee = {
+        id: 'fee-1',
+        membershipId: 'm1',
+        year: 2026,
+        amount: 50,
+        status: 'Pending',
+        paidDate: null,
+        paymentReference: null,
+        createdAt: '2026-01-01',
+      }
+      vi.mocked(api.post).mockResolvedValueOnce({ data: { success: true, data: mockFee } })
+
+      const { createFee, fees } = useMemberships()
+      const result = await createFee('m1', { year: 2026, amount: 50 })
+
+      expect(result).toEqual(mockFee)
+      expect(fees.value).toContainEqual(mockFee)
+      expect(api.post).toHaveBeenCalledWith('/memberships/m1/fees', { year: 2026, amount: 50 })
+    })
+
+    it('should set error and return null on API error', async () => {
+      vi.mocked(api.post).mockRejectedValueOnce({
+        response: { data: { error: { message: 'Ya existe una cuota para este año' } } },
+      })
+
+      const { createFee, error } = useMemberships()
+      const result = await createFee('m1', { year: 2026, amount: 50 })
+
+      expect(result).toBeNull()
+      expect(error.value).toBe('Ya existe una cuota para este año')
+    })
+  })
+
+  describe('reactivateMembership', () => {
+    const mockMembership = {
+      id: 'm1',
+      familyMemberId: 'fm1',
+      memberNumber: null,
+      startDate: '2024-01-01',
+      endDate: null,
+      isActive: true,
+      fees: [],
+      createdAt: '2024-01-01',
+      updatedAt: '2026-01-01',
+    }
+
+    it('should call the correct endpoint and return the membership', async () => {
+      vi.mocked(api.post).mockResolvedValueOnce({ data: { success: true, data: mockMembership } })
+
+      const { reactivateMembership, membership } = useMemberships()
+      const result = await reactivateMembership('fu1', 'fm1', { year: 2026 })
+
+      expect(result).toEqual(mockMembership)
+      expect(membership.value).toEqual(mockMembership)
+      expect(api.post).toHaveBeenCalledWith(
+        '/family-units/fu1/members/fm1/membership/reactivate',
+        { year: 2026 },
+      )
+    })
+
+    it('should set error and return null when membership is already active (409)', async () => {
+      vi.mocked(api.post).mockRejectedValueOnce({
+        response: { data: { error: { message: 'El miembro ya tiene una membresía activa' } } },
+      })
+
+      const { reactivateMembership, error } = useMemberships()
+      const result = await reactivateMembership('fu1', 'fm1', { year: 2026 })
+
+      expect(result).toBeNull()
+      expect(error.value).toBe('El miembro ya tiene una membresía activa')
+    })
+  })
+
   describe('updateMemberNumber', () => {
     it('should call PUT endpoint with correct params', async () => {
       const mockResponse = {

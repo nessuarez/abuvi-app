@@ -74,10 +74,25 @@ export interface BulkActivateMembershipRequest {
   year: number
 }
 
+/** Admin/Board: manually create an annual fee for an existing membership. */
+export interface CreateMembershipFeeRequest {
+  year: number // > 2000 and <= current year
+  amount: number // >= 0
+}
+
+/** Admin/Board: reactivate a previously deactivated membership. */
+export interface ReactivateMembershipRequest {
+  year: number // > 2000 and <= current year
+}
+
+export type MembershipStatus = 'none' | 'active' | 'activeFeePending' | 'inactive'
+
 export interface MemberMembershipData {
   member: FamilyMemberResponse
   membershipId: string | null
   isActiveMembership: boolean
   currentFee: MembershipFeeResponse | null
   feeLoading: boolean
+  /** Derived status for display. */
+  membershipStatus: MembershipStatus
 }

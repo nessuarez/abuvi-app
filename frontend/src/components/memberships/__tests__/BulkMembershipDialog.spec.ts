@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { nextTick } from 'vue'
 import BulkMembershipDialog from '../BulkMembershipDialog.vue'
@@ -8,12 +8,14 @@ import { FamilyRelationship } from '@/types/family-unit'
 import type { MemberMembershipData } from '@/types/membership'
 
 const bulkActivateMock = vi.fn()
+const getMembershipMock = vi.fn()
 
 vi.mock('@/composables/useMemberships', () => ({
   useMemberships: () => ({
     loading: { value: false },
     error: { value: null },
     bulkActivateMemberships: bulkActivateMock,
+    getMembership: getMembershipMock,
   }),
 }))
 
@@ -56,11 +58,13 @@ const makeMemberData = (id: string, hasActiveMembership: boolean): MemberMembers
   isActiveMembership: hasActiveMembership,
   currentFee: null,
   feeLoading: false,
+  membershipStatus: hasActiveMembership ? 'active' : 'none',
 })
 
 describe('BulkMembershipDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    getMembershipMock.mockResolvedValue(null)
   })
 
   const defaultProps = {
@@ -70,16 +74,35 @@ describe('BulkMembershipDialog', () => {
     memberData: [],
   }
 
-  it('falls back to all members when memberData is empty (FamilyUnitPage context)', () => {
+  it('shows loading state while self-loading membership data', () => {
+    // getMembership never resolves in this test
+    getMembershipMock.mockReturnValue(new Promise(() => {}))
+
     const wrapper = mount(BulkMembershipDialog, {
       props: defaultProps,
       global: { plugins: [createPinia()], stubs: componentStubs },
     })
 
-    expect(wrapper.text()).toContain('2')
+    expect(wrapper.text()).toContain('Cargando datos de membresía...')
   })
 
-  it('shows correct count from memberData when provided', () => {
+  it('shows correct count after self-loading (no memberData provided)', async () => {
+    // m1 has no membership, m2 has active membership
+    getMembershipMock
+      .mockResolvedValueOnce(null) // m1: no membership
+      .mockResolvedValueOnce({ id: 'ms-m2', isActive: true, fees: [] }) // m2: active
+
+    const wrapper = mount(BulkMembershipDialog, {
+      props: defaultProps,
+      global: { plugins: [createPinia()], stubs: componentStubs },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('1')
+  })
+
+  it('uses parent memberData when provided (does not call getMembership)', async () => {
     const wrapper = mount(BulkMembershipDialog, {
       props: {
         ...defaultProps,
@@ -88,11 +111,13 @@ describe('BulkMembershipDialog', () => {
       global: { plugins: [createPinia()], stubs: componentStubs },
     })
 
-    // 1 without membership
+    await nextTick()
+
+    expect(getMembershipMock).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('1')
   })
 
-  it('shows info message when all members already have membership', () => {
+  it('shows info message when all members already have membership', async () => {
     const wrapper = mount(BulkMembershipDialog, {
       props: {
         ...defaultProps,
@@ -102,6 +127,8 @@ describe('BulkMembershipDialog', () => {
       global: { plugins: [createPinia()], stubs: componentStubs },
     })
 
+    await nextTick()
+
     expect(wrapper.text()).toContain('Todos los miembros de esta familia ya tienen una membresía activa.')
   })
 
@@ -109,10 +136,14 @@ describe('BulkMembershipDialog', () => {
     bulkActivateMock.mockResolvedValueOnce({ activated: 1, skipped: 0, results: [] })
 
     const wrapper = mount(BulkMembershipDialog, {
-      props: defaultProps,
+      props: {
+        ...defaultProps,
+        memberData: [makeMemberData('m1', false), makeMemberData('m2', false)],
+      },
       global: { plugins: [createPinia()], stubs: componentStubs },
     })
 
+    await nextTick()
     await wrapper.find('[data-testid="activate-btn"]').trigger('click')
 
     expect(bulkActivateMock).toHaveBeenCalledWith('unit-1', { year: new Date().getFullYear() })
@@ -122,10 +153,14 @@ describe('BulkMembershipDialog', () => {
     bulkActivateMock.mockResolvedValueOnce({ activated: 2, skipped: 0, results: [] })
 
     const wrapper = mount(BulkMembershipDialog, {
-      props: defaultProps,
+      props: {
+        ...defaultProps,
+        memberData: [makeMemberData('m1', false), makeMemberData('m2', false)],
+      },
       global: { plugins: [createPinia()], stubs: componentStubs },
     })
 
+    await nextTick()
     await wrapper.find('[data-testid="activate-btn"]').trigger('click')
     await nextTick()
 
@@ -139,10 +174,14 @@ describe('BulkMembershipDialog', () => {
     bulkActivateMock.mockResolvedValueOnce({ activated: 0, skipped: 2, results: [] })
 
     const wrapper = mount(BulkMembershipDialog, {
-      props: defaultProps,
+      props: {
+        ...defaultProps,
+        memberData: [makeMemberData('m1', false), makeMemberData('m2', false)],
+      },
       global: { plugins: [createPinia()], stubs: componentStubs },
     })
 
+    await nextTick()
     await wrapper.find('[data-testid="activate-btn"]').trigger('click')
     await nextTick()
 
@@ -157,6 +196,7 @@ describe('BulkMembershipDialog', () => {
       global: { plugins: [createPinia()], stubs: componentStubs },
     })
 
+    await flushPromises()
     await wrapper.find('[data-testid="cancel-btn"]').trigger('click')
 
     expect(wrapper.emitted('update:visible')).toBeTruthy()
