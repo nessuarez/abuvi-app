@@ -20,7 +20,7 @@ import { useMemberships } from '@/composables/useMemberships'
 import { getRoleLabel } from '@/utils/user'
 import { FamilyRelationshipLabels, type FamilyMemberResponse } from '@/types/family-unit'
 import { parseDateSafe } from '@/utils/date'
-import { FeeStatus, FeeStatusLabels, FeeStatusSeverity, type MembershipFeeResponse, type PayFeeRequest, type MemberMembershipData } from '@/types/membership'
+import { FeeStatus, FeeStatusLabels, FeeStatusSeverity, type MembershipFeeResponse, type PayFeeRequest, type MemberMembershipData, type MembershipStatus } from '@/types/membership'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -98,15 +98,23 @@ const loadMemberMembershipData = async () => {
         const { getMembership } = useMemberships()
         const membership = await getMembership(familyUnit.value!.id, member.id)
         const currentFee = membership ? getFeeForCurrentYear(membership.fees) : null
+        const membershipStatus: MembershipStatus = !membership
+          ? 'none'
+          : !membership.isActive
+            ? 'inactive'
+            : currentFee?.status === FeeStatus.Paid
+              ? 'active'
+              : 'activeFeePending'
         return {
           member,
           membershipId: membership?.id ?? null,
           isActiveMembership: membership?.isActive ?? false,
           currentFee,
           feeLoading: false,
+          membershipStatus,
         }
       } catch {
-        return { member, membershipId: null, isActiveMembership: false, currentFee: null, feeLoading: false }
+        return { member, membershipId: null, isActiveMembership: false, currentFee: null, feeLoading: false, membershipStatus: 'none' as const }
       }
     }),
   )
