@@ -51,6 +51,13 @@ public class MembershipsServiceTests
         await _membershipsRepository.Received(1).AddAsync(
             Arg.Is<Membership>(m => m.FamilyMemberId == familyMemberId && m.IsActive),
             Arg.Any<CancellationToken>());
+
+        await _membershipsRepository.Received(1).AddFeeAsync(
+            Arg.Is<MembershipFee>(f =>
+                f.Year == request.Year &&
+                f.Status == FeeStatus.Pending &&
+                f.Amount == 0m),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -397,6 +404,9 @@ public class MembershipsServiceTests
         result.Results.Should().HaveCount(2);
         result.Results.Should().AllSatisfy(r => r.Status.Should().Be(BulkMembershipResultStatus.Activated));
         await _membershipsRepository.Received(2).AddAsync(Arg.Any<Membership>(), Arg.Any<CancellationToken>());
+        await _membershipsRepository.Received(2).AddFeeAsync(
+            Arg.Is<MembershipFee>(f => f.Year == request.Year && f.Status == FeeStatus.Pending && f.Amount == 0m),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -44,7 +44,33 @@ public class MembershipsService(
 
         await repository.AddAsync(membership, ct);
 
-        return membership.ToResponse();
+        // Auto-create fee for the start year (admin will mark as Paid separately)
+        var fee = new MembershipFee
+        {
+            Id = Guid.NewGuid(),
+            MembershipId = membership.Id,
+            Year = request.Year,
+            Amount = 0m,
+            Status = FeeStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        await repository.AddFeeAsync(fee, ct);
+
+        // Return membership with the newly created fee included
+        var created = new Membership
+        {
+            Id = membership.Id,
+            FamilyMemberId = membership.FamilyMemberId,
+            MemberNumber = membership.MemberNumber,
+            StartDate = membership.StartDate,
+            EndDate = membership.EndDate,
+            IsActive = membership.IsActive,
+            Fees = new List<MembershipFee> { fee },
+            CreatedAt = membership.CreatedAt,
+            UpdatedAt = membership.UpdatedAt
+        };
+        return created.ToResponse();
     }
 
     public async Task<BulkActivateMembershipResponse> BulkActivateAsync(
@@ -99,6 +125,20 @@ public class MembershipsService(
                 }
 
                 await repository.AddAsync(membership, ct);
+
+                // Auto-create fee for the activation year
+                var memberFee = new MembershipFee
+                {
+                    Id = Guid.NewGuid(),
+                    MembershipId = membership.Id,
+                    Year = request.Year,
+                    Amount = 0m,
+                    Status = FeeStatus.Pending,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await repository.AddFeeAsync(memberFee, ct);
+
                 results.Add(new(member.Id, memberName, BulkMembershipResultStatus.Activated));
                 activated++;
             }
@@ -174,6 +214,75 @@ public class MembershipsService(
         await repository.UpdateAsync(membership, ct);
 
         return membership.ToResponse();
+    }
+
+    public async Task<MembershipFeeResponse> CreateFeeAsync(
+        Guid membershipId,
+        CreateMembershipFeeRequest request,
+        CancellationToken ct)
+    {
+        var membership = await repository.GetByIdAsync(membershipId, ct);
+        if (membership is null)
+            throw new NotFoundException(nameof(Membership), membershipId);
+
+        var existing = await repository.GetFeeByYearAsync(membershipId, request.Year, ct);
+        if (existing is not null)
+            throw new BusinessRuleException($"Ya existe una cuota para el año {request.Year} en esta membresía.");
+
+        var fee = new MembershipFee
+        {
+            Id = Guid.NewGuid(),
+            MembershipId = membershipId,
+            Year = request.Year,
+            Amount = request.Amount,
+            Status = FeeStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        await repository.AddFeeAsync(fee, ct);
+
+        return fee.ToResponse();
+    }
+
+    public async Task<MembershipResponse> ReactivateAsync(
+        Guid familyMemberId,
+        ReactivateMembershipRequest request,
+        CancellationToken ct)
+    {
+        var membership = await repository.GetByFamilyMemberIdIgnoringActiveAsync(familyMemberId, ct);
+
+        if (membership is null)
+            throw new NotFoundException(nameof(Membership), familyMemberId);
+
+        if (membership.IsActive)
+            throw new BusinessRuleException("El miembro ya tiene una membresía activa.");
+
+        membership.IsActive = true;
+        membership.EndDate = null;
+        membership.UpdatedAt = DateTime.UtcNow;
+
+        await repository.UpdateAsync(membership, ct);
+
+        // Create fee for the requested year if not already present
+        var existingFee = await repository.GetFeeByYearAsync(membership.Id, request.Year, ct);
+        if (existingFee is null)
+        {
+            var fee = new MembershipFee
+            {
+                Id = Guid.NewGuid(),
+                MembershipId = membership.Id,
+                Year = request.Year,
+                Amount = 0m,
+                Status = FeeStatus.Pending,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            await repository.AddFeeAsync(fee, ct);
+        }
+
+        var updated = await repository.GetByFamilyMemberIdAsync(familyMemberId, ct);
+        return updated!.ToResponse();
     }
 
     public async Task<MembershipFeeResponse> PayFeeAsync(

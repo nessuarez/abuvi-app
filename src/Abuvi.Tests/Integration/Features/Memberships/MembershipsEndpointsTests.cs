@@ -396,6 +396,219 @@ public class MembershipsEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         return (user, familyUnit, familyMember);
     }
 
+    // ─── CreateMembershipFee: POST /api/memberships/{id}/fees ────────────────
+
+    [Fact]
+    public async Task CreateMembershipFee_BoardUser_ValidRequest_Returns201Created()
+    {
+        // Arrange
+        var boardClient = await GetBoardAuthClientAsync();
+        var (_, _, familyMember) = await SeedTestDataAsync();
+        var membership = await CreateTestMembershipAsync(familyMember.Id);
+        var request = new CreateMembershipFeeRequest(DateTime.UtcNow.Year, 25.00m);
+
+        // Act
+        var response = await boardClient.PostAsJsonAsync(
+            $"/api/memberships/{membership.Id}/fees",
+            request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<MembershipFeeResponse>>(JsonOptions);
+        result!.Data.Should().NotBeNull();
+        result.Data!.MembershipId.Should().Be(membership.Id);
+        result.Data.Year.Should().Be(request.Year);
+        result.Data.Amount.Should().Be(request.Amount);
+        result.Data.Status.Should().Be(FeeStatus.Pending);
+    }
+
+    [Fact]
+    public async Task CreateMembershipFee_NonExistentMembership_Returns404NotFound()
+    {
+        // Arrange
+        var boardClient = await GetBoardAuthClientAsync();
+        var request = new CreateMembershipFeeRequest(DateTime.UtcNow.Year, 0m);
+
+        // Act
+        var response = await boardClient.PostAsJsonAsync(
+            $"/api/memberships/{Guid.NewGuid()}/fees",
+            request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task CreateMembershipFee_DuplicateFeeForSameYear_Returns409Conflict()
+    {
+        // Arrange
+        var boardClient = await GetBoardAuthClientAsync();
+        var (_, _, familyMember) = await SeedTestDataAsync();
+        var membership = await CreateTestMembershipAsync(familyMember.Id);
+        var year = DateTime.UtcNow.Year;
+        await CreateTestFeeAsync(membership.Id, year);
+        var request = new CreateMembershipFeeRequest(year, 25.00m);
+
+        // Act
+        var response = await boardClient.PostAsJsonAsync(
+            $"/api/memberships/{membership.Id}/fees",
+            request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task CreateMembershipFee_MemberUser_Returns403Forbidden()
+    {
+        // Arrange — Member role user (not Board)
+        await GetAuthTokenAsync();
+        var (_, _, familyMember) = await SeedTestDataAsync();
+        var membership = await CreateTestMembershipAsync(familyMember.Id);
+        var request = new CreateMembershipFeeRequest(DateTime.UtcNow.Year, 25.00m);
+
+        // Act
+        var response = await _authenticatedClient.PostAsJsonAsync(
+            $"/api/memberships/{membership.Id}/fees",
+            request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task CreateMembershipFee_FutureYear_Returns400BadRequest()
+    {
+        // Arrange
+        var boardClient = await GetBoardAuthClientAsync();
+        var (_, _, familyMember) = await SeedTestDataAsync();
+        var membership = await CreateTestMembershipAsync(familyMember.Id);
+        var request = new CreateMembershipFeeRequest(DateTime.UtcNow.Year + 1, 0m);
+
+        // Act
+        var response = await boardClient.PostAsJsonAsync(
+            $"/api/memberships/{membership.Id}/fees",
+            request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreateMembershipFee_NegativeAmount_Returns400BadRequest()
+    {
+        // Arrange
+        var boardClient = await GetBoardAuthClientAsync();
+        var (_, _, familyMember) = await SeedTestDataAsync();
+        var membership = await CreateTestMembershipAsync(familyMember.Id);
+        var request = new CreateMembershipFeeRequest(DateTime.UtcNow.Year, -1m);
+
+        // Act
+        var response = await boardClient.PostAsJsonAsync(
+            $"/api/memberships/{membership.Id}/fees",
+            request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // ─── ReactivateMembership: POST /membership/reactivate ───────────────────
+
+    [Fact]
+    public async Task ReactivateMembership_BoardUser_InactiveMembership_Returns200Ok()
+    {
+        // Arrange
+        var boardClient = await GetBoardAuthClientAsync();
+        var (_, familyUnit, familyMember) = await SeedTestDataAsync();
+        await CreateTestInactiveMembershipAsync(familyMember.Id);
+        var request = new ReactivateMembershipRequest(DateTime.UtcNow.Year);
+
+        // Act
+        var response = await boardClient.PostAsJsonAsync(
+            $"/api/family-units/{familyUnit.Id}/members/{familyMember.Id}/membership/reactivate",
+            request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<MembershipResponse>>(JsonOptions);
+        result!.Data.Should().NotBeNull();
+        result.Data!.IsActive.Should().BeTrue();
+        result.Data.EndDate.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ReactivateMembership_NoMembershipRecord_Returns404NotFound()
+    {
+        // Arrange
+        var boardClient = await GetBoardAuthClientAsync();
+        var (_, familyUnit, familyMember) = await SeedTestDataAsync();
+        var request = new ReactivateMembershipRequest(DateTime.UtcNow.Year);
+
+        // Act
+        var response = await boardClient.PostAsJsonAsync(
+            $"/api/family-units/{familyUnit.Id}/members/{familyMember.Id}/membership/reactivate",
+            request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task ReactivateMembership_AlreadyActiveMembership_Returns409Conflict()
+    {
+        // Arrange
+        var boardClient = await GetBoardAuthClientAsync();
+        var (_, familyUnit, familyMember) = await SeedTestDataAsync();
+        await CreateTestMembershipAsync(familyMember.Id);
+        var request = new ReactivateMembershipRequest(DateTime.UtcNow.Year);
+
+        // Act
+        var response = await boardClient.PostAsJsonAsync(
+            $"/api/family-units/{familyUnit.Id}/members/{familyMember.Id}/membership/reactivate",
+            request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task ReactivateMembership_MemberUser_Returns403Forbidden()
+    {
+        // Arrange — Member role user (not Board)
+        await GetAuthTokenAsync();
+        var (_, familyUnit, familyMember) = await SeedTestDataAsync();
+        var request = new ReactivateMembershipRequest(DateTime.UtcNow.Year);
+
+        // Act
+        var response = await _authenticatedClient.PostAsJsonAsync(
+            $"/api/family-units/{familyUnit.Id}/members/{familyMember.Id}/membership/reactivate",
+            request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ReactivateMembership_FutureYear_Returns400BadRequest()
+    {
+        // Arrange
+        var boardClient = await GetBoardAuthClientAsync();
+        var (_, familyUnit, familyMember) = await SeedTestDataAsync();
+        await CreateTestInactiveMembershipAsync(familyMember.Id);
+        var request = new ReactivateMembershipRequest(DateTime.UtcNow.Year + 1);
+
+        // Act
+        var response = await boardClient.PostAsJsonAsync(
+            $"/api/family-units/{familyUnit.Id}/members/{familyMember.Id}/membership/reactivate",
+            request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // Helper methods
     private async Task<Membership> CreateTestMembershipAsync(Guid familyMemberId)
     {
         using var scope = _factory.Services.CreateScope();
@@ -415,5 +628,49 @@ public class MembershipsEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         await dbContext.SaveChangesAsync();
 
         return membership;
+    }
+
+    private async Task<Membership> CreateTestInactiveMembershipAsync(Guid familyMemberId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AbuviDbContext>();
+
+        var membership = new Membership
+        {
+            Id = Guid.NewGuid(),
+            FamilyMemberId = familyMemberId,
+            StartDate = new DateTime(DateTime.UtcNow.Year - 1, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = DateTime.UtcNow.AddMonths(-1),
+            IsActive = false,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        dbContext.Memberships.Add(membership);
+        await dbContext.SaveChangesAsync();
+
+        return membership;
+    }
+
+    private async Task<MembershipFee> CreateTestFeeAsync(Guid membershipId, int year)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AbuviDbContext>();
+
+        var fee = new MembershipFee
+        {
+            Id = Guid.NewGuid(),
+            MembershipId = membershipId,
+            Year = year,
+            Amount = 50.00m,
+            Status = FeeStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        dbContext.MembershipFees.Add(fee);
+        await dbContext.SaveChangesAsync();
+
+        return fee;
     }
 }

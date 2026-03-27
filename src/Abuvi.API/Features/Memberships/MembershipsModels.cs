@@ -106,3 +106,9 @@ public record BulkActivateMembershipResponse(
     int Skipped,
     IReadOnlyList<BulkMembershipMemberResult> Results
 );
+
+/// <summary>Admin/Board: manually create an annual fee for an existing membership.</summary>
+public record CreateMembershipFeeRequest(int Year, decimal Amount);
+
+/// <summary>Admin/Board: reactivate a deactivated membership.</summary>
+public record ReactivateMembershipRequest(int Year);
