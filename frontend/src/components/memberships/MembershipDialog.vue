@@ -12,7 +12,8 @@ import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { useMemberships } from '@/composables/useMemberships'
 import PayFeeDialog from './PayFeeDialog.vue'
-import type { MembershipFeeResponse, PayFeeRequest } from '@/types/membership'
+import CreateFeeDialog from './CreateFeeDialog.vue'
+import type { MembershipFeeResponse, PayFeeRequest, CreateMembershipFeeRequest } from '@/types/membership'
 import { parseDateSafe } from '@/utils/date'
 import { FeeStatusLabels, FeeStatusSeverity, FeeStatus } from '@/types/membership'
 
@@ -30,13 +31,15 @@ const emit = defineEmits<{
 const toast = useToast()
 const confirm = useConfirm()
 
-const { membership, fees, loading, error, getMembership, createMembership, deactivateMembership, payFee } =
+const { membership, fees, loading, error, getMembership, createMembership, deactivateMembership, payFee, createFee, reactivateMembership } =
   useMemberships()
 
 const showPayFeeDialog = ref(false)
 const selectedFee = ref<MembershipFeeResponse | null>(null)
+const showCreateFeeDialog = ref(false)
 const currentYear = new Date().getFullYear()
 const createStartYear = ref<number>(currentYear)
+const reactivateYear = ref<number>(currentYear)
 
 // Fetch membership data when dialog opens
 watch(
@@ -89,6 +92,26 @@ const handleDeactivate = () => {
   })
 }
 
+const handleReactivate = async () => {
+  const result = await reactivateMembership(props.familyUnitId, props.memberId, { year: reactivateYear.value })
+  if (result) {
+    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Membresía reactivada', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error', detail: error.value, life: 5000 })
+  }
+}
+
+const handleCreateFee = async (request: CreateMembershipFeeRequest) => {
+  if (!membership.value) return
+  const result = await createFee(membership.value.id, request)
+  if (result) {
+    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Cuota registrada', life: 3000 })
+    showCreateFeeDialog.value = false
+  } else {
+    toast.add({ severity: 'error', summary: 'Error', detail: error.value, life: 5000 })
+  }
+}
+
 const openPayFeeDialog = (fee: MembershipFeeResponse) => {
   selectedFee.value = fee
   showPayFeeDialog.value = true
@@ -128,7 +151,7 @@ const handlePayFee = async (request: PayFeeRequest) => {
     <Message v-else-if="error" severity="error" class="mb-4">{{ error }}</Message>
 
     <div v-else>
-      <!-- No active membership -->
+      <!-- No membership yet -->
       <div v-if="!membership" class="space-y-4">
         <Message severity="info">Este miembro no tiene una membresía activa.</Message>
 
@@ -161,17 +184,53 @@ const handlePayFee = async (request: PayFeeRequest) => {
         </div>
       </div>
 
-      <!-- Existing membership (active or inactive) -->
+      <!-- Inactive membership: reactivate flow -->
+      <div v-else-if="!membership.isActive" class="space-y-4">
+        <div class="flex items-center gap-3">
+          <Tag value="Membresía inactiva" severity="secondary" />
+          <span class="text-sm text-gray-600">Desde {{ formatDate(membership.startDate) }}</span>
+        </div>
+
+        <Message severity="warn">
+          Esta membresía está desactivada. Puedes reactivarla eligiendo el año de reactivación.
+        </Message>
+
+        <div class="flex flex-col gap-2">
+          <label for="reactivate-year" class="text-sm font-medium">
+            Año de reactivación <span class="text-red-500">*</span>
+          </label>
+          <InputNumber
+            id="reactivate-year"
+            v-model="reactivateYear"
+            :min="2001"
+            :max="currentYear"
+            :use-grouping="false"
+            class="w-full"
+          />
+          <small class="text-gray-500">Se creará una cuota pendiente para este año.</small>
+        </div>
+
+        <div class="flex justify-end">
+          <Button
+            label="Reactivar membresía"
+            icon="pi pi-refresh"
+            severity="success"
+            :loading="loading"
+            data-testid="reactivate-btn"
+            @click="handleReactivate"
+          />
+        </div>
+      </div>
+
+      <!-- Active membership -->
       <div v-else class="space-y-4">
         <!-- Status row -->
         <div class="flex flex-wrap justify-between items-center gap-3">
           <div class="flex items-center gap-3">
-            <Tag v-if="membership.isActive" value="Socio/a activo/a" severity="success" />
-            <Tag v-else value="Membresía inactiva" severity="secondary" />
+            <Tag value="Socio/a activo/a" severity="success" />
             <span class="text-sm text-gray-600">Desde {{ formatDate(membership.startDate) }}</span>
           </div>
           <Button
-            v-if="membership.isActive"
             label="Desactivar membresía"
             severity="danger"
             outlined
@@ -180,8 +239,26 @@ const handlePayFee = async (request: PayFeeRequest) => {
           />
         </div>
 
-        <!-- Fees table (only if active and fees exist) -->
-        <div v-if="membership.isActive && fees.length > 0" class="space-y-2">
+        <!-- No fees yet -->
+        <div v-if="fees.length === 0" class="space-y-3">
+          <Message severity="warn">
+            No hay cuotas registradas para esta membresía. Carga la cuota del año en curso para
+            que la familia pueda inscribirse al campamento.
+          </Message>
+          <div class="flex justify-end">
+            <Button
+              label="Cargar cuota anual"
+              icon="pi pi-plus"
+              severity="primary"
+              :loading="loading"
+              data-testid="create-fee-btn"
+              @click="showCreateFeeDialog = true"
+            />
+          </div>
+        </div>
+
+        <!-- Fees table -->
+        <div v-else class="space-y-2">
           <h3 class="font-semibold text-lg">Cuotas</h3>
           <DataTable
             :value="fees"
@@ -221,13 +298,20 @@ const handlePayFee = async (request: PayFeeRequest) => {
               </template>
             </Column>
           </DataTable>
-        </div>
 
-        <div
-          v-else-if="membership.isActive && fees.length === 0"
-          class="text-gray-500 text-sm italic"
-        >
-          No hay cuotas registradas todavía.
+          <!-- Add fee for current year if missing -->
+          <div class="flex justify-end mt-2">
+            <Button
+              v-if="!fees.some((f) => f.year === currentYear)"
+              :label="`Cargar cuota ${currentYear}`"
+              icon="pi pi-plus"
+              size="small"
+              severity="secondary"
+              outlined
+              data-testid="create-fee-btn"
+              @click="showCreateFeeDialog = true"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -240,5 +324,14 @@ const handlePayFee = async (request: PayFeeRequest) => {
     :fee="selectedFee"
     :loading="loading"
     @submit="handlePayFee"
+  />
+
+  <!-- Create Fee sub-dialog -->
+  <CreateFeeDialog
+    v-if="showCreateFeeDialog && membership"
+    v-model:visible="showCreateFeeDialog"
+    :membership-id="membership.id"
+    :loading="loading"
+    @submit="handleCreateFee"
   />
 </template>

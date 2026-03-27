@@ -9,6 +9,8 @@ import type {
   PayFeeRequest,
   BulkActivateMembershipRequest,
   BulkActivateMembershipResponse,
+  CreateMembershipFeeRequest,
+  ReactivateMembershipRequest,
 } from '@/types/membership'
 
 export function useMemberships() {
@@ -167,6 +169,58 @@ export function useMemberships() {
   }
 
   /**
+   * Manually create an annual fee for an existing membership.
+   * Admin/Board only.
+   */
+  const createFee = async (
+    membershipId: string,
+    request: CreateMembershipFeeRequest,
+  ): Promise<MembershipFeeResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post<ApiResponse<MembershipFeeResponse>>(
+        `/memberships/${membershipId}/fees`,
+        request,
+      )
+      fees.value = [...fees.value, response.data.data]
+      return response.data.data
+    } catch (err: any) {
+      error.value = err.response?.data?.error?.message || 'Error al crear la cuota'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Reactivate a previously deactivated membership.
+   * Admin/Board only.
+   */
+  const reactivateMembership = async (
+    familyUnitId: string,
+    memberId: string,
+    request: ReactivateMembershipRequest,
+  ): Promise<MembershipResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post<ApiResponse<MembershipResponse>>(
+        `/family-units/${familyUnitId}/members/${memberId}/membership/reactivate`,
+        request,
+      )
+      membership.value = response.data.data
+      fees.value = response.data.data?.fees ?? []
+      return response.data.data
+    } catch (err: any) {
+      error.value = err.response?.data?.error?.message || 'Error al reactivar la membresía'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * Update member number for a membership (Admin/Board only)
    */
   const updateMemberNumber = async (
@@ -202,6 +256,8 @@ export function useMemberships() {
     bulkActivateMemberships,
     getFees,
     payFee,
+    createFee,
+    reactivateMembership,
     updateMemberNumber,
   }
 }
