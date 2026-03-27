@@ -32,6 +32,16 @@ public static class MembershipsEndpoints
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status404NotFound);
 
+        group.MapPost("/reactivate", ReactivateMembership)
+            .WithName("ReactivateMembership")
+            .WithSummary("Reactivate a previously deactivated membership (Admin/Board only)")
+            .AddEndpointFilter<ValidationFilter<ReactivateMembershipRequest>>()
+            .Produces<ApiResponse<MembershipResponse>>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status409Conflict);
+
         var bulkGroup = app.MapGroup("/api/family-units/{familyUnitId:guid}/membership")
             .WithTags("Memberships")
             .RequireAuthorization();
@@ -83,6 +93,22 @@ public static class MembershipsEndpoints
 
         await service.DeactivateAsync(memberId, ct);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> ReactivateMembership(
+        [FromRoute] Guid familyUnitId,
+        [FromRoute] Guid memberId,
+        [FromBody] ReactivateMembershipRequest request,
+        ClaimsPrincipal user,
+        MembershipsService service,
+        CancellationToken ct)
+    {
+        var userRole = user.GetUserRole();
+        if (userRole != "Admin" && userRole != "Board")
+            return Results.Forbid();
+
+        var membership = await service.ReactivateAsync(memberId, request, ct);
+        return Results.Ok(ApiResponse<MembershipResponse>.Ok(membership));
     }
 
     private static async Task<IResult> BulkActivateMemberships(
@@ -139,6 +165,16 @@ public static class MembershipsEndpoints
             .WithTags("Membership Fees")
             .RequireAuthorization();
 
+        group.MapPost("/", CreateMembershipFee)
+            .WithName("CreateMembershipFee")
+            .WithSummary("Manually create an annual fee for a membership (Admin/Board only)")
+            .AddEndpointFilter<ValidationFilter<CreateMembershipFeeRequest>>()
+            .Produces<ApiResponse<MembershipFeeResponse>>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status409Conflict);
+
         group.MapGet("/", GetFees)
             .WithName("GetMembershipFees")
             .Produces<ApiResponse<IReadOnlyList<MembershipFeeResponse>>>();
@@ -154,6 +190,23 @@ public static class MembershipsEndpoints
             .Produces<ApiResponse<MembershipFeeResponse>>()
             .Produces(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status409Conflict);
+    }
+
+    private static async Task<IResult> CreateMembershipFee(
+        [FromRoute] Guid membershipId,
+        [FromBody] CreateMembershipFeeRequest request,
+        ClaimsPrincipal user,
+        MembershipsService service,
+        CancellationToken ct)
+    {
+        var userRole = user.GetUserRole();
+        if (userRole != "Admin" && userRole != "Board")
+            return Results.Forbid();
+
+        var fee = await service.CreateFeeAsync(membershipId, request, ct);
+        return Results.Created(
+            $"/api/memberships/{membershipId}/fees/{fee.Id}",
+            ApiResponse<MembershipFeeResponse>.Ok(fee));
     }
 
     private static async Task<IResult> GetFees(
