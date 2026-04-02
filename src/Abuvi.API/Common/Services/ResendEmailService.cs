@@ -284,9 +284,23 @@ public class ResendEmailService : IEmailService
                 <html>
                 <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
                     <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
-                        <h2 style='color: #16a34a;'>¡Inscripción Confirmada! ✓</h2>
+                        <h2 style='color: #16a34a;'>¡Inscripción Registrada! ✓</h2>
                         <p>Hola {recipientName},</p>
                         <p>Tu inscripción en el campamento <strong>{WebUtility.HtmlEncode(data.CampName)}</strong> ha sido registrada correctamente.</p>
+
+                        <div style='background-color: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 20px; margin: 20px 0;'>
+                            <h3 style='color: #92400e; margin-top: 0; margin-bottom: 12px;'>⚠️ INSCRIPCIÓN PENDIENTE DE VERIFICACIÓN</h3>
+                            <p style='margin: 8px 0;'>Tu inscripción está registrada pero aún está pendiente de validación por parte de la organización. Verificaremos que tu membresía y cuota de 2026 estén al día en las próximas horas.</p>
+                            <p style='margin: 8px 0;'><strong>¿Qué ocurre si algo no está en orden?</strong></p>
+                            <ul style='margin: 8px 0; padding-left: 20px;'>
+                                <li style='margin: 4px 0;'>Te enviaremos un email notificándote qué falta completar</li>
+                                <li style='margin: 4px 0;'>Podrás completar los pagos pendientes desde tu cuenta</li>
+                                <li style='margin: 4px 0;'>Una vez validado, tu inscripción estará confirmada</li>
+                            </ul>
+                            <p style='margin: 8px 0; font-size: 13px; color: #78350f;'>
+                                <strong>¿Tienes preguntas?</strong> Contacta con el administrador si necesitas ayuda.
+                            </p>
+                        </div>
 
                         <div style='background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;'>
                             <p style='margin: 5px 0;'><strong>Campamento:</strong> {WebUtility.HtmlEncode(data.CampName)}</p>
