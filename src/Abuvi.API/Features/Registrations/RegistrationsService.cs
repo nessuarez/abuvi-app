@@ -33,12 +33,17 @@ public class RegistrationsService(
             throw new BusinessRuleException(
                 "La unidad familiar está desactivada. Contacte al administrador.");
 
-        // 1c. Validate current year membership fee is paid
+        // 1c. Check current year membership fee (non-blocking during launch)
+        // TODO: After launch, enable strict validation of membership fees
         var hasPaidCurrentYearFee = await membershipsRepo
             .HasPaidCurrentYearFeeForFamilyAsync(request.FamilyUnitId, ct);
         if (!hasPaidCurrentYearFee)
-            throw new BusinessRuleException(
-                "La cuota de membresía del año en curso no está pagada. Contacte al administrador.");
+        {
+            logger.LogWarning(
+                "Registration {RegistrationId} created for family {FamilyUnitId} " +
+                "without verified membership fee. Manual verification required.",
+                Guid.NewGuid(), request.FamilyUnitId);
+        }
 
         // 2. Verify representative
         if (familyUnit.RepresentativeUserId != userId)
@@ -142,6 +147,13 @@ public class RegistrationsService(
         var baseTotalAmount = registrationMembers.Sum(m => m.IndividualAmount);
 
         // 9. Build Registration
+        var notes = request.Notes ?? "";
+        if (!hasPaidCurrentYearFee)
+        {
+            notes += (string.IsNullOrWhiteSpace(notes) ? "" : " | ") +
+                "[PENDIENTE: Validación de membresía y cuota de 2026]";
+        }
+
         var registration = new Registration
         {
             Id = Guid.NewGuid(),
@@ -152,7 +164,7 @@ public class RegistrationsService(
             ExtrasAmount = 0m,
             TotalAmount = baseTotalAmount,
             Status = RegistrationStatus.Pending,
-            Notes = request.Notes,
+            Notes = notes,
             SpecialNeeds = request.SpecialNeeds,
             CampatesPreference = request.CampatesPreference,
             HasPet = request.HasPet,
