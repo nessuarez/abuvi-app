@@ -948,6 +948,39 @@ watch(query, (newQuery) => debouncedSearch(newQuery))
 - 300ms debounce delay balances UX and API cost
 - Error messages in Spanish for user-facing text
 
+### Third-party Widget Lifecycle
+
+When integrating a third-party widget that self-initializes via a static `<script>` tag in `index.html` (e.g., Userback, Intercom, HubSpot):
+
+1. **Never call `init()` again from Vue** — the widget already initialized via the HTML tag's `access_token` or equivalent.
+2. **For identity enrichment after login**, use the widget's identity API (e.g., `Userback.identify()`), not `init()`.
+3. **Guard with a type-check** before calling any widget method. The script loads asynchronously, so `window.Widget` is a truthy placeholder `{}` when the Vue app first boots — a simple truthiness check (`if (ub)`) will pass and throw `TypeError`:
+   ```ts
+   // ✅ Correct — checks the method exists before calling
+   if (typeof (window as any).Userback?.identify === 'function') { ... }
+
+   // ❌ Wrong — {} is truthy, but has no identify method → TypeError
+   if ((window as any).Userback) { ... }
+   ```
+4. **Wrap in try/catch** so third-party failures never crash the Vue app.
+5. **Use `console.warn`** (not `console.error`) for integration failures to avoid triggering error monitors like GlitchTip.
+
+```typescript
+// App.vue — correct Userback identity enrichment pattern
+watch(() => auth.isAuthenticated, (isAuth) => {
+  try {
+    const ub = (window as any).Userback
+    if (!isAuth || typeof ub?.identify !== 'function') return
+    ub.identify(auth.user?.email ?? '', {
+      name: `${auth.user?.firstName ?? ''} ${auth.user?.lastName ?? ''}`.trim(),
+      email: auth.user?.email ?? '',
+    })
+  } catch (err) {
+    console.warn('[Userback] Failed to identify user:', err)
+  }
+}, { immediate: true })
+```
+
 ### Axios Configuration
 
 Configure a centralized Axios instance with interceptors:
