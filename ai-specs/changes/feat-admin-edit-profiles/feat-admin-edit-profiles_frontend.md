@@ -16,6 +16,7 @@ No new routes, no new composables, and no Pinia store changes are required.
 ## Architecture Context
 
 ### Features involved
+
 - User management admin panel (`frontend/src/components/admin/UsersAdminPanel.vue`)
 - User form (`frontend/src/components/users/UserForm.vue`)
 - Family unit detail page (`frontend/src/views/FamilyUnitPage.vue`)
@@ -31,10 +32,12 @@ No new routes, no new composables, and no Pinia store changes are required.
 | `frontend/src/views/FamilyUnitPage.vue` | Unlock edit buttons and member list editability for Admin/Board |
 
 ### Composables
+
 - `useUsers()` already has `updateUser()` method — no changes needed
 - `useFamilyUnits()` already has `updateFamilyUnit()` and `updateFamilyMember()` methods — no changes needed
 
 ### Routing
+
 - No new routes; existing routes remain unchanged
 - Authorization already enforced by backend (no frontend role checks needed for edit operations)
 
@@ -59,11 +62,14 @@ No new routes, no new composables, and no Pinia store changes are required.
 - **Action**: Add `documentNumber` and `emailVerified` to `User` interface; add `documentNumber` to `UpdateUserRequest`.
 
 **Current state**:
+
 - `User` has: `id`, `email`, `firstName`, `lastName`, `phone`, `role`, `isActive`, `createdAt`, `updatedAt`
 - `UpdateUserRequest` has: `firstName`, `lastName`, `phone`, `isActive`
 
 **Implementation Steps**:
+
 1. Add `documentNumber?: string | null` and `emailVerified: boolean` to `User`:
+
    ```typescript
    export interface User {
      id: string
@@ -81,6 +87,7 @@ No new routes, no new composables, and no Pinia store changes are required.
    ```
 
 2. Add `documentNumber?: string | null` to `UpdateUserRequest`:
+
    ```typescript
    export interface UpdateUserRequest {
      firstName: string
@@ -104,7 +111,9 @@ No new routes, no new composables, and no Pinia store changes are required.
 - **Action**: Add `documentNumber` field to form data; populate from user in edit mode; include in submit payload.
 
 **Implementation Steps**:
+
 1. Add `documentNumber: ''` to the `formData` reactive object:
+
    ```typescript
    const formData = reactive({
      email: '',
@@ -119,6 +128,7 @@ No new routes, no new composables, and no Pinia store changes are required.
    ```
 
 2. In the `watch` that initializes edit mode, add:
+
    ```typescript
    watch(
      () => props.user,
@@ -133,6 +143,7 @@ No new routes, no new composables, and no Pinia store changes are required.
    ```
 
 3. In `handleSubmit` for edit mode, include `documentNumber` in the request:
+
    ```typescript
    } else {
      const request: UpdateUserRequest = {
@@ -147,6 +158,7 @@ No new routes, no new composables, and no Pinia store changes are required.
    ```
 
 4. **In the template**, add a new `<div>` for the document number field after the Phone field and before the Active toggle. Place it inside a `v-if="mode === 'edit'"`:
+
    ```html
    <!-- Document Number (edit mode only) -->
    <div v-if="mode === 'edit'">
@@ -178,11 +190,13 @@ No new routes, no new composables, and no Pinia store changes are required.
 **Implementation Steps**:
 
 1. **Destructure `updateUser` from `useUsers()`**:
+
    ```typescript
    const { users, loading, error, fetchUsers, createUser, updateUser, toggleUserActive, deleteUser, clearError } = useUsers()
    ```
 
 2. **Add new state refs**:
+
    ```typescript
    const showEditDialog = ref(false)
    const editingUser = ref<User | null>(null)
@@ -190,6 +204,7 @@ No new routes, no new composables, and no Pinia store changes are required.
    ```
 
 3. **Add new handler functions**:
+
    ```typescript
    const openEditDialog = (user: User) => {
      editingUser.value = user
@@ -221,6 +236,7 @@ No new routes, no new composables, and no Pinia store changes are required.
    ```
 
 4. **Add edit button in the Actions column** — find the existing `<Column header="Acciones"...>` section (around line 202). Add a new Button before the toggle/delete buttons:
+
    ```html
    <Button
      v-if="auth.isAdmin || auth.isBoard"
@@ -237,6 +253,7 @@ No new routes, no new composables, and no Pinia store changes are required.
    ```
 
 5. **Add edit dialog** after the existing "Create User Dialog" (after line 249):
+
    ```html
    <!-- Edit User Dialog -->
    <Dialog
@@ -274,6 +291,7 @@ No new routes, no new composables, and no Pinia store changes are required.
 **Implementation Steps**:
 
 1. **Find the family unit edit/delete buttons** (search for `<div v-if="!isViewingOther"` around line 350-360). Change:
+
    ```html
    <!-- Before -->
    <div v-if="!isViewingOther" class="flex gap-2">
@@ -296,6 +314,7 @@ No new routes, no new composables, and no Pinia store changes are required.
    ```
 
 2. **Find the FamilyMemberList component** (search for `<FamilyMemberList`). Change its `:editable` binding:
+
    ```html
    <!-- Before -->
    :editable="!isViewingOther"
@@ -305,6 +324,7 @@ No new routes, no new composables, and no Pinia store changes are required.
    ```
 
 3. **Find the "Add member" button** (search for `v-if="!isViewingOther"` on a button with icon `pi-plus` or label "Agregar miembro"). Change:
+
    ```html
    <!-- Before -->
    v-if="!isViewingOther"
@@ -314,6 +334,7 @@ No new routes, no new composables, and no Pinia store changes are required.
    ```
 
 4. **Profile photo avatar** — leave its `:editable` binding unchanged (keep it read-only for Admin/Board):
+
    ```html
    :editable="!isViewingOther"   <!-- unchanged; profile photos belong to family -->
    ```
@@ -377,8 +398,10 @@ E2E test for critical user flow:
 - **Action**: Update OpenAPI spec to include `documentNumber` field in request/response bodies.
 
 **Implementation Steps**:
+
 1. Find the `PUT /api/users/{id}` endpoint request schema
 2. Add `documentNumber` to the request body:
+
    ```yaml
    UpdateUserRequest:
      type: object
@@ -397,6 +420,7 @@ E2E test for critical user flow:
 
 3. Find the `UserResponse` schema
 4. Add `documentNumber` and `emailVerified` (if not already present):
+
    ```yaml
    UserResponse:
      type: object
@@ -463,15 +487,18 @@ E2E test for critical user flow:
 ## Error Handling Patterns
 
 **UserForm component**:
+
 - Validation errors (empty fields, invalid email) → show in `<small>` error tags below field
 
 **UsersAdminPanel edit dialog**:
+
 - API errors from composable → show in `<Message severity="error">` component
 - Network timeout → display generic "Failed to update" message
 - Server 404 → "User not found"
 - Server 403 → "Insufficient permissions" (should not occur, but defense-in-depth)
 
 **FamilyUnitPage**:
+
 - API errors already handled by `useFamilyUnits()` composable — show in existing error message area
 
 ---
@@ -479,17 +506,20 @@ E2E test for critical user flow:
 ## UI/UX Considerations
 
 **UserForm**:
+
 - Document number field visible **edit mode only** (cleaner create dialog)
 - Placeholder "12345678A" helps users understand format (Spanish DNI/NIE)
 - Field is optional (label includes "opcional" text)
 
 **UsersAdminPanel**:
+
 - Edit button appears **inline in Actions column** (consistent with existing toggle/delete buttons)
 - Edit button uses `severity="info"` (blue) to distinguish from delete (red)
 - Tooltip shows "Editar perfil" on hover
 - Dialog header: "Editar Perfil de Usuario" (clear Spanish label)
 
 **FamilyUnitPage**:
+
 - Edit button visible to both representative and Admin/Board (consistent permissions model)
 - Delete button **hidden from Admin/Board** (they have separate admin delete flow)
 - "Add member" and member list remain editable for Admin/Board
@@ -499,6 +529,7 @@ E2E test for critical user flow:
 ## Dependencies
 
 No new npm packages required. Existing dependencies are sufficient:
+
 - `vue@^3.x`
 - `primevue@^4.x` (all components already used)
 - `tailwindcss@^3.x`
