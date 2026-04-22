@@ -5,7 +5,7 @@ Overview of all pending and in-progress specs in `ai-specs/changes/`. Each entry
 **Legend**
 - `[feat]` / `[fix]` / `[refactor]` / `[test]` — change type
 - Backend `[x]` = `_backend.md` exists | Frontend `[x]` = `_frontend.md` exists
-- **Merged** = confirmed merged into `dev` branch | **In progress** = actively being built | **Planned** = spec ready, not started | **Spec only** = no backend/frontend spec yet
+- **In progress** = actively being built | **Planned** = spec ready, not started | **Spec only** = no backend/frontend spec yet
 
 ---
 
@@ -20,37 +20,10 @@ Add structured concept descriptions to payments showing what each installment co
 
 ---
 
-### feat-admin-delete-family-units
-**[feat]** · [folder](./merged/feat-admin-delete-family-units) · ✅ **Merged** (#200)
-
-Allow Admin/Board roles to delete family units without registrations, deactivate those with registrations, and delete individual family members with appropriate constraints and access controls.
-
-- Backend: [x] | Frontend: [x]
-
----
-
 ### feat-admin-edit-profiles
 **[feat]** · [folder](./feat-admin-edit-profiles) · **Planned**
 
 Enable Admin/Board users to edit User, FamilyUnit, and FamilyMember profiles (names, phone, document number) and fix a security bug in `PUT /api/users/{id}` that lacks ownership checks.
-
-- Backend: [x] | Frontend: [x]
-
----
-
-### feat-blob-storage
-**[feat]** · [folder](./merged/feat-blob-storage) · ✅ **Merged**
-
-Implement a Blob Storage service using Hetzner Object Storage (S3-compatible) for uploading, retrieving, and managing binary files (photos, videos, documents) consumed by Photos, MediaItems, and CampLocations features.
-
-- Backend: [x] | Frontend: [x]
-
----
-
-### feat-camp-edit-page
-**[feat]** · [folder](./merged/feat-camp-edit-page) · ✅ **Merged**
-
-Refactor camp editing UX — backend and frontend aligned around the full-page camp edit experience.
 
 - Backend: [x] | Frontend: [x]
 
@@ -128,15 +101,6 @@ Allow hard deletion of camp registrations within 24 hours of creation (represent
 
 ---
 
-### feat-family-member-access
-**[feat]** · [folder](./merged/feat-family-member-access) · ✅ **Merged** (#192)
-
-Allow linked family members to view their family unit and registrations (currently only the representative can), fixing access rules across multiple endpoints and frontend views.
-
-- Backend: [x] | Frontend: [x]
-
----
-
 ### feat-media-50-aniversary
 **[feat]** · [folder](./feat-media-50-aniversary) · **Planned**
 
@@ -164,15 +128,6 @@ Add text search by family name or representative name to the admin payments list
 
 ---
 
-### feat-profile-photos
-**[feat]** · [folder](./merged/feat-profile-photos) · ✅ **Merged**
-
-Upload and display profile photos for users and family members via Blob Storage integration.
-
-- Backend: [x] | Frontend: [x]
-
----
-
 ### feat-registration-activities
 **[feat]** · [folder](./feat-registration-activities) · **Spec only**
 
@@ -186,15 +141,6 @@ Activity sign-up system extracted from `feat-registration-extra-fields2`: struct
 **[feat]** · [folder](./feat-registration-edit-recalculate) · **Spec only**
 
 Enable editing of registrations (members and extras) after creation with automatic payment recalculation; block edits once proofs are uploaded and provide payment breakdown visibility.
-
-- Backend: [ ] | Frontend: [ ]
-
----
-
-### feat-registration-extra-fields2
-**[feat]** · [folder](./merged/feat-registration-extra-fields2) · ✅ **Merged**
-
-Map Google Forms fields to registration model (accommodation preferences, dietary needs, special needs, truck requirements, activity participation, campmate preferences, guardian info) and surface them in the registration flow.
 
 - Backend: [ ] | Frontend: [ ]
 
@@ -218,15 +164,6 @@ Synchronize Trello board automatically from Claude Code using MCP server, with `
 
 ---
 
-### feat-users-family-linking
-**[feat]** · [folder](./merged/feat-users-family-linking) · ✅ **Merged** (#203)
-
-Add representative email to auto-created family representative member and auto-link family members to existing users by email match on verification.
-
-- Backend: [ ] | Frontend: [ ]
-
----
-
 ### feat-ux-improvements
 **[feat]** · [folder](./feat-ux-improvements) · **Spec only**
 
@@ -238,37 +175,10 @@ Broad UX improvements: navigation simplification, responsiveness, visual design 
 
 ## Fixes
 
-### fix-board-users-list-access
-**[fix]** · [folder](./merged/fix-board-users-list-access) · ✅ **Merged** (#195)
-
-Allow Board role to access `GET /api/users` endpoint and hide admin-only UI buttons (create, delete, toggle active) from Board users in the users admin panel.
-
-- Backend: [x] | Frontend: [x]
-
----
-
 ### fix-duplicate-family-member-email
 **[fix]** · [folder](./fix-duplicate-family-member-email) · **Planned**
 
 Prevent duplicate emails in family members by validating that a member's email doesn't match the representative's email or other family members' emails, with real-time frontend validation and helpful UI hints.
-
-- Backend: [x] | Frontend: [x]
-
----
-
-### fix-enrollment-launch-blocker
-**[fix]** · [folder](./merged/fix-enrollment-launch-blocker) · ✅ **Merged** (#208)
-
-Allow pending enrollments while membership fees are being resolved during app launch phase, with clear messaging about requirements.
-
-- Backend: [ ] | Frontend: [ ]
-
----
-
-### fix-membership-enrollment
-**[fix]** · [folder](./merged/fix-membership-enrollment) · ✅ **Merged** (#205, #206)
-
-Fix membership enrollment flow: auto-create annual fee on activation, expose manual fee creation endpoint, add reactivate flow for deactivated memberships, and fix frontend conflation of 'no membership' vs 'not paid'.
 
 - Backend: [x] | Frontend: [x]
 
