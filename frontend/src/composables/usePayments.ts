@@ -134,6 +134,7 @@ export function usePayments() {
       if (filter.installmentNumber) params.append('InstallmentNumber', String(filter.installmentNumber))
       if (filter.fromDate) params.append('FromDate', filter.fromDate)
       if (filter.toDate) params.append('ToDate', filter.toDate)
+      if (filter.search) params.append('Search', filter.search)
       if (filter.page) params.append('Page', String(filter.page))
       if (filter.pageSize) params.append('PageSize', String(filter.pageSize))
 

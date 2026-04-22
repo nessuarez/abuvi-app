@@ -93,4 +93,30 @@ describe('PaymentsAllList', () => {
     expect(callArgs).not.toHaveProperty('fromDate')
     expect(callArgs).not.toHaveProperty('toDate')
   })
+
+  it('renders search input for family/representative filter', () => {
+    const wrapper = mountComponent()
+    const input = wrapper.findComponent({ name: 'InputText' })
+    expect(input.exists()).toBe(true)
+  })
+
+  it('includes search in API call when searchQuery has a value', async () => {
+    const wrapper = mountComponent()
+    vi.clearAllMocks()
+    mockGetAllPayments.mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 20 })
+
+    ;(wrapper.vm as any).searchQuery = 'garcia'
+    await (wrapper.vm as any).fetchPayments()
+
+    expect(mockGetAllPayments).toHaveBeenCalledWith(
+      expect.objectContaining({ search: 'garcia' })
+    )
+  })
+
+  it('clears searchQuery when resetFilters is called', () => {
+    const wrapper = mountComponent()
+    ;(wrapper.vm as any).searchQuery = 'test'
+    ;(wrapper.vm as any).resetFilters()
+    expect((wrapper.vm as any).searchQuery).toBe('')
+  })
 })
