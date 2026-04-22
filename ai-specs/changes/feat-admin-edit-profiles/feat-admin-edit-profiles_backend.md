@@ -61,12 +61,15 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
 - **Action**: Add `DocumentNumber` to `UpdateUserRequest` and `UserResponse`.
 
 **Current state**:
+
 - `UpdateUserRequest` has: `FirstName`, `LastName`, `Phone`, `IsActive`
 - `UserResponse` has: `Id`, `Email`, `FirstName`, `LastName`, `Phone`, `Role`, `IsActive`, `EmailVerified`, `CreatedAt`, `UpdatedAt`
 - `User` entity already has `DocumentNumber` property
 
 **Implementation Steps**:
+
 1. Add `string? DocumentNumber` as the last parameter of `UpdateUserRequest`:
+
    ```csharp
    public record UpdateUserRequest(
        string FirstName,
@@ -76,7 +79,9 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
        string? DocumentNumber   // NEW
    );
    ```
+
 2. Add `string? DocumentNumber` to `UserResponse` after `Phone`:
+
    ```csharp
    public record UserResponse(
        Guid Id,
@@ -92,6 +97,7 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
        DateTime UpdatedAt
    );
    ```
+
 - **Implementation Notes**:
   - Adding positional parameters to records is a breaking change for any callers that use positional construction. Search for `new UserResponse(` and `new UpdateUserRequest(` usages and update them.
   - `DocumentNumber` is NOT encrypted on the `User` entity (unlike `FamilyMember` medical fields). No encryption wrapper needed.
@@ -106,6 +112,7 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
 **Implementation Steps**:
 
 1. **Change `UpdateAsync` signature** — add `string? callerRole` parameter:
+
    ```csharp
    public async Task<UserResponse?> UpdateAsync(
        Guid id,
@@ -115,6 +122,7 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
    ```
 
 2. **Persist fields** — inside `UpdateAsync`, after the null guard:
+
    ```csharp
    user.FirstName = request.FirstName;
    user.LastName = request.LastName;
@@ -128,6 +136,7 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
    ```
 
 3. **Update `MapToResponse`** — add `DocumentNumber` in the correct positional slot (after `Phone`, before `Role`):
+
    ```csharp
    private static UserResponse MapToResponse(User user) => new(
        user.Id,
@@ -160,6 +169,7 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
 **Implementation Steps**:
 
 1. **Add `HttpContext httpContext` parameter** to `UpdateUser`:
+
    ```csharp
    private static async Task<IResult> UpdateUser(
        [FromRoute] Guid id,
@@ -170,6 +180,7 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
    ```
 
 2. **Extract caller identity and apply authorization**:
+
    ```csharp
    var requestingUserId = httpContext.User.GetUserId();
    var requestingUserRole = httpContext.User.GetUserRole();
@@ -183,6 +194,7 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
    ```
 
 3. **Pass `requestingUserRole` to service**:
+
    ```csharp
    var user = await service.UpdateAsync(id, request, requestingUserRole, cancellationToken);
    ```
@@ -206,14 +218,18 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
 **Current state**: returns `Forbid()` for any caller who is not the representative.
 
 **Implementation Steps**:
+
 1. Add `var userRole = user.GetUserRole();` immediately after extracting `userId`.
 2. Add `var isAdminOrBoard = userRole == "Admin" || userRole == "Board";` inside the `try` block.
 3. Change the authorization guard from:
+
    ```csharp
    if (!isRepresentative)
        return TypedResults.Forbid();
    ```
+
    to:
+
    ```csharp
    if (!isRepresentative && !isAdminOrBoard)
        return TypedResults.Forbid();
@@ -222,6 +238,7 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
 #### `UpdateFamilyMember` (currently ~lines 406–433)
 
 **Same pattern** — apply identical changes:
+
 1. Add `var userRole = user.GetUserRole();`
 2. Add `var isAdminOrBoard = userRole == "Admin" || userRole == "Board";`
 3. Change guard to `if (!isRepresentative && !isAdminOrBoard)`
