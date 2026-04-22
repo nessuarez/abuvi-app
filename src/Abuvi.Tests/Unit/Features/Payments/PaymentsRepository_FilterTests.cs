@@ -3,6 +3,7 @@ using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.Payments;
 using Abuvi.API.Features.Registrations;
+using Abuvi.API.Features.Users;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +19,7 @@ public class PaymentsRepository_FilterTests : IDisposable
     private static readonly Guid CampEditionId = Guid.NewGuid();
     private static readonly Guid FamilyUnitId = Guid.NewGuid();
     private static readonly Guid RegistrationId = Guid.NewGuid();
+    private static readonly Guid UserId = Guid.NewGuid();
 
     public PaymentsRepository_FilterTests()
     {
@@ -58,8 +60,17 @@ public class PaymentsRepository_FilterTests : IDisposable
         var familyUnit = new FamilyUnit
         {
             Id = FamilyUnitId,
-            Name = "Test Family",
-            RepresentativeUserId = Guid.NewGuid()
+            Name = "Garcia Family",
+            RepresentativeUserId = UserId
+        };
+
+        var user = new User
+        {
+            Id = UserId,
+            Email = "maria.garcia@example.com",
+            PasswordHash = "hash",
+            FirstName = "Maria",
+            LastName = "Garcia"
         };
 
         var registration = new Registration
@@ -67,13 +78,14 @@ public class PaymentsRepository_FilterTests : IDisposable
             Id = RegistrationId,
             FamilyUnitId = FamilyUnitId,
             CampEditionId = CampEditionId,
-            RegisteredByUserId = Guid.NewGuid(),
+            RegisteredByUserId = UserId,
             TotalAmount = 400m
         };
 
         _context.Camps.Add(camp);
         _context.CampEditions.Add(edition);
         _context.FamilyUnits.Add(familyUnit);
+        _context.Users.Add(user);
         _context.Registrations.Add(registration);
         _context.SaveChanges();
     }
@@ -194,6 +206,79 @@ public class PaymentsRepository_FilterTests : IDisposable
         items.Should().ContainSingle()
             .Which.Should().Match<Payment>(p =>
                 p.InstallmentNumber == 1 && p.Status == PaymentStatus.Completed);
+    }
+
+    [Fact]
+    public async Task GetFilteredAsync_WhenSearchMatchesFamilyName_ReturnsMatchingPayments()
+    {
+        // Arrange
+        _context.Payments.Add(CreatePayment(1));
+        await _context.SaveChangesAsync();
+
+        var filter = new PaymentFilterRequest(Search: "garcia");
+
+        // Act
+        var (items, totalCount) = await _repository.GetFilteredAsync(filter, CancellationToken.None);
+
+        // Assert
+        totalCount.Should().Be(1);
+        items.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task GetFilteredAsync_WhenSearchMatchesRepresentativeName_ReturnsMatchingPayments()
+    {
+        // Arrange
+        _context.Payments.Add(CreatePayment(1));
+        await _context.SaveChangesAsync();
+
+        var filter = new PaymentFilterRequest(Search: "maria");
+
+        // Act
+        var (items, totalCount) = await _repository.GetFilteredAsync(filter, CancellationToken.None);
+
+        // Assert
+        totalCount.Should().Be(1);
+        items.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task GetFilteredAsync_WhenSearchMatchesNoOne_ReturnsEmpty()
+    {
+        // Arrange
+        _context.Payments.Add(CreatePayment(1));
+        await _context.SaveChangesAsync();
+
+        var filter = new PaymentFilterRequest(Search: "zzznomatch");
+
+        // Act
+        var (items, totalCount) = await _repository.GetFilteredAsync(filter, CancellationToken.None);
+
+        // Assert
+        totalCount.Should().Be(0);
+        items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetFilteredAsync_WhenSearchCombinedWithStatus_AppliesBothFilters()
+    {
+        // Arrange
+        _context.Payments.AddRange(
+            CreatePayment(1, PaymentStatus.Completed),
+            CreatePayment(2, PaymentStatus.Pending));
+        await _context.SaveChangesAsync();
+
+        var filter = new PaymentFilterRequest(
+            Status: PaymentStatus.Completed,
+            Search: "garcia");
+
+        // Act
+        var (items, totalCount) = await _repository.GetFilteredAsync(filter, CancellationToken.None);
+
+        // Assert
+        totalCount.Should().Be(1);
+        items.Should().ContainSingle()
+            .Which.Status.Should().Be(PaymentStatus.Completed);
     }
 
     public void Dispose()
