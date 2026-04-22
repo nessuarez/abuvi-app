@@ -78,40 +78,63 @@ public class PaymentsRepository(AbuviDbContext db) : IPaymentsRepository
     public async Task<(List<Payment> Items, int TotalCount)> GetFilteredAsync(
         PaymentFilterRequest filter, CancellationToken ct)
     {
-        var query = db.Payments
+        var query = from p in db.Payments.AsNoTracking()
+                    join r in db.Registrations on p.RegistrationId equals r.Id
+                    join fu in db.FamilyUnits on r.FamilyUnitId equals fu.Id
+                    join u in db.Users on r.RegisteredByUserId equals u.Id
+                    select new
+                    {
+                        Payment = p,
+                        FamilyName = fu.Name,
+                        RepresentativeName = u.FirstName + " " + u.LastName,
+                        CampEditionId = r.CampEditionId
+                    };
+
+        if (filter.Status.HasValue)
+            query = query.Where(x => x.Payment.Status == filter.Status.Value);
+
+        if (filter.CampEditionId.HasValue)
+            query = query.Where(x => x.CampEditionId == filter.CampEditionId.Value);
+
+        if (filter.InstallmentNumber.HasValue)
+        {
+            if (filter.InstallmentNumber.Value >= 3)
+                query = query.Where(x => x.Payment.InstallmentNumber >= 3);
+            else
+                query = query.Where(x => x.Payment.InstallmentNumber == filter.InstallmentNumber.Value);
+        }
+
+        if (filter.FromDate.HasValue)
+            query = query.Where(x => x.Payment.CreatedAt >= filter.FromDate.Value);
+
+        if (filter.ToDate.HasValue)
+            query = query.Where(x => x.Payment.CreatedAt <= filter.ToDate.Value);
+
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var term = filter.Search.Trim().ToLower();
+            query = query.Where(x =>
+                x.FamilyName.ToLower().Contains(term) ||
+                x.RepresentativeName.ToLower().Contains(term));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+
+        var pagedIds = await query
+            .OrderByDescending(x => x.Payment.CreatedAt)
+            .Skip((filter.Page - 1) * filter.PageSize)
+            .Take(filter.PageSize)
+            .Select(x => x.Payment.Id)
+            .ToListAsync(ct);
+
+        var items = await db.Payments
             .Include(p => p.Registration)
                 .ThenInclude(r => r.FamilyUnit)
             .Include(p => p.Registration)
                 .ThenInclude(r => r.CampEdition)
                     .ThenInclude(ce => ce.Camp)
-            .AsQueryable();
-
-        if (filter.Status.HasValue)
-            query = query.Where(p => p.Status == filter.Status.Value);
-
-        if (filter.CampEditionId.HasValue)
-            query = query.Where(p => p.Registration.CampEditionId == filter.CampEditionId.Value);
-
-        if (filter.InstallmentNumber.HasValue)
-        {
-            if (filter.InstallmentNumber.Value >= 3)
-                query = query.Where(p => p.InstallmentNumber >= 3);
-            else
-                query = query.Where(p => p.InstallmentNumber == filter.InstallmentNumber.Value);
-        }
-
-        if (filter.FromDate.HasValue)
-            query = query.Where(p => p.CreatedAt >= filter.FromDate.Value);
-
-        if (filter.ToDate.HasValue)
-            query = query.Where(p => p.CreatedAt <= filter.ToDate.Value);
-
-        var totalCount = await query.CountAsync(ct);
-
-        var items = await query
-            .OrderByDescending(p => p.CreatedAt)
-            .Skip((filter.Page - 1) * filter.PageSize)
-            .Take(filter.PageSize)
+            .Where(p => pagedIds.Contains(p.Id))
+            .AsNoTracking()
             .ToListAsync(ct);
 
         return (items, totalCount);

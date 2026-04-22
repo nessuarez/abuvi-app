@@ -2971,6 +2971,7 @@ List all payments with optional filters. Admin or Board role required. Returns p
 - `InstallmentNumber` (optional): Filter by installment period. Values 1 and 2 are exact matches; value 3 or higher returns all payments with installment >= 3 (extras and manual payments)
 - `FromDate` (optional): Filter payments created on or after this date (ISO 8601)
 - `ToDate` (optional): Filter payments created on or before this date (ISO 8601)
+- `Search` (optional): Case-insensitive text search by family unit name or representative full name (first + last)
 - `Page` (optional, default 1): Page number for pagination
 - `PageSize` (optional, default 20): Number of items per page
 
