@@ -103,7 +103,11 @@ const onPage = (event: DataTablePageEvent) => {
 }
 
 const onRowClick = (event: DataTableRowClickEvent) => {
-  router.push({ name: 'registration-detail', params: { id: event.data.id } })
+  router.push({
+    name: 'registration-detail',
+    params: { id: event.data.id },
+    query: { returnTo: 'admin-registrations' },
+  })
 }
 
 onMounted(async () => {
