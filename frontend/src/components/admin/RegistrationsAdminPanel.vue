@@ -9,6 +9,8 @@ import Column from 'primevue/column'
 import ColumnGroup from 'primevue/columngroup'
 import Row from 'primevue/row'
 import InputText from 'primevue/inputtext'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
@@ -137,8 +139,8 @@ onMounted(async () => {
 
     <!-- Filters row -->
     <div v-if="selectedEditionId" class="flex gap-3 flex-wrap">
-      <span class="p-input-icon-left">
-        <i class="pi pi-search" />
+      <IconField>
+        <InputIcon class="pi pi-search" />
         <InputText
           v-model="searchQuery"
           placeholder="Buscar familia o representante..."
@@ -146,7 +148,7 @@ onMounted(async () => {
           data-testid="search-input"
           aria-label="Buscar por familia o representante"
         />
-      </span>
+      </IconField>
       <Select
         v-model="statusFilter"
         :options="statusOptions"
