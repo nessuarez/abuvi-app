@@ -10,6 +10,8 @@ import DateInput from '@/components/shared/DateInput.vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -258,14 +260,14 @@ onMounted(async () => {
       </template>
       <div>
         <label class="mb-1 block text-xs font-medium text-gray-600">Familia / Representante</label>
-        <span class="p-input-icon-left">
-          <i class="pi pi-search" />
+        <IconField>
+          <InputIcon class="pi pi-search" />
           <InputText
             v-model="searchQuery"
             placeholder="Buscar familia o representante..."
             class="w-64"
           />
-        </span>
+        </IconField>
       </div>
       <Button
         icon="pi pi-filter-slash"

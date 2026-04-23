@@ -8,6 +8,8 @@ import { useFamilyUnits } from '@/composables/useFamilyUnits'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -138,14 +140,14 @@ const handleAdminDelete = (familyUnit: FamilyUnitResponse) => {
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h2 class="text-xl font-semibold text-gray-800">Unidades Familiares</h2>
       <div class="flex flex-wrap items-center gap-2">
-        <span class="p-input-icon-left">
-          <i class="pi pi-search" />
+        <IconField>
+          <InputIcon class="pi pi-search" />
           <InputText
             v-model="searchQuery"
             placeholder="Buscar familia..."
             class="w-64"
           />
-        </span>
+        </IconField>
         <SelectButton
           v-model="membershipFilter"
           :options="membershipFilterOptions"
