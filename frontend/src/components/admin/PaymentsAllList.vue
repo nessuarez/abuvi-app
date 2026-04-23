@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 import { useToast } from 'primevue/usetoast'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -39,6 +40,7 @@ const dateFrom = ref<Date | null>(null)
 const dateTo = ref<Date | null>(null)
 const currentPage = ref(1)
 const pageSize = 20
+const searchQuery = ref('')
 
 // Edit manual payment dialog
 const showEditDialog = ref(false)
@@ -103,6 +105,7 @@ const fetchPayments = async () => {
     if (dateFrom.value) filter.fromDate = toIsoDate(dateFrom.value)
     if (dateTo.value) filter.toDate = toIsoDate(dateTo.value)
   }
+  if (searchQuery.value) filter.search = searchQuery.value
 
   const result = await getAllPayments(filter)
   if (result) {
@@ -123,6 +126,7 @@ const resetFilters = () => {
   filterMode.value = 'installment'
   dateFrom.value = null
   dateTo.value = null
+  searchQuery.value = ''
   currentPage.value = 1
   fetchPayments()
 }
@@ -174,6 +178,12 @@ watch([selectedStatus, selectedEditionId, selectedInstallment, dateFrom, dateTo]
   currentPage.value = 1
   fetchPayments()
 })
+
+const debouncedSearch = useDebounceFn(() => {
+  currentPage.value = 1
+  fetchPayments()
+}, 300)
+watch(searchQuery, debouncedSearch)
 
 watch(filterMode, (newMode) => {
   if (newMode === 'installment') {
@@ -246,6 +256,17 @@ onMounted(async () => {
           <DateInput v-model="dateTo" placeholder="Hasta" :show-calendar="false" />
         </div>
       </template>
+      <div>
+        <label class="mb-1 block text-xs font-medium text-gray-600">Familia / Representante</label>
+        <span class="p-input-icon-left">
+          <i class="pi pi-search" />
+          <InputText
+            v-model="searchQuery"
+            placeholder="Buscar familia o representante..."
+            class="w-64"
+          />
+        </span>
+      </div>
       <Button
         icon="pi pi-filter-slash"
         severity="secondary"
