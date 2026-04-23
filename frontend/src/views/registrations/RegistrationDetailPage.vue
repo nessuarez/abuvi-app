@@ -36,6 +36,18 @@ import type { ApiResponse } from '@/types/api'
 
 const route = useRoute()
 const router = useRouter()
+
+const backRoute = computed(() =>
+  route.query.returnTo === 'admin-registrations'
+    ? { name: 'admin-registrations' }
+    : { name: 'registrations' }
+)
+
+const backLabel = computed(() =>
+  route.query.returnTo === 'admin-registrations'
+    ? 'Volver a inscripciones'
+    : 'Volver a mis inscripciones'
+)
 const toast = useToast()
 const auth = useAuthStore()
 
@@ -388,8 +400,8 @@ onMounted(async () => {
             icon="pi pi-arrow-left"
             severity="secondary"
             text
-            @click="router.push({ name: 'registrations' })"
-            aria-label="Volver a mis inscripciones"
+            @click="router.push(backRoute)"
+            :aria-label="backLabel"
           />
           <div class="flex-1">
             <div class="flex flex-wrap items-center gap-3">
