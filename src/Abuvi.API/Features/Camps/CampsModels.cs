@@ -360,6 +360,7 @@ public class CampEditionAccommodation
 {
     public Guid Id { get; set; }
     public Guid CampEditionId { get; set; }
+    public Guid? ZoneId { get; set; }
     public string Name { get; set; } = string.Empty;
     public AccommodationType AccommodationType { get; set; }
     public string? Description { get; set; }
@@ -371,6 +372,7 @@ public class CampEditionAccommodation
 
     // Navigation
     public CampEdition CampEdition { get; set; } = null!;
+    public AccommodationZone? Zone { get; set; }
 }
 
 // ── Camp Edition Accommodations DTOs ────────────────────────────────────────
@@ -386,6 +388,8 @@ public record CampEditionAccommodationResponse(
     int SortOrder,
     int CurrentPreferenceCount,
     int FirstChoiceCount,
+    Guid? ZoneId,
+    string? ZoneName,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );
@@ -912,3 +916,180 @@ public record CampObservationResponse(
 public record CampAuditLogResponse(
     Guid Id, string FieldName, string? OldValue, string? NewValue,
     Guid ChangedByUserId, DateTime ChangedAt);
+
+// ── Accommodation Zones ──────────────────────────────────────────────────────
+
+/// <summary>
+/// Groups accommodations of the same type within a camp edition (e.g., "Edificio Arcs").
+/// </summary>
+public class AccommodationZone
+{
+    public Guid Id { get; set; }
+    public Guid CampEditionId { get; set; }
+    public AccommodationType AccommodationType { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int? MaxCapacity { get; set; }
+    public string? DistributionNotes { get; set; }
+    public int SortOrder { get; set; } = 0;
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Navigation
+    public CampEdition CampEdition { get; set; } = null!;
+    public ICollection<CampEditionAccommodation> Accommodations { get; set; } = [];
+}
+
+public record CreateAccommodationZoneRequest(
+    AccommodationType AccommodationType,
+    string Name,
+    int? MaxCapacity,
+    string? DistributionNotes,
+    int SortOrder = 0
+);
+
+public record UpdateAccommodationZoneRequest(
+    string Name,
+    int? MaxCapacity,
+    string? DistributionNotes,
+    int SortOrder
+);
+
+public record AttachAccommodationsToZoneRequest(IReadOnlyList<Guid> AccommodationIds);
+
+public record AccommodationZoneResponse(
+    Guid Id,
+    Guid CampEditionId,
+    AccommodationType AccommodationType,
+    string Name,
+    int? MaxCapacity,
+    string? DistributionNotes,
+    int SortOrder,
+    bool IsActive,
+    IReadOnlyList<Guid> AccommodationIds,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
+);
+
+// ── Accommodation Assignment Proposals ──────────────────────────────────────
+
+/// <summary>
+/// A named, versioned assignment plan for a camp edition.
+/// Multiple proposals can exist; exactly one is active at a time.
+/// </summary>
+public class AccommodationAssignmentProposal
+{
+    public Guid Id { get; set; }
+    public Guid CampEditionId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Notes { get; set; }
+    public bool IsActive { get; set; } = false;
+    public Guid CreatedByUserId { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Navigation
+    public CampEdition CampEdition { get; set; } = null!;
+    public ICollection<AccommodationAssignment> Assignments { get; set; } = [];
+}
+
+public record CreateAccommodationAssignmentProposalRequest(
+    string Name,
+    string? Notes,
+    Guid? CopyFromProposalId = null
+);
+
+public record UpdateAccommodationAssignmentProposalRequest(string Name, string? Notes);
+
+public record AccommodationAssignmentProposalSummaryResponse(
+    Guid Id,
+    Guid CampEditionId,
+    string Name,
+    string? Notes,
+    bool IsActive,
+    int AssignmentCount,
+    int UnassignedCount,
+    Guid CreatedByUserId,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
+);
+
+// ── Accommodation Assignments ────────────────────────────────────────────────
+
+/// <summary>
+/// Records one registration assigned to one accommodation within a proposal.
+/// </summary>
+public class AccommodationAssignment
+{
+    public Guid Id { get; set; }
+    public Guid ProposalId { get; set; }
+    public Guid RegistrationId { get; set; }
+    public Guid AccommodationId { get; set; }
+    public Guid AssignedByUserId { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    // Navigation
+    public AccommodationAssignmentProposal Proposal { get; set; } = null!;
+    public Registrations.Registration Registration { get; set; } = null!;
+    public CampEditionAccommodation Accommodation { get; set; } = null!;
+}
+
+public record AssignmentEntry(Guid RegistrationId, Guid AccommodationId);
+
+public record SingleAssignRequest(Guid AccommodationId);
+
+public record BulkAssignRequest(IReadOnlyList<AssignmentEntry> Assignments);
+
+public record AutoAssignRequest(bool OverwriteExisting = false);
+
+public record AccommodationPreferenceItem(Guid AccommodationId, int PreferenceOrder);
+
+public record AssignmentFamilyResponse(
+    Guid RegistrationId,
+    Guid FamilyUnitId,
+    string FamilyName,
+    string RepresentativeName,
+    int MemberCount,
+    int AdultCount,
+    int ChildCount,
+    bool HasPet,
+    string? SpecialNeeds,
+    string? CampatesPreference,
+    IReadOnlyList<AccommodationPreferenceItem> AccommodationPreferences
+);
+
+public record AssignmentAccommodationResponse(
+    Guid Id,
+    string Name,
+    AccommodationType Type,
+    int? Capacity,
+    bool CountByFamily,
+    Guid? ZoneId,
+    string? ZoneName,
+    int SortOrder
+);
+
+public record ProposalAssignmentStateResponse(
+    Guid ProposalId,
+    IReadOnlyList<AssignmentFamilyResponse> Families,
+    IReadOnlyList<AssignmentAccommodationResponse> Accommodations,
+    IReadOnlyList<AssignmentEntry> Assignments
+);
+
+public record AssignmentReportFamilyRow(
+    Guid RegistrationId,
+    string FamilyName,
+    string RepresentativeName,
+    int MemberCount,
+    string? AccommodationName,
+    string? ZoneName
+);
+
+public record AssignmentReportGroupResponse(
+    string GroupKey,
+    string GroupLabel,
+    int TotalCapacity,
+    int UsedCapacity,
+    IReadOnlyList<AssignmentReportFamilyRow> Families
+);

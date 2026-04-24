@@ -63,9 +63,17 @@ public class CampEditionAccommodationConfiguration : IEntityTypeConfiguration<Ca
             .HasColumnName("updated_at")
             .HasDefaultValueSql("NOW()");
 
+        builder.Property(e => e.ZoneId)
+            .HasColumnName("zone_id");
+
         builder.HasOne(e => e.CampEdition)
             .WithMany(ce => ce.Accommodations)
             .HasForeignKey(e => e.CampEditionId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(e => e.Zone)
+            .WithMany(z => z.Accommodations)
+            .HasForeignKey(e => e.ZoneId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

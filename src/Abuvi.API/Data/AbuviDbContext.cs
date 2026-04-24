@@ -20,6 +20,9 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     public DbSet<CampEdition> CampEditions => Set<CampEdition>();
     public DbSet<CampEditionExtra> CampEditionExtras => Set<CampEditionExtra>();
     public DbSet<CampEditionAccommodation> CampEditionAccommodations => Set<CampEditionAccommodation>();
+    public DbSet<AccommodationZone> AccommodationZones => Set<AccommodationZone>();
+    public DbSet<AccommodationAssignmentProposal> AccommodationAssignmentProposals => Set<AccommodationAssignmentProposal>();
+    public DbSet<AccommodationAssignment> AccommodationAssignments => Set<AccommodationAssignment>();
     public DbSet<AssociationSettings> AssociationSettings => Set<AssociationSettings>();
     public DbSet<CampPhoto> CampPhotos => Set<CampPhoto>();
     public DbSet<CampObservation> CampObservations => Set<CampObservation>();
