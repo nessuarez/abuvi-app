@@ -260,3 +260,12 @@ export interface AccommodationPreferenceResponse {
   accommodationType: AccommodationType
   preferenceOrder: number
 }
+
+export interface AdminRegistrationFilters {
+  page?: number
+  pageSize?: number
+  search?: string
+  status?: string
+  accommodationTypes?: AccommodationType[]
+  extraIds?: string[]
+}
