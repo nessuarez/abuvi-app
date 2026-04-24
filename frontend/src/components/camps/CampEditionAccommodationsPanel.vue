@@ -123,7 +123,7 @@ onMounted(() => fetchAccommodations())
             />
             <Tag v-if="!acc.isActive" value="Inactivo" severity="secondary" class="text-xs" />
           </div>
-          <div class="mt-1 flex gap-4 text-xs text-gray-500">
+          <div class="mt-1 flex flex-wrap gap-4 text-xs text-gray-500">
             <span v-if="acc.capacity">
               Capacidad: {{ acc.capacity }}
             </span>
@@ -132,6 +132,9 @@ onMounted(() => fetchAccommodations())
             </span>
             <span>
               1ª opción: {{ acc.firstChoiceCount }}
+            </span>
+            <span v-if="acc.zoneName" class="rounded bg-gray-100 px-2 py-0.5 text-gray-600">
+              {{ acc.zoneName }}
             </span>
           </div>
         </div>

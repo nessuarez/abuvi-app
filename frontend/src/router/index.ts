@@ -219,6 +219,18 @@ const router = createRouter({
 			}
 		},
 
+		// Accommodation assignment board (Board-only)
+		{
+			path: "/camps/editions/:campEditionId/assignment",
+			name: "accommodation-assignment",
+			component: () => import("@/views/camps/AccommodationAssignmentView.vue"),
+			meta: {
+				title: "ABUVI | Distribución de Alojamientos",
+				requiresAuth: true,
+				requiresBoard: true
+			}
+		},
+
 		// Registration routes — authenticated members
 		// IMPORTANT: /registrations/new/:editionId MUST be before /registrations/:id
 		{
