@@ -2,6 +2,7 @@
 import { ref, watch, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDebounceFn } from '@vueuse/core'
+import { useToast } from 'primevue/usetoast'
 import { useAdminRegistrations } from '@/composables/useAdminRegistrations'
 import { useCampEditions } from '@/composables/useCampEditions'
 import DataTable from 'primevue/datatable'
@@ -12,22 +13,31 @@ import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Select from 'primevue/select'
+import MultiSelect from 'primevue/multiselect'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import type { DataTablePageEvent, DataTableRowClickEvent } from 'primevue/datatable'
 import type { RegistrationStatus } from '@/types/registration'
+import type { AccommodationType } from '@/types/camp-edition'
 
 const router = useRouter()
+const toast = useToast()
 
-const { registrations, totals, totalCount, pagination, loading, error, fetchAdminRegistrations } =
-  useAdminRegistrations()
+const {
+  registrations, totals, totalCount, pagination, loading, error,
+  editionExtras, editionAccommodations, filterOptionsLoading,
+  exportLoading, exportError,
+  fetchAdminRegistrations, fetchEditionFilterOptions, exportToCsv
+} = useAdminRegistrations()
 const { allEditions, loading: editionsLoading, fetchAllEditions } = useCampEditions()
 
 const selectedEditionId = ref<string | null>(null)
 const searchQuery = ref('')
 const statusFilter = ref<string | null>(null)
+const selectedAccommodationTypes = ref<AccommodationType[]>([])
+const selectedExtraIds = ref<string[]>([])
 
 const campEditionOptions = computed(() =>
   allEditions.value.map((e) => ({
@@ -43,6 +53,32 @@ const statusOptions = [
   { label: 'Cancelada', value: 'Cancelled' },
   { label: 'Borrador', value: 'Draft' }
 ]
+
+const accommodationTypeLabels: Record<AccommodationType, string> = {
+  Lodge: 'Albergue',
+  Caravan: 'Caravana',
+  Tent: 'Tienda',
+  Bungalow: 'Bungalow',
+  Motorhome: 'Autocaravana'
+}
+
+const accommodationTypeOptions = computed(() => {
+  const seen = new Set<AccommodationType>()
+  return editionAccommodations.value
+    .filter(a => {
+      if (seen.has(a.accommodationType)) return false
+      seen.add(a.accommodationType)
+      return true
+    })
+    .map(a => ({
+      label: accommodationTypeLabels[a.accommodationType] ?? a.accommodationType,
+      value: a.accommodationType
+    }))
+})
+
+const extraOptions = computed(() =>
+  editionExtras.value.map(e => ({ label: e.name, value: e.id }))
+)
 
 const statusSeverity = (status: RegistrationStatus): string => {
   const map: Record<RegistrationStatus, string> = {
@@ -80,7 +116,9 @@ const loadRegistrations = (page = 1) => {
     page,
     pageSize: 20,
     search: searchQuery.value || undefined,
-    status: statusFilter.value || undefined
+    status: statusFilter.value || undefined,
+    accommodationTypes: selectedAccommodationTypes.value.length > 0 ? selectedAccommodationTypes.value : undefined,
+    extraIds: selectedExtraIds.value.length > 0 ? selectedExtraIds.value : undefined
   })
 }
 
@@ -88,13 +126,26 @@ const debouncedSearch = useDebounceFn(() => {
   loadRegistrations(1)
 }, 300)
 
-watch(selectedEditionId, () => {
+watch(selectedEditionId, (newId) => {
+  searchQuery.value = ''
+  statusFilter.value = null
+  selectedAccommodationTypes.value = []
+  selectedExtraIds.value = []
+  if (newId) fetchEditionFilterOptions(newId)
   loadRegistrations(1)
 })
 
 watch(searchQuery, debouncedSearch)
 
 watch(statusFilter, () => {
+  loadRegistrations(1)
+})
+
+watch(selectedAccommodationTypes, () => {
+  loadRegistrations(1)
+})
+
+watch(selectedExtraIds, () => {
   loadRegistrations(1)
 })
 
@@ -110,9 +161,21 @@ const onRowClick = (event: DataTableRowClickEvent) => {
   })
 }
 
+const handleExportCsv = async () => {
+  if (!selectedEditionId.value) return
+  await exportToCsv(selectedEditionId.value, {
+    search: searchQuery.value || undefined,
+    status: statusFilter.value || undefined,
+    accommodationTypes: selectedAccommodationTypes.value.length > 0 ? selectedAccommodationTypes.value : undefined,
+    extraIds: selectedExtraIds.value.length > 0 ? selectedExtraIds.value : undefined
+  })
+  if (exportError.value) {
+    toast.add({ severity: 'error', summary: 'Error', detail: exportError.value, life: 4000 })
+  }
+}
+
 onMounted(async () => {
   await fetchAllEditions()
-  // Default to latest edition
   if (allEditions.value.length > 0) {
     const openEdition = allEditions.value.find((e) => e.status === 'Open')
     selectedEditionId.value = openEdition?.id ?? allEditions.value[0].id
@@ -124,6 +187,16 @@ onMounted(async () => {
   <div data-testid="registrations-admin-panel" class="space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h2 class="text-xl font-semibold text-gray-800">Inscripciones</h2>
+      <Button
+        v-if="selectedEditionId"
+        label="Exportar CSV"
+        icon="pi pi-download"
+        severity="secondary"
+        :loading="exportLoading"
+        :disabled="exportLoading"
+        data-testid="export-csv-btn"
+        @click="handleExportCsv"
+      />
     </div>
 
     <!-- Camp edition selector -->
@@ -162,6 +235,32 @@ onMounted(async () => {
         class="w-48"
         data-testid="status-filter"
         aria-label="Filtrar por estado"
+      />
+      <MultiSelect
+        v-if="accommodationTypeOptions.length > 0"
+        v-model="selectedAccommodationTypes"
+        :options="accommodationTypeOptions"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Alojamiento"
+        display="chip"
+        class="w-56"
+        :loading="filterOptionsLoading"
+        data-testid="accommodation-type-filter"
+        aria-label="Filtrar por tipo de alojamiento"
+      />
+      <MultiSelect
+        v-if="extraOptions.length > 0"
+        v-model="selectedExtraIds"
+        :options="extraOptions"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Extras"
+        display="chip"
+        class="w-56"
+        :loading="filterOptionsLoading"
+        data-testid="extras-filter"
+        aria-label="Filtrar por extras"
       />
     </div>
 
