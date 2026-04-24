@@ -571,6 +571,7 @@ An accommodation option available for a specific camp edition (lodge, caravan, t
 - `capacity`: Maximum capacity in persons/units (optional, integer > 0 when set; informational only)
 - `isActive`: Whether the option is available for selection (required, default: true)
 - `sortOrder`: Display order (required, integer >= 0, default: 0)
+- `zoneId`: Optional assignment zone for this accommodation (nullable FK -> AccommodationZone, SET NULL on delete)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
@@ -586,6 +587,97 @@ An accommodation option available for a specific camp edition (lodge, caravan, t
 
 - Each CampEditionAccommodation belongs to one CampEdition (via `campEditionId`, CASCADE delete)
 - One CampEditionAccommodation can be referenced by many RegistrationAccommodationPreferences
+- Each CampEditionAccommodation optionally belongs to one AccommodationZone (via `zoneId`, SET NULL on delete)
+
+---
+
+### AccommodationZone
+
+A named grouping of accommodations within a camp edition, used to organise the assignment board. Zones filter the accommodation grid by type (e.g. all lodges, all caravans).
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID)
+- `campEditionId`: The camp edition this zone belongs to (required, FK -> CampEdition, CASCADE delete)
+- `accommodationType`: The type of accommodations in this zone (required, enum: `Lodge` | `Caravan` | `Tent` | `Bungalow` | `Motorhome`)
+- `name`: Display name for the zone (required, max 100 characters)
+- `maxCapacity`: Optional maximum number of persons/units the zone can hold (nullable, integer > 0 when set)
+- `distributionNotes`: Free-text notes for the Board about how to distribute families (optional, max 500 characters)
+- `sortOrder`: Display order within the zone list (required, integer >= 0, default: 0)
+- `isActive`: Whether the zone is active (required, default: true)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- Name is required, max 100 characters
+- MaxCapacity must be > 0 when provided
+- DistributionNotes max 500 characters
+- SortOrder must be >= 0
+- Cannot delete a zone that has families assigned in any proposal
+
+**Relationships:**
+
+- Each AccommodationZone belongs to one CampEdition (CASCADE delete)
+- One AccommodationZone can group many CampEditionAccommodations (via `zoneId` on accommodation, SET NULL on delete)
+
+---
+
+### AccommodationAssignmentProposal
+
+A named, versioned plan that assigns families to accommodations for a camp edition. Multiple proposals can exist per edition; only one can be active at a time. The Board creates and tests proposals before activating the final one.
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID)
+- `campEditionId`: The camp edition this proposal belongs to (required, FK -> CampEdition, CASCADE delete)
+- `name`: Name of the proposal (required, max 100 characters, e.g. "Propuesta inicial", "Versión revisada")
+- `notes`: Optional description or notes for the Board (nullable, max 500 characters)
+- `isActive`: Whether this is the currently active proposal for the edition (required, default: false; only one can be true per edition)
+- `createdByUserId`: User who created the proposal (required, FK -> User)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- Name is required, max 100 characters
+- Notes max 500 characters
+- Only one active proposal per edition (enforced at application level)
+- Cannot delete the active proposal if it is the only one
+
+**Relationships:**
+
+- Each AccommodationAssignmentProposal belongs to one CampEdition (CASCADE delete)
+- One AccommodationAssignmentProposal has many AccommodationAssignments (CASCADE delete)
+
+---
+
+### AccommodationAssignment
+
+A single assignment of a registered family to an accommodation within a proposal. One registration can only be assigned to one accommodation per proposal.
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID)
+- `proposalId`: The proposal this assignment belongs to (required, FK -> AccommodationAssignmentProposal, CASCADE delete)
+- `registrationId`: The registration (family) being assigned (required, FK -> Registration, RESTRICT delete)
+- `accommodationId`: The accommodation being assigned to (required, FK -> CampEditionAccommodation, RESTRICT delete)
+- `assignedByUserId`: User who created or last updated this assignment (required, FK -> User)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- One registration per proposal (unique index on `proposalId` + `registrationId`)
+- Registration must belong to the same camp edition as the proposal
+- Accommodation must belong to the same camp edition as the proposal
+- Capacity must not be exceeded (Lodge/Bungalow/Motorhome count by persons; Caravan/Tent count by family unit)
+
+**Relationships:**
+
+- Each AccommodationAssignment belongs to one AccommodationAssignmentProposal (CASCADE delete)
+- Each AccommodationAssignment references one Registration (RESTRICT delete)
+- Each AccommodationAssignment references one CampEditionAccommodation (RESTRICT delete)
 
 ---
 

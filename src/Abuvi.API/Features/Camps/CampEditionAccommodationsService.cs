@@ -150,6 +150,8 @@ internal static class CampEditionAccommodationExtensions
             a.SortOrder,
             currentPreferenceCount,
             firstChoiceCount,
+            a.ZoneId,
+            a.Zone?.Name,
             a.CreatedAt,
             a.UpdatedAt
         );

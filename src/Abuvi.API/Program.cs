@@ -163,6 +163,19 @@ builder.Services.AddScoped<CampEditionExtrasService>();
 builder.Services.AddScoped<ICampEditionAccommodationsRepository, CampEditionAccommodationsRepository>();
 builder.Services.AddScoped<CampEditionAccommodationsService>();
 
+// Accommodation Zones
+builder.Services.AddScoped<IAccommodationZonesRepository, AccommodationZonesRepository>();
+builder.Services.AddScoped<AccommodationZonesService>();
+
+// Accommodation Assignment Proposals
+builder.Services.AddScoped<IAccommodationAssignmentProposalsRepository, AccommodationAssignmentProposalsRepository>();
+builder.Services.AddScoped<AccommodationAssignmentProposalsService>();
+
+// Accommodation Assignments
+builder.Services.AddScoped<IAccommodationAssignmentsRepository, AccommodationAssignmentsRepository>();
+builder.Services.AddScoped<AccommodationAssignmentsService>();
+builder.Services.AddScoped<AccommodationAssignmentReportsService>();
+
 // Google Places API integration
 builder.Services.AddHttpClient<IGooglePlacesService, GooglePlacesService>();
 builder.Services.AddScoped<IGooglePlacesService, GooglePlacesService>();
