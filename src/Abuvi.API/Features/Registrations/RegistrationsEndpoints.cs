@@ -3,6 +3,7 @@ using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Common.Filters;
 using Abuvi.API.Common.Models;
 using Abuvi.API.Common.Extensions;
+using Abuvi.API.Features.Camps;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Abuvi.API.Features.Registrations;
@@ -100,6 +101,12 @@ public static class RegistrationsEndpoints
             .WithTags("Registrations Admin")
             .WithOpenApi()
             .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"));
+
+        adminListGroup.MapGet("/export/csv", ExportRegistrationsToCsv)
+            .WithName("ExportRegistrationsToCsv")
+            .WithSummary("Export registrations for a camp edition as CSV (Admin/Board only)")
+            .Produces(200)
+            .Produces(401).Produces(403).Produces(404);
 
         adminListGroup.MapGet("/", GetAdminRegistrations)
             .WithName("GetAdminRegistrations")
@@ -383,12 +390,60 @@ public static class RegistrationsEndpoints
         [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null,
         [FromQuery] string? status = null,
+        [FromQuery] string[]? accommodationTypes = null,
+        [FromQuery] Guid[]? extraIds = null,
         CancellationToken ct = default)
     {
         try
         {
-            var result = await service.GetAdminListAsync(campEditionId, page, pageSize, search, status, ct);
+            var parsedAccommodationTypes = accommodationTypes?
+                .Select(t => Enum.TryParse<AccommodationType>(t, true, out var parsed) ? parsed : (AccommodationType?)null)
+                .Where(t => t.HasValue)
+                .Select(t => t!.Value)
+                .Distinct()
+                .ToList();
+
+            var result = await service.GetAdminListAsync(
+                campEditionId, page, pageSize, search, status,
+                parsedAccommodationTypes?.Count > 0 ? parsedAccommodationTypes : null,
+                extraIds?.Distinct().ToList(),
+                ct);
             return TypedResults.Ok(ApiResponse<AdminRegistrationListResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> ExportRegistrationsToCsv(
+        Guid campEditionId,
+        RegistrationsService service,
+        [FromQuery] string? search = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string[]? accommodationTypes = null,
+        [FromQuery] Guid[]? extraIds = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var parsedAccommodationTypes = accommodationTypes?
+                .Select(t => Enum.TryParse<AccommodationType>(t, true, out var parsed) ? parsed : (AccommodationType?)null)
+                .Where(t => t.HasValue)
+                .Select(t => t!.Value)
+                .Distinct()
+                .ToList();
+
+            var (content, fileName) = await service.ExportToCsvAsync(
+                campEditionId, search, status,
+                parsedAccommodationTypes?.Count > 0 ? parsedAccommodationTypes : null,
+                extraIds?.Distinct().ToList(),
+                ct);
+
+            return Results.File(
+                content,
+                contentType: "text/csv; charset=utf-8",
+                fileDownloadName: fileName);
         }
         catch (NotFoundException ex)
         {

@@ -1,4 +1,5 @@
 using Abuvi.API.Data;
+using Abuvi.API.Features.Camps;
 using Microsoft.EntityFrameworkCore;
 
 namespace Abuvi.API.Features.Registrations;
@@ -22,7 +23,19 @@ public interface IRegistrationsRepository
         CancellationToken ct
     );
     Task<(List<AdminRegistrationProjection> Items, int TotalCount, AdminRegistrationTotals Totals)>
-        GetAdminPagedAsync(Guid campEditionId, int page, int pageSize, string? search, string? status, CancellationToken ct);
+        GetAdminPagedAsync(
+            Guid campEditionId, int page, int pageSize,
+            string? search, string? status,
+            IReadOnlyList<AccommodationType>? accommodationTypes,
+            IReadOnlyList<Guid>? extraIds,
+            CancellationToken ct);
+    Task<IReadOnlyList<Registration>> GetAllForExportAsync(
+        Guid campEditionId,
+        string? search,
+        string? status,
+        IReadOnlyList<AccommodationType>? accommodationTypes,
+        IReadOnlyList<Guid>? extraIds,
+        CancellationToken ct);
     Task AddAsync(Registration registration, CancellationToken ct);
     Task UpdateAsync(Registration registration, CancellationToken ct);
     Task AddMembersAsync(IEnumerable<RegistrationMember> members, CancellationToken ct);
@@ -79,7 +92,12 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
             .CountAsync(ct);
 
     public async Task<(List<AdminRegistrationProjection> Items, int TotalCount, AdminRegistrationTotals Totals)>
-        GetAdminPagedAsync(Guid campEditionId, int page, int pageSize, string? search, string? status, CancellationToken ct)
+        GetAdminPagedAsync(
+            Guid campEditionId, int page, int pageSize,
+            string? search, string? status,
+            IReadOnlyList<AccommodationType>? accommodationTypes,
+            IReadOnlyList<Guid>? extraIds,
+            CancellationToken ct)
     {
         var query = from r in db.Registrations.AsNoTracking()
                     join fu in db.FamilyUnits on r.FamilyUnitId equals fu.Id
@@ -118,6 +136,27 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
                 (x.RepresentativeFirstName + " " + x.RepresentativeLastName).ToLower().Contains(term));
         }
 
+        // Accommodation type filter — EXISTS subquery (join-based query can't use navigation properties)
+        if (accommodationTypes?.Count > 0)
+        {
+            query = query.Where(x =>
+                db.RegistrationAccommodationPreferences.Any(p =>
+                    p.RegistrationId == x.Id &&
+                    db.CampEditionAccommodations.Any(a =>
+                        a.Id == p.CampEditionAccommodationId &&
+                        accommodationTypes.Contains(a.AccommodationType))));
+        }
+
+        // Extras filter — EXISTS subquery
+        if (extraIds?.Count > 0)
+        {
+            query = query.Where(x =>
+                db.RegistrationExtras.Any(e =>
+                    e.RegistrationId == x.Id &&
+                    extraIds.Contains(e.CampEditionExtraId) &&
+                    e.Quantity > 0));
+        }
+
         // Totals (computed AFTER filters, BEFORE pagination)
         var totalCount = await query.CountAsync(ct);
 
@@ -146,6 +185,52 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
         )).ToList();
 
         return (projections, totalCount, aggregateTotals);
+    }
+
+    public async Task<IReadOnlyList<Registration>> GetAllForExportAsync(
+        Guid campEditionId,
+        string? search,
+        string? status,
+        IReadOnlyList<AccommodationType>? accommodationTypes,
+        IReadOnlyList<Guid>? extraIds,
+        CancellationToken ct)
+    {
+        var query = db.Registrations
+            .AsNoTracking()
+            .Where(r => r.CampEditionId == campEditionId)
+            .Include(r => r.FamilyUnit)
+            .Include(r => r.RegisteredByUser)
+            .Include(r => r.Members).ThenInclude(m => m.FamilyMember)
+            .Include(r => r.Extras).ThenInclude(e => e.CampEditionExtra)
+            .Include(r => r.AccommodationPreferences)
+                .ThenInclude(p => p.CampEditionAccommodation)
+            .Include(r => r.Payments)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status) &&
+            Enum.TryParse<RegistrationStatus>(status, true, out var statusEnum))
+            query = query.Where(r => r.Status == statusEnum);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(r =>
+                r.FamilyUnit.Name.ToLower().Contains(term) ||
+                (r.RegisteredByUser.FirstName + " " + r.RegisteredByUser.LastName).ToLower().Contains(term));
+        }
+
+        if (accommodationTypes?.Count > 0)
+            query = query.Where(r =>
+                r.AccommodationPreferences.Any(p =>
+                    accommodationTypes.Contains(p.CampEditionAccommodation.AccommodationType)));
+
+        if (extraIds?.Count > 0)
+            query = query.Where(r =>
+                r.Extras.Any(e => extraIds.Contains(e.CampEditionExtraId) && e.Quantity > 0));
+
+        return await query
+            .OrderBy(r => r.FamilyUnit.Name)
+            .ToListAsync(ct);
     }
 
     public async Task AddAsync(Registration registration, CancellationToken ct)

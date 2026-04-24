@@ -52,8 +52,9 @@ public class RegistrationsServiceTests
         var membershipsRepo = Substitute.For<IMembershipsRepository>();
         membershipsRepo.HasPaidCurrentYearFeeForFamilyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
+        var extrasDefinitionRepo = Substitute.For<ICampEditionExtrasRepository>();
         _sut = new RegistrationsService(
-            _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo, _editionsRepo, _accommodationsRepo, _pricingService, _emailService, _paymentsService, membershipsRepo, _logger);
+            _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo, _editionsRepo, _accommodationsRepo, extrasDefinitionRepo, _pricingService, _emailService, _paymentsService, membershipsRepo, _logger);
     }
 
     // ── CreateAsync ───────────────────────────────────────────────────────────
