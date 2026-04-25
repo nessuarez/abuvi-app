@@ -75,6 +75,7 @@ export interface PaymentFilterParams {
   installmentNumber?: number
   fromDate?: string
   toDate?: string
+  search?: string
   page?: number
   pageSize?: number
 }

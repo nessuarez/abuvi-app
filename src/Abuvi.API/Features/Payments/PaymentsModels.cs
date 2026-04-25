@@ -91,6 +91,7 @@ public record PaymentFilterRequest(
     int? InstallmentNumber = null,
     DateTime? FromDate = null,
     DateTime? ToDate = null,
+    string? Search = null,
     int Page = 1,
     int PageSize = 20
 );

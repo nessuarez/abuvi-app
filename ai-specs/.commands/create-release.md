@@ -1,6 +1,7 @@
 # Release: bump version, create PR & GitHub release
 
 ## Arguments
+
 - Version bump type: $ARGUMENTS (major | minor | patch — default: minor)
 
 ## Process
@@ -51,6 +52,7 @@
 ### 5. Summary
 
 Print a summary with links to:
+
 - The PR
 - The draft release
 - The new version number

@@ -11,14 +11,18 @@ const auth = useAuthStore()
 const isLandingPage = computed(() => route.path === '/')
 const useLayout = computed(() => !isLandingPage.value && auth.isAuthenticated)
 
-// Re-init Userback with user identity when authenticated
+// Attach user identity to Userback after authentication.
+// The widget is auto-initialized via index.html (access_token) — never call init() again.
 watch(() => auth.isAuthenticated, (isAuth) => {
-  const ub = (window as any).Userback
-  if (isAuth && ub) {
-    ub.init(import.meta.env.VITE_USERBACK_TOKEN, {
-      email: auth.user?.email,
+  try {
+    const ub = (window as any).Userback
+    if (!isAuth || typeof ub?.identify !== 'function') return
+    ub.identify(auth.user?.email ?? '', {
       name: `${auth.user?.firstName ?? ''} ${auth.user?.lastName ?? ''}`.trim(),
+      email: auth.user?.email ?? '',
     })
+  } catch (err) {
+    console.warn('[Userback] Failed to identify user:', err)
   }
 }, { immediate: true })
 
