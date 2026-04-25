@@ -26,15 +26,19 @@ public interface IRegistrationsRepository
         GetAdminPagedAsync(
             Guid campEditionId, int page, int pageSize,
             string? search, string? status,
-            IReadOnlyList<AccommodationType>? accommodationTypes,
+            IReadOnlyList<AccommodationPreferenceFilter>? accommodationPreferences,
             IReadOnlyList<Guid>? extraIds,
+            IReadOnlyList<AttendancePeriod>? attendancePeriods,
+            IReadOnlyList<AgeCategory>? ageCategories,
             CancellationToken ct);
     Task<IReadOnlyList<Registration>> GetAllForExportAsync(
         Guid campEditionId,
         string? search,
         string? status,
-        IReadOnlyList<AccommodationType>? accommodationTypes,
+        IReadOnlyList<AccommodationPreferenceFilter>? accommodationPreferences,
         IReadOnlyList<Guid>? extraIds,
+        IReadOnlyList<AttendancePeriod>? attendancePeriods,
+        IReadOnlyList<AgeCategory>? ageCategories,
         CancellationToken ct);
     Task AddAsync(Registration registration, CancellationToken ct);
     Task UpdateAsync(Registration registration, CancellationToken ct);
@@ -95,8 +99,10 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
         GetAdminPagedAsync(
             Guid campEditionId, int page, int pageSize,
             string? search, string? status,
-            IReadOnlyList<AccommodationType>? accommodationTypes,
+            IReadOnlyList<AccommodationPreferenceFilter>? accommodationPreferences,
             IReadOnlyList<Guid>? extraIds,
+            IReadOnlyList<AttendancePeriod>? attendancePeriods,
+            IReadOnlyList<AgeCategory>? ageCategories,
             CancellationToken ct)
     {
         var query = from r in db.Registrations.AsNoTracking()
@@ -136,15 +142,19 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
                 (x.RepresentativeFirstName + " " + x.RepresentativeLastName).ToLower().Contains(term));
         }
 
-        // Accommodation type filter — EXISTS subquery (join-based query can't use navigation properties)
-        if (accommodationTypes?.Count > 0)
+        // Accommodation preference filter — AND across pairs (each pair adds one EXISTS clause)
+        if (accommodationPreferences?.Count > 0)
         {
-            query = query.Where(x =>
-                db.RegistrationAccommodationPreferences.Any(p =>
-                    p.RegistrationId == x.Id &&
-                    db.CampEditionAccommodations.Any(a =>
-                        a.Id == p.CampEditionAccommodationId &&
-                        accommodationTypes.Contains(a.AccommodationType))));
+            foreach (var f in accommodationPreferences)
+            {
+                var accommodationId = f.AccommodationId;  // capture for LINQ closure
+                var preferenceOrder = f.PreferenceOrder;
+                query = query.Where(x =>
+                    db.RegistrationAccommodationPreferences.Any(p =>
+                        p.RegistrationId == x.Id &&
+                        p.CampEditionAccommodationId == accommodationId &&
+                        p.PreferenceOrder == preferenceOrder));
+            }
         }
 
         // Extras filter — EXISTS subquery
@@ -155,6 +165,24 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
                     e.RegistrationId == x.Id &&
                     extraIds.Contains(e.CampEditionExtraId) &&
                     e.Quantity > 0));
+        }
+
+        // Attendance period filter — OR across selected periods
+        if (attendancePeriods?.Count > 0)
+        {
+            query = query.Where(x =>
+                db.RegistrationMembers.Any(m =>
+                    m.RegistrationId == x.Id &&
+                    attendancePeriods.Contains(m.AttendancePeriod)));
+        }
+
+        // Age category filter — OR across selected categories
+        if (ageCategories?.Count > 0)
+        {
+            query = query.Where(x =>
+                db.RegistrationMembers.Any(m =>
+                    m.RegistrationId == x.Id &&
+                    ageCategories.Contains(m.AgeCategory)));
         }
 
         // Totals (computed AFTER filters, BEFORE pagination)
@@ -191,8 +219,10 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
         Guid campEditionId,
         string? search,
         string? status,
-        IReadOnlyList<AccommodationType>? accommodationTypes,
+        IReadOnlyList<AccommodationPreferenceFilter>? accommodationPreferences,
         IReadOnlyList<Guid>? extraIds,
+        IReadOnlyList<AttendancePeriod>? attendancePeriods,
+        IReadOnlyList<AgeCategory>? ageCategories,
         CancellationToken ct)
     {
         var query = db.Registrations
@@ -219,14 +249,28 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
                 (r.RegisteredByUser.FirstName + " " + r.RegisteredByUser.LastName).ToLower().Contains(term));
         }
 
-        if (accommodationTypes?.Count > 0)
-            query = query.Where(r =>
-                r.AccommodationPreferences.Any(p =>
-                    accommodationTypes.Contains(p.CampEditionAccommodation.AccommodationType)));
+        if (accommodationPreferences?.Count > 0)
+            foreach (var f in accommodationPreferences)
+            {
+                var accommodationId = f.AccommodationId;
+                var preferenceOrder = f.PreferenceOrder;
+                query = query.Where(r =>
+                    r.AccommodationPreferences.Any(p =>
+                        p.CampEditionAccommodationId == accommodationId &&
+                        p.PreferenceOrder == preferenceOrder));
+            }
 
         if (extraIds?.Count > 0)
             query = query.Where(r =>
                 r.Extras.Any(e => extraIds.Contains(e.CampEditionExtraId) && e.Quantity > 0));
+
+        if (attendancePeriods?.Count > 0)
+            query = query.Where(r =>
+                r.Members.Any(m => attendancePeriods.Contains(m.AttendancePeriod)));
+
+        if (ageCategories?.Count > 0)
+            query = query.Where(r =>
+                r.Members.Any(m => ageCategories.Contains(m.AgeCategory)));
 
         return await query
             .OrderBy(r => r.FamilyUnit.Name)
