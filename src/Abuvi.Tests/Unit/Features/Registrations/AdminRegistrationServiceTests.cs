@@ -72,11 +72,11 @@ public class AdminRegistrationServiceTests
         };
         var totals = new AdminRegistrationTotals(1, 3, 900m, 200m, 700m);
 
-        _repo.GetAdminPagedAsync(CampEditionId, 1, 20, null, null, null, null, Arg.Any<CancellationToken>())
+        _repo.GetAdminPagedAsync(CampEditionId, 1, 20, null, null, null, null, null, null, Arg.Any<CancellationToken>())
             .Returns((projections, 1, totals));
 
         // Act
-        var result = await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, CancellationToken.None);
+        var result = await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, null, CancellationToken.None);
 
         // Assert
         result.Items.Should().HaveCount(1);
@@ -97,7 +97,7 @@ public class AdminRegistrationServiceTests
             .Returns((CampEdition?)null);
 
         // Act
-        var act = () => _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, CancellationToken.None);
+        var act = () => _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, null, CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();
@@ -109,11 +109,11 @@ public class AdminRegistrationServiceTests
         // Arrange
         var edition = CreateEdition();
         _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
-        _repo.GetAdminPagedAsync(CampEditionId, 1, 100, null, null, null, null, Arg.Any<CancellationToken>())
+        _repo.GetAdminPagedAsync(CampEditionId, 1, 100, null, null, null, null, null, null, Arg.Any<CancellationToken>())
             .Returns((new List<AdminRegistrationProjection>(), 0, new AdminRegistrationTotals(0, 0, 0, 0, 0)));
 
         // Act
-        var result = await _sut.GetAdminListAsync(CampEditionId, -5, 500, null, null, null, null, CancellationToken.None);
+        var result = await _sut.GetAdminListAsync(CampEditionId, -5, 500, null, null, null, null, null, null, CancellationToken.None);
 
         // Assert
         result.Page.Should().Be(1);
@@ -126,11 +126,11 @@ public class AdminRegistrationServiceTests
         // Arrange
         var edition = CreateEdition();
         _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
-        _repo.GetAdminPagedAsync(CampEditionId, 1, 20, null, null, Arg.Any<CancellationToken>())
+        _repo.GetAdminPagedAsync(CampEditionId, 1, 20, null, null, null, null, null, null, Arg.Any<CancellationToken>())
             .Returns((new List<AdminRegistrationProjection>(), 0, new AdminRegistrationTotals(0, 0, 0, 0, 0)));
 
         // Act
-        var result = await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, CancellationToken.None);
+        var result = await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, null, CancellationToken.None);
 
         // Assert
         result.Items.Should().BeEmpty();

@@ -53,7 +53,7 @@ public class RegistrationsExportServiceTests
             .Returns((CampEdition?)null);
 
         var act = () => _sut.ExportToCsvAsync(
-            CampEditionId, null, null, null, null, CancellationToken.None);
+            CampEditionId, null, null, null, null, null, null, CancellationToken.None);
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
@@ -66,11 +66,11 @@ public class RegistrationsExportServiceTests
             .GetByCampEditionAsync(CampEditionId, activeOnly: true, Arg.Any<CancellationToken>())
             .Returns(new List<CampEditionExtra>());
         _repo.GetAllForExportAsync(
-                CampEditionId, null, null, null, null, Arg.Any<CancellationToken>())
+                CampEditionId, null, null, null, null, null, null, Arg.Any<CancellationToken>())
             .Returns(new List<Registration>());
 
         var (content, fileName) = await _sut.ExportToCsvAsync(
-            CampEditionId, null, null, null, null, CancellationToken.None);
+            CampEditionId, null, null, null, null, null, null, CancellationToken.None);
 
         var text = Encoding.UTF8.GetString(content).TrimStart('﻿');
         var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
@@ -97,11 +97,11 @@ public class RegistrationsExportServiceTests
             new() { CampEditionExtraId = extraWithInput.Id, Quantity = 1, UserInput = "M", CampEditionExtra = extraWithInput }
         };
         _repo.GetAllForExportAsync(
-                CampEditionId, null, null, null, null, Arg.Any<CancellationToken>())
+                CampEditionId, null, null, null, null, null, null, Arg.Any<CancellationToken>())
             .Returns(new List<Registration> { registration });
 
         var (content, _) = await _sut.ExportToCsvAsync(
-            CampEditionId, null, null, null, null, CancellationToken.None);
+            CampEditionId, null, null, null, null, null, null, CancellationToken.None);
 
         var text = Encoding.UTF8.GetString(content).TrimStart('﻿');
         var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
@@ -111,7 +111,7 @@ public class RegistrationsExportServiceTests
         lines[0].Should().Contain("Camiseta - Detalle");
         lines[1].Should().Contain(",2,");
         lines[1].Should().Contain(",1,");
-        lines[1].Should().Contain(",M,");
+        lines[1].Should().Contain(",M");
     }
 
     [Fact]
@@ -125,11 +125,11 @@ public class RegistrationsExportServiceTests
         var registration = BuildRegistration();
         registration.Notes = "=HYPERLINK(\"evil.com\",\"click\")";
         _repo.GetAllForExportAsync(
-                CampEditionId, null, null, null, null, Arg.Any<CancellationToken>())
+                CampEditionId, null, null, null, null, null, null, Arg.Any<CancellationToken>())
             .Returns(new List<Registration> { registration });
 
         var (content, _) = await _sut.ExportToCsvAsync(
-            CampEditionId, null, null, null, null, CancellationToken.None);
+            CampEditionId, null, null, null, null, null, null, CancellationToken.None);
 
         var text = Encoding.UTF8.GetString(content).TrimStart('﻿');
         text.Should().NotContain(",=HYPERLINK");
@@ -145,37 +145,43 @@ public class RegistrationsExportServiceTests
             .GetByCampEditionAsync(CampEditionId, activeOnly: true, Arg.Any<CancellationToken>())
             .Returns(new List<CampEditionExtra>());
         _repo.GetAllForExportAsync(
-                CampEditionId, null, null, null, Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+                CampEditionId, null, null, null, Arg.Any<IReadOnlyList<Guid>>(), null, null, Arg.Any<CancellationToken>())
             .Returns(new List<Registration>());
 
         await _sut.ExportToCsvAsync(
-            CampEditionId, null, null, null, new[] { extraId }, CancellationToken.None);
+            CampEditionId, null, null, null, new[] { extraId }, null, null, CancellationToken.None);
 
         await _repo.Received(1).GetAllForExportAsync(
             CampEditionId, null, null, null,
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(extraId)),
+            null, null,
             Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task ExportToCsvAsync_WithAccommodationTypeFilter_PassesFilterToRepository()
+    public async Task ExportToCsvAsync_WithAccommodationPreferenceFilter_PassesFilterToRepository()
     {
         SetupEdition();
+        var accommodationId = Guid.NewGuid();
+        var filter = new AccommodationPreferenceFilter(accommodationId, 1);
         _extrasDefinitionRepo
             .GetByCampEditionAsync(CampEditionId, activeOnly: true, Arg.Any<CancellationToken>())
             .Returns(new List<CampEditionExtra>());
         _repo.GetAllForExportAsync(
-                CampEditionId, null, null, Arg.Any<IReadOnlyList<AccommodationType>>(), null, Arg.Any<CancellationToken>())
+                CampEditionId, null, null,
+                Arg.Any<IReadOnlyList<AccommodationPreferenceFilter>>(),
+                null, null, null, Arg.Any<CancellationToken>())
             .Returns(new List<Registration>());
 
         await _sut.ExportToCsvAsync(
             CampEditionId, null, null,
-            new[] { AccommodationType.Lodge }, null, CancellationToken.None);
+            new[] { filter }, null, null, null, CancellationToken.None);
 
         await _repo.Received(1).GetAllForExportAsync(
             CampEditionId, null, null,
-            Arg.Is<IReadOnlyList<AccommodationType>>(types => types.Contains(AccommodationType.Lodge)),
-            null,
+            Arg.Is<IReadOnlyList<AccommodationPreferenceFilter>>(f =>
+                f.Count == 1 && f[0].AccommodationId == accommodationId && f[0].PreferenceOrder == 1),
+            null, null, null,
             Arg.Any<CancellationToken>());
     }
 

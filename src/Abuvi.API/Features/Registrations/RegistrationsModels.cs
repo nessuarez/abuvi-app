@@ -348,6 +348,12 @@ public record AdminEditRegistrationRequest(
     bool? HasPet
 );
 
+/// <summary>
+/// Represents an (accommodation, preference position) filter pair.
+/// Multiple pairs are AND-combined: each pair must independently match a preference on the registration.
+/// </summary>
+public record AccommodationPreferenceFilter(Guid AccommodationId, int PreferenceOrder);
+
 // ── Mapping Extensions ────────────────────────────────────────────────────────
 
 public static class RegistrationMappingExtensions
