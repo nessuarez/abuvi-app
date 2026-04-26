@@ -395,6 +395,8 @@ public static class RegistrationsEndpoints
         [FromQuery] Guid[]? extraIds = null,
         [FromQuery] string[]? attendancePeriods = null,
         [FromQuery] string[]? ageCategories = null,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] string? sortDirection = null,
         CancellationToken ct = default)
     {
         try
@@ -409,12 +411,19 @@ public static class RegistrationsEndpoints
                 .Select(c => Enum.TryParse<AgeCategory>(c, true, out var parsed) ? parsed : (AgeCategory?)null)
                 .Where(c => c.HasValue).Select(c => c!.Value).Distinct().ToList();
 
+            var parsedSortBy = sortBy?.ToLowerInvariant() == "familyname"
+                ? AdminRegistrationSortBy.FamilyName
+                : AdminRegistrationSortBy.CreatedAt;
+
+            var sortDescending = sortDirection?.ToLowerInvariant() != "asc";
+
             var result = await service.GetAdminListAsync(
                 campEditionId, page, pageSize, search, status,
                 accommodationPreferences,
                 extraIds?.Distinct().ToList(),
                 parsedAttendancePeriods?.Count > 0 ? parsedAttendancePeriods : null,
                 parsedAgeCategories?.Count > 0 ? parsedAgeCategories : null,
+                parsedSortBy, sortDescending,
                 ct);
             return TypedResults.Ok(ApiResponse<AdminRegistrationListResponse>.Ok(result));
         }
