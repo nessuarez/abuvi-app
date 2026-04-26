@@ -704,6 +704,8 @@ public class RegistrationsService(
         IReadOnlyList<Guid>? extraIds,
         IReadOnlyList<AttendancePeriod>? attendancePeriods,
         IReadOnlyList<AgeCategory>? ageCategories,
+        AdminRegistrationSortBy sortBy,
+        bool sortDescending,
         CancellationToken ct)
     {
         var edition = await campEditionsRepo.GetByIdAsync(campEditionId, ct)
@@ -714,7 +716,8 @@ public class RegistrationsService(
 
         var (items, totalCount, totals) = await registrationsRepo.GetAdminPagedAsync(
             campEditionId, page, pageSize, search, status,
-            accommodationPreferences, extraIds, attendancePeriods, ageCategories, ct);
+            accommodationPreferences, extraIds, attendancePeriods, ageCategories,
+            sortBy, sortDescending, ct);
 
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
 
@@ -728,7 +731,9 @@ public class RegistrationsService(
                 p.TotalAmount,
                 p.AmountPaid,
                 p.TotalAmount - p.AmountPaid,
-                p.CreatedAt
+                p.CreatedAt,
+                p.AttendancePeriods,
+                p.AccommodationPreferences
             )).ToList(),
             TotalCount: totalCount,
             Page: page,
