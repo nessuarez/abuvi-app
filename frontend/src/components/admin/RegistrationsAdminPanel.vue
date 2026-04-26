@@ -18,8 +18,10 @@ import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
-import type { DataTablePageEvent, DataTableRowClickEvent } from 'primevue/datatable'
+import type { DataTablePageEvent, DataTableRowClickEvent, DataTableSortEvent } from 'primevue/datatable'
 import type { RegistrationStatus, AccommodationPreferenceFilter, AttendancePeriod, AgeCategory } from '@/types/registration'
+import type { CampEditionStatus, AccommodationType } from '@/types/camp-edition'
+import { formatAttendancePeriods } from '@/utils/registration'
 
 const router = useRouter()
 const toast = useToast()
@@ -39,12 +41,19 @@ const selectedAccommodationPreferenceKeys = ref<string[]>([])
 const selectedExtraIds = ref<string[]>([])
 const selectedAttendancePeriods = ref<AttendancePeriod[]>([])
 const selectedAgeCategories = ref<AgeCategory[]>([])
+const sortField = ref<string>('createdAt')
+const sortOrder = ref<1 | -1>(-1)
 
 const campEditionOptions = computed(() =>
   allEditions.value.map((e) => ({
     label: `${e.name ?? 'Campamento'} ${e.year}`,
-    value: e.id
+    value: e.id,
+    status: e.status,
   }))
+)
+
+const selectedEditionOption = computed(() =>
+  campEditionOptions.value.find(o => o.value === selectedEditionId.value) ?? null
 )
 
 const statusOptions = [
@@ -117,6 +126,38 @@ const statusLabel = (status: RegistrationStatus): string => {
   return map[status] ?? status
 }
 
+const ACCOMMODATION_ICON: Record<AccommodationType, string> = {
+  Lodge: 'pi pi-building',
+  Bungalow: 'pi pi-home',
+  Tent: 'pi pi-sun',
+  Caravan: 'pi pi-car',
+  Motorhome: 'pi pi-truck',
+}
+
+const ACCOMMODATION_LABEL: Record<AccommodationType, string> = {
+  Lodge: 'Albergue',
+  Bungalow: 'Bungalow',
+  Tent: 'Tienda',
+  Caravan: 'Caravana',
+  Motorhome: 'Autocaravana',
+}
+
+const EDITION_STATUS_LABEL: Record<CampEditionStatus, string> = {
+  Proposed: 'Propuesta',
+  Draft: 'Borrador',
+  Open: 'Abierto',
+  Closed: 'Cerrado',
+  Completed: 'Completado',
+}
+
+const EDITION_STATUS_SEVERITY: Record<CampEditionStatus, string> = {
+  Proposed: 'secondary',
+  Draft: 'warn',
+  Open: 'success',
+  Closed: 'danger',
+  Completed: 'info',
+}
+
 const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
 
@@ -129,6 +170,8 @@ const formatDate = (dateStr: string): string =>
 
 const loadRegistrations = (page = 1) => {
   if (!selectedEditionId.value) return
+  const apiSortBy = sortField.value === 'familyUnit.name' ? 'familyName' : 'createdAt'
+  const apiSortDirection = sortOrder.value === 1 ? 'asc' : 'desc'
   fetchAdminRegistrations(selectedEditionId.value, {
     page,
     pageSize: 20,
@@ -144,6 +187,8 @@ const loadRegistrations = (page = 1) => {
     ageCategories: selectedAgeCategories.value.length > 0
       ? selectedAgeCategories.value
       : undefined,
+    sortBy: apiSortBy,
+    sortDirection: apiSortDirection,
   })
 }
 
@@ -158,6 +203,8 @@ watch(selectedEditionId, (newId) => {
   selectedExtraIds.value = []
   selectedAttendancePeriods.value = []
   selectedAgeCategories.value = []
+  sortField.value = 'createdAt'
+  sortOrder.value = -1
   if (newId) fetchEditionFilterOptions(newId)
   loadRegistrations(1)
 })
@@ -175,6 +222,12 @@ watch(selectedAgeCategories, () => loadRegistrations(1))
 
 const onPage = (event: DataTablePageEvent) => {
   loadRegistrations(event.page + 1)
+}
+
+const onSort = (event: DataTableSortEvent) => {
+  sortField.value = String(event.sortField ?? 'createdAt')
+  sortOrder.value = (event.sortOrder as 1 | -1) ?? -1
+  loadRegistrations(1)
 }
 
 const onRowClick = (event: DataTableRowClickEvent) => {
@@ -208,8 +261,17 @@ const handleExportCsv = async () => {
 
 onMounted(async () => {
   await fetchAllEditions()
-  if (allEditions.value.length > 0) {
-    const openEdition = allEditions.value.find((e) => e.status === 'Open')
+  if (allEditions.value.length === 0) return
+
+  const today = new Date().toISOString().slice(0, 10)
+  const upcoming = allEditions.value
+    .filter(e => (e.status === 'Open' || e.status === 'Draft') && e.startDate >= today)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))
+
+  if (upcoming.length > 0) {
+    selectedEditionId.value = upcoming[0].id
+  } else {
+    const openEdition = allEditions.value.find(e => e.status === 'Open')
     selectedEditionId.value = openEdition?.id ?? allEditions.value[0].id
   }
 })
@@ -237,13 +299,35 @@ onMounted(async () => {
         v-model="selectedEditionId"
         :options="campEditionOptions"
         :loading="editionsLoading"
-        optionLabel="label"
-        optionValue="value"
+        option-label="label"
+        option-value="value"
         placeholder="Seleccionar edición..."
         class="w-80"
         data-testid="edition-selector"
         aria-label="Seleccionar edición de campamento"
-      />
+      >
+        <template #option="{ option }">
+          <div class="flex items-center gap-2">
+            <span>{{ option.label }}</span>
+            <Tag
+              :value="EDITION_STATUS_LABEL[option.status as CampEditionStatus]"
+              :severity="EDITION_STATUS_SEVERITY[option.status as CampEditionStatus]"
+              class="text-xs"
+            />
+          </div>
+        </template>
+        <template #value="{ value }">
+          <div v-if="value && selectedEditionOption" class="flex items-center gap-2">
+            <span>{{ selectedEditionOption.label }}</span>
+            <Tag
+              :value="EDITION_STATUS_LABEL[selectedEditionOption.status as CampEditionStatus]"
+              :severity="EDITION_STATUS_SEVERITY[selectedEditionOption.status as CampEditionStatus]"
+              class="text-xs"
+            />
+          </div>
+          <span v-else class="text-gray-400">Seleccionar edición...</span>
+        </template>
+      </Select>
     </div>
 
     <!-- Filters row -->
@@ -350,12 +434,15 @@ onMounted(async () => {
       :rows="20"
       :total-records="totalCount"
       striped-rows
+      :sort-field="sortField"
+      :sort-order="sortOrder"
       class="rounded-lg cursor-pointer"
+      data-testid="registrations-table"
       @page="onPage"
       @row-click="onRowClick"
-      data-testid="registrations-table"
+      @sort="onSort"
     >
-      <Column field="familyUnit.name" header="Familia">
+      <Column field="familyUnit.name" header="Familia" sortable>
         <template #body="{ data }">
           <span class="font-medium">{{ data.familyUnit.name }}</span>
         </template>
@@ -367,14 +454,30 @@ onMounted(async () => {
           </span>
         </template>
       </Column>
-      <Column header="Email">
-        <template #body="{ data }">
-          <span class="text-sm text-gray-600">{{ data.representative.email }}</span>
-        </template>
-      </Column>
       <Column header="Estado">
         <template #body="{ data }">
           <Tag :value="statusLabel(data.status)" :severity="statusSeverity(data.status)" />
+        </template>
+      </Column>
+      <Column header="Período">
+        <template #body="{ data }">
+          <span class="text-sm font-mono text-gray-700">
+            {{ formatAttendancePeriods(data.attendancePeriods) }}
+          </span>
+        </template>
+      </Column>
+      <Column header="Aloj.">
+        <template #body="{ data }">
+          <div class="flex gap-1">
+            <span
+              v-for="pref in data.accommodationPreferences"
+              :key="pref.preferenceOrder"
+              v-tooltip.top="`${pref.preferenceOrder}ª opción: ${pref.accommodationName} (${ACCOMMODATION_LABEL[pref.accommodationType as AccommodationType]})`"
+              class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-600 cursor-default"
+            >
+              <i :class="ACCOMMODATION_ICON[pref.accommodationType as AccommodationType]" class="text-xs" />
+            </span>
+          </div>
         </template>
       </Column>
       <Column field="memberCount" header="Miembros">
@@ -399,7 +502,7 @@ onMounted(async () => {
           </span>
         </template>
       </Column>
-      <Column header="Creación">
+      <Column field="createdAt" header="Creación" sortable>
         <template #body="{ data }">
           <span class="text-sm text-gray-600">{{ formatDate(data.createdAt) }}</span>
         </template>
@@ -410,7 +513,7 @@ onMounted(async () => {
         <Row>
           <Column
             :footer="`Total: ${totals?.totalRegistrations ?? 0} inscripciones`"
-            :colspan="4"
+            :colspan="5"
             footerClass="font-semibold text-gray-900"
           />
           <Column

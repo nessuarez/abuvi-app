@@ -143,6 +143,30 @@ describe('useAdminRegistrations', () => {
       expect(url).not.toContain('ageCategories')
     })
 
+    it('passes sortBy and sortDirection as query params when provided', async () => {
+      vi.mocked(api.get).mockResolvedValueOnce(mockListResponse)
+
+      const { fetchAdminRegistrations } = useAdminRegistrations()
+
+      await fetchAdminRegistrations(EDITION_ID, { sortBy: 'familyName', sortDirection: 'asc' })
+
+      const url = vi.mocked(api.get).mock.calls[0][0] as string
+      expect(url).toContain('sortBy=familyName')
+      expect(url).toContain('sortDirection=asc')
+    })
+
+    it('omits sortBy and sortDirection when not provided', async () => {
+      vi.mocked(api.get).mockResolvedValueOnce(mockListResponse)
+
+      const { fetchAdminRegistrations } = useAdminRegistrations()
+
+      await fetchAdminRegistrations(EDITION_ID, {})
+
+      const url = vi.mocked(api.get).mock.calls[0][0] as string
+      expect(url).not.toContain('sortBy')
+      expect(url).not.toContain('sortDirection')
+    })
+
     it('updates pagination state from params', async () => {
       vi.mocked(api.get).mockResolvedValueOnce(mockListResponse)
 
