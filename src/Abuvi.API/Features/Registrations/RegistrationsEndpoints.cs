@@ -3,6 +3,7 @@ using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Common.Filters;
 using Abuvi.API.Common.Models;
 using Abuvi.API.Common.Extensions;
+using Abuvi.API.Features.Camps;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Abuvi.API.Features.Registrations;
@@ -100,6 +101,12 @@ public static class RegistrationsEndpoints
             .WithTags("Registrations Admin")
             .WithOpenApi()
             .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"));
+
+        adminListGroup.MapGet("/export/csv", ExportRegistrationsToCsv)
+            .WithName("ExportRegistrationsToCsv")
+            .WithSummary("Export registrations for a camp edition as CSV (Admin/Board only)")
+            .Produces(200)
+            .Produces(401).Produces(403).Produces(404);
 
         adminListGroup.MapGet("/", GetAdminRegistrations)
             .WithName("GetAdminRegistrations")
@@ -383,17 +390,102 @@ public static class RegistrationsEndpoints
         [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null,
         [FromQuery] string? status = null,
+        [FromQuery] Guid[]? accommodationIds = null,
+        [FromQuery] int[]? accommodationPreferenceOrders = null,
+        [FromQuery] Guid[]? extraIds = null,
+        [FromQuery] string[]? attendancePeriods = null,
+        [FromQuery] string[]? ageCategories = null,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] string? sortDirection = null,
         CancellationToken ct = default)
     {
         try
         {
-            var result = await service.GetAdminListAsync(campEditionId, page, pageSize, search, status, ct);
+            var accommodationPreferences = BuildAccommodationPreferences(accommodationIds, accommodationPreferenceOrders);
+
+            var parsedAttendancePeriods = attendancePeriods?
+                .Select(p => Enum.TryParse<AttendancePeriod>(p, true, out var parsed) ? parsed : (AttendancePeriod?)null)
+                .Where(p => p.HasValue).Select(p => p!.Value).Distinct().ToList();
+
+            var parsedAgeCategories = ageCategories?
+                .Select(c => Enum.TryParse<AgeCategory>(c, true, out var parsed) ? parsed : (AgeCategory?)null)
+                .Where(c => c.HasValue).Select(c => c!.Value).Distinct().ToList();
+
+            var parsedSortBy = sortBy?.ToLowerInvariant() == "familyname"
+                ? AdminRegistrationSortBy.FamilyName
+                : AdminRegistrationSortBy.CreatedAt;
+
+            var sortDescending = sortDirection?.ToLowerInvariant() != "asc";
+
+            var result = await service.GetAdminListAsync(
+                campEditionId, page, pageSize, search, status,
+                accommodationPreferences,
+                extraIds?.Distinct().ToList(),
+                parsedAttendancePeriods?.Count > 0 ? parsedAttendancePeriods : null,
+                parsedAgeCategories?.Count > 0 ? parsedAgeCategories : null,
+                parsedSortBy, sortDescending,
+                ct);
             return TypedResults.Ok(ApiResponse<AdminRegistrationListResponse>.Ok(result));
         }
         catch (NotFoundException ex)
         {
             return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
         }
+    }
+
+    private static async Task<IResult> ExportRegistrationsToCsv(
+        Guid campEditionId,
+        RegistrationsService service,
+        [FromQuery] string? search = null,
+        [FromQuery] string? status = null,
+        [FromQuery] Guid[]? accommodationIds = null,
+        [FromQuery] int[]? accommodationPreferenceOrders = null,
+        [FromQuery] Guid[]? extraIds = null,
+        [FromQuery] string[]? attendancePeriods = null,
+        [FromQuery] string[]? ageCategories = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var accommodationPreferences = BuildAccommodationPreferences(accommodationIds, accommodationPreferenceOrders);
+
+            var parsedAttendancePeriods = attendancePeriods?
+                .Select(p => Enum.TryParse<AttendancePeriod>(p, true, out var parsed) ? parsed : (AttendancePeriod?)null)
+                .Where(p => p.HasValue).Select(p => p!.Value).Distinct().ToList();
+
+            var parsedAgeCategories = ageCategories?
+                .Select(c => Enum.TryParse<AgeCategory>(c, true, out var parsed) ? parsed : (AgeCategory?)null)
+                .Where(c => c.HasValue).Select(c => c!.Value).Distinct().ToList();
+
+            var (content, fileName) = await service.ExportToCsvAsync(
+                campEditionId, search, status,
+                accommodationPreferences,
+                extraIds?.Distinct().ToList(),
+                parsedAttendancePeriods?.Count > 0 ? parsedAttendancePeriods : null,
+                parsedAgeCategories?.Count > 0 ? parsedAgeCategories : null,
+                ct);
+
+            return Results.File(
+                content,
+                contentType: "text/csv; charset=utf-8",
+                fileDownloadName: fileName);
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static List<AccommodationPreferenceFilter>? BuildAccommodationPreferences(
+        Guid[]? accommodationIds,
+        int[]? preferenceOrders)
+    {
+        if (accommodationIds is not { Length: > 0 }) return null;
+        if (preferenceOrders?.Length != accommodationIds.Length) return null;
+
+        return accommodationIds
+            .Zip(preferenceOrders, (id, order) => new AccommodationPreferenceFilter(id, order))
+            .ToList();
     }
 
     private static async Task<IResult> AdminEditRegistration(

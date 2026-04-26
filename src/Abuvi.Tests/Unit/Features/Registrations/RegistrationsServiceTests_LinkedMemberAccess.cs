@@ -46,9 +46,10 @@ public class RegistrationsServiceTests_LinkedMemberAccess
         var logger = Substitute.For<ILogger<RegistrationsService>>();
         var pricingService = new RegistrationPricingService(settingsRepo);
 
+        var extrasDefinitionRepo = Substitute.For<ICampEditionExtrasRepository>();
         _sut = new RegistrationsService(
             _repo, extrasRepo, accommodationPrefsRepo, _familyUnitsRepo,
-            _editionsRepo, accommodationsRepo, pricingService, emailService,
+            _editionsRepo, accommodationsRepo, extrasDefinitionRepo, pricingService, emailService,
             paymentsService, membershipsRepo, logger);
     }
 

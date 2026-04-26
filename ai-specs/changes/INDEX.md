@@ -132,16 +132,6 @@ Auto-assign sequential member numbers and family numbers, add filtering by membe
 
 ---
 
-### feat-payments-search-filter
-
-**[feat]** · [folder](./feat-payments-search-filter) · **Merged**
-
-Add text search by family name or representative name to the admin payments list, filtering server-side with 300ms debounce and combining with existing status/edition/date filters.
-
-- Backend: [x] | Frontend: [x]
-
----
-
 ### feat-registration-activities
 
 **[feat]** · [folder](./feat-registration-activities) · **Spec only**

@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.RegularExpressions;
 using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Common.Services;
 using Abuvi.API.Features.Camps;
@@ -15,6 +17,7 @@ public class RegistrationsService(
     IFamilyUnitsRepository familyUnitsRepo,
     ICampEditionsRepository campEditionsRepo,
     ICampEditionAccommodationsRepository accommodationsRepo,
+    ICampEditionExtrasRepository extrasDefinitionRepo,
     RegistrationPricingService pricingService,
     IEmailService emailService,
     Payments.IPaymentsService paymentsService,
@@ -696,7 +699,14 @@ public class RegistrationsService(
     }
 
     public async Task<AdminRegistrationListResponse> GetAdminListAsync(
-        Guid campEditionId, int page, int pageSize, string? search, string? status, CancellationToken ct)
+        Guid campEditionId, int page, int pageSize, string? search, string? status,
+        IReadOnlyList<AccommodationPreferenceFilter>? accommodationPreferences,
+        IReadOnlyList<Guid>? extraIds,
+        IReadOnlyList<AttendancePeriod>? attendancePeriods,
+        IReadOnlyList<AgeCategory>? ageCategories,
+        AdminRegistrationSortBy sortBy,
+        bool sortDescending,
+        CancellationToken ct)
     {
         var edition = await campEditionsRepo.GetByIdAsync(campEditionId, ct)
             ?? throw new NotFoundException("Edición de Campamento", campEditionId);
@@ -705,7 +715,9 @@ public class RegistrationsService(
         pageSize = Math.Clamp(pageSize, 1, 100);
 
         var (items, totalCount, totals) = await registrationsRepo.GetAdminPagedAsync(
-            campEditionId, page, pageSize, search, status, ct);
+            campEditionId, page, pageSize, search, status,
+            accommodationPreferences, extraIds, attendancePeriods, ageCategories,
+            sortBy, sortDescending, ct);
 
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
 
@@ -719,7 +731,9 @@ public class RegistrationsService(
                 p.TotalAmount,
                 p.AmountPaid,
                 p.TotalAmount - p.AmountPaid,
-                p.CreatedAt
+                p.CreatedAt,
+                p.AttendancePeriods,
+                p.AccommodationPreferences
             )).ToList(),
             TotalCount: totalCount,
             Page: page,
@@ -934,6 +948,140 @@ public class RegistrationsService(
             "Registration {RegistrationId} deleted by user {UserId} (Admin: {IsAdmin})",
             registrationId, requestingUserId, isAdminOrBoard);
     }
+
+    public async Task<(byte[] Content, string FileName)> ExportToCsvAsync(
+        Guid campEditionId,
+        string? search,
+        string? status,
+        IReadOnlyList<AccommodationPreferenceFilter>? accommodationPreferences,
+        IReadOnlyList<Guid>? extraIds,
+        IReadOnlyList<AttendancePeriod>? attendancePeriods,
+        IReadOnlyList<AgeCategory>? ageCategories,
+        CancellationToken ct)
+    {
+        var edition = await campEditionsRepo.GetByIdAsync(campEditionId, ct)
+            ?? throw new NotFoundException("Edición de Campamento", campEditionId);
+
+        var allExtras = await extrasDefinitionRepo.GetByCampEditionAsync(campEditionId, activeOnly: true, ct);
+        allExtras = [.. allExtras.OrderBy(e => e.SortOrder)];
+
+        var registrations = await registrationsRepo.GetAllForExportAsync(
+            campEditionId, search, status, accommodationPreferences, extraIds, attendancePeriods, ageCategories, ct);
+
+        var csv = new StringBuilder();
+        csv.Append('﻿'); // UTF-8 BOM
+
+        var headers = new List<string>
+        {
+            "ID Inscripción", "Familia", "Representante", "Email", "Teléfono", "Estado",
+            "Nº Miembros", "Miembros",
+            "Preferencia alojamiento 1", "Tipo alojamiento 1",
+            "Preferencia alojamiento 2", "Tipo alojamiento 2",
+            "Preferencia alojamiento 3", "Tipo alojamiento 3",
+            "Necesidades especiales", "Preferencia compañeros", "Tiene mascota", "Notas",
+            "Base (€)", "Extras (€)", "Total (€)", "Pagado (€)", "Pendiente (€)",
+            "Fecha inscripción"
+        };
+        foreach (var extra in allExtras)
+        {
+            headers.Add(extra.Name);
+            if (extra.RequiresUserInput)
+                headers.Add($"{extra.Name} - Detalle");
+        }
+        csv.AppendLine(string.Join(",", headers.Select(EscapeCsvValue)));
+
+        foreach (var r in registrations)
+        {
+            var amountPaid = r.Payments
+                .Where(p => p.Status == PaymentStatus.Completed)
+                .Sum(p => p.Amount);
+            var amountRemaining = r.TotalAmount - amountPaid;
+
+            var prefs = r.AccommodationPreferences.OrderBy(p => p.PreferenceOrder).ToList();
+            var pref1 = prefs.FirstOrDefault(p => p.PreferenceOrder == 1);
+            var pref2 = prefs.FirstOrDefault(p => p.PreferenceOrder == 2);
+            var pref3 = prefs.FirstOrDefault(p => p.PreferenceOrder == 3);
+
+            var members = r.Members.Select(m =>
+                $"{m.FamilyMember.FirstName} {m.FamilyMember.LastName} " +
+                $"({MapAgeCategory(m.AgeCategory)}, {MapAttendancePeriod(m.AttendancePeriod)})"
+            );
+
+            var row = new List<string>
+            {
+                r.Id.ToString(),
+                r.FamilyUnit.Name,
+                $"{r.RegisteredByUser.FirstName} {r.RegisteredByUser.LastName}",
+                r.RegisteredByUser.Email,
+                r.RegisteredByUser.Phone ?? "",
+                MapStatusEs(r.Status),
+                r.Members.Count.ToString(),
+                string.Join("; ", members),
+                pref1?.CampEditionAccommodation.Name ?? "",
+                pref1 is not null ? MapAccommodationTypeEs(pref1.CampEditionAccommodation.AccommodationType) : "",
+                pref2?.CampEditionAccommodation.Name ?? "",
+                pref2 is not null ? MapAccommodationTypeEs(pref2.CampEditionAccommodation.AccommodationType) : "",
+                pref3?.CampEditionAccommodation.Name ?? "",
+                pref3 is not null ? MapAccommodationTypeEs(pref3.CampEditionAccommodation.AccommodationType) : "",
+                r.SpecialNeeds ?? "",
+                r.CampatesPreference ?? "",
+                r.HasPet ? "Sí" : "No",
+                r.Notes ?? "",
+                r.BaseTotalAmount.ToString("F2"),
+                r.ExtrasAmount.ToString("F2"),
+                r.TotalAmount.ToString("F2"),
+                amountPaid.ToString("F2"),
+                amountRemaining.ToString("F2"),
+                r.CreatedAt.ToString("dd/MM/yyyy")
+            };
+
+            foreach (var extra in allExtras)
+            {
+                var selected = r.Extras.FirstOrDefault(e => e.CampEditionExtraId == extra.Id);
+                row.Add((selected?.Quantity ?? 0).ToString());
+                if (extra.RequiresUserInput)
+                    row.Add(selected?.UserInput ?? "");
+            }
+
+            csv.AppendLine(string.Join(",", row.Select(EscapeCsvValue)));
+        }
+
+        var campSlug = Regex.Replace(
+            edition.Camp.Name.ToLower().Normalize(NormalizationForm.FormD), @"[^a-z0-9]+", "-").Trim('-');
+        var fileName = $"inscripciones-{campSlug}-{edition.Year}-{DateTime.UtcNow:yyyy-MM-dd}.csv";
+
+        return (Encoding.UTF8.GetBytes(csv.ToString()), fileName);
+    }
+
+    private static string EscapeCsvValue(string value)
+    {
+        if (value.Length > 0 && "=+-@\t\r".Contains(value[0]))
+            value = " " + value;
+
+        if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
+            value = $"\"{value.Replace("\"", "\"\"")}\"";
+
+        return value;
+    }
+
+    private static string MapStatusEs(RegistrationStatus status) => status switch
+    {
+        RegistrationStatus.Pending => "Pendiente",
+        RegistrationStatus.Confirmed => "Confirmada",
+        RegistrationStatus.Cancelled => "Cancelada",
+        RegistrationStatus.Draft => "Borrador",
+        _ => status.ToString()
+    };
+
+    private static string MapAccommodationTypeEs(AccommodationType type) => type switch
+    {
+        AccommodationType.Lodge => "Albergue",
+        AccommodationType.Tent => "Tienda",
+        AccommodationType.Caravan => "Caravana",
+        AccommodationType.Bungalow => "Bungalow",
+        AccommodationType.Motorhome => "Autocaravana",
+        _ => type.ToString()
+    };
 
     private static CampRegistrationEmailData BuildRegistrationEmailData(
         Registration registration,

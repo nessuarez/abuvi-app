@@ -1,3 +1,5 @@
+import type { AccommodationType } from './camp-edition'
+
 // Registration status and related enums
 export type RegistrationStatus = 'Pending' | 'Confirmed' | 'Cancelled' | 'Draft'
 export type AgeCategory = 'Baby' | 'Child' | 'Adult'
@@ -119,6 +121,12 @@ export interface RegistrationResponse {
 }
 
 // Admin registration list types
+export interface AdminRegistrationAccommodationSummary {
+  accommodationName: string
+  accommodationType: AccommodationType
+  preferenceOrder: number
+}
+
 export interface AdminRegistrationListItem {
   id: string
   familyUnit: { id: string; name: string }
@@ -129,6 +137,8 @@ export interface AdminRegistrationListItem {
   amountPaid: number
   amountRemaining: number
   createdAt: string
+  attendancePeriods: AttendancePeriod[]
+  accommodationPreferences: AdminRegistrationAccommodationSummary[]
 }
 
 export interface AdminRegistrationTotals {
@@ -234,8 +244,6 @@ export interface WizardExtrasSelection {
 
 // === Accommodation Preferences ===
 
-import type { AccommodationType } from './camp-edition'
-
 // Wizard-local state for accommodation preferences
 export interface WizardAccommodationPreference {
   campEditionAccommodationId: string
@@ -259,4 +267,22 @@ export interface AccommodationPreferenceResponse {
   accommodationName: string
   accommodationType: AccommodationType
   preferenceOrder: number
+}
+
+export interface AccommodationPreferenceFilter {
+  accommodationId: string
+  preferenceOrder: 1 | 2 | 3
+}
+
+export interface AdminRegistrationFilters {
+  page?: number
+  pageSize?: number
+  search?: string
+  status?: string
+  accommodationPreferences?: AccommodationPreferenceFilter[]
+  extraIds?: string[]
+  attendancePeriods?: AttendancePeriod[]
+  ageCategories?: AgeCategory[]
+  sortBy?: 'createdAt' | 'familyName'
+  sortDirection?: 'asc' | 'desc'
 }

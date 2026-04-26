@@ -13,11 +13,12 @@ Obtain a step-by-step plan for a task that is ready to start implementing.
 # Process and rules
 
 1. Adopt the role of `ai-specs/.agents/frontend-developer.md`
-2. Analyze the task mentioned in #ticket using the provided source (Trello card URL, local file path, or inline description)
-3. Propose a step-by-step plan for the frontend part, taking into account everything mentioned in the ticket and applying the project's best practices and rules you can find in `/ai-specs/specs`.
-4. Apply the best practices of your role to ensure the developer can be fully autonomous and implement the ticket end-to-end using only your plan.
-5. Do not write code yet; provide only the plan in the output format defined below.
-6. If you are asked to start implementing at some point, make sure the first thing you do is to move to a branch named after the ticket id (if you are not yet there) and follow the process described in the command /develop-frontend.md
+2. **Resolve the spec file**: If `$ARGUMENTS` is provided, use it as the spec source (Trello card URL, local file path, or inline description). If `$ARGUMENTS` is empty, find the most recently modified `.md` file inside `ai-specs/changes/` (search recursively) that is **not** a `*_backend.md` or `*_frontend.md` implementation plan — that is the spec to plan for.
+3. Analyze the task from the resolved spec source
+4. Propose a step-by-step plan for the frontend part, taking into account everything mentioned in the ticket and applying the project's best practices and rules you can find in `/ai-specs/specs`.
+5. Apply the best practices of your role to ensure the developer can be fully autonomous and implement the ticket end-to-end using only your plan.
+6. Do not write code yet; provide only the plan in the output format defined below.
+7. If you are asked to start implementing at some point, make sure the first thing you do is to move to a branch named after the ticket id (if you are not yet there) and follow the process described in the command /develop-frontend.md
 
 # Output format
 

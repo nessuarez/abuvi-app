@@ -13,11 +13,12 @@ Obtain a step-by-step plan for a task that is ready to start implementing.
 # Process and rules
 
 1. Adopt the role of `ai-specs/.agents/backend-developer.md`
-1. Analyze the task mentioned in #ticket using the provided source (Trello card URL, local file path, or inline description)
-2. Propose a step-by-step plan for the backend part, taking into account everything mentioned in the ticket and applying the project's best practices and rules you can find in `/ai-specs/specs`.
-3. Apply the best practices of your role to ensure the developer can be fully autonomous and implement the ticket end-to-end using only your plan.
-4. Do not write code yet; provide only the plan in the output format defined below.
-5. If you are asked to start implementing at some point, make sure the first thing you do is to move to a branch named after the ticket id (if you are not yet there) and follow the process described in the command /develop-backend.md
+2. **Resolve the spec file**: If `$ARGUMENTS` is provided, use it as the spec source (Trello card URL, local file path, or inline description). If `$ARGUMENTS` is empty, find the most recently modified `.md` file inside `ai-specs/changes/` (search recursively) that is **not** a `*_backend.md` or `*_frontend.md` implementation plan — that is the spec to plan for.
+3. Analyze the task from the resolved spec source
+4. Propose a step-by-step plan for the backend part, taking into account everything mentioned in the ticket and applying the project's best practices and rules you can find in `/ai-specs/specs`.
+5. Apply the best practices of your role to ensure the developer can be fully autonomous and implement the ticket end-to-end using only your plan.
+6. Do not write code yet; provide only the plan in the output format defined below.
+7. If you are asked to start implementing at some point, make sure the first thing you do is to move to a branch named after the ticket id (if you are not yet there) and follow the process described in the command /develop-backend.md
 
 # Output format
 
@@ -27,20 +28,25 @@ Follow this template:
 ## Backend Implementation Plan Ticket Template Structure
 
 ### 1. **Header**
+
 - Title: `# Backend Implementation Plan: [TICKET-ID] [Feature Name]`
 
 ### 2. **Overview**
+
 - Brief description of the feature and architecture principles (Vertical Slice Architecture)
 
 ### 3. **Architecture Context**
+
 - Feature slice involved (`src/Abuvi.API/Features/[FeatureName]/`)
 - Files to create/modify within the slice (Endpoints, Models, Service, Repository, Validator)
 - Cross-cutting concerns affected (middleware, filters, shared types)
 
 ### 4. **Implementation Steps**
+
 Detailed steps, typically:
 
 #### **Step 0: Create Feature Branch**
+
 - **Action**: Create and switch to a new feature branch following the development workflow. Check if it exists and if not, create it
 - **Branch Naming**: Follow the project's branch naming convention (`feature/[ticket-id]-backend`, make it required to use this naming, don't allow to keep on the general task [ticket-id] if it exists to separate concerns)
 - **Implementation Steps**:
@@ -51,6 +57,7 @@ Detailed steps, typically:
 - **Notes**: This must be the FIRST step before any code changes. Refer to `ai-specs/specs/backend-standards.mdc` section "Development Workflow" for specific branch naming conventions and workflow rules.
 
 #### **Step N: [Action Name]**
+
 - **File**: Target file path
 - **Action**: What to implement
 - **Function Signature**: Code signature
@@ -59,6 +66,7 @@ Detailed steps, typically:
 - **Implementation Notes**: Technical details
 
 Common steps:
+
 - **Step 1**: Create/Update Entity and EF Core Configuration
 - **Step 2**: Create Request/Response DTOs (records)
 - **Step 3**: Create FluentValidation Validators
@@ -78,6 +86,7 @@ Example of a good structure:
    - Validate request DTO with FluentValidation
 
 #### **Step N+1: Update Technical Documentation**
+
 - **Action**: Review and update technical documentation according to changes made
 - **Implementation Steps**:
   1. **Review Changes**: Analyze all code changes made during implementation
@@ -100,34 +109,42 @@ Example of a good structure:
 - **Notes**: This step is MANDATORY before considering the implementation complete. Do not skip documentation updates.
 
 ### 5. **Implementation Order**
+
 - Numbered list of steps in sequence (must start with Step 0: Create Feature Branch and end with documentation update step)
 
 ### 6. **Testing Checklist**
+
 - Post-implementation verification checklist
 - xUnit test coverage with FluentAssertions
 - Integration tests with WebApplicationFactory (if applicable)
 
 ### 7. **Error Response Format**
+
 - `ApiResponse<T>` envelope structure
 - HTTP status code mapping (200, 201, 204, 400, 404, 409, 500)
 
 ### 8. **Partial Update Support** (if applicable)
+
 - Behavior for partial updates
 
 ### 9. **Dependencies**
+
 - NuGet packages required
 - EF Core migration commands
 
 ### 10. **Notes**
+
 - Important reminders and constraints
 - Business rules
 - Language requirements
 - RGPD/GDPR considerations for sensitive data
 
 ### 11. **Next Steps After Implementation**
+
 - Post-implementation tasks (documentation is already covered in Step N+1, but may include integration, deployment, etc.)
 
 ### 12. **Implementation Verification**
+
 - Final verification checklist:
   - Code Quality (C# analyzers, nullable reference types)
   - Functionality (endpoints return correct status codes)

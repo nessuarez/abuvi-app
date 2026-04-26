@@ -1,4 +1,5 @@
 using Abuvi.API.Data;
+using Abuvi.API.Features.Camps;
 using Microsoft.EntityFrameworkCore;
 
 namespace Abuvi.API.Features.Registrations;
@@ -22,7 +23,25 @@ public interface IRegistrationsRepository
         CancellationToken ct
     );
     Task<(List<AdminRegistrationProjection> Items, int TotalCount, AdminRegistrationTotals Totals)>
-        GetAdminPagedAsync(Guid campEditionId, int page, int pageSize, string? search, string? status, CancellationToken ct);
+        GetAdminPagedAsync(
+            Guid campEditionId, int page, int pageSize,
+            string? search, string? status,
+            IReadOnlyList<AccommodationPreferenceFilter>? accommodationPreferences,
+            IReadOnlyList<Guid>? extraIds,
+            IReadOnlyList<AttendancePeriod>? attendancePeriods,
+            IReadOnlyList<AgeCategory>? ageCategories,
+            AdminRegistrationSortBy sortBy,
+            bool sortDescending,
+            CancellationToken ct);
+    Task<IReadOnlyList<Registration>> GetAllForExportAsync(
+        Guid campEditionId,
+        string? search,
+        string? status,
+        IReadOnlyList<AccommodationPreferenceFilter>? accommodationPreferences,
+        IReadOnlyList<Guid>? extraIds,
+        IReadOnlyList<AttendancePeriod>? attendancePeriods,
+        IReadOnlyList<AgeCategory>? ageCategories,
+        CancellationToken ct);
     Task AddAsync(Registration registration, CancellationToken ct);
     Task UpdateAsync(Registration registration, CancellationToken ct);
     Task AddMembersAsync(IEnumerable<RegistrationMember> members, CancellationToken ct);
@@ -79,7 +98,16 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
             .CountAsync(ct);
 
     public async Task<(List<AdminRegistrationProjection> Items, int TotalCount, AdminRegistrationTotals Totals)>
-        GetAdminPagedAsync(Guid campEditionId, int page, int pageSize, string? search, string? status, CancellationToken ct)
+        GetAdminPagedAsync(
+            Guid campEditionId, int page, int pageSize,
+            string? search, string? status,
+            IReadOnlyList<AccommodationPreferenceFilter>? accommodationPreferences,
+            IReadOnlyList<Guid>? extraIds,
+            IReadOnlyList<AttendancePeriod>? attendancePeriods,
+            IReadOnlyList<AgeCategory>? ageCategories,
+            AdminRegistrationSortBy sortBy,
+            bool sortDescending,
+            CancellationToken ct)
     {
         var query = from r in db.Registrations.AsNoTracking()
                     join fu in db.FamilyUnits on r.FamilyUnitId equals fu.Id
@@ -118,6 +146,49 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
                 (x.RepresentativeFirstName + " " + x.RepresentativeLastName).ToLower().Contains(term));
         }
 
+        // Accommodation preference filter — AND across pairs (each pair adds one EXISTS clause)
+        if (accommodationPreferences?.Count > 0)
+        {
+            foreach (var f in accommodationPreferences)
+            {
+                var accommodationId = f.AccommodationId;  // capture for LINQ closure
+                var preferenceOrder = f.PreferenceOrder;
+                query = query.Where(x =>
+                    db.RegistrationAccommodationPreferences.Any(p =>
+                        p.RegistrationId == x.Id &&
+                        p.CampEditionAccommodationId == accommodationId &&
+                        p.PreferenceOrder == preferenceOrder));
+            }
+        }
+
+        // Extras filter — EXISTS subquery
+        if (extraIds?.Count > 0)
+        {
+            query = query.Where(x =>
+                db.RegistrationExtras.Any(e =>
+                    e.RegistrationId == x.Id &&
+                    extraIds.Contains(e.CampEditionExtraId) &&
+                    e.Quantity > 0));
+        }
+
+        // Attendance period filter — OR across selected periods
+        if (attendancePeriods?.Count > 0)
+        {
+            query = query.Where(x =>
+                db.RegistrationMembers.Any(m =>
+                    m.RegistrationId == x.Id &&
+                    attendancePeriods.Contains(m.AttendancePeriod)));
+        }
+
+        // Age category filter — OR across selected categories
+        if (ageCategories?.Count > 0)
+        {
+            query = query.Where(x =>
+                db.RegistrationMembers.Any(m =>
+                    m.RegistrationId == x.Id &&
+                    ageCategories.Contains(m.AgeCategory)));
+        }
+
         // Totals (computed AFTER filters, BEFORE pagination)
         var totalCount = await query.CountAsync(ct);
 
@@ -131,21 +202,130 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
                 g.Sum(x => x.TotalAmount - x.AmountPaid)
             )).FirstAsync(ct);
 
-        // Pagination
-        var items = await query
-            .OrderByDescending(x => x.CreatedAt)
+        // Pagination with dynamic sort
+        var ordered = sortBy switch
+        {
+            AdminRegistrationSortBy.FamilyName =>
+                sortDescending
+                    ? query.OrderByDescending(x => x.FamilyUnitName)
+                    : query.OrderBy(x => x.FamilyUnitName),
+            _ =>
+                sortDescending
+                    ? query.OrderByDescending(x => x.CreatedAt)
+                    : query.OrderBy(x => x.CreatedAt),
+        };
+
+        var items = await ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
+
+        // Split queries: fetch attendance periods and accommodation preferences in bulk
+        var ids = items.Select(x => x.Id).ToList();
+
+        var periodsByReg = await db.RegistrationMembers
+            .AsNoTracking()
+            .Where(m => ids.Contains(m.RegistrationId))
+            .GroupBy(m => m.RegistrationId)
+            .Select(g => new
+            {
+                RegistrationId = g.Key,
+                Periods = g.Select(m => m.AttendancePeriod).Distinct().ToList()
+            })
+            .ToDictionaryAsync(x => x.RegistrationId, x => x.Periods, ct);
+
+        var accommodationRows = await db.RegistrationAccommodationPreferences
+            .AsNoTracking()
+            .Where(p => ids.Contains(p.RegistrationId))
+            .OrderBy(p => p.PreferenceOrder)
+            .Select(p => new
+            {
+                p.RegistrationId,
+                AccommodationName = p.CampEditionAccommodation.Name,
+                AccommodationType = p.CampEditionAccommodation.AccommodationType,
+                p.PreferenceOrder
+            })
+            .ToListAsync(ct);
+
+        var accommodationsByReg = accommodationRows
+            .GroupBy(p => p.RegistrationId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(p => new AdminRegistrationAccommodationSummary(
+                    p.AccommodationName, p.AccommodationType, p.PreferenceOrder)).ToList());
 
         var projections = items.Select(x => new AdminRegistrationProjection(
             x.Id, x.FamilyUnitId, x.FamilyUnitName,
             x.RepresentativeUserId, x.RepresentativeFirstName,
             x.RepresentativeLastName, x.RepresentativeEmail,
-            x.Status, x.MemberCount, x.TotalAmount, x.AmountPaid, x.CreatedAt
+            x.Status, x.MemberCount, x.TotalAmount, x.AmountPaid, x.CreatedAt,
+            periodsByReg.GetValueOrDefault(x.Id, []),
+            accommodationsByReg.GetValueOrDefault(x.Id, [])
         )).ToList();
 
         return (projections, totalCount, aggregateTotals);
+    }
+
+    public async Task<IReadOnlyList<Registration>> GetAllForExportAsync(
+        Guid campEditionId,
+        string? search,
+        string? status,
+        IReadOnlyList<AccommodationPreferenceFilter>? accommodationPreferences,
+        IReadOnlyList<Guid>? extraIds,
+        IReadOnlyList<AttendancePeriod>? attendancePeriods,
+        IReadOnlyList<AgeCategory>? ageCategories,
+        CancellationToken ct)
+    {
+        var query = db.Registrations
+            .AsNoTracking()
+            .Where(r => r.CampEditionId == campEditionId)
+            .Include(r => r.FamilyUnit)
+            .Include(r => r.RegisteredByUser)
+            .Include(r => r.Members).ThenInclude(m => m.FamilyMember)
+            .Include(r => r.Extras).ThenInclude(e => e.CampEditionExtra)
+            .Include(r => r.AccommodationPreferences)
+                .ThenInclude(p => p.CampEditionAccommodation)
+            .Include(r => r.Payments)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status) &&
+            Enum.TryParse<RegistrationStatus>(status, true, out var statusEnum))
+            query = query.Where(r => r.Status == statusEnum);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(r =>
+                r.FamilyUnit.Name.ToLower().Contains(term) ||
+                (r.RegisteredByUser.FirstName + " " + r.RegisteredByUser.LastName).ToLower().Contains(term));
+        }
+
+        if (accommodationPreferences?.Count > 0)
+            foreach (var f in accommodationPreferences)
+            {
+                var accommodationId = f.AccommodationId;
+                var preferenceOrder = f.PreferenceOrder;
+                query = query.Where(r =>
+                    r.AccommodationPreferences.Any(p =>
+                        p.CampEditionAccommodationId == accommodationId &&
+                        p.PreferenceOrder == preferenceOrder));
+            }
+
+        if (extraIds?.Count > 0)
+            query = query.Where(r =>
+                r.Extras.Any(e => extraIds.Contains(e.CampEditionExtraId) && e.Quantity > 0));
+
+        if (attendancePeriods?.Count > 0)
+            query = query.Where(r =>
+                r.Members.Any(m => attendancePeriods.Contains(m.AttendancePeriod)));
+
+        if (ageCategories?.Count > 0)
+            query = query.Where(r =>
+                r.Members.Any(m => ageCategories.Contains(m.AgeCategory)));
+
+        return await query
+            .OrderBy(r => r.FamilyUnit.Name)
+            .ToListAsync(ct);
     }
 
     public async Task AddAsync(Registration registration, CancellationToken ct)
