@@ -11,6 +11,16 @@ export const ATTENDANCE_PERIOD_LABELS: Record<AttendancePeriod, string> = {
 export const getAttendancePeriodLabel = (period: AttendancePeriod): string =>
   ATTENDANCE_PERIOD_LABELS[period] ?? period
 
+export const ATTENDANCE_PERIOD_SHORT: Record<AttendancePeriod, string> = {
+  Complete: 'T',
+  FirstWeek: 'S1',
+  SecondWeek: 'S2',
+  WeekendVisit: 'V',
+}
+
+export const formatAttendancePeriods = (periods: AttendancePeriod[]): string =>
+  periods.map(p => ATTENDANCE_PERIOD_SHORT[p] ?? p).join(' · ')
+
 /**
  * Compute the number of days for each attendance period.
  * Uses `halfDate` as the split point when provided; otherwise splits the total at the midpoint.

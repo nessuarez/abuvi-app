@@ -30,6 +30,8 @@ public interface IRegistrationsRepository
             IReadOnlyList<Guid>? extraIds,
             IReadOnlyList<AttendancePeriod>? attendancePeriods,
             IReadOnlyList<AgeCategory>? ageCategories,
+            AdminRegistrationSortBy sortBy,
+            bool sortDescending,
             CancellationToken ct);
     Task<IReadOnlyList<Registration>> GetAllForExportAsync(
         Guid campEditionId,
@@ -103,6 +105,8 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
             IReadOnlyList<Guid>? extraIds,
             IReadOnlyList<AttendancePeriod>? attendancePeriods,
             IReadOnlyList<AgeCategory>? ageCategories,
+            AdminRegistrationSortBy sortBy,
+            bool sortDescending,
             CancellationToken ct)
     {
         var query = from r in db.Registrations.AsNoTracking()
@@ -198,18 +202,65 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
                 g.Sum(x => x.TotalAmount - x.AmountPaid)
             )).FirstAsync(ct);
 
-        // Pagination
-        var items = await query
-            .OrderByDescending(x => x.CreatedAt)
+        // Pagination with dynamic sort
+        var ordered = sortBy switch
+        {
+            AdminRegistrationSortBy.FamilyName =>
+                sortDescending
+                    ? query.OrderByDescending(x => x.FamilyUnitName)
+                    : query.OrderBy(x => x.FamilyUnitName),
+            _ =>
+                sortDescending
+                    ? query.OrderByDescending(x => x.CreatedAt)
+                    : query.OrderBy(x => x.CreatedAt),
+        };
+
+        var items = await ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
+
+        // Split queries: fetch attendance periods and accommodation preferences in bulk
+        var ids = items.Select(x => x.Id).ToList();
+
+        var periodsByReg = await db.RegistrationMembers
+            .AsNoTracking()
+            .Where(m => ids.Contains(m.RegistrationId))
+            .GroupBy(m => m.RegistrationId)
+            .Select(g => new
+            {
+                RegistrationId = g.Key,
+                Periods = g.Select(m => m.AttendancePeriod).Distinct().ToList()
+            })
+            .ToDictionaryAsync(x => x.RegistrationId, x => x.Periods, ct);
+
+        var accommodationRows = await db.RegistrationAccommodationPreferences
+            .AsNoTracking()
+            .Where(p => ids.Contains(p.RegistrationId))
+            .OrderBy(p => p.PreferenceOrder)
+            .Select(p => new
+            {
+                p.RegistrationId,
+                AccommodationName = p.CampEditionAccommodation.Name,
+                AccommodationType = p.CampEditionAccommodation.AccommodationType,
+                p.PreferenceOrder
+            })
+            .ToListAsync(ct);
+
+        var accommodationsByReg = accommodationRows
+            .GroupBy(p => p.RegistrationId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(p => new AdminRegistrationAccommodationSummary(
+                    p.AccommodationName, p.AccommodationType, p.PreferenceOrder)).ToList());
 
         var projections = items.Select(x => new AdminRegistrationProjection(
             x.Id, x.FamilyUnitId, x.FamilyUnitName,
             x.RepresentativeUserId, x.RepresentativeFirstName,
             x.RepresentativeLastName, x.RepresentativeEmail,
-            x.Status, x.MemberCount, x.TotalAmount, x.AmountPaid, x.CreatedAt
+            x.Status, x.MemberCount, x.TotalAmount, x.AmountPaid, x.CreatedAt,
+            periodsByReg.GetValueOrDefault(x.Id, []),
+            accommodationsByReg.GetValueOrDefault(x.Id, [])
         )).ToList();
 
         return (projections, totalCount, aggregateTotals);

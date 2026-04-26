@@ -68,15 +68,18 @@ public class AdminRegistrationServiceTests
         {
             new(Guid.NewGuid(), FamilyUnitId, "García Family", UserId,
                 "Juan", "García", "juan@test.com", RegistrationStatus.Pending,
-                3, 900m, 200m, DateTime.UtcNow)
+                3, 900m, 200m, DateTime.UtcNow,
+                [AttendancePeriod.Complete], [])
         };
         var totals = new AdminRegistrationTotals(1, 3, 900m, 200m, 700m);
 
-        _repo.GetAdminPagedAsync(CampEditionId, 1, 20, null, null, null, null, null, null, Arg.Any<CancellationToken>())
+        _repo.GetAdminPagedAsync(CampEditionId, 1, 20, null, null, null, null, null, null,
+                Arg.Any<AdminRegistrationSortBy>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns((projections, 1, totals));
 
         // Act
-        var result = await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, null, CancellationToken.None);
+        var result = await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, null,
+            AdminRegistrationSortBy.CreatedAt, true, CancellationToken.None);
 
         // Assert
         result.Items.Should().HaveCount(1);
@@ -97,7 +100,8 @@ public class AdminRegistrationServiceTests
             .Returns((CampEdition?)null);
 
         // Act
-        var act = () => _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, null, CancellationToken.None);
+        var act = () => _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, null,
+            AdminRegistrationSortBy.CreatedAt, true, CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();
@@ -109,11 +113,13 @@ public class AdminRegistrationServiceTests
         // Arrange
         var edition = CreateEdition();
         _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
-        _repo.GetAdminPagedAsync(CampEditionId, 1, 100, null, null, null, null, null, null, Arg.Any<CancellationToken>())
+        _repo.GetAdminPagedAsync(CampEditionId, 1, 100, null, null, null, null, null, null,
+                Arg.Any<AdminRegistrationSortBy>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns((new List<AdminRegistrationProjection>(), 0, new AdminRegistrationTotals(0, 0, 0, 0, 0)));
 
         // Act
-        var result = await _sut.GetAdminListAsync(CampEditionId, -5, 500, null, null, null, null, null, null, CancellationToken.None);
+        var result = await _sut.GetAdminListAsync(CampEditionId, -5, 500, null, null, null, null, null, null,
+            AdminRegistrationSortBy.CreatedAt, true, CancellationToken.None);
 
         // Assert
         result.Page.Should().Be(1);
@@ -126,11 +132,13 @@ public class AdminRegistrationServiceTests
         // Arrange
         var edition = CreateEdition();
         _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
-        _repo.GetAdminPagedAsync(CampEditionId, 1, 20, null, null, null, null, null, null, Arg.Any<CancellationToken>())
+        _repo.GetAdminPagedAsync(CampEditionId, 1, 20, null, null, null, null, null, null,
+                Arg.Any<AdminRegistrationSortBy>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns((new List<AdminRegistrationProjection>(), 0, new AdminRegistrationTotals(0, 0, 0, 0, 0)));
 
         // Act
-        var result = await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, null, CancellationToken.None);
+        var result = await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, null,
+            AdminRegistrationSortBy.CreatedAt, true, CancellationToken.None);
 
         // Assert
         result.Items.Should().BeEmpty();
@@ -236,6 +244,147 @@ public class AdminRegistrationServiceTests
 
         // Assert
         await act.Should().NotThrowAsync();
+    }
+
+    // ── Sort parameters ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAdminListAsync_DefaultSort_PassesCreatedAtDescToRepository()
+    {
+        // Arrange
+        var edition = CreateEdition();
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
+        _repo.GetAdminPagedAsync(
+                CampEditionId, 1, 20, null, null, null, null, null, null,
+                AdminRegistrationSortBy.CreatedAt, true, Arg.Any<CancellationToken>())
+            .Returns((new List<AdminRegistrationProjection>(), 0, new AdminRegistrationTotals(0, 0, 0, 0, 0)));
+
+        // Act
+        await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, null,
+            AdminRegistrationSortBy.CreatedAt, true, CancellationToken.None);
+
+        // Assert
+        await _repo.Received(1).GetAdminPagedAsync(
+            CampEditionId, Arg.Any<int>(), Arg.Any<int>(),
+            null, null, null, null, null, null,
+            AdminRegistrationSortBy.CreatedAt, true, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetAdminListAsync_SortByFamilyName_PassesFamilyNameSortToRepository()
+    {
+        // Arrange
+        var edition = CreateEdition();
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
+        _repo.GetAdminPagedAsync(
+                CampEditionId, 1, 20, null, null, null, null, null, null,
+                AdminRegistrationSortBy.FamilyName, false, Arg.Any<CancellationToken>())
+            .Returns((new List<AdminRegistrationProjection>(), 0, new AdminRegistrationTotals(0, 0, 0, 0, 0)));
+
+        // Act
+        await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, null,
+            AdminRegistrationSortBy.FamilyName, false, CancellationToken.None);
+
+        // Assert
+        await _repo.Received(1).GetAdminPagedAsync(
+            CampEditionId, Arg.Any<int>(), Arg.Any<int>(),
+            null, null, null, null, null, null,
+            AdminRegistrationSortBy.FamilyName, false, Arg.Any<CancellationToken>());
+    }
+
+    // ── New projection fields ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAdminListAsync_WhenRegistrationHasMembers_ReturnsAttendancePeriodsInItem()
+    {
+        // Arrange
+        var edition = CreateEdition();
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
+
+        var projections = new List<AdminRegistrationProjection>
+        {
+            new(Guid.NewGuid(), FamilyUnitId, "López Family", UserId,
+                "Ana", "López", "ana@test.com", RegistrationStatus.Confirmed,
+                2, 600m, 600m, DateTime.UtcNow,
+                [AttendancePeriod.FirstWeek, AttendancePeriod.SecondWeek], [])
+        };
+        _repo.GetAdminPagedAsync(
+                CampEditionId, Arg.Any<int>(), Arg.Any<int>(),
+                null, null, null, null, null, null,
+                Arg.Any<AdminRegistrationSortBy>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns((projections, 1, new AdminRegistrationTotals(1, 2, 600m, 600m, 0m)));
+
+        // Act
+        var result = await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, null,
+            AdminRegistrationSortBy.CreatedAt, true, CancellationToken.None);
+
+        // Assert
+        result.Items[0].AttendancePeriods.Should().BeEquivalentTo(
+            [AttendancePeriod.FirstWeek, AttendancePeriod.SecondWeek]);
+    }
+
+    [Fact]
+    public async Task GetAdminListAsync_WhenRegistrationHasAccommodationPreferences_ReturnsPreferencesInItem()
+    {
+        // Arrange
+        var edition = CreateEdition();
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
+
+        var prefs = new List<AdminRegistrationAccommodationSummary>
+        {
+            new("Bungalow Norte", AccommodationType.Bungalow, 1),
+            new("Tienda Sur", AccommodationType.Tent, 2),
+        };
+        var projections = new List<AdminRegistrationProjection>
+        {
+            new(Guid.NewGuid(), FamilyUnitId, "Martín Family", UserId,
+                "Pedro", "Martín", "pedro@test.com", RegistrationStatus.Pending,
+                3, 750m, 0m, DateTime.UtcNow,
+                [AttendancePeriod.Complete], prefs)
+        };
+        _repo.GetAdminPagedAsync(
+                CampEditionId, Arg.Any<int>(), Arg.Any<int>(),
+                null, null, null, null, null, null,
+                Arg.Any<AdminRegistrationSortBy>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns((projections, 1, new AdminRegistrationTotals(1, 3, 750m, 0m, 750m)));
+
+        // Act
+        var result = await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, null,
+            AdminRegistrationSortBy.CreatedAt, true, CancellationToken.None);
+
+        // Assert
+        result.Items[0].AccommodationPreferences.Should().HaveCount(2);
+        result.Items[0].AccommodationPreferences[0].AccommodationName.Should().Be("Bungalow Norte");
+        result.Items[0].AccommodationPreferences[0].AccommodationType.Should().Be(AccommodationType.Bungalow);
+        result.Items[0].AccommodationPreferences[0].PreferenceOrder.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetAdminListAsync_WhenRegistrationHasNoAccommodationPreferences_ReturnsEmptyList()
+    {
+        // Arrange
+        var edition = CreateEdition();
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
+
+        var projections = new List<AdminRegistrationProjection>
+        {
+            new(Guid.NewGuid(), FamilyUnitId, "Ruiz Family", UserId,
+                "María", "Ruiz", "maria@test.com", RegistrationStatus.Pending,
+                1, 300m, 0m, DateTime.UtcNow,
+                [AttendancePeriod.WeekendVisit], [])
+        };
+        _repo.GetAdminPagedAsync(
+                CampEditionId, Arg.Any<int>(), Arg.Any<int>(),
+                null, null, null, null, null, null,
+                Arg.Any<AdminRegistrationSortBy>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns((projections, 1, new AdminRegistrationTotals(1, 1, 300m, 0m, 300m)));
+
+        // Act
+        var result = await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, null,
+            AdminRegistrationSortBy.CreatedAt, true, CancellationToken.None);
+
+        // Assert
+        result.Items[0].AccommodationPreferences.Should().BeEmpty();
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

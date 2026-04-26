@@ -287,6 +287,14 @@ public record AccommodationPreferenceResponse(
 
 // ── Admin DTOs ───────────────────────────────────────────────────────────────
 
+public enum AdminRegistrationSortBy { CreatedAt, FamilyName }
+
+public record AdminRegistrationAccommodationSummary(
+    string AccommodationName,
+    AccommodationType AccommodationType,
+    int PreferenceOrder
+);
+
 public record AdminRegistrationListResponse(
     List<AdminRegistrationListItem> Items,
     int TotalCount,
@@ -305,7 +313,9 @@ public record AdminRegistrationListItem(
     decimal TotalAmount,
     decimal AmountPaid,
     decimal AmountRemaining,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    List<AttendancePeriod> AttendancePeriods,
+    List<AdminRegistrationAccommodationSummary> AccommodationPreferences
 );
 
 public record RepresentativeSummary(
@@ -335,7 +345,9 @@ public record AdminRegistrationProjection(
     int MemberCount,
     decimal TotalAmount,
     decimal AmountPaid,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    List<AttendancePeriod> AttendancePeriods,
+    List<AdminRegistrationAccommodationSummary> AccommodationPreferences
 );
 
 public record AdminEditRegistrationRequest(
