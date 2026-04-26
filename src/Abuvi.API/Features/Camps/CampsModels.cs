@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Abuvi.API.Features.MediaItems;
 
 namespace Abuvi.API.Features.Camps;
 
@@ -373,6 +374,7 @@ public class CampEditionAccommodation
     // Navigation
     public CampEdition CampEdition { get; set; } = null!;
     public AccommodationZone? Zone { get; set; }
+    public ICollection<AccommodationFeatureAssignment> FeatureAssignments { get; set; } = [];
 }
 
 // ── Camp Edition Accommodations DTOs ────────────────────────────────────────
@@ -390,6 +392,7 @@ public record CampEditionAccommodationResponse(
     int FirstChoiceCount,
     Guid? ZoneId,
     string? ZoneName,
+    IReadOnlyList<AccommodationFeatureResponse> Features,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );
@@ -399,6 +402,7 @@ public record CreateCampEditionAccommodationRequest(
     AccommodationType AccommodationType,
     string? Description,
     int? Capacity,
+    Guid? ZoneId = null,
     int SortOrder = 0
 );
 
@@ -408,6 +412,7 @@ public record UpdateCampEditionAccommodationRequest(
     string? Description,
     int? Capacity,
     bool IsActive,
+    Guid? ZoneId,
     int SortOrder
 );
 
@@ -938,6 +943,8 @@ public class AccommodationZone
     // Navigation
     public CampEdition CampEdition { get; set; } = null!;
     public ICollection<CampEditionAccommodation> Accommodations { get; set; } = [];
+    public ICollection<ZoneFeatureAssignment> FeatureAssignments { get; set; } = [];
+    public ICollection<MediaItem> MediaItems { get; set; } = [];
 }
 
 public record CreateAccommodationZoneRequest(
@@ -967,6 +974,8 @@ public record AccommodationZoneResponse(
     int SortOrder,
     bool IsActive,
     IReadOnlyList<Guid> AccommodationIds,
+    IReadOnlyList<AccommodationFeatureResponse> Features,
+    IReadOnlyList<MediaItemResponse> MediaItems,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );

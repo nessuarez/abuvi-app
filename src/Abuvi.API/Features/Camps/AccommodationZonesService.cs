@@ -1,4 +1,5 @@
 using Abuvi.API.Common.Exceptions;
+using Abuvi.API.Features.MediaItems;
 
 namespace Abuvi.API.Features.Camps;
 
@@ -96,6 +97,8 @@ public class AccommodationZonesService(
             z.SortOrder,
             z.IsActive,
             z.Accommodations.Select(a => a.Id).ToList(),
+            z.FeatureAssignments.Select(fa => fa.Feature.ToResponse()).ToList().AsReadOnly(),
+            z.MediaItems.Select(m => m.ToResponse()).ToList().AsReadOnly(),
             z.CreatedAt,
             z.UpdatedAt
         );

@@ -39,6 +39,9 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Memory> Memories => Set<Memory>();
     public DbSet<MediaItem> MediaItems => Set<MediaItem>();
+    public DbSet<AccommodationFeature> AccommodationFeatures => Set<AccommodationFeature>();
+    public DbSet<AccommodationFeatureAssignment> AccommodationFeatureAssignments => Set<AccommodationFeatureAssignment>();
+    public DbSet<ZoneFeatureAssignment> ZoneFeatureAssignments => Set<ZoneFeatureAssignment>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

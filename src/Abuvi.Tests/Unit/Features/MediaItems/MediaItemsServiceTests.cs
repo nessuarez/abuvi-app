@@ -200,15 +200,15 @@ public class MediaItemsServiceTests
     public async Task GetListAsync_WithContextFilter_DelegatesToRepository()
     {
         // Arrange
-        _repository.GetListAsync(null, null, "camp", null, Arg.Any<CancellationToken>())
+        _repository.GetListAsync(null, null, "camp", null, null, null, Arg.Any<CancellationToken>())
             .Returns(new List<MediaItem>());
 
         // Act
-        var result = await _service.GetListAsync(null, null, "camp", null, CancellationToken.None);
+        var result = await _service.GetListAsync(null, null, "camp", null, null, null, CancellationToken.None);
 
         // Assert
         result.Should().BeEmpty();
-        await _repository.Received(1).GetListAsync(null, null, "camp", null, Arg.Any<CancellationToken>());
+        await _repository.Received(1).GetListAsync(null, null, "camp", null, null, null, Arg.Any<CancellationToken>());
     }
 
     // Helper methods

@@ -6,7 +6,7 @@ namespace Abuvi.API.Features.MediaItems;
 public interface IMediaItemsRepository
 {
     Task<MediaItem?> GetByIdAsync(Guid id, CancellationToken ct);
-    Task<IReadOnlyList<MediaItem>> GetListAsync(int? year, bool? approved, string? context, MediaItemType? type, CancellationToken ct);
+    Task<IReadOnlyList<MediaItem>> GetListAsync(int? year, bool? approved, string? context, MediaItemType? type, Guid? accommodationId, Guid? zoneId, CancellationToken ct);
     Task<IReadOnlyList<MediaItem>> GetByMemoryIdAsync(Guid memoryId, CancellationToken ct);
     Task AddAsync(MediaItem mediaItem, CancellationToken ct);
     Task UpdateAsync(MediaItem mediaItem, CancellationToken ct);
@@ -28,6 +28,8 @@ public class MediaItemsRepository(AbuviDbContext db) : IMediaItemsRepository
         bool? approved,
         string? context,
         MediaItemType? type,
+        Guid? accommodationId,
+        Guid? zoneId,
         CancellationToken ct)
     {
         var query = db.MediaItems
@@ -48,6 +50,12 @@ public class MediaItemsRepository(AbuviDbContext db) : IMediaItemsRepository
 
         if (type.HasValue)
             query = query.Where(m => m.Type == type.Value);
+
+        if (accommodationId.HasValue)
+            query = query.Where(m => m.AccommodationId == accommodationId.Value);
+
+        if (zoneId.HasValue)
+            query = query.Where(m => m.ZoneId == zoneId.Value);
 
         return await query
             .OrderByDescending(m => m.CreatedAt)

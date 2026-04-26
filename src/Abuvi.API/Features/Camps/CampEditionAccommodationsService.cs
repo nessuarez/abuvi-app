@@ -53,6 +53,7 @@ public class CampEditionAccommodationsService(
             AccommodationType = request.AccommodationType,
             Description = request.Description,
             Capacity = request.Capacity,
+            ZoneId = request.ZoneId,
             IsActive = true,
             SortOrder = request.SortOrder,
             CreatedAt = DateTime.UtcNow,
@@ -77,6 +78,7 @@ public class CampEditionAccommodationsService(
         accommodation.Description = request.Description;
         accommodation.Capacity = request.Capacity;
         accommodation.IsActive = request.IsActive;
+        accommodation.ZoneId = request.ZoneId;
         accommodation.SortOrder = request.SortOrder;
         accommodation.UpdatedAt = DateTime.UtcNow;
 
@@ -152,6 +154,7 @@ internal static class CampEditionAccommodationExtensions
             firstChoiceCount,
             a.ZoneId,
             a.Zone?.Name,
+            a.FeatureAssignments.Select(fa => fa.Feature.ToResponse()).ToList().AsReadOnly(),
             a.CreatedAt,
             a.UpdatedAt
         );

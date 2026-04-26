@@ -69,5 +69,10 @@ public class AccommodationZoneConfiguration : IEntityTypeConfiguration<Accommoda
             .WithMany()
             .HasForeignKey(z => z.CampEditionId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(z => z.MediaItems)
+            .WithOne(m => m.Zone)
+            .HasForeignKey(m => m.ZoneId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

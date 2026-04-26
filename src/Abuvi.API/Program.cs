@@ -167,6 +167,11 @@ builder.Services.AddScoped<CampEditionAccommodationsService>();
 builder.Services.AddScoped<IAccommodationZonesRepository, AccommodationZonesRepository>();
 builder.Services.AddScoped<AccommodationZonesService>();
 
+// Accommodation Features
+builder.Services.AddScoped<IAccommodationFeaturesRepository, AccommodationFeaturesRepository>();
+builder.Services.AddScoped<AccommodationFeaturesService>();
+builder.Services.AddScoped<AccommodationFeatureAssignmentService>();
+
 // Accommodation Assignment Proposals
 builder.Services.AddScoped<IAccommodationAssignmentProposalsRepository, AccommodationAssignmentProposalsRepository>();
 builder.Services.AddScoped<AccommodationAssignmentProposalsService>();
@@ -414,6 +419,7 @@ app.MapPaymentsEndpoints();
 app.MapBlobStorageEndpoints();
 app.MapMemoriesEndpoints();
 app.MapMediaItemsEndpoints();
+app.MapAccommodationFeaturesEndpoints();
 
 app.Run();
 

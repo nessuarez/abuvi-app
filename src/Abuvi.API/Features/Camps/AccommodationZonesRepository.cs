@@ -9,6 +9,8 @@ public class AccommodationZonesRepository(AbuviDbContext db) : IAccommodationZon
         => await db.AccommodationZones
             .AsNoTracking()
             .Include(z => z.Accommodations)
+            .Include(z => z.FeatureAssignments).ThenInclude(fa => fa.Feature)
+            .Include(z => z.MediaItems).ThenInclude(m => m.UploadedBy)
             .FirstOrDefaultAsync(z => z.Id == id, ct);
 
     public async Task<List<AccommodationZone>> GetByCampEditionAsync(
@@ -18,6 +20,8 @@ public class AccommodationZonesRepository(AbuviDbContext db) : IAccommodationZon
             .AsNoTracking()
             .Where(z => z.CampEditionId == campEditionId && z.IsActive)
             .Include(z => z.Accommodations)
+            .Include(z => z.FeatureAssignments).ThenInclude(fa => fa.Feature)
+            .Include(z => z.MediaItems).ThenInclude(m => m.UploadedBy)
             .OrderBy(z => z.AccommodationType.ToString())
             .ThenBy(z => z.SortOrder)
             .ThenBy(z => z.Name)

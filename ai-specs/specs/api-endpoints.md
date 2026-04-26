@@ -2563,6 +2563,8 @@ List all active zones for a camp edition, ordered by type then sortOrder.
       "sortOrder": 0,
       "isActive": true,
       "accommodationIds": ["...", "..."],
+      "features": [],
+      "mediaItems": [],
       "createdAt": "...",
       "updatedAt": "..."
     }
@@ -3474,3 +3476,206 @@ Payments must be completed in order: P1 before P2, P2 before P3. Manual payments
 - Manual payments: Always actionable when Pending
 
 **Server-side enforcement:** Uploading proof for a non-actionable payment returns **422 Unprocessable Entity** with message "Debes completar el pago anterior antes de subir un comprobante."
+
+---
+
+## Accommodation Features Endpoints
+
+Manage the global catalogue of accommodation features (characteristics assignable to accommodations or zones, e.g. "WiFi", "Pool").
+
+**Base Path:** `/api/accommodation-features`
+
+**Authorization:** Admin or Board (all endpoints)
+
+---
+
+### GET /api/accommodation-features
+
+List all features in the catalogue.
+
+**Query Parameters:**
+
+- `activeOnly` (optional, boolean): When `true`, returns only active features; when `false`, returns all; when omitted, returns all.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "...",
+      "name": "WiFi",
+      "icon": "wifi",
+      "description": null,
+      "applicabilityLevel": "Any",
+      "isActive": true,
+      "sortOrder": 0,
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/accommodation-features/{id}
+
+Get a single feature by ID.
+
+**Success Response (200 OK):** Returns a single `AccommodationFeatureResponse` object.
+
+**Error Responses:**
+
+- **404 Not Found**: Feature not found
+
+---
+
+### POST /api/accommodation-features
+
+Create a new feature in the catalogue.
+
+**Request Body:**
+
+```json
+{
+  "name": "WiFi",
+  "icon": "wifi",
+  "description": null,
+  "applicabilityLevel": "Any"
+}
+```
+
+**Validation:**
+
+- `name`: Required, max 200 characters, must be unique
+- `icon`: Required, max 100 characters
+- `description`: Optional, max 500 characters
+- `applicabilityLevel`: Required, enum: `Zone` | `Accommodation` | `AccommodationType` | `Any`
+
+**Success Response (201 Created):** Returns created `AccommodationFeatureResponse`.
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **422 Unprocessable Entity**: Feature name already exists
+
+---
+
+### PUT /api/accommodation-features/{id}
+
+Update an existing feature.
+
+**Request Body:**
+
+```json
+{
+  "name": "WiFi de alta velocidad",
+  "icon": "wifi-high",
+  "description": "Fibra óptica disponible en todas las habitaciones",
+  "applicabilityLevel": "Accommodation",
+  "isActive": true,
+  "sortOrder": 1
+}
+```
+
+**Success Response (200 OK):** Returns updated `AccommodationFeatureResponse`.
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **404 Not Found**: Feature not found
+- **422 Unprocessable Entity**: Name already in use by another feature
+
+---
+
+### DELETE /api/accommodation-features/{id}
+
+Delete a feature from the catalogue. Fails if the feature has any active assignments.
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **404 Not Found**: Feature not found
+- **422 Unprocessable Entity**: Feature has active assignments (deactivate instead)
+
+---
+
+## Accommodation Feature Assignment Endpoints
+
+Replace-all endpoints for assigning features to specific accommodations or zones. Each PUT replaces all current assignments for the target entity.
+
+**Authorization:** Admin or Board
+
+---
+
+### PUT /api/camps/editions/{editionId}/accommodations/{accommodationId}/features
+
+Replace all feature assignments for an accommodation.
+
+**Request Body:**
+
+```json
+{
+  "featureIds": ["<uuid1>", "<uuid2>"]
+}
+```
+
+**Validation:**
+
+- All IDs must reference existing, active features
+- Empty array is valid (removes all features)
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "...",
+      "name": "WiFi",
+      "icon": "wifi",
+      "description": null,
+      "applicabilityLevel": "Any",
+      "isActive": true,
+      "sortOrder": 0,
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request**: One or more feature IDs do not exist or are inactive
+- **404 Not Found**: Accommodation not found
+
+---
+
+### PUT /api/camps/editions/{editionId}/accommodation-zones/{zoneId}/features
+
+Replace all feature assignments for an accommodation zone.
+
+**Request Body:**
+
+```json
+{
+  "featureIds": ["<uuid1>", "<uuid2>"]
+}
+```
+
+**Validation:**
+
+- All IDs must reference existing, active features
+- Empty array is valid (removes all features)
+
+**Success Response (200 OK):** Returns list of `AccommodationFeatureResponse` (same shape as accommodation endpoint above).
+
+**Error Responses:**
+
+- **400 Bad Request**: One or more feature IDs do not exist or are inactive
+- **404 Not Found**: Zone not found

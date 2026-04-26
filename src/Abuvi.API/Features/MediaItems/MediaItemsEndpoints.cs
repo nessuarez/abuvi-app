@@ -71,10 +71,12 @@ public static class MediaItemsEndpoints
         [FromQuery] bool? approved,
         [FromQuery] string? context,
         [FromQuery] MediaItemType? type,
+        [FromQuery] Guid? accommodationId,
+        [FromQuery] Guid? zoneId,
         MediaItemsService service,
         CancellationToken ct)
     {
-        var items = await service.GetListAsync(year, approved, context, type, ct);
+        var items = await service.GetListAsync(year, approved, context, type, accommodationId, zoneId, ct);
         return Results.Ok(ApiResponse<IReadOnlyList<MediaItemResponse>>.Ok(items));
     }
 
