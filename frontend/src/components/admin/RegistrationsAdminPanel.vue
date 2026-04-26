@@ -19,8 +19,7 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import type { DataTablePageEvent, DataTableRowClickEvent } from 'primevue/datatable'
-import type { RegistrationStatus } from '@/types/registration'
-import type { AccommodationType } from '@/types/camp-edition'
+import type { RegistrationStatus, AccommodationPreferenceFilter, AttendancePeriod, AgeCategory } from '@/types/registration'
 
 const router = useRouter()
 const toast = useToast()
@@ -36,8 +35,10 @@ const { allEditions, loading: editionsLoading, fetchAllEditions } = useCampEditi
 const selectedEditionId = ref<string | null>(null)
 const searchQuery = ref('')
 const statusFilter = ref<string | null>(null)
-const selectedAccommodationTypes = ref<AccommodationType[]>([])
+const selectedAccommodationPreferenceKeys = ref<string[]>([])
 const selectedExtraIds = ref<string[]>([])
+const selectedAttendancePeriods = ref<AttendancePeriod[]>([])
+const selectedAgeCategories = ref<AgeCategory[]>([])
 
 const campEditionOptions = computed(() =>
   allEditions.value.map((e) => ({
@@ -54,27 +55,43 @@ const statusOptions = [
   { label: 'Borrador', value: 'Draft' }
 ]
 
-const accommodationTypeLabels: Record<AccommodationType, string> = {
-  Lodge: 'Albergue',
-  Caravan: 'Caravana',
-  Tent: 'Tienda',
-  Bungalow: 'Bungalow',
-  Motorhome: 'Autocaravana'
+const PREFERENCE_LABELS: Record<1 | 2 | 3, string> = {
+  1: '1ª opción',
+  2: '2ª opción',
+  3: '3ª opción',
 }
 
-const accommodationTypeOptions = computed(() => {
-  const seen = new Set<AccommodationType>()
-  return editionAccommodations.value
-    .filter(a => {
-      if (seen.has(a.accommodationType)) return false
-      seen.add(a.accommodationType)
-      return true
-    })
-    .map(a => ({
-      label: accommodationTypeLabels[a.accommodationType] ?? a.accommodationType,
-      value: a.accommodationType
+const accommodationPreferenceOptions = computed(() =>
+  ([1, 2, 3] as const).flatMap(order =>
+    editionAccommodations.value.map(a => ({
+      label: `${PREFERENCE_LABELS[order]}: ${a.name}`,
+      value: `${a.id}:${order}`,
     }))
-})
+  )
+)
+
+const selectedAccommodationPreferences = computed<AccommodationPreferenceFilter[]>(() =>
+  selectedAccommodationPreferenceKeys.value.map(key => {
+    const colonIndex = key.lastIndexOf(':')
+    return {
+      accommodationId: key.slice(0, colonIndex),
+      preferenceOrder: Number(key.slice(colonIndex + 1)) as 1 | 2 | 3,
+    }
+  })
+)
+
+const attendancePeriodOptions: { label: string; value: AttendancePeriod }[] = [
+  { label: 'Campamento completo', value: 'Complete' },
+  { label: 'Primera semana',      value: 'FirstWeek' },
+  { label: 'Segunda semana',      value: 'SecondWeek' },
+  { label: 'Fin de semana',       value: 'WeekendVisit' },
+]
+
+const ageCategoryOptions: { label: string; value: AgeCategory }[] = [
+  { label: 'Bebés',   value: 'Baby' },
+  { label: 'Niños',   value: 'Child' },
+  { label: 'Adultos', value: 'Adult' },
+]
 
 const extraOptions = computed(() =>
   editionExtras.value.map(e => ({ label: e.name, value: e.id }))
@@ -117,8 +134,16 @@ const loadRegistrations = (page = 1) => {
     pageSize: 20,
     search: searchQuery.value || undefined,
     status: statusFilter.value || undefined,
-    accommodationTypes: selectedAccommodationTypes.value.length > 0 ? selectedAccommodationTypes.value : undefined,
-    extraIds: selectedExtraIds.value.length > 0 ? selectedExtraIds.value : undefined
+    accommodationPreferences: selectedAccommodationPreferences.value.length > 0
+      ? selectedAccommodationPreferences.value
+      : undefined,
+    extraIds: selectedExtraIds.value.length > 0 ? selectedExtraIds.value : undefined,
+    attendancePeriods: selectedAttendancePeriods.value.length > 0
+      ? selectedAttendancePeriods.value
+      : undefined,
+    ageCategories: selectedAgeCategories.value.length > 0
+      ? selectedAgeCategories.value
+      : undefined,
   })
 }
 
@@ -129,8 +154,10 @@ const debouncedSearch = useDebounceFn(() => {
 watch(selectedEditionId, (newId) => {
   searchQuery.value = ''
   statusFilter.value = null
-  selectedAccommodationTypes.value = []
+  selectedAccommodationPreferenceKeys.value = []
   selectedExtraIds.value = []
+  selectedAttendancePeriods.value = []
+  selectedAgeCategories.value = []
   if (newId) fetchEditionFilterOptions(newId)
   loadRegistrations(1)
 })
@@ -141,13 +168,10 @@ watch(statusFilter, () => {
   loadRegistrations(1)
 })
 
-watch(selectedAccommodationTypes, () => {
-  loadRegistrations(1)
-})
-
-watch(selectedExtraIds, () => {
-  loadRegistrations(1)
-})
+watch(selectedAccommodationPreferenceKeys, () => loadRegistrations(1))
+watch(selectedExtraIds, () => loadRegistrations(1))
+watch(selectedAttendancePeriods, () => loadRegistrations(1))
+watch(selectedAgeCategories, () => loadRegistrations(1))
 
 const onPage = (event: DataTablePageEvent) => {
   loadRegistrations(event.page + 1)
@@ -166,8 +190,16 @@ const handleExportCsv = async () => {
   await exportToCsv(selectedEditionId.value, {
     search: searchQuery.value || undefined,
     status: statusFilter.value || undefined,
-    accommodationTypes: selectedAccommodationTypes.value.length > 0 ? selectedAccommodationTypes.value : undefined,
-    extraIds: selectedExtraIds.value.length > 0 ? selectedExtraIds.value : undefined
+    accommodationPreferences: selectedAccommodationPreferences.value.length > 0
+      ? selectedAccommodationPreferences.value
+      : undefined,
+    extraIds: selectedExtraIds.value.length > 0 ? selectedExtraIds.value : undefined,
+    attendancePeriods: selectedAttendancePeriods.value.length > 0
+      ? selectedAttendancePeriods.value
+      : undefined,
+    ageCategories: selectedAgeCategories.value.length > 0
+      ? selectedAgeCategories.value
+      : undefined,
   })
   if (exportError.value) {
     toast.add({ severity: 'error', summary: 'Error', detail: exportError.value, life: 4000 })
@@ -237,17 +269,18 @@ onMounted(async () => {
         aria-label="Filtrar por estado"
       />
       <MultiSelect
-        v-if="accommodationTypeOptions.length > 0"
-        v-model="selectedAccommodationTypes"
-        :options="accommodationTypeOptions"
+        v-if="accommodationPreferenceOptions.length > 0"
+        v-model="selectedAccommodationPreferenceKeys"
+        :options="accommodationPreferenceOptions"
         optionLabel="label"
         optionValue="value"
         placeholder="Alojamiento"
         display="chip"
-        class="w-56"
+        :showSelectAll="false"
+        class="w-72"
         :loading="filterOptionsLoading"
-        data-testid="accommodation-type-filter"
-        aria-label="Filtrar por tipo de alojamiento"
+        data-testid="accommodation-preference-filter"
+        aria-label="Filtrar por preferencia de alojamiento"
       />
       <MultiSelect
         v-if="extraOptions.length > 0"
@@ -257,10 +290,35 @@ onMounted(async () => {
         optionValue="value"
         placeholder="Extras"
         display="chip"
+        :showSelectAll="false"
         class="w-56"
         :loading="filterOptionsLoading"
         data-testid="extras-filter"
         aria-label="Filtrar por extras"
+      />
+      <MultiSelect
+        v-model="selectedAttendancePeriods"
+        :options="attendancePeriodOptions"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Período"
+        display="chip"
+        :showSelectAll="false"
+        class="w-56"
+        data-testid="attendance-period-filter"
+        aria-label="Filtrar por período de asistencia"
+      />
+      <MultiSelect
+        v-model="selectedAgeCategories"
+        :options="ageCategoryOptions"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Edad"
+        display="chip"
+        :showSelectAll="false"
+        class="w-48"
+        data-testid="age-category-filter"
+        aria-label="Filtrar por categoría de edad"
       />
     </div>
 

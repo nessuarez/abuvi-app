@@ -261,11 +261,18 @@ export interface AccommodationPreferenceResponse {
   preferenceOrder: number
 }
 
+export interface AccommodationPreferenceFilter {
+  accommodationId: string
+  preferenceOrder: 1 | 2 | 3
+}
+
 export interface AdminRegistrationFilters {
   page?: number
   pageSize?: number
   search?: string
   status?: string
-  accommodationTypes?: AccommodationType[]
+  accommodationPreferences?: AccommodationPreferenceFilter[]
   extraIds?: string[]
+  attendancePeriods?: AttendancePeriod[]
+  ageCategories?: AgeCategory[]
 }

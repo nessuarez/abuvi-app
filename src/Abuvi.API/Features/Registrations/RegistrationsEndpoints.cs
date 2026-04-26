@@ -390,23 +390,31 @@ public static class RegistrationsEndpoints
         [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null,
         [FromQuery] string? status = null,
-        [FromQuery] string[]? accommodationTypes = null,
+        [FromQuery] Guid[]? accommodationIds = null,
+        [FromQuery] int[]? accommodationPreferenceOrders = null,
         [FromQuery] Guid[]? extraIds = null,
+        [FromQuery] string[]? attendancePeriods = null,
+        [FromQuery] string[]? ageCategories = null,
         CancellationToken ct = default)
     {
         try
         {
-            var parsedAccommodationTypes = accommodationTypes?
-                .Select(t => Enum.TryParse<AccommodationType>(t, true, out var parsed) ? parsed : (AccommodationType?)null)
-                .Where(t => t.HasValue)
-                .Select(t => t!.Value)
-                .Distinct()
-                .ToList();
+            var accommodationPreferences = BuildAccommodationPreferences(accommodationIds, accommodationPreferenceOrders);
+
+            var parsedAttendancePeriods = attendancePeriods?
+                .Select(p => Enum.TryParse<AttendancePeriod>(p, true, out var parsed) ? parsed : (AttendancePeriod?)null)
+                .Where(p => p.HasValue).Select(p => p!.Value).Distinct().ToList();
+
+            var parsedAgeCategories = ageCategories?
+                .Select(c => Enum.TryParse<AgeCategory>(c, true, out var parsed) ? parsed : (AgeCategory?)null)
+                .Where(c => c.HasValue).Select(c => c!.Value).Distinct().ToList();
 
             var result = await service.GetAdminListAsync(
                 campEditionId, page, pageSize, search, status,
-                parsedAccommodationTypes?.Count > 0 ? parsedAccommodationTypes : null,
+                accommodationPreferences,
                 extraIds?.Distinct().ToList(),
+                parsedAttendancePeriods?.Count > 0 ? parsedAttendancePeriods : null,
+                parsedAgeCategories?.Count > 0 ? parsedAgeCategories : null,
                 ct);
             return TypedResults.Ok(ApiResponse<AdminRegistrationListResponse>.Ok(result));
         }
@@ -421,23 +429,31 @@ public static class RegistrationsEndpoints
         RegistrationsService service,
         [FromQuery] string? search = null,
         [FromQuery] string? status = null,
-        [FromQuery] string[]? accommodationTypes = null,
+        [FromQuery] Guid[]? accommodationIds = null,
+        [FromQuery] int[]? accommodationPreferenceOrders = null,
         [FromQuery] Guid[]? extraIds = null,
+        [FromQuery] string[]? attendancePeriods = null,
+        [FromQuery] string[]? ageCategories = null,
         CancellationToken ct = default)
     {
         try
         {
-            var parsedAccommodationTypes = accommodationTypes?
-                .Select(t => Enum.TryParse<AccommodationType>(t, true, out var parsed) ? parsed : (AccommodationType?)null)
-                .Where(t => t.HasValue)
-                .Select(t => t!.Value)
-                .Distinct()
-                .ToList();
+            var accommodationPreferences = BuildAccommodationPreferences(accommodationIds, accommodationPreferenceOrders);
+
+            var parsedAttendancePeriods = attendancePeriods?
+                .Select(p => Enum.TryParse<AttendancePeriod>(p, true, out var parsed) ? parsed : (AttendancePeriod?)null)
+                .Where(p => p.HasValue).Select(p => p!.Value).Distinct().ToList();
+
+            var parsedAgeCategories = ageCategories?
+                .Select(c => Enum.TryParse<AgeCategory>(c, true, out var parsed) ? parsed : (AgeCategory?)null)
+                .Where(c => c.HasValue).Select(c => c!.Value).Distinct().ToList();
 
             var (content, fileName) = await service.ExportToCsvAsync(
                 campEditionId, search, status,
-                parsedAccommodationTypes?.Count > 0 ? parsedAccommodationTypes : null,
+                accommodationPreferences,
                 extraIds?.Distinct().ToList(),
+                parsedAttendancePeriods?.Count > 0 ? parsedAttendancePeriods : null,
+                parsedAgeCategories?.Count > 0 ? parsedAgeCategories : null,
                 ct);
 
             return Results.File(
@@ -449,6 +465,18 @@ public static class RegistrationsEndpoints
         {
             return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
         }
+    }
+
+    private static List<AccommodationPreferenceFilter>? BuildAccommodationPreferences(
+        Guid[]? accommodationIds,
+        int[]? preferenceOrders)
+    {
+        if (accommodationIds is not { Length: > 0 }) return null;
+        if (preferenceOrders?.Length != accommodationIds.Length) return null;
+
+        return accommodationIds
+            .Zip(preferenceOrders, (id, order) => new AccommodationPreferenceFilter(id, order))
+            .ToList();
     }
 
     private static async Task<IResult> AdminEditRegistration(
