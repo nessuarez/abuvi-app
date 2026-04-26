@@ -156,6 +156,8 @@ export interface CampEditionAccommodation {
   sortOrder: number
   currentPreferenceCount: number
   firstChoiceCount: number
+  zoneId?: string | null
+  zoneName?: string | null
   createdAt: string
   updatedAt: string
 }
