@@ -5,7 +5,8 @@ import type {
   AdminRegistrationListItem,
   AdminRegistrationTotals,
   AdminRegistrationListResponse,
-  AdminRegistrationFilters
+  AdminRegistrationFilters,
+  AccommodationPreferenceFilter
 } from '@/types/registration'
 import type { CampEditionExtra, CampEditionAccommodation } from '@/types/camp-edition'
 
@@ -37,8 +38,15 @@ export function useAdminRegistrations() {
       })
       if (params.search) queryParams.set('search', params.search)
       if (params.status) queryParams.set('status', params.status)
-      params.accommodationTypes?.forEach(t => queryParams.append('accommodationTypes', t))
+      params.accommodationPreferences?.forEach((f: AccommodationPreferenceFilter) => {
+        queryParams.append('accommodationIds', f.accommodationId)
+        queryParams.append('accommodationPreferenceOrders', String(f.preferenceOrder))
+      })
       params.extraIds?.forEach(id => queryParams.append('extraIds', id))
+      params.attendancePeriods?.forEach(p => queryParams.append('attendancePeriods', p))
+      params.ageCategories?.forEach(c => queryParams.append('ageCategories', c))
+      if (params.sortBy) queryParams.set('sortBy', params.sortBy)
+      if (params.sortDirection) queryParams.set('sortDirection', params.sortDirection)
 
       const response = await api.get<ApiResponse<AdminRegistrationListResponse>>(
         `/camp-editions/${campEditionId}/registrations?${queryParams.toString()}`
@@ -102,8 +110,13 @@ export function useAdminRegistrations() {
       const queryParams = new URLSearchParams()
       if (filters.search) queryParams.set('search', filters.search)
       if (filters.status) queryParams.set('status', filters.status)
-      filters.accommodationTypes?.forEach(t => queryParams.append('accommodationTypes', t))
+      filters.accommodationPreferences?.forEach((f: AccommodationPreferenceFilter) => {
+        queryParams.append('accommodationIds', f.accommodationId)
+        queryParams.append('accommodationPreferenceOrders', String(f.preferenceOrder))
+      })
       filters.extraIds?.forEach(id => queryParams.append('extraIds', id))
+      filters.attendancePeriods?.forEach(p => queryParams.append('attendancePeriods', p))
+      filters.ageCategories?.forEach(c => queryParams.append('ageCategories', c))
 
       const qs = queryParams.toString()
       const response = await api.get(

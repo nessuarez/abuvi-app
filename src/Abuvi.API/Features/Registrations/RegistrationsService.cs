@@ -700,8 +700,12 @@ public class RegistrationsService(
 
     public async Task<AdminRegistrationListResponse> GetAdminListAsync(
         Guid campEditionId, int page, int pageSize, string? search, string? status,
-        IReadOnlyList<AccommodationType>? accommodationTypes,
+        IReadOnlyList<AccommodationPreferenceFilter>? accommodationPreferences,
         IReadOnlyList<Guid>? extraIds,
+        IReadOnlyList<AttendancePeriod>? attendancePeriods,
+        IReadOnlyList<AgeCategory>? ageCategories,
+        AdminRegistrationSortBy sortBy,
+        bool sortDescending,
         CancellationToken ct)
     {
         var edition = await campEditionsRepo.GetByIdAsync(campEditionId, ct)
@@ -712,7 +716,8 @@ public class RegistrationsService(
 
         var (items, totalCount, totals) = await registrationsRepo.GetAdminPagedAsync(
             campEditionId, page, pageSize, search, status,
-            accommodationTypes, extraIds, ct);
+            accommodationPreferences, extraIds, attendancePeriods, ageCategories,
+            sortBy, sortDescending, ct);
 
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
 
@@ -726,7 +731,9 @@ public class RegistrationsService(
                 p.TotalAmount,
                 p.AmountPaid,
                 p.TotalAmount - p.AmountPaid,
-                p.CreatedAt
+                p.CreatedAt,
+                p.AttendancePeriods,
+                p.AccommodationPreferences
             )).ToList(),
             TotalCount: totalCount,
             Page: page,
@@ -946,8 +953,10 @@ public class RegistrationsService(
         Guid campEditionId,
         string? search,
         string? status,
-        IReadOnlyList<AccommodationType>? accommodationTypes,
+        IReadOnlyList<AccommodationPreferenceFilter>? accommodationPreferences,
         IReadOnlyList<Guid>? extraIds,
+        IReadOnlyList<AttendancePeriod>? attendancePeriods,
+        IReadOnlyList<AgeCategory>? ageCategories,
         CancellationToken ct)
     {
         var edition = await campEditionsRepo.GetByIdAsync(campEditionId, ct)
@@ -957,7 +966,7 @@ public class RegistrationsService(
         allExtras = [.. allExtras.OrderBy(e => e.SortOrder)];
 
         var registrations = await registrationsRepo.GetAllForExportAsync(
-            campEditionId, search, status, accommodationTypes, extraIds, ct);
+            campEditionId, search, status, accommodationPreferences, extraIds, attendancePeriods, ageCategories, ct);
 
         var csv = new StringBuilder();
         csv.Append('﻿'); // UTF-8 BOM

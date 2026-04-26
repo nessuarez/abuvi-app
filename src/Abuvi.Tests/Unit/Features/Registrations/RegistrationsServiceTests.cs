@@ -970,4 +970,108 @@ public class RegistrationsServiceTests
         capturedMember.GuardianName.Should().Be("Juan López");
         capturedMember.GuardianDocumentNumber.Should().Be("87654321B");
     }
+
+    // ── GetAdminListAsync ─────────────────────────────────────────────────────
+
+    private static readonly AdminRegistrationTotals EmptyTotals = new(0, 0, 0, 0, 0);
+
+    [Fact]
+    public async Task GetAdminListAsync_WithAccommodationPreferences_PassesFilterToRepository()
+    {
+        // Arrange
+        var accomId = Guid.NewGuid();
+        var filter = new List<AccommodationPreferenceFilter> { new(accomId, 1) };
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>())
+            .Returns(CreateOpenEdition());
+        _repo.GetAdminPagedAsync(
+                CampEditionId, 1, 20, null, null,
+                Arg.Is<IReadOnlyList<AccommodationPreferenceFilter>>(f =>
+                    f.Count == 1 && f[0].AccommodationId == accomId && f[0].PreferenceOrder == 1),
+                null, null, null,
+                Arg.Any<AdminRegistrationSortBy>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns((new List<AdminRegistrationProjection>(), 0, EmptyTotals));
+
+        // Act
+        await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, filter, null, null, null,
+            AdminRegistrationSortBy.CreatedAt, true, CancellationToken.None);
+
+        // Assert
+        await _repo.Received(1).GetAdminPagedAsync(
+            CampEditionId, 1, 20, null, null,
+            Arg.Is<IReadOnlyList<AccommodationPreferenceFilter>>(f =>
+                f.Count == 1 && f[0].AccommodationId == accomId && f[0].PreferenceOrder == 1),
+            null, null, null,
+            Arg.Any<AdminRegistrationSortBy>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetAdminListAsync_WithAttendancePeriods_PassesFilterToRepository()
+    {
+        // Arrange
+        var periods = new List<AttendancePeriod> { AttendancePeriod.FirstWeek };
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>())
+            .Returns(CreateOpenEdition());
+        _repo.GetAdminPagedAsync(
+                CampEditionId, 1, 20, null, null, null, null,
+                Arg.Is<IReadOnlyList<AttendancePeriod>>(p => p.Count == 1 && p[0] == AttendancePeriod.FirstWeek),
+                null,
+                Arg.Any<AdminRegistrationSortBy>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns((new List<AdminRegistrationProjection>(), 0, EmptyTotals));
+
+        // Act
+        await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, periods, null,
+            AdminRegistrationSortBy.CreatedAt, true, CancellationToken.None);
+
+        // Assert
+        await _repo.Received(1).GetAdminPagedAsync(
+            CampEditionId, 1, 20, null, null, null, null,
+            Arg.Is<IReadOnlyList<AttendancePeriod>>(p => p.Count == 1 && p[0] == AttendancePeriod.FirstWeek),
+            null,
+            Arg.Any<AdminRegistrationSortBy>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetAdminListAsync_WithAgeCategories_PassesFilterToRepository()
+    {
+        // Arrange
+        var categories = new List<AgeCategory> { AgeCategory.Baby };
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>())
+            .Returns(CreateOpenEdition());
+        _repo.GetAdminPagedAsync(
+                CampEditionId, 1, 20, null, null, null, null, null,
+                Arg.Is<IReadOnlyList<AgeCategory>>(c => c.Count == 1 && c[0] == AgeCategory.Baby),
+                Arg.Any<AdminRegistrationSortBy>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns((new List<AdminRegistrationProjection>(), 0, EmptyTotals));
+
+        // Act
+        await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, categories,
+            AdminRegistrationSortBy.CreatedAt, true, CancellationToken.None);
+
+        // Assert
+        await _repo.Received(1).GetAdminPagedAsync(
+            CampEditionId, 1, 20, null, null, null, null, null,
+            Arg.Is<IReadOnlyList<AgeCategory>>(c => c.Count == 1 && c[0] == AgeCategory.Baby),
+            Arg.Any<AdminRegistrationSortBy>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetAdminListAsync_WithNullFilters_PassesNullsToRepository()
+    {
+        // Arrange
+        _editionsRepo.GetByIdAsync(CampEditionId, Arg.Any<CancellationToken>())
+            .Returns(CreateOpenEdition());
+        _repo.GetAdminPagedAsync(
+                CampEditionId, 1, 20, null, null, null, null, null, null,
+                Arg.Any<AdminRegistrationSortBy>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns((new List<AdminRegistrationProjection>(), 0, EmptyTotals));
+
+        // Act
+        await _sut.GetAdminListAsync(CampEditionId, 1, 20, null, null, null, null, null, null,
+            AdminRegistrationSortBy.CreatedAt, true, CancellationToken.None);
+
+        // Assert
+        await _repo.Received(1).GetAdminPagedAsync(
+            CampEditionId, 1, 20, null, null, null, null, null, null,
+            Arg.Any<AdminRegistrationSortBy>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
 }

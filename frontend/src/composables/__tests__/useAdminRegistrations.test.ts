@@ -80,21 +80,91 @@ describe('useAdminRegistrations', () => {
       expect(totals.value?.totalAmount).toBe(900)
     })
 
-    it('appends accommodationTypes and extraIds as repeated query params', async () => {
+    it('appends accommodationPreferences as parallel accommodationIds and accommodationPreferenceOrders params', async () => {
       vi.mocked(api.get).mockResolvedValueOnce(mockListResponse)
 
       const { fetchAdminRegistrations } = useAdminRegistrations()
 
       await fetchAdminRegistrations(EDITION_ID, {
-        accommodationTypes: ['Lodge', 'Tent'],
-        extraIds: ['extra-1', 'extra-2']
+        accommodationPreferences: [
+          { accommodationId: 'acc-1', preferenceOrder: 1 },
+          { accommodationId: 'acc-2', preferenceOrder: 2 },
+        ],
+        extraIds: ['extra-1'],
       })
 
       const url = vi.mocked(api.get).mock.calls[0][0] as string
-      expect(url).toContain('accommodationTypes=Lodge')
-      expect(url).toContain('accommodationTypes=Tent')
+      expect(url).toContain('accommodationIds=acc-1')
+      expect(url).toContain('accommodationIds=acc-2')
+      expect(url).toContain('accommodationPreferenceOrders=1')
+      expect(url).toContain('accommodationPreferenceOrders=2')
       expect(url).toContain('extraIds=extra-1')
-      expect(url).toContain('extraIds=extra-2')
+      expect(url).not.toContain('accommodationTypes')
+    })
+
+    it('appends attendancePeriods as repeated query params', async () => {
+      vi.mocked(api.get).mockResolvedValueOnce(mockListResponse)
+
+      const { fetchAdminRegistrations } = useAdminRegistrations()
+
+      await fetchAdminRegistrations(EDITION_ID, {
+        attendancePeriods: ['FirstWeek', 'SecondWeek'],
+      })
+
+      const url = vi.mocked(api.get).mock.calls[0][0] as string
+      expect(url).toContain('attendancePeriods=FirstWeek')
+      expect(url).toContain('attendancePeriods=SecondWeek')
+    })
+
+    it('appends ageCategories as repeated query params', async () => {
+      vi.mocked(api.get).mockResolvedValueOnce(mockListResponse)
+
+      const { fetchAdminRegistrations } = useAdminRegistrations()
+
+      await fetchAdminRegistrations(EDITION_ID, {
+        ageCategories: ['Baby', 'Child'],
+      })
+
+      const url = vi.mocked(api.get).mock.calls[0][0] as string
+      expect(url).toContain('ageCategories=Baby')
+      expect(url).toContain('ageCategories=Child')
+    })
+
+    it('omits filter params when filters are undefined', async () => {
+      vi.mocked(api.get).mockResolvedValueOnce(mockListResponse)
+
+      const { fetchAdminRegistrations } = useAdminRegistrations()
+
+      await fetchAdminRegistrations(EDITION_ID, {})
+
+      const url = vi.mocked(api.get).mock.calls[0][0] as string
+      expect(url).not.toContain('accommodationIds')
+      expect(url).not.toContain('attendancePeriods')
+      expect(url).not.toContain('ageCategories')
+    })
+
+    it('passes sortBy and sortDirection as query params when provided', async () => {
+      vi.mocked(api.get).mockResolvedValueOnce(mockListResponse)
+
+      const { fetchAdminRegistrations } = useAdminRegistrations()
+
+      await fetchAdminRegistrations(EDITION_ID, { sortBy: 'familyName', sortDirection: 'asc' })
+
+      const url = vi.mocked(api.get).mock.calls[0][0] as string
+      expect(url).toContain('sortBy=familyName')
+      expect(url).toContain('sortDirection=asc')
+    })
+
+    it('omits sortBy and sortDirection when not provided', async () => {
+      vi.mocked(api.get).mockResolvedValueOnce(mockListResponse)
+
+      const { fetchAdminRegistrations } = useAdminRegistrations()
+
+      await fetchAdminRegistrations(EDITION_ID, {})
+
+      const url = vi.mocked(api.get).mock.calls[0][0] as string
+      expect(url).not.toContain('sortBy')
+      expect(url).not.toContain('sortDirection')
     })
 
     it('updates pagination state from params', async () => {
@@ -177,14 +247,20 @@ describe('useAdminRegistrations', () => {
 
       await exportToCsv(EDITION_ID, {
         status: 'Confirmed',
-        accommodationTypes: ['Lodge'],
-        extraIds: ['extra-1']
+        accommodationPreferences: [{ accommodationId: 'acc-1', preferenceOrder: 1 }],
+        extraIds: ['extra-1'],
+        attendancePeriods: ['Complete'],
+        ageCategories: ['Adult'],
       })
 
       const [url, config] = vi.mocked(api.get).mock.calls[0]
       expect(url).toContain('status=Confirmed')
-      expect(url).toContain('accommodationTypes=Lodge')
+      expect(url).toContain('accommodationIds=acc-1')
+      expect(url).toContain('accommodationPreferenceOrders=1')
       expect(url).toContain('extraIds=extra-1')
+      expect(url).toContain('attendancePeriods=Complete')
+      expect(url).toContain('ageCategories=Adult')
+      expect(url).not.toContain('accommodationTypes')
       expect(config).toMatchObject({ responseType: 'blob' })
     })
 
