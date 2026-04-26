@@ -45,6 +45,8 @@ export function useAdminRegistrations() {
       params.extraIds?.forEach(id => queryParams.append('extraIds', id))
       params.attendancePeriods?.forEach(p => queryParams.append('attendancePeriods', p))
       params.ageCategories?.forEach(c => queryParams.append('ageCategories', c))
+      if (params.sortBy) queryParams.set('sortBy', params.sortBy)
+      if (params.sortDirection) queryParams.set('sortDirection', params.sortDirection)
 
       const response = await api.get<ApiResponse<AdminRegistrationListResponse>>(
         `/camp-editions/${campEditionId}/registrations?${queryParams.toString()}`
