@@ -454,11 +454,6 @@ onMounted(async () => {
           </span>
         </template>
       </Column>
-      <Column header="Email">
-        <template #body="{ data }">
-          <span class="text-sm text-gray-600">{{ data.representative.email }}</span>
-        </template>
-      </Column>
       <Column header="Estado">
         <template #body="{ data }">
           <Tag :value="statusLabel(data.status)" :severity="statusSeverity(data.status)" />
@@ -518,7 +513,7 @@ onMounted(async () => {
         <Row>
           <Column
             :footer="`Total: ${totals?.totalRegistrations ?? 0} inscripciones`"
-            :colspan="6"
+            :colspan="5"
             footerClass="font-semibold text-gray-900"
           />
           <Column
