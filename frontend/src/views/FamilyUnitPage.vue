@@ -355,7 +355,7 @@ async function onRemoveMemberPhoto(memberId: string) {
               />
               <span>{{ familyUnit.name }}</span>
             </div>
-            <div v-if="!isViewingOther" class="flex gap-2">
+            <div v-if="!isViewingOther || (auth.isAdmin || auth.isBoard)" class="flex gap-2">
               <Button
                 icon="pi pi-pencil"
                 label="Editar"
@@ -364,6 +364,7 @@ async function onRemoveMemberPhoto(memberId: string) {
                 @click="openEditFamilyUnitDialog"
               />
               <Button
+                v-if="!isViewingOther"
                 icon="pi pi-trash"
                 label="Eliminar"
                 severity="danger"
@@ -397,7 +398,7 @@ async function onRemoveMemberPhoto(memberId: string) {
                 @click="showBulkMembershipDialog = true"
               />
               <Button
-                v-if="!isViewingOther"
+                v-if="!isViewingOther || (auth.isAdmin || auth.isBoard)"
                 icon="pi pi-plus"
                 label="Añadir Miembro"
                 @click="openCreateMemberDialog"
@@ -410,7 +411,7 @@ async function onRemoveMemberPhoto(memberId: string) {
             :members="familyMembers"
             :loading="loading"
             :can-manage-memberships="auth.isBoard"
-            :read-only="isViewingOther"
+            :read-only="isViewingOther && !(auth.isAdmin || auth.isBoard)"
             :is-admin-or-board="auth.isAdmin || auth.isBoard"
             :representative-user-id="familyUnit?.representativeUserId"
             :uploading-member-id="uploadingMemberPhotoId"
