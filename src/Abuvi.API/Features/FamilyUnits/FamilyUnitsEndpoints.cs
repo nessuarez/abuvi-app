@@ -258,12 +258,14 @@ public static class FamilyUnitsEndpoints
     {
         var userId = user.GetUserId()
             ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
 
         try
         {
-            // Check authorization
             var isRepresentative = await service.IsRepresentativeAsync(id, userId, ct);
-            if (!isRepresentative)
+            var isAdminOrBoard = userRole == "Admin" || userRole == "Board";
+
+            if (!isRepresentative && !isAdminOrBoard)
             {
                 return TypedResults.Forbid();
             }
@@ -413,12 +415,14 @@ public static class FamilyUnitsEndpoints
     {
         var userId = user.GetUserId()
             ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
 
         try
         {
-            // Check authorization
             var isRepresentative = await service.IsRepresentativeAsync(familyUnitId, userId, ct);
-            if (!isRepresentative)
+            var isAdminOrBoard = userRole == "Admin" || userRole == "Board";
+
+            if (!isRepresentative && !isAdminOrBoard)
             {
                 return TypedResults.Forbid();
             }
