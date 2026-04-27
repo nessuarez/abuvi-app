@@ -12,6 +12,7 @@ export interface User {
   phone: string | null
   role: UserRole
   isActive: boolean
+  emailVerified: boolean
   createdAt: string
   updatedAt: string
 }

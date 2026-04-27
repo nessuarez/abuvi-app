@@ -232,3 +232,96 @@ describe('FamilyUnitPage — isViewingOther', () => {
     expect(backButton).toBeUndefined()
   })
 })
+
+describe('FamilyUnitPage — Admin/Board edit controls when isViewingOther', () => {
+  beforeEach(() => {
+    // Viewing another family's unit
+    familyUnitMock.familyUnit.value.representativeUserId = 'other-user'
+    authMock.isAdmin = false
+    authMock.isBoard = false
+  })
+
+  it('Admin sees edit button on family unit when isViewingOther', async () => {
+    authMock.isAdmin = true
+    const wrapper = mount(FamilyUnitPage, {
+      global: { plugins: [createPinia()], stubs: componentStubs },
+    })
+    await nextTick()
+    const buttons = wrapper.findAllComponents({ name: 'Button' })
+    const editBtn = buttons.find(b => b.props('label') === 'Editar')
+    expect(editBtn).toBeDefined()
+  })
+
+  it('Board sees edit button on family unit when isViewingOther', async () => {
+    authMock.isBoard = true
+    const wrapper = mount(FamilyUnitPage, {
+      global: { plugins: [createPinia()], stubs: componentStubs },
+    })
+    await nextTick()
+    const buttons = wrapper.findAllComponents({ name: 'Button' })
+    const editBtn = buttons.find(b => b.props('label') === 'Editar')
+    expect(editBtn).toBeDefined()
+  })
+
+  it('Member does not see edit button on another family unit', async () => {
+    // isAdmin=false, isBoard=false, isViewingOther=true
+    const wrapper = mount(FamilyUnitPage, {
+      global: { plugins: [createPinia()], stubs: componentStubs },
+    })
+    await nextTick()
+    const buttons = wrapper.findAllComponents({ name: 'Button' })
+    const editBtn = buttons.find(b => b.props('label') === 'Editar')
+    expect(editBtn).toBeUndefined()
+  })
+
+  it('Admin does not see delete button when isViewingOther', async () => {
+    authMock.isAdmin = true
+    const wrapper = mount(FamilyUnitPage, {
+      global: { plugins: [createPinia()], stubs: componentStubs },
+    })
+    await nextTick()
+    const buttons = wrapper.findAllComponents({ name: 'Button' })
+    const deleteBtn = buttons.find(b => b.props('label') === 'Eliminar')
+    expect(deleteBtn).toBeUndefined()
+  })
+
+  it('FamilyMemberList receives readOnly=false for Admin when isViewingOther', async () => {
+    authMock.isAdmin = true
+    const wrapper = mount(FamilyUnitPage, {
+      global: { plugins: [createPinia()], stubs: componentStubs },
+    })
+    await nextTick()
+    const list = wrapper.findComponent({ name: 'FamilyMemberList' })
+    expect(list.props('readOnly')).toBe(false)
+  })
+
+  it('FamilyMemberList receives readOnly=true for Member when isViewingOther', async () => {
+    const wrapper = mount(FamilyUnitPage, {
+      global: { plugins: [createPinia()], stubs: componentStubs },
+    })
+    await nextTick()
+    const list = wrapper.findComponent({ name: 'FamilyMemberList' })
+    expect(list.props('readOnly')).toBe(true)
+  })
+
+  it('Admin sees Añadir Miembro button when isViewingOther', async () => {
+    authMock.isAdmin = true
+    const wrapper = mount(FamilyUnitPage, {
+      global: { plugins: [createPinia()], stubs: componentStubs },
+    })
+    await nextTick()
+    const buttons = wrapper.findAllComponents({ name: 'Button' })
+    const addBtn = buttons.find(b => b.props('label') === 'Añadir Miembro')
+    expect(addBtn).toBeDefined()
+  })
+
+  it('Member does not see Añadir Miembro button when isViewingOther', async () => {
+    const wrapper = mount(FamilyUnitPage, {
+      global: { plugins: [createPinia()], stubs: componentStubs },
+    })
+    await nextTick()
+    const buttons = wrapper.findAllComponents({ name: 'Button' })
+    const addBtn = buttons.find(b => b.props('label') === 'Añadir Miembro')
+    expect(addBtn).toBeUndefined()
+  })
+})

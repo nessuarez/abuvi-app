@@ -18,12 +18,12 @@ import InputText from 'primevue/inputtext'
 import UserForm from '@/components/users/UserForm.vue'
 import UserRoleCell from '@/components/users/UserRoleCell.vue'
 import UserRoleDialog from '@/components/users/UserRoleDialog.vue'
-import type { CreateUserRequest, User } from '@/types/user'
+import type { CreateUserRequest, UpdateUserRequest, User } from '@/types/user'
 
 const toast = useToast()
 const confirm = useConfirm()
 const auth = useAuthStore()
-const { users, loading, error, fetchUsers, createUser, toggleUserActive, deleteUser, clearError } = useUsers()
+const { users, loading, error, fetchUsers, createUser, updateUser, toggleUserActive, deleteUser, clearError } = useUsers()
 
 const searchQuery = ref('')
 
@@ -41,6 +41,10 @@ const creatingUser = ref(false)
 
 const showRoleDialog = ref(false)
 const selectedUser = ref<User | null>(null)
+
+const showEditDialog = ref(false)
+const editingUser = ref<User | null>(null)
+const updatingUser = ref(false)
 
 onMounted(() => { fetchUsers() })
 
@@ -60,6 +64,34 @@ const handleCreateUser = async (data: CreateUserRequest | import('@/types/user')
   creatingUser.value = false
   if (newUser) {
     closeCreateDialog()
+  }
+}
+
+const openEditDialog = (user: User) => {
+  editingUser.value = user
+  showEditDialog.value = true
+  clearError()
+}
+
+const closeEditDialog = () => {
+  showEditDialog.value = false
+  editingUser.value = null
+  clearError()
+}
+
+const handleEditUserSubmit = async (data: CreateUserRequest | UpdateUserRequest) => {
+  if (!editingUser.value) return
+  updatingUser.value = true
+  const updated = await updateUser(editingUser.value.id, data as UpdateUserRequest)
+  updatingUser.value = false
+  if (updated) {
+    closeEditDialog()
+    toast.add({
+      severity: 'success',
+      summary: 'Usuario actualizado',
+      detail: `${updated.firstName} ${updated.lastName} ha sido actualizado`,
+      life: 5000
+    })
   }
 }
 
@@ -203,6 +235,18 @@ const formatDate = (dateString: string) =>
         <template #body="{ data }">
           <div class="flex items-center gap-1">
             <Button
+              v-if="auth.isAdmin || auth.isBoard"
+              icon="pi pi-pencil"
+              severity="info"
+              text
+              rounded
+              size="small"
+              aria-label="Editar perfil"
+              v-tooltip.top="'Editar perfil'"
+              :data-testid="`edit-user-${data.id}`"
+              @click="openEditDialog(data)"
+            />
+            <Button
               v-if="auth.isAdmin"
               :icon="data.isActive ? 'pi pi-ban' : 'pi pi-check'"
               :severity="data.isActive ? 'warn' : 'success'"
@@ -246,6 +290,26 @@ const formatDate = (dateString: string) =>
         :loading="creatingUser"
         @submit="handleCreateUser"
         @cancel="closeCreateDialog"
+      />
+      <Message v-if="error" severity="error" :closable="false" class="mt-4">
+        {{ error }}
+      </Message>
+    </Dialog>
+
+    <!-- Edit User Dialog -->
+    <Dialog
+      v-model:visible="showEditDialog"
+      header="Editar Perfil de Usuario"
+      modal
+      class="w-full max-w-md"
+    >
+      <UserForm
+        v-if="editingUser"
+        mode="edit"
+        :user="editingUser"
+        :loading="updatingUser"
+        @submit="handleEditUserSubmit"
+        @cancel="closeEditDialog"
       />
       <Message v-if="error" severity="error" :closable="false" class="mt-4">
         {{ error }}
