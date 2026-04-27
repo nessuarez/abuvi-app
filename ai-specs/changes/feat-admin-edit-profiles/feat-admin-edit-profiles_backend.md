@@ -2,7 +2,7 @@
 
 ## Overview
 
-This feature closes three authorization gaps that prevent Admin/Board from correcting profile data, and fixes a security bug in the `PUT /api/users/{id}` endpoint. The changes are confined to two existing feature slices (`Users` and `FamilyUnits`) — no new slices, no new entities, and no EF Core migrations are required.
+This feature closes two authorization gaps that prevent Admin/Board from correcting profile data, and fixes a security bug in the `PUT /api/users/{id}` endpoint. The changes are confined to two existing feature slices (`Users` and `FamilyUnits`) — no new slices, no new entities, and no EF Core migrations are required.
 
 Guiding principle: **authorization logic lives in the endpoint handler; business rule enforcement (IsActive protection) lives in the service layer as defense-in-depth.**
 
@@ -21,8 +21,7 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
 
 | File | Type of change |
 |---|---|
-| `src/Abuvi.API/Features/Users/UsersModels.cs` | Extend DTOs |
-| `src/Abuvi.API/Features/Users/UsersService.cs` | Business logic + mapping |
+| `src/Abuvi.API/Features/Users/UsersService.cs` | Business logic: callerRole param + IsActive protection |
 | `src/Abuvi.API/Features/Users/UsersEndpoints.cs` | Security fix + authorization |
 | `src/Abuvi.API/Features/FamilyUnits/FamilyUnitsEndpoints.cs` | Authorization bypass for Admin/Board |
 
@@ -38,7 +37,7 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
 
 - `HttpContextExtensions.GetUserRole()` already exists in `src/Abuvi.API/Common/Extensions/HttpContextExtensions.cs` — no changes needed.
 - No new NuGet packages required.
-- No EF Core migration — `DocumentNumber` column already exists on the `User` entity and table.
+- No EF Core migration required.
 
 ---
 
@@ -55,59 +54,10 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
 
 ---
 
-### Step 1: Extend DTOs in `UsersModels.cs`
-
-- **File**: `src/Abuvi.API/Features/Users/UsersModels.cs`
-- **Action**: Add `DocumentNumber` to `UpdateUserRequest` and `UserResponse`.
-
-**Current state**:
-
-- `UpdateUserRequest` has: `FirstName`, `LastName`, `Phone`, `IsActive`
-- `UserResponse` has: `Id`, `Email`, `FirstName`, `LastName`, `Phone`, `Role`, `IsActive`, `EmailVerified`, `CreatedAt`, `UpdatedAt`
-- `User` entity already has `DocumentNumber` property
-
-**Implementation Steps**:
-
-1. Add `string? DocumentNumber` as the last parameter of `UpdateUserRequest`:
-
-   ```csharp
-   public record UpdateUserRequest(
-       string FirstName,
-       string LastName,
-       string? Phone,
-       bool IsActive,
-       string? DocumentNumber   // NEW
-   );
-   ```
-
-2. Add `string? DocumentNumber` to `UserResponse` after `Phone`:
-
-   ```csharp
-   public record UserResponse(
-       Guid Id,
-       string Email,
-       string FirstName,
-       string LastName,
-       string? Phone,
-       string? DocumentNumber,   // NEW
-       UserRole Role,
-       bool IsActive,
-       bool EmailVerified,
-       DateTime CreatedAt,
-       DateTime UpdatedAt
-   );
-   ```
-
-- **Implementation Notes**:
-  - Adding positional parameters to records is a breaking change for any callers that use positional construction. Search for `new UserResponse(` and `new UpdateUserRequest(` usages and update them.
-  - `DocumentNumber` is NOT encrypted on the `User` entity (unlike `FamilyMember` medical fields). No encryption wrapper needed.
-
----
-
-### Step 2: Update `UsersService.UpdateAsync` and `MapToResponse`
+### Step 1: Update `UsersService.UpdateAsync`
 
 - **File**: `src/Abuvi.API/Features/Users/UsersService.cs`
-- **Action**: Add `callerRole` parameter to `UpdateAsync`; persist `DocumentNumber`; protect `IsActive` from non-admin callers; include `DocumentNumber` in `MapToResponse`.
+- **Action**: Add `callerRole` parameter to `UpdateAsync`; protect `IsActive` from non-admin callers.
 
 **Implementation Steps**:
 
@@ -121,36 +71,17 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
        CancellationToken cancellationToken = default)
    ```
 
-2. **Persist fields** — inside `UpdateAsync`, after the null guard:
+2. **Protect `IsActive`** — inside `UpdateAsync`, after the null guard:
 
    ```csharp
    user.FirstName = request.FirstName;
    user.LastName = request.LastName;
    user.Phone = request.Phone;
-   user.DocumentNumber = request.DocumentNumber;   // NEW
 
    // Only Admin/Board may change IsActive
    if (callerRole == "Admin" || callerRole == "Board")
        user.IsActive = request.IsActive;
    // else: IsActive is silently preserved
-   ```
-
-3. **Update `MapToResponse`** — add `DocumentNumber` in the correct positional slot (after `Phone`, before `Role`):
-
-   ```csharp
-   private static UserResponse MapToResponse(User user) => new(
-       user.Id,
-       user.Email,
-       user.FirstName,
-       user.LastName,
-       user.Phone,
-       user.DocumentNumber,   // NEW
-       user.Role,
-       user.IsActive,
-       user.EmailVerified,
-       user.CreatedAt,
-       user.UpdatedAt
-   );
    ```
 
 - **Implementation Notes**:
@@ -159,7 +90,7 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
 
 ---
 
-### Step 3: Fix Security Bug and Add Admin/Board Support in `UsersEndpoints.cs`
+### Step 2: Fix Security Bug and Add Admin/Board Support in `UsersEndpoints.cs`
 
 - **File**: `src/Abuvi.API/Features/Users/UsersEndpoints.cs`
 - **Action**: Add `HttpContext` parameter to `UpdateUser`; extract caller identity; enforce ownership check; pass `callerRole` to service.
@@ -208,7 +139,7 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
 
 ---
 
-### Step 4: Add Admin/Board Bypass in `FamilyUnitsEndpoints.cs`
+### Step 3: Add Admin/Board Bypass in `FamilyUnitsEndpoints.cs`
 
 - **File**: `src/Abuvi.API/Features/FamilyUnits/FamilyUnitsEndpoints.cs`
 - **Action**: Modify `UpdateFamilyUnit` and `UpdateFamilyMember` handlers to allow Admin/Board callers through without the representative check.
@@ -250,17 +181,14 @@ Guiding principle: **authorization logic lives in the endpoint handler; business
 
 ---
 
-### Step 5: Fix All Callers of the Modified Records
+### Step 4: Build to Confirm Zero Errors
 
-- **Action**: After the DTO changes in Step 1, find and update all positional callers of `UserResponse` and `UpdateUserRequest` that construct them with positional syntax.
-- **Implementation Steps**:
-  1. Search for `new UserResponse(` across the codebase — update any positional constructors to pass `null` for `DocumentNumber` in the new slot.
-  2. Search for `new UpdateUserRequest(` — update any test/fixture callers to include the new `DocumentNumber` parameter.
-  3. Build the project to catch any remaining compilation errors: `dotnet build src/Abuvi.API/Abuvi.API.csproj`
+- Run: `dotnet build src/Abuvi.API/Abuvi.API.csproj`
+- Expected: zero errors, zero warnings.
 
 ---
 
-### Step 6: Write Unit Tests
+### Step 5: Write Unit Tests
 
 #### `src/Abuvi.Tests/Unit/Features/Users/UsersServiceUpdateTests.cs`
 
@@ -272,17 +200,16 @@ Tests to write (AAA pattern, `MethodName_StateUnderTest_ExpectedBehavior`):
 
 | Test Name | What it verifies |
 |---|---|
-| `UpdateAsync_AdminCaller_SavesDocumentNumber` | `DocumentNumber` is persisted and returned in `UserResponse` |
 | `UpdateAsync_AdminCaller_CanChangeIsActive` | `IsActive` is updated when `callerRole == "Admin"` |
 | `UpdateAsync_BoardCaller_CanChangeIsActive` | `IsActive` is updated when `callerRole == "Board"` |
 | `UpdateAsync_MemberCaller_CannotChangeIsActive` | `IsActive` remains unchanged regardless of request value when `callerRole == "Member"` |
 | `UpdateAsync_NullCallerRole_CannotChangeIsActive` | `IsActive` remains unchanged when `callerRole` is `null` |
 | `UpdateAsync_WhenUserNotFound_ReturnsNull` | Returns `null` when repository returns `null` |
-| `UpdateAsync_MapsDocumentNumberToResponse` | `UserResponse.DocumentNumber` matches entity value |
+| `UpdateAsync_UpdatesNameAndPhone` | `FirstName`, `LastName`, `Phone` are persisted and returned |
 
 #### `src/Abuvi.Tests/Unit/Features/Users/UsersEndpointsUpdateTests.cs`
 
-> **Note**: Minimal API handler unit testing in this project appears to use integration test patterns with `WebApplicationFactory`. Check `src/Abuvi.Tests/Integration/Features/` for the pattern. If an integration test approach is preferred, place these in `Integration/Features/Users/UsersEndpointsTests.cs` instead and follow the `WebApplicationFactory`-based pattern used in `CampEditionsEndpointsTests.cs` or `GuestsEndpointsTests.cs`.
+> **Note**: Minimal API handler unit testing in this project uses integration test patterns with `WebApplicationFactory`. Check `src/Abuvi.Tests/Integration/Features/` for the pattern. If an integration test approach is preferred, place these in `Integration/Features/Users/UsersEndpointsTests.cs` instead and follow the `WebApplicationFactory`-based pattern used in `CampEditionsEndpointsTests.cs` or `GuestsEndpointsTests.cs`.
 
 Tests to write:
 
@@ -293,7 +220,6 @@ Tests to write:
 | `UpdateUser_Member_CanUpdateOwnProfile` | 200 OK |
 | `UpdateUser_Member_CannotUpdateOtherUserProfile` | 403 |
 | `UpdateUser_Unauthenticated_Returns401` | 401 |
-| `UpdateUser_SavesDocumentNumber` | 200, `documentNumber` in response body |
 | `UpdateUser_MemberCaller_IsActiveNotChanged` | 200, `isActive` unchanged in response |
 | `UpdateUser_AdminCaller_IsActiveChanged` | 200, `isActive` matches request |
 
@@ -312,35 +238,21 @@ Tests to write:
 
 ---
 
-### Step 7: Update Technical Documentation
-
-- **Action**: Update API spec and data model docs to reflect the DTO changes.
-- **Implementation Steps**:
-  1. Open `ai-specs/specs/api-spec.yml` — find the `PUT /api/users/{id}` request body and response schemas; add `documentNumber` field to both.
-  2. Open `ai-specs/specs/data-model.md` — confirm `DocumentNumber` is already documented on the `User` entity (it exists on the entity class); add it to the `UpdateUserRequest` DTO table if present.
-  3. Verify the auto-generated OpenAPI at `/swagger` after the build to confirm it reflects the new field.
-- **References**: Follow `ai-specs/specs/documentation-standards.mdc`. All documentation in English.
-- **Notes**: This step is MANDATORY before the implementation is considered complete.
-
----
-
 ## Implementation Order
 
 1. **Step 0** — Create feature branch `feature/feat-admin-edit-profiles-backend`
-2. **Step 1** — Extend `UpdateUserRequest` and `UserResponse` in `UsersModels.cs`
-3. **Step 2** — Update `UsersService.UpdateAsync` and `MapToResponse`
-4. **Step 3** — Fix security bug + Admin/Board support in `UsersEndpoints.UpdateUser`
-5. **Step 4** — Add Admin/Board bypass in `FamilyUnitsEndpoints.UpdateFamilyUnit` and `UpdateFamilyMember`
-6. **Step 5** — Fix all positional record callers; build to confirm zero errors
-7. **Step 6** — Write unit/integration tests
-8. **Step 7** — Update API spec and data model documentation
+2. **Step 1** — Update `UsersService.UpdateAsync` with `callerRole` and `IsActive` protection
+3. **Step 2** — Fix security bug + Admin/Board support in `UsersEndpoints.UpdateUser`
+4. **Step 3** — Add Admin/Board bypass in `FamilyUnitsEndpoints.UpdateFamilyUnit` and `UpdateFamilyMember`
+5. **Step 4** — Build to confirm zero errors
+6. **Step 5** — Write unit/integration tests
 
 ---
 
 ## Testing Checklist
 
-- [ ] `UsersServiceUpdateTests` covers: DocumentNumber persistence, IsActive protection per role, null callerRole, null user
-- [ ] `UpdateUser` handler integration tests cover: Member→own (200), Member→other (403), Admin→other (200), Board→other (200), DocumentNumber in response, IsActive protection
+- [ ] `UsersServiceUpdateTests` covers: IsActive protection per role, null callerRole, null user, field updates
+- [ ] `UpdateUser` handler integration tests cover: Member→own (200), Member→other (403), Admin→other (200), Board→other (200), IsActive protection
 - [ ] FamilyUnits auth tests cover: Admin/Board bypass (200), Member non-representative (403), for both `UpdateFamilyUnit` and `UpdateFamilyMember`
 - [ ] `dotnet test` passes with no regressions
 - [ ] 90% test coverage threshold maintained (per `backend-standards.mdc`)
@@ -369,7 +281,7 @@ All responses use `ApiResponse<T>`:
 
 ## Dependencies
 
-No new NuGet packages required. No EF Core migrations needed — `DocumentNumber` column already exists in the database schema.
+No new NuGet packages required. No EF Core migrations needed.
 
 ---
 
@@ -377,7 +289,7 @@ No new NuGet packages required. No EF Core migrations needed — `DocumentNumber
 
 - **Security bug fix is mandatory**: the current `UpdateUser` handler has no ownership check. This must ship in the same PR.
 - **`IsActive` protection is defense-in-depth**: the endpoint-level role check for Admin/Board covers the normal path; the service-level check ensures `IsActive` is never accidentally changed even if the endpoint auth is misconfigured in the future.
-- **No `Email` or `Password` changes**: these fields are intentionally excluded from `UpdateUserRequest`. Do not add them.
+- **No `Email`, `Password`, or `DocumentNumber` changes**: these fields are intentionally excluded from `UpdateUserRequest`. Do not add them.
 - **`RepresentativeUserId` on `FamilyUnit`** and **`UserId` on `FamilyMember`** are not changeable via these endpoints.
 - **String comparison for roles** uses `"Admin"` and `"Board"` — these are the JWT claim values corresponding to `UserRole.Admin` and `UserRole.Board` enum names.
 - **Language**: All code comments, test names, and documentation in English; user-facing error messages in Spanish (existing convention).
@@ -395,9 +307,8 @@ No new NuGet packages required. No EF Core migrations needed — `DocumentNumber
 ## Implementation Verification
 
 - [ ] **Code Quality**: No C# nullable warnings; all new properties nullable-typed correctly
-- [ ] **Functionality**: `PUT /api/users/{id}` returns 403 for Member→other; 200 for Admin→any; `documentNumber` in response
+- [ ] **Functionality**: `PUT /api/users/{id}` returns 403 for Member→other; 200 for Admin→any
 - [ ] **Functionality**: `PUT /api/family-units/{id}` and `PUT /api/family-units/{id}/members/{memberId}` return 200 for Admin/Board non-representatives
 - [ ] **Security**: Member cannot set `IsActive` on their own profile update
 - [ ] **Testing**: All new tests pass; no regressions; 90% coverage
 - [ ] **Build**: `dotnet build` with zero errors and zero warnings
-- [ ] **Documentation**: `api-spec.yml` updated with `documentNumber` field

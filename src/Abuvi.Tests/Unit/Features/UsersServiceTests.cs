@@ -269,7 +269,7 @@ public class UsersServiceTests
             .Returns(callInfo => callInfo.Arg<User>());
 
         // Act
-        var result = await _service.UpdateAsync(userId, updateRequest);
+        var result = await _service.UpdateAsync(userId, updateRequest, "Admin");
 
         // Assert
         result.Should().NotBeNull();
@@ -298,7 +298,7 @@ public class UsersServiceTests
             .ReturnsNull();
 
         // Act
-        var result = await _service.UpdateAsync(userId, updateRequest);
+        var result = await _service.UpdateAsync(userId, updateRequest, null);
 
         // Assert
         result.Should().BeNull();

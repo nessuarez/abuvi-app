@@ -57,7 +57,7 @@ public class UsersService(
     /// <summary>
     /// Updates an existing user
     /// </summary>
-    public async Task<UserResponse?> UpdateAsync(Guid id, UpdateUserRequest request, CancellationToken cancellationToken = default)
+    public async Task<UserResponse?> UpdateAsync(Guid id, UpdateUserRequest request, string? callerRole, CancellationToken cancellationToken = default)
     {
         var user = await repository.GetByIdAsync(id, cancellationToken);
         if (user is null)
@@ -66,7 +66,9 @@ public class UsersService(
         user.FirstName = request.FirstName;
         user.LastName = request.LastName;
         user.Phone = request.Phone;
-        user.IsActive = request.IsActive;
+
+        if (callerRole == "Admin" || callerRole == "Board")
+            user.IsActive = request.IsActive;
 
         var updatedUser = await repository.UpdateAsync(user, cancellationToken);
         return MapToResponse(updatedUser);

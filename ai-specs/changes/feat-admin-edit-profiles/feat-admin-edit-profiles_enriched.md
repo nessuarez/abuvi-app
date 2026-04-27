@@ -4,7 +4,7 @@
 
 **As** a user with the Admin or Board role,
 **I want** to be able to edit the profiles of Users, FamilyUnits, and FamilyMembers,
-**So that** I can correct data errors (wrong names, document numbers, contact info, etc.) without depending on the representative or the user themselves.
+**So that** I can correct data errors (wrong names, contact info, etc.) without depending on the representative or the user themselves.
 
 ---
 
@@ -12,12 +12,10 @@
 
 Currently three independent gaps prevent Admin/Board from correcting profile data:
 
-1. **`UpdateUserRequest` is missing `DocumentNumber`** — the field exists on the `User` entity and in `UserResponse` is not exposed today either. Admin/Board cannot correct a mis-typed DNI.
+1. **`PUT /api/users/{id}` has a security bug**: any authenticated `Member` can update any other user's profile by knowing their ID — no ownership check exists.
 2. **`PUT /api/family-units/{id}` and `PUT /api/family-units/{familyUnitId}/members/{memberId}` return 403 for Admin/Board** — both handlers only allow the representative (`IsRepresentativeAsync` check).
-3. **No edit UI in `UsersAdminPanel`** — the panel only has role change, activate/deactivate, and delete. There is no dialog to edit firstName, lastName, phone, or documentNumber.
+3. **No edit UI in `UsersAdminPanel`** — the panel only has role change, activate/deactivate, and delete. There is no dialog to edit `firstName`, `lastName`, or `phone`.
 4. **`FamilyUnitPage` hides all edit controls when `isViewingOther`** — Admin/Board visiting `/family-units/:id` see a read-only view.
-
-Additionally, **`PUT /api/users/{id}` has a security bug**: the handler currently has no ownership check — any authenticated `Member` can update any other user's profile by knowing their ID. This must be fixed as part of this work.
 
 ---
 
@@ -27,7 +25,7 @@ Additionally, **`PUT /api/users/{id}` has a security bug**: the handler currentl
 
 | Resource | Allowed callers |
 | --- | --- |
-| `User` profile (firstName, lastName, phone, documentNumber) | The user themselves **or** Admin/Board |
+| `User` profile (`firstName`, `lastName`, `phone`) | The user themselves **or** Admin/Board |
 | `FamilyUnit.Name` | Representative of that unit **or** Admin/Board |
 | `FamilyMember` (all fields) | Representative of that unit **or** Admin/Board |
 
@@ -42,43 +40,9 @@ Additionally, **`PUT /api/users/{id}` has a security bug**: the handler currentl
 
 ## Backend Changes
 
-### 1. `src/Abuvi.API/Features/Users/UsersModels.cs`
+### 1. `src/Abuvi.API/Features/Users/UsersService.cs`
 
-**Extend `UpdateUserRequest`** — add `DocumentNumber`:
-
-```csharp
-public record UpdateUserRequest(
-    string FirstName,
-    string LastName,
-    string? Phone,
-    bool IsActive,
-    string? DocumentNumber   // NEW
-);
-```
-
-**Extend `UserResponse`** — expose `DocumentNumber` (currently missing from the DTO):
-
-```csharp
-public record UserResponse(
-    Guid Id,
-    string Email,
-    string FirstName,
-    string LastName,
-    string? Phone,
-    string? DocumentNumber,   // NEW
-    UserRole Role,
-    bool IsActive,
-    bool EmailVerified,
-    DateTime CreatedAt,
-    DateTime UpdatedAt
-);
-```
-
----
-
-### 2. `src/Abuvi.API/Features/Users/UsersService.cs`
-
-**`UpdateAsync`** — persist `DocumentNumber`; protect `IsActive` from non-admin callers.
+**`UpdateAsync`** — protect `IsActive` from non-admin callers.
 
 Accept an additional `callerRole` parameter so the service enforces the IsActive rule:
 
@@ -95,7 +59,6 @@ public async Task<UserResponse?> UpdateAsync(
     user.FirstName = request.FirstName;
     user.LastName = request.LastName;
     user.Phone = request.Phone;
-    user.DocumentNumber = request.DocumentNumber;   // NEW
 
     // Only Admin/Board may change IsActive
     if (callerRole == "Admin" || callerRole == "Board")
@@ -106,29 +69,11 @@ public async Task<UserResponse?> UpdateAsync(
 }
 ```
 
-**`MapToResponse`** — include `DocumentNumber`:
-
-```csharp
-private static UserResponse MapToResponse(User user) => new(
-    user.Id,
-    user.Email,
-    user.FirstName,
-    user.LastName,
-    user.Phone,
-    user.DocumentNumber,   // NEW
-    user.Role,
-    user.IsActive,
-    user.EmailVerified,
-    user.CreatedAt,
-    user.UpdatedAt
-);
-```
-
 > `toggleUserActive` in `UsersService` is a separate method that always sets `IsActive`; it is only called from the role-protected `toggleUserActive` composable path — no change needed there.
 
 ---
 
-### 3. `src/Abuvi.API/Features/Users/UsersEndpoints.cs`
+### 2. `src/Abuvi.API/Features/Users/UsersEndpoints.cs`
 
 **`UpdateUser` handler** — fix security bug and add Admin/Board support:
 
@@ -162,7 +107,7 @@ private static async Task<IResult> UpdateUser(
 
 ---
 
-### 4. `src/Abuvi.API/Features/FamilyUnits/FamilyUnitsEndpoints.cs`
+### 3. `src/Abuvi.API/Features/FamilyUnits/FamilyUnitsEndpoints.cs`
 
 **`UpdateFamilyUnit` handler** — add Admin/Board bypass (currently lines ~252–278):
 
@@ -235,9 +180,9 @@ private static async Task<IResult> UpdateFamilyMember(
 
 ## Frontend Changes
 
-### 5. `frontend/src/types/user.ts`
+### 4. `frontend/src/types/user.ts`
 
-Add `documentNumber` to `User` and `UpdateUserRequest`. Also add `emailVerified` which exists in the backend `UserResponse` but is missing in the frontend type:
+Add `emailVerified` to `User` (already returned by the backend but missing in the frontend type):
 
 ```typescript
 export interface User {
@@ -246,83 +191,19 @@ export interface User {
   firstName: string
   lastName: string
   phone: string | null
-  documentNumber: string | null   // NEW
   role: UserRole
   isActive: boolean
-  emailVerified: boolean           // NEW (was already in backend response)
+  emailVerified: boolean   // NEW (was already in backend response)
   createdAt: string
   updatedAt: string
 }
-
-export interface UpdateUserRequest {
-  firstName: string
-  lastName: string
-  phone: string | null
-  isActive: boolean
-  documentNumber: string | null   // NEW
-}
 ```
+
+> `UpdateUserRequest` is unchanged — no new fields.
 
 ---
 
-### 6. `frontend/src/components/users/UserForm.vue`
-
-Add `documentNumber` field visible in **edit mode only**.
-
-**Form data** — add `documentNumber`:
-
-```typescript
-const formData = reactive({
-  email: '',
-  password: '',
-  firstName: '',
-  lastName: '',
-  phone: '',
-  documentNumber: '',   // NEW
-  role: 'Member' as UserRole,
-  isActive: true
-})
-```
-
-**Watch init** — populate from user:
-
-```typescript
-formData.documentNumber = user.documentNumber ?? ''
-```
-
-**`handleSubmit` (edit mode)** — include in request:
-
-```typescript
-const request: UpdateUserRequest = {
-  firstName: formData.firstName.trim(),
-  lastName: formData.lastName.trim(),
-  phone: formData.phone.trim() || null,
-  isActive: formData.isActive,
-  documentNumber: formData.documentNumber.trim() || null   // NEW
-}
-```
-
-**Template** — add after the Phone field, before the Active status toggle:
-
-```html
-<!-- Document Number (edit mode only) -->
-<div v-if="mode === 'edit'">
-  <label for="documentNumber" class="mb-2 block text-sm font-medium">
-    Número de documento (DNI/NIE) <span class="text-gray-400">(opcional)</span>
-  </label>
-  <InputText
-    id="documentNumber"
-    v-model="formData.documentNumber"
-    class="w-full"
-    placeholder="12345678A"
-    data-testid="input-document-number"
-  />
-</div>
-```
-
----
-
-### 7. `frontend/src/components/admin/UsersAdminPanel.vue`
+### 5. `frontend/src/components/admin/UsersAdminPanel.vue`
 
 Add an "Edit profile" button per row and a dialog backed by `UserForm` in edit mode.
 
@@ -411,7 +292,7 @@ const handleEditUserSubmit = async (data: CreateUserRequest | UpdateUserRequest)
 
 ---
 
-### 8. `frontend/src/views/FamilyUnitPage.vue`
+### 6. `frontend/src/views/FamilyUnitPage.vue`
 
 Admin/Board visiting `/family-units/:id` have `isViewingOther = true` and currently see all edit controls hidden. Unlock them.
 
@@ -470,8 +351,7 @@ v-if="!isViewingOther || (auth.isAdmin || auth.isBoard)"
 
 | File | Change |
 | --- | --- |
-| `src/Abuvi.API/Features/Users/UsersModels.cs` | Add `DocumentNumber` to `UpdateUserRequest` and `UserResponse` |
-| `src/Abuvi.API/Features/Users/UsersService.cs` | Persist `DocumentNumber`; add `callerRole` param to protect `IsActive`; update `MapToResponse` |
+| `src/Abuvi.API/Features/Users/UsersService.cs` | Add `callerRole` param to protect `IsActive` |
 | `src/Abuvi.API/Features/Users/UsersEndpoints.cs` | Fix security bug: add ownership/role check in `UpdateUser`; pass `callerRole` to service |
 | `src/Abuvi.API/Features/FamilyUnits/FamilyUnitsEndpoints.cs` | Add Admin/Board bypass to `UpdateFamilyUnit` and `UpdateFamilyMember` |
 
@@ -479,8 +359,7 @@ v-if="!isViewingOther || (auth.isAdmin || auth.isBoard)"
 
 | File | Change |
 | --- | --- |
-| `frontend/src/types/user.ts` | Add `documentNumber` and `emailVerified` to `User`; add `documentNumber` to `UpdateUserRequest` |
-| `frontend/src/components/users/UserForm.vue` | Add `documentNumber` input field in edit mode |
+| `frontend/src/types/user.ts` | Add `emailVerified` to `User` |
 | `frontend/src/components/admin/UsersAdminPanel.vue` | Add edit button + `UserForm` edit dialog |
 | `frontend/src/views/FamilyUnitPage.vue` | Unlock edit controls for Admin/Board when `isViewingOther` |
 
@@ -490,17 +369,16 @@ v-if="!isViewingOther || (auth.isAdmin || auth.isBoard)"
 
 ### Backend (xUnit)
 
-**File**: `src/Abuvi.API.Tests/Features/Users/UsersEndpointsTests.cs` (or integration tests)
+**File**: `src/Abuvi.Tests/Integration/Features/Users/UsersEndpointsTests.cs` (integration tests)
 
 - `UpdateUser_Admin_CanUpdateAnyUserProfile` — Admin can call `PUT /api/users/{otherId}`, receives 200
 - `UpdateUser_Board_CanUpdateAnyUserProfile` — Board receives 200
 - `UpdateUser_Member_CanUpdateOwnProfile` — Member calling with own ID receives 200
 - `UpdateUser_Member_CannotUpdateOtherUserProfile` — Member calling with another user's ID receives 403
-- `UpdateUser_SavesDocumentNumber` — `DocumentNumber` is persisted and returned in response
 - `UpdateUser_MemberCaller_CannotChangeIsActive` — When a Member updates their own profile, `IsActive` is unchanged regardless of request value
 - `UpdateUser_AdminCaller_CanChangeIsActive` — Admin can set `IsActive`
 
-**File**: `src/Abuvi.API.Tests/Features/FamilyUnits/FamilyUnitsEndpointsTests.cs`
+**File**: `src/Abuvi.Tests/Integration/Features/FamilyUnits/FamilyUnitsEndpointsTests.cs`
 
 - `UpdateFamilyUnit_Admin_CanUpdate_WhenNotRepresentative` — 200 OK
 - `UpdateFamilyUnit_Board_CanUpdate_WhenNotRepresentative` — 200 OK
@@ -516,16 +394,9 @@ v-if="!isViewingOther || (auth.isAdmin || auth.isBoard)"
 - `renders edit button for each user row`
 - `opens edit dialog when edit button is clicked` — `showEditDialog` becomes true, `editingUser` is set
 - `pre-populates edit form with existing user data`
-- `calls updateUser with documentNumber on form submit`
+- `calls updateUser on form submit`
 - `shows success toast and closes dialog on successful update`
 - `keeps dialog open and shows error when update fails`
-
-**`frontend/src/components/users/__tests__/UserForm.test.ts`**
-
-- `edit mode renders documentNumber field`
-- `edit mode initializes documentNumber from user prop`
-- `edit mode includes documentNumber in submit payload`
-- `create mode does not render documentNumber field`
 
 **`frontend/src/views/__tests__/FamilyUnitPage.spec.ts`**
 
@@ -538,16 +409,14 @@ v-if="!isViewingOther || (auth.isAdmin || auth.isBoard)"
 
 ## Acceptance Criteria
 
-- [ ] Admin and Board can edit `firstName`, `lastName`, `phone`, and `documentNumber` of any User from the Users admin panel
-- [ ] `documentNumber` is pre-populated in the edit form with the existing value
-- [ ] `documentNumber` is included in `UserResponse` for all users endpoints
+- [ ] Admin and Board can edit `firstName`, `lastName`, and `phone` of any User from the Users admin panel
 - [ ] A `Member` calling `PUT /api/users/{otherId}` (not their own ID) receives 403
 - [ ] A `Member` updating their own profile cannot change their `IsActive` status
 - [ ] Admin and Board can edit any `FamilyUnit` name from the FamilyUnit detail page
 - [ ] Admin and Board can edit any `FamilyMember`'s fields from the FamilyUnit detail page
 - [ ] The profile photo avatar remains read-only for Admin/Board on other families' pages
 - [ ] The representative's Delete family unit button is not shown to Admin/Board (they have separate admin delete)
-- [ ] No changes to `Email` or `Password` are possible through this flow
+- [ ] No changes to `Email`, `Password`, or `DocumentNumber` are possible through this flow
 
 ---
 
