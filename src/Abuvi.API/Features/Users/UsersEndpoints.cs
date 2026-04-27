@@ -146,9 +146,20 @@ public static class UsersEndpoints
         [FromRoute] Guid id,
         [FromBody] UpdateUserRequest request,
         [FromServices] UsersService service,
+        HttpContext httpContext,
         CancellationToken cancellationToken = default)
     {
-        var user = await service.UpdateAsync(id, request, cancellationToken);
+        var requestingUserId = httpContext.User.GetUserId();
+        var requestingUserRole = httpContext.User.GetUserRole();
+        var isAdminOrBoard = requestingUserRole == "Admin" || requestingUserRole == "Board";
+
+        if (requestingUserId is null)
+            return Results.Unauthorized();
+
+        if (!isAdminOrBoard && requestingUserId.Value != id)
+            return Results.StatusCode(403);
+
+        var user = await service.UpdateAsync(id, request, requestingUserRole, cancellationToken);
 
         if (user is null)
         {
