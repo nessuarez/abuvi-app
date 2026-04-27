@@ -1,6 +1,7 @@
 // Camp edition types matching backend DTOs
 
 import type { Camp, AccommodationCapacity, CampPlacesPhoto } from './camp'
+import type { AccommodationFeature } from './accommodation-feature'
 
 export interface CampEdition {
   id: string
@@ -158,6 +159,7 @@ export interface CampEditionAccommodation {
   firstChoiceCount: number
   zoneId?: string | null
   zoneName?: string | null
+  features: AccommodationFeature[]
   createdAt: string
   updatedAt: string
 }

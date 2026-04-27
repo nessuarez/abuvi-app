@@ -12,6 +12,8 @@ export interface MediaItem {
   year: number | null
   decade: string | null
   memoryId: string | null
+  accommodationId: string | null
+  zoneId: string | null
   context: string | null
   isPublished: boolean
   isApproved: boolean
@@ -28,4 +30,6 @@ export interface CreateMediaItemRequest {
   memoryId?: string
   campLocationId?: string
   context?: string
+  accommodationId?: string
+  zoneId?: string
 }

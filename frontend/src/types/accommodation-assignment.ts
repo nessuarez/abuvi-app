@@ -1,3 +1,6 @@
+import type { AccommodationFeature } from './accommodation-feature'
+import type { MediaItem } from './media-item'
+
 export type AccommodationTypeValue = 'Lodge' | 'Bungalow' | 'Motorhome' | 'Caravan' | 'Tent'
 
 export const ACCOMMODATION_TYPE_LABELS: Record<AccommodationTypeValue, string> = {
@@ -18,6 +21,8 @@ export interface AccommodationZoneResponse {
   sortOrder: number
   isActive: boolean
   accommodationIds: string[]
+  features: AccommodationFeature[]
+  mediaItems: MediaItem[]
   createdAt: string
   updatedAt: string
 }

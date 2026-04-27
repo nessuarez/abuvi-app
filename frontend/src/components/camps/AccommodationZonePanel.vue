@@ -12,20 +12,29 @@ import Listbox from 'primevue/listbox'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
+import FeatureAssignmentDialog from './FeatureAssignmentDialog.vue'
 import { useAccommodationZones } from '@/composables/useAccommodationZones'
+import { useAccommodationFeatureAssignment } from '@/composables/useAccommodationFeatureAssignment'
 import type { AccommodationZoneResponse, AccommodationTypeValue } from '@/types/accommodation-assignment'
 import { ACCOMMODATION_TYPE_LABELS } from '@/types/accommodation-assignment'
 import type { CampEditionAccommodation } from '@/types/camp-edition'
+import type { AccommodationFeature } from '@/types/accommodation-feature'
 
 const props = defineProps<{
   campEditionId: string
   accommodations: CampEditionAccommodation[]
+  availableFeatures: AccommodationFeature[]
 }>()
 
 const toast = useToast()
 const campEditionIdRef = computed(() => props.campEditionId)
 const { zones, loading, error, loadZones, createZone, updateZone, deleteZone, attachAccommodations } =
   useAccommodationZones(campEditionIdRef)
+const {
+  saving: featureSaving,
+  error: featureError,
+  setZoneFeatures,
+} = useAccommodationFeatureAssignment(props.campEditionId)
 
 // Zone form dialog
 const showZoneDialog = ref(false)
@@ -45,7 +54,14 @@ const showAttachDialog = ref(false)
 const attachingZone = ref<AccommodationZoneResponse | null>(null)
 const selectedAccommodationIds = ref<string[]>([])
 
-const TYPE_OPTIONS = Object.entries(ACCOMMODATION_TYPE_LABELS).map(([value, label]) => ({ value, label }))
+// Feature assignment dialog
+const showFeatureDialog = ref(false)
+const featureTarget = ref<AccommodationZoneResponse | null>(null)
+
+const TYPE_OPTIONS = Object.entries(ACCOMMODATION_TYPE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}))
 
 const accommodationsForZoneType = computed(() => {
   if (!attachingZone.value) return []
@@ -85,7 +101,7 @@ async function handleSave() {
     name: formName.value.trim(),
     maxCapacity: formCapacity.value,
     distributionNotes: formNotes.value.trim() || null,
-    sortOrder: editingZone.value?.sortOrder ?? zones.value.length + 1
+    sortOrder: editingZone.value?.sortOrder ?? zones.value.length + 1,
   }
 
   if (editingZone.value) {
@@ -97,7 +113,11 @@ async function handleSave() {
       toast.add({ severity: 'error', summary: 'Error', detail: error.value, life: 5000 })
     }
   } else {
-    const result = await createZone({ ...payload, accommodationType: formType.value, sortOrder: zones.value.length + 1 })
+    const result = await createZone({
+      ...payload,
+      accommodationType: formType.value,
+      sortOrder: zones.value.length + 1,
+    })
     if (result) {
       toast.add({ severity: 'success', summary: 'Zona creada', life: 3000 })
       showZoneDialog.value = false
@@ -141,6 +161,25 @@ async function handleAttach() {
   }
 }
 
+function openFeatureAssign(zone: AccommodationZoneResponse) {
+  featureTarget.value = zone
+  showFeatureDialog.value = true
+}
+
+async function handleFeaturesSaved(featureIds: string[]) {
+  if (!featureTarget.value) return
+  const result = await setZoneFeatures(featureTarget.value.id, featureIds)
+  if (result) {
+    const idx = zones.value.findIndex((z) => z.id === featureTarget.value!.id)
+    if (idx !== -1) zones.value[idx] = { ...zones.value[idx], features: result }
+    showFeatureDialog.value = false
+    featureTarget.value = null
+    toast.add({ severity: 'success', summary: 'Características actualizadas', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error', detail: featureError.value, life: 5000 })
+  }
+}
+
 onMounted(loadZones)
 </script>
 
@@ -167,7 +206,25 @@ onMounted(loadZones)
     </div>
 
     <DataTable v-else :value="zones" :loading="loading" class="text-sm">
-      <Column field="name" header="Nombre" />
+      <Column header="Nombre">
+        <template #body="{ data }">
+          <div>
+            <span>{{ data.name }}</span>
+            <div v-if="(data.features ?? []).length > 0" class="mt-1 flex flex-wrap gap-1">
+              <span
+                v-for="f in (data.features ?? []).slice(0, 3)"
+                :key="f.id"
+                class="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600"
+              >
+                {{ f.icon }} {{ f.name }}
+              </span>
+              <span v-if="(data.features ?? []).length > 3" class="text-xs text-gray-400">
+                +{{ (data.features ?? []).length - 3 }} más
+              </span>
+            </div>
+          </div>
+        </template>
+      </Column>
       <Column header="Tipo">
         <template #body="{ data }">
           {{ ACCOMMODATION_TYPE_LABELS[data.accommodationType as AccommodationTypeValue] }}
@@ -183,9 +240,17 @@ onMounted(loadZones)
           {{ data.accommodationIds.length }}
         </template>
       </Column>
-      <Column header="Acciones" style="width: 11rem">
+      <Column header="Acciones" style="width: 13rem">
         <template #body="{ data }">
           <div class="flex gap-1">
+            <Button
+              icon="pi pi-star"
+              size="small"
+              text
+              severity="secondary"
+              title="Características"
+              @click="openFeatureAssign(data)"
+            />
             <Button
               icon="pi pi-link"
               size="small"
@@ -261,7 +326,11 @@ onMounted(loadZones)
     <template #footer>
       <div class="flex justify-end gap-2">
         <Button label="Cancelar" severity="secondary" text @click="showZoneDialog = false" />
-        <Button :label="editingZone ? 'Guardar' : 'Crear zona'" :loading="loading" @click="handleSave" />
+        <Button
+          :label="editingZone ? 'Guardar' : 'Crear zona'"
+          :loading="loading"
+          @click="handleSave"
+        />
       </div>
     </template>
   </Dialog>
@@ -288,7 +357,9 @@ onMounted(loadZones)
   >
     <p class="mb-3 text-sm text-gray-500">
       Selecciona los alojamientos de tipo
-      <strong>{{ attachingZone ? ACCOMMODATION_TYPE_LABELS[attachingZone.accommodationType] : '' }}</strong>
+      <strong>{{
+        attachingZone ? ACCOMMODATION_TYPE_LABELS[attachingZone.accommodationType] : ''
+      }}</strong>
       que pertenecen a esta zona.
     </p>
     <Listbox
@@ -307,4 +378,13 @@ onMounted(loadZones)
       </div>
     </template>
   </Dialog>
+
+  <!-- Feature Assignment Dialog -->
+  <FeatureAssignmentDialog
+    v-model:visible="showFeatureDialog"
+    :title="`Características — ${featureTarget?.name ?? ''}`"
+    :initial-feature-ids="(featureTarget?.features ?? []).map((f) => f.id)"
+    :available-features="availableFeatures"
+    @saved="handleFeaturesSaved"
+  />
 </template>
