@@ -35,6 +35,11 @@ public class CampEditionAccommodationConfiguration : IEntityTypeConfiguration<Ca
         builder.Property(e => e.Capacity)
             .HasColumnName("capacity");
 
+        builder.Property(e => e.CountByFamily)
+            .IsRequired()
+            .HasDefaultValue(false)
+            .HasColumnName("count_by_family");
+
         builder.ToTable(t => t.HasCheckConstraint(
             "CK_CampEditionAccommodations_Capacity",
             "capacity IS NULL OR capacity > 0"));
@@ -63,9 +68,17 @@ public class CampEditionAccommodationConfiguration : IEntityTypeConfiguration<Ca
             .HasColumnName("updated_at")
             .HasDefaultValueSql("NOW()");
 
+        builder.Property(e => e.ZoneId)
+            .HasColumnName("zone_id");
+
         builder.HasOne(e => e.CampEdition)
             .WithMany(ce => ce.Accommodations)
             .HasForeignKey(e => e.CampEditionId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(e => e.Zone)
+            .WithMany(z => z.Accommodations)
+            .HasForeignKey(e => e.ZoneId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

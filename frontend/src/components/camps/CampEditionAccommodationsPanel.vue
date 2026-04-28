@@ -7,11 +7,15 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import Dialog from 'primevue/dialog'
 import CampEditionAccommodationDialog from './CampEditionAccommodationDialog.vue'
+import FeatureAssignmentDialog from './FeatureAssignmentDialog.vue'
 import { useCampAccommodations } from '@/composables/useCampAccommodations'
+import { useAccommodationFeatureAssignment } from '@/composables/useAccommodationFeatureAssignment'
 import type { CampEditionAccommodation, AccommodationType } from '@/types/camp-edition'
+import type { AccommodationFeature } from '@/types/accommodation-feature'
 
 const props = defineProps<{
   editionId: string
+  availableFeatures: AccommodationFeature[]
 }>()
 
 const toast = useToast()
@@ -22,24 +26,30 @@ const {
   fetchAccommodations,
   deleteAccommodation,
   activateAccommodation,
-  deactivateAccommodation
+  deactivateAccommodation,
 } = useCampAccommodations(props.editionId)
+const {
+  saving: featureSaving,
+  error: featureError,
+  setAccommodationFeatures,
+} = useAccommodationFeatureAssignment(props.editionId)
 
 const showDialog = ref(false)
 const editingAccommodation = ref<CampEditionAccommodation | undefined>(undefined)
 const deleteTarget = ref<CampEditionAccommodation | null>(null)
 const showDeleteConfirm = ref(false)
+const showFeatureDialog = ref(false)
+const featureTarget = ref<CampEditionAccommodation | null>(null)
 
 const ACCOMMODATION_TYPE_LABELS: Record<AccommodationType, string> = {
   Lodge: 'Refugio',
   Caravan: 'Caravana',
   Tent: 'Tienda de campaña',
   Bungalow: 'Bungalow',
-  Motorhome: 'Autocaravana'
+  Motorhome: 'Autocaravana',
 }
 
-const sortedAccommodations = () =>
-  [...accommodations.value].sort((a, b) => a.sortOrder - b.sortOrder)
+const sortedAccommodations = () => [...accommodations.value].sort((a, b) => a.sortOrder - b.sortOrder)
 
 const openCreate = () => {
   editingAccommodation.value = undefined
@@ -79,6 +89,25 @@ const handleToggleActive = async (acc: CampEditionAccommodation) => {
 
 const handleSaved = () => {
   fetchAccommodations()
+}
+
+const openFeatureAssign = (acc: CampEditionAccommodation) => {
+  featureTarget.value = acc
+  showFeatureDialog.value = true
+}
+
+const handleFeaturesSaved = async (featureIds: string[]) => {
+  if (!featureTarget.value) return
+  const result = await setAccommodationFeatures(featureTarget.value.id, featureIds)
+  if (result) {
+    const idx = accommodations.value.findIndex((a) => a.id === featureTarget.value!.id)
+    if (idx !== -1) accommodations.value[idx] = { ...accommodations.value[idx], features: result }
+    showFeatureDialog.value = false
+    featureTarget.value = null
+    toast.add({ severity: 'success', summary: 'Características actualizadas', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error', detail: featureError.value, life: 5000 })
+  }
 }
 
 onMounted(() => fetchAccommodations())
@@ -123,19 +152,36 @@ onMounted(() => fetchAccommodations())
             />
             <Tag v-if="!acc.isActive" value="Inactivo" severity="secondary" class="text-xs" />
           </div>
-          <div class="mt-1 flex gap-4 text-xs text-gray-500">
-            <span v-if="acc.capacity">
-              Capacidad: {{ acc.capacity }}
+          <div class="mt-1 flex flex-wrap gap-4 text-xs text-gray-500">
+            <span v-if="acc.capacity">Capacidad: {{ acc.capacity }}</span>
+            <span>Preferencias: {{ acc.currentPreferenceCount }}</span>
+            <span>1ª opción: {{ acc.firstChoiceCount }}</span>
+            <span v-if="acc.zoneName" class="rounded bg-gray-100 px-2 py-0.5 text-gray-600">
+              {{ acc.zoneName }}
             </span>
-            <span>
-              Preferencias: {{ acc.currentPreferenceCount }}
+          </div>
+          <div v-if="(acc.features ?? []).length > 0" class="mt-1.5 flex flex-wrap gap-1">
+            <span
+              v-for="f in (acc.features ?? []).slice(0, 3)"
+              :key="f.id"
+              class="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600"
+            >
+              {{ f.icon }} {{ f.name }}
             </span>
-            <span>
-              1ª opción: {{ acc.firstChoiceCount }}
+            <span v-if="(acc.features ?? []).length > 3" class="text-xs text-gray-400">
+              +{{ (acc.features ?? []).length - 3 }} más
             </span>
           </div>
         </div>
         <div class="flex items-center gap-1">
+          <Button
+            icon="pi pi-star"
+            severity="secondary"
+            text
+            size="small"
+            title="Características"
+            @click="openFeatureAssign(acc)"
+          />
           <Button
             :icon="acc.isActive ? 'pi pi-eye-slash' : 'pi pi-eye'"
             severity="secondary"
@@ -172,6 +218,15 @@ onMounted(() => fetchAccommodations())
       @saved="handleSaved"
     />
 
+    <!-- Feature Assignment Dialog -->
+    <FeatureAssignmentDialog
+      v-model:visible="showFeatureDialog"
+      :title="`Características — ${featureTarget?.name ?? ''}`"
+      :initial-feature-ids="(featureTarget?.features ?? []).map((f) => f.id)"
+      :available-features="availableFeatures"
+      @saved="handleFeaturesSaved"
+    />
+
     <!-- Delete Confirmation -->
     <Dialog
       v-model:visible="showDeleteConfirm"
@@ -180,8 +235,7 @@ onMounted(() => fetchAccommodations())
       class="w-full max-w-sm"
     >
       <p class="text-sm text-gray-700">
-        ¿Eliminar <strong>{{ deleteTarget?.name }}</strong
-        >? Esta acción no se puede deshacer.
+        ¿Eliminar <strong>{{ deleteTarget?.name }}</strong>? Esta acción no se puede deshacer.
       </p>
       <template #footer>
         <div class="flex justify-end gap-2">
@@ -191,12 +245,7 @@ onMounted(() => fetchAccommodations())
             text
             @click="showDeleteConfirm = false"
           />
-          <Button
-            label="Eliminar"
-            severity="danger"
-            :loading="loading"
-            @click="handleDelete"
-          />
+          <Button label="Eliminar" severity="danger" :loading="loading" @click="handleDelete" />
         </div>
       </template>
     </Dialog>

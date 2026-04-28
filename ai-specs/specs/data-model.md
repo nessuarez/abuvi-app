@@ -571,6 +571,7 @@ An accommodation option available for a specific camp edition (lodge, caravan, t
 - `capacity`: Maximum capacity in persons/units (optional, integer > 0 when set; informational only)
 - `isActive`: Whether the option is available for selection (required, default: true)
 - `sortOrder`: Display order (required, integer >= 0, default: 0)
+- `zoneId`: Optional assignment zone for this accommodation (nullable FK -> AccommodationZone, SET NULL on delete)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
@@ -586,6 +587,175 @@ An accommodation option available for a specific camp edition (lodge, caravan, t
 
 - Each CampEditionAccommodation belongs to one CampEdition (via `campEditionId`, CASCADE delete)
 - One CampEditionAccommodation can be referenced by many RegistrationAccommodationPreferences
+- Each CampEditionAccommodation optionally belongs to one AccommodationZone (via `zoneId`, SET NULL on delete)
+- One CampEditionAccommodation can have many AccommodationFeatureAssignments (cascade delete)
+
+---
+
+### AccommodationZone
+
+A named grouping of accommodations within a camp edition, used to organise the assignment board. Zones filter the accommodation grid by type (e.g. all lodges, all caravans).
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID)
+- `campEditionId`: The camp edition this zone belongs to (required, FK -> CampEdition, CASCADE delete)
+- `accommodationType`: The type of accommodations in this zone (required, enum: `Lodge` | `Caravan` | `Tent` | `Bungalow` | `Motorhome`)
+- `name`: Display name for the zone (required, max 100 characters)
+- `maxCapacity`: Optional maximum number of persons/units the zone can hold (nullable, integer > 0 when set)
+- `distributionNotes`: Free-text notes for the Board about how to distribute families (optional, max 500 characters)
+- `sortOrder`: Display order within the zone list (required, integer >= 0, default: 0)
+- `isActive`: Whether the zone is active (required, default: true)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- Name is required, max 100 characters
+- MaxCapacity must be > 0 when provided
+- DistributionNotes max 500 characters
+- SortOrder must be >= 0
+- Cannot delete a zone that has families assigned in any proposal
+
+**Relationships:**
+
+- Each AccommodationZone belongs to one CampEdition (CASCADE delete)
+- One AccommodationZone can group many CampEditionAccommodations (via `zoneId` on accommodation, SET NULL on delete)
+- One AccommodationZone can have many ZoneFeatureAssignments (cascade delete)
+- One AccommodationZone can have many MediaItems (via `zoneId` on media_items, SET NULL on delete)
+
+---
+
+### AccommodationFeature
+
+A configurable characteristic that can be assigned to accommodations or zones (e.g., "WiFi", "Pool", "Aire acondicionado"). Managed as a global catalogue by Admin/Board.
+
+**Table:** `accommodation_features`
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID)
+- `name`: Feature display name (required, max 200 characters, unique)
+- `icon`: Icon identifier or CSS class for the feature (required, max 100 characters)
+- `description`: Optional description (max 500 characters)
+- `applicabilityLevel`: Where this feature can be applied (required, enum: `Zone` | `Accommodation` | `AccommodationType` | `Any`)
+- `isActive`: Whether the feature is available for assignment (required, default: true)
+- `sortOrder`: Display order in feature lists (required, integer >= 0, default: 0)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- Name is required, max 200 characters, must be unique (case-insensitive)
+- Icon is required, max 100 characters
+- Description max 500 characters
+- SortOrder must be >= 0
+- Cannot delete a feature that has active assignments (use deactivate instead)
+
+**Relationships:**
+
+- One AccommodationFeature can be assigned to many CampEditionAccommodations (via AccommodationFeatureAssignment)
+- One AccommodationFeature can be assigned to many AccommodationZones (via ZoneFeatureAssignment)
+
+---
+
+### AccommodationFeatureAssignment
+
+Join table linking features to specific accommodations. Replace-all semantics: setting features for an accommodation replaces all existing assignments in a single transaction.
+
+**Table:** `accommodation_feature_assignments`
+
+**Fields:**
+
+- `accommodationId`: The accommodation (required, FK -> CampEditionAccommodation, CASCADE delete)
+- `featureId`: The feature being assigned (required, FK -> AccommodationFeature, RESTRICT delete)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+
+**Primary Key:** Composite `(accommodationId, featureId)`
+
+**Relationships:**
+
+- Each assignment belongs to one CampEditionAccommodation (cascade delete on accommodation deletion)
+- Each assignment references one AccommodationFeature (restrict delete — cannot delete a feature with assignments)
+
+---
+
+### ZoneFeatureAssignment
+
+Join table linking features to accommodation zones. Replace-all semantics: setting features for a zone replaces all existing assignments in a single transaction.
+
+**Table:** `zone_feature_assignments`
+
+**Fields:**
+
+- `zoneId`: The accommodation zone (required, FK -> AccommodationZone, CASCADE delete)
+- `featureId`: The feature being assigned (required, FK -> AccommodationFeature, RESTRICT delete)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+
+**Primary Key:** Composite `(zoneId, featureId)`
+
+**Relationships:**
+
+- Each assignment belongs to one AccommodationZone (cascade delete on zone deletion)
+- Each assignment references one AccommodationFeature (restrict delete — cannot delete a feature with assignments)
+
+---
+
+### AccommodationAssignmentProposal
+
+A named, versioned plan that assigns families to accommodations for a camp edition. Multiple proposals can exist per edition; only one can be active at a time. The Board creates and tests proposals before activating the final one.
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID)
+- `campEditionId`: The camp edition this proposal belongs to (required, FK -> CampEdition, CASCADE delete)
+- `name`: Name of the proposal (required, max 100 characters, e.g. "Propuesta inicial", "Versión revisada")
+- `notes`: Optional description or notes for the Board (nullable, max 500 characters)
+- `isActive`: Whether this is the currently active proposal for the edition (required, default: false; only one can be true per edition)
+- `createdByUserId`: User who created the proposal (required, FK -> User)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- Name is required, max 100 characters
+- Notes max 500 characters
+- Only one active proposal per edition (enforced at application level)
+- Cannot delete the active proposal if it is the only one
+
+**Relationships:**
+
+- Each AccommodationAssignmentProposal belongs to one CampEdition (CASCADE delete)
+- One AccommodationAssignmentProposal has many AccommodationAssignments (CASCADE delete)
+
+---
+
+### AccommodationAssignment
+
+A single assignment of a registered family to an accommodation within a proposal. One registration can only be assigned to one accommodation per proposal.
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID)
+- `proposalId`: The proposal this assignment belongs to (required, FK -> AccommodationAssignmentProposal, CASCADE delete)
+- `registrationId`: The registration (family) being assigned (required, FK -> Registration, RESTRICT delete)
+- `accommodationId`: The accommodation being assigned to (required, FK -> CampEditionAccommodation, RESTRICT delete)
+- `assignedByUserId`: User who created or last updated this assignment (required, FK -> User)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- One registration per proposal (unique index on `proposalId` + `registrationId`)
+- Registration must belong to the same camp edition as the proposal
+- Accommodation must belong to the same camp edition as the proposal
+- Capacity must not be exceeded (Lodge/Bungalow/Motorhome count by persons; Caravan/Tent count by family unit)
+
+**Relationships:**
+
+- Each AccommodationAssignment belongs to one AccommodationAssignmentProposal (CASCADE delete)
+- Each AccommodationAssignment references one Registration (RESTRICT delete)
+- Each AccommodationAssignment references one CampEditionAccommodation (RESTRICT delete)
 
 ---
 
@@ -922,7 +1092,7 @@ A story, anecdote, or memory contributed to the permanent historical archive. Pa
 
 ### MediaItem
 
-Multimedia content (photos, videos, interviews, documents) for the historical archive. Supports the multimedia gallery and can be attached to Memories.
+Multimedia content (photos, videos, interviews, documents, audio) for the historical archive. Supports the multimedia gallery and can be attached to Memories, Accommodations, or Zones.
 
 **Fields:**
 
@@ -930,22 +1100,25 @@ Multimedia content (photos, videos, interviews, documents) for the historical ar
 - `uploadedByUserId`: User who uploaded the content (required, FK -> User)
 - `fileUrl`: URL to the file in blob storage (required, max 2048 characters)
 - `thumbnailUrl`: URL to the thumbnail for photos/videos (optional, max 2048 characters)
-- `type`: Type of media content (required, enum: `Photo` | `Video` | `Interview` | `Document`)
+- `type`: Type of media content (required, enum: `Photo` | `Video` | `Interview` | `Document` | `Audio`)
 - `title`: Content title (required, max 200 characters)
 - `description`: Content description (optional, max 1000 characters)
 - `year`: Year of the content (optional, integer)
 - `decade`: Decade for filtering, e.g. "70s", "80s", "90s", "00s", "10s", "20s" (optional, max 10 characters)
 - `memoryId`: Optional link to a Memory entry (optional, FK -> Memory)
 - `campLocationId`: Optional link to a camp location (optional, FK -> CampLocation)
+- `accommodationId`: Optional link to a specific accommodation (optional, FK -> CampEditionAccommodation, SET NULL on delete)
+- `zoneId`: Optional link to a specific accommodation zone (optional, FK -> AccommodationZone, SET NULL on delete)
+- `context`: Free-text contextual label for filtering (optional, e.g. "camp", "meeting")
 - `isPublished`: Whether the item is visible to all users (required, default: false)
-- `isApproved`: Whether the item has been approved by board/admin (required, default: false)
+- `isApproved`: Whether the item has been approved by board/admin (required, default: false). Automatically set to `true` when `accommodationId` or `zoneId` is provided (internal media).
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
 **Validation rules:**
 
 - ThumbnailUrl is required when type is Photo or Video
-- Decade should be auto-derived from year when year is provided
+- Decade is auto-derived from year when year is provided
 - MediaItems require approval (isApproved = true) by Admin or Board before becoming visible
 - A MediaItem is only visible when both isApproved = true AND isPublished = true
 - FileUrl must point to a valid blob storage location
@@ -955,6 +1128,8 @@ Multimedia content (photos, videos, interviews, documents) for the historical ar
 - Each MediaItem is uploaded by one User (via `uploadedByUserId`)
 - Each MediaItem optionally belongs to one Memory (via `memoryId`)
 - Each MediaItem optionally links to one CampLocation (via `campLocationId`)
+- Each MediaItem optionally belongs to one CampEditionAccommodation (via `accommodationId`, SET NULL on delete)
+- Each MediaItem optionally belongs to one AccommodationZone (via `zoneId`, SET NULL on delete)
 
 ---
 
@@ -1083,6 +1258,12 @@ erDiagram
     CampLocation ||--o{ Memory : "located at"
     CampLocation ||--o{ MediaItem : "located at"
     Memory ||--o{ MediaItem : "has attachments"
+    AccommodationFeature ||--o{ AccommodationFeatureAssignment : "assigned via"
+    AccommodationFeature ||--o{ ZoneFeatureAssignment : "assigned via"
+    CampEditionAccommodation ||--o{ AccommodationFeatureAssignment : "has"
+    AccommodationZone ||--o{ ZoneFeatureAssignment : "has"
+    CampEditionAccommodation ||--o{ MediaItem : "has media"
+    AccommodationZone ||--o{ MediaItem : "has media"
 
     User {
         UUID id PK
@@ -1342,10 +1523,37 @@ erDiagram
         string decade
         UUID memoryId FK
         UUID campLocationId FK
+        UUID accommodationId FK
+        UUID zoneId FK
+        string context
         boolean isPublished
         boolean isApproved
         datetime createdAt
         datetime updatedAt
+    }
+
+    AccommodationFeature {
+        UUID id PK
+        string name
+        string icon
+        string description
+        enum applicabilityLevel
+        boolean isActive
+        integer sortOrder
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    AccommodationFeatureAssignment {
+        UUID accommodationId PK_FK
+        UUID featureId PK_FK
+        datetime createdAt
+    }
+
+    ZoneFeatureAssignment {
+        UUID zoneId PK_FK
+        UUID featureId PK_FK
+        datetime createdAt
     }
 
     CampLocation {

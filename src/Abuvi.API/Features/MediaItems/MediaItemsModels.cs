@@ -1,3 +1,4 @@
+using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.Memories;
 using Abuvi.API.Features.Users;
 
@@ -25,6 +26,8 @@ public class MediaItem
     public string? Decade { get; set; }
     public Guid? MemoryId { get; set; }
     public Guid? CampLocationId { get; set; } // TODO: Add FK relationship when CampLocation entity is created
+    public Guid? AccommodationId { get; set; }
+    public Guid? ZoneId { get; set; }
     public bool IsPublished { get; set; }
     public bool IsApproved { get; set; }
     public string? Context { get; set; }
@@ -34,6 +37,8 @@ public class MediaItem
     // Navigation
     public User UploadedBy { get; set; } = null!;
     public Memory? Memory { get; set; }
+    public CampEditionAccommodation? Accommodation { get; set; }
+    public AccommodationZone? Zone { get; set; }
     // TODO: Add CampLocation navigation when CampLocation entity is created
 }
 
@@ -47,7 +52,9 @@ public record CreateMediaItemRequest(
     int? Year,
     Guid? MemoryId,
     Guid? CampLocationId,
-    string? Context);
+    string? Context,
+    Guid? AccommodationId = null,
+    Guid? ZoneId = null);
 
 // Response DTOs
 public record MediaItemResponse(
@@ -62,6 +69,8 @@ public record MediaItemResponse(
     int? Year,
     string? Decade,
     Guid? MemoryId,
+    Guid? AccommodationId,
+    Guid? ZoneId,
     string? Context,
     bool IsPublished,
     bool IsApproved,
@@ -83,6 +92,8 @@ public static class MediaItemMappingExtensions
             item.Year,
             item.Decade,
             item.MemoryId,
+            item.AccommodationId,
+            item.ZoneId,
             item.Context,
             item.IsPublished,
             item.IsApproved,

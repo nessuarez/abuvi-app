@@ -5,6 +5,8 @@ import { useToast } from 'primevue/usetoast'
 import Container from '@/components/ui/Container.vue'
 import CampEditionStatusBadge from '@/components/camps/CampEditionStatusBadge.vue'
 import CampEditionAccommodationsPanel from '@/components/camps/CampEditionAccommodationsPanel.vue'
+import AccommodationZonePanel from '@/components/camps/AccommodationZonePanel.vue'
+import AccommodationFeaturesCataloguePanel from '@/components/camps/AccommodationFeaturesCataloguePanel.vue'
 import CampEditionExtrasList from '@/components/camps/CampEditionExtrasList.vue'
 import DateInput from '@/components/shared/DateInput.vue'
 import Button from 'primevue/button'
@@ -15,6 +17,7 @@ import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { useCampEditions } from '@/composables/useCampEditions'
+import { useAccommodationFeatures } from '@/composables/useAccommodationFeatures'
 import { useAuthStore } from '@/stores/auth'
 import { parseDateSafe, formatDateLocal } from '@/utils/date'
 import type { CampEdition, UpdateCampEditionRequest } from '@/types/camp-edition'
@@ -24,6 +27,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const toast = useToast()
 const { loading, error, getEditionById, updateEdition } = useCampEditions()
+const { features: availableFeatures, fetchFeatures } = useAccommodationFeatures()
 
 const edition = ref<CampEdition | null>(null)
 const isBoard = computed(() => auth.user?.role === 'Admin' || auth.user?.role === 'Board')
@@ -281,6 +285,7 @@ onMounted(async () => {
     startEditing()
     router.replace({ query: {} })
   }
+  fetchFeatures(true)
 })
 </script>
 
@@ -724,7 +729,27 @@ onMounted(async () => {
             <!-- Tab 7: Accommodations (no inline edit — has its own CRUD) -->
             <div v-if="activeTab === '7'">
                 <div v-if="isBoard">
-                  <CampEditionAccommodationsPanel :edition-id="edition.id" />
+                  <div class="mb-4 flex justify-end">
+                    <Button
+                      label="Gestionar distribución de alojamientos"
+                      icon="pi pi-objects-column"
+                      @click="router.push({ name: 'accommodation-assignment', params: { campEditionId: edition.id } })"
+                    />
+                  </div>
+                  <CampEditionAccommodationsPanel
+                    :edition-id="edition.id"
+                    :available-features="availableFeatures"
+                  />
+                  <div class="mt-6">
+                    <AccommodationZonePanel
+                      :camp-edition-id="edition.id"
+                      :accommodations="[]"
+                      :available-features="availableFeatures"
+                    />
+                  </div>
+                  <div class="mt-6">
+                    <AccommodationFeaturesCataloguePanel />
+                  </div>
                 </div>
                 <div v-else class="rounded-lg border border-gray-200 bg-white p-6">
                   <p class="text-sm text-gray-500">Solo visible para la Junta Directiva y administradores.</p>

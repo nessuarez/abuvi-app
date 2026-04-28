@@ -2533,6 +2533,423 @@ Deactivate an accommodation option (soft-disable without deleting).
 
 ---
 
+## Accommodation Zone Endpoints
+
+Manage named zones that group accommodations for the assignment board. Zones are display metadata — they do not enforce capacity at the database level.
+
+**Base Path:** `/api/camps/editions/{campEditionId}/accommodation-zones`
+
+**Authorization:** Admin or Board
+
+---
+
+### GET /api/camps/editions/{campEditionId}/accommodation-zones
+
+List all active zones for a camp edition, ordered by type then sortOrder.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "...",
+      "campEditionId": "...",
+      "accommodationType": "Lodge",
+      "name": "Zona Refugios Norte",
+      "maxCapacity": null,
+      "distributionNotes": null,
+      "sortOrder": 0,
+      "isActive": true,
+      "accommodationIds": ["...", "..."],
+      "features": [],
+      "mediaItems": [],
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ]
+}
+```
+
+---
+
+### POST /api/camps/editions/{campEditionId}/accommodation-zones
+
+Create a new zone for a camp edition.
+
+**Request Body:**
+
+```json
+{
+  "accommodationType": "Lodge",
+  "name": "Zona Refugios Norte",
+  "maxCapacity": null,
+  "distributionNotes": null,
+  "sortOrder": 0
+}
+```
+
+**Success Response (201 Created):** Returns created zone.
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **404 Not Found**: Camp edition not found
+
+---
+
+### PUT /api/camps/editions/{campEditionId}/accommodation-zones/{zoneId}
+
+Update a zone's name, capacity, notes, or sort order.
+
+**Request Body:**
+
+```json
+{
+  "name": "Zona Refugios Norte",
+  "maxCapacity": 40,
+  "distributionNotes": "Familias con niños pequeños",
+  "sortOrder": 1
+}
+```
+
+**Success Response (200 OK):** Returns updated zone.
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **404 Not Found**: Zone not found
+
+---
+
+### DELETE /api/camps/editions/{campEditionId}/accommodation-zones/{zoneId}
+
+Delete a zone. Fails if any family is assigned to an accommodation in this zone in any proposal.
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **404 Not Found**: Zone not found
+- **422 Unprocessable Entity**: Zone has assigned families
+
+---
+
+### PATCH /api/camps/editions/{campEditionId}/accommodation-zones/{zoneId}/accommodations
+
+Replace the full list of accommodations attached to a zone (not additive). Detaches any accommodation previously in this zone and attaches the new list.
+
+**Request Body:**
+
+```json
+{
+  "accommodationIds": ["...", "..."]
+}
+```
+
+**Success Response (200 OK):** Returns updated zone with new accommodationIds.
+
+---
+
+## Accommodation Assignment Proposal Endpoints
+
+Manage versioned assignment plans for a camp edition. Only one proposal can be active at a time.
+
+**Base Path:** `/api/camps/editions/{campEditionId}/assignment-proposals`
+
+**Authorization:** Admin or Board
+
+---
+
+### GET /api/camps/editions/{campEditionId}/assignment-proposals
+
+List all proposals for a camp edition, ordered by active first then creation date.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "...",
+      "campEditionId": "...",
+      "name": "Propuesta inicial",
+      "notes": null,
+      "isActive": true,
+      "assignmentCount": 42,
+      "unassignedCount": 8,
+      "createdByUserId": "...",
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ]
+}
+```
+
+---
+
+### POST /api/camps/editions/{campEditionId}/assignment-proposals
+
+Create a new proposal. Optionally copy assignments from an existing proposal.
+
+**Request Body:**
+
+```json
+{
+  "name": "Propuesta revisada",
+  "notes": "Ajustado tras revisión del 3 de mayo",
+  "copyFromProposalId": "..."
+}
+```
+
+**Success Response (201 Created):** Returns created proposal summary.
+
+---
+
+### PUT /api/camps/editions/{campEditionId}/assignment-proposals/{proposalId}
+
+Update a proposal's name and notes.
+
+**Request Body:**
+
+```json
+{
+  "name": "Propuesta revisada v2",
+  "notes": "Ajustes finales"
+}
+```
+
+**Success Response (200 OK):** Returns updated proposal summary.
+
+---
+
+### DELETE /api/camps/editions/{campEditionId}/assignment-proposals/{proposalId}
+
+Delete a proposal and all its assignments. Fails if it is the only active proposal.
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **422 Unprocessable Entity**: Cannot delete the only active proposal
+
+---
+
+### POST /api/camps/editions/{campEditionId}/assignment-proposals/{proposalId}/activate
+
+Set this proposal as the active one for the edition. Deactivates all other proposals atomically.
+
+**Success Response (200 OK):** Returns activated proposal summary.
+
+---
+
+## Accommodation Assignment Endpoints
+
+Manage family-to-accommodation assignments within a proposal.
+
+**Base Path:** `/api/camps/editions/{campEditionId}/assignment-proposals/{proposalId}/assignments`
+
+**Authorization:** Admin or Board
+
+---
+
+### GET /api/camps/editions/{campEditionId}/assignment-proposals/{proposalId}/assignments
+
+Load the full assignment state for a proposal: all families (including unassigned), all accommodations, and current assignments.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "proposalId": "...",
+    "families": [
+      {
+        "registrationId": "...",
+        "familyUnitId": "...",
+        "familyName": "García López",
+        "representativeName": "Carlos García",
+        "memberCount": 4,
+        "adultCount": 2,
+        "childCount": 2,
+        "hasPet": false,
+        "specialNeeds": null,
+        "campatesPreference": null,
+        "accommodationPreferences": [
+          { "accommodationId": "...", "preferenceOrder": 1 }
+        ]
+      }
+    ],
+    "accommodations": [
+      {
+        "id": "...",
+        "name": "Refugio Norte",
+        "type": "Lodge",
+        "capacity": 20,
+        "countByFamily": false,
+        "zoneId": "...",
+        "zoneName": "Zona Refugios Norte",
+        "sortOrder": 0
+      }
+    ],
+    "assignments": [
+      { "registrationId": "...", "accommodationId": "..." }
+    ]
+  }
+}
+```
+
+---
+
+### PUT /api/camps/editions/{campEditionId}/assignment-proposals/{proposalId}/assignments
+
+Bulk replace all assignments in the proposal (full replacement, not patch). Validates capacity and membership before writing.
+
+**Request Body:**
+
+```json
+{
+  "assignments": [
+    { "registrationId": "...", "accommodationId": "..." }
+  ]
+}
+```
+
+**Success Response (200 OK):** Returns updated assignment state.
+
+**Error Responses:**
+
+- **404 Not Found**: Proposal does not belong to this edition
+- **422 Unprocessable Entity**: Capacity exceeded or invalid registration/accommodation
+
+---
+
+### POST /api/camps/editions/{campEditionId}/assignment-proposals/{proposalId}/assignments/{registrationId}
+
+Assign a single family to an accommodation.
+
+**Request Body:**
+
+```json
+{ "accommodationId": "..." }
+```
+
+**Success Response (200 OK):** Returns updated assignment state.
+
+---
+
+### DELETE /api/camps/editions/{campEditionId}/assignment-proposals/{proposalId}/assignments/{registrationId}
+
+Remove the assignment for a single family.
+
+**Success Response:** 204 No Content
+
+---
+
+### POST /api/camps/editions/{campEditionId}/assignment-proposals/{proposalId}/assignments/auto-assign
+
+Run the greedy auto-assign algorithm on unassigned (or all) families.
+
+- Sort families largest-first.
+- Phase 1: try each accommodation preference in order; pick tightest fit.
+- Phase 2: fallback to any accommodation with space (tightest fit).
+- Families that cannot be placed are left unassigned.
+
+**Request Body:**
+
+```json
+{ "overwriteExisting": false }
+```
+
+- `overwriteExisting: false` — keeps already-assigned families, only fills gaps.
+- `overwriteExisting: true` — clears all existing assignments and recomputes from scratch.
+
+**Success Response (200 OK):** Returns updated assignment state.
+
+---
+
+## Assignment Report Endpoints
+
+Read-only aggregated views over a proposal's assignments.
+
+**Base Path:** `/api/camps/editions/{campEditionId}/assignment-proposals/{proposalId}/reports`
+
+**Authorization:** Admin or Board
+
+---
+
+### GET /api/camps/editions/{campEditionId}/assignment-proposals/{proposalId}/reports/by-type
+
+Group assignments by accommodation type. Shows capacity, occupancy, and family list per type.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "groupKey": "Lodge",
+      "groupLabel": "Refugios",
+      "totalCapacity": 60,
+      "usedCapacity": 48,
+      "families": [
+        {
+          "registrationId": "...",
+          "familyName": "García López",
+          "representativeName": "Carlos García",
+          "memberCount": 4,
+          "accommodationName": "Refugio Norte",
+          "zoneName": "Zona Norte"
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/camps/editions/{campEditionId}/assignment-proposals/{proposalId}/reports/by-zone
+
+Group assignments by zone (families not in any zone appear under "Sin zona").
+
+**Success Response (200 OK):** Same shape as by-type report, with `groupKey` = zone name.
+
+---
+
+### GET /api/camps/editions/{campEditionId}/assignment-proposals/{proposalId}/reports/unassigned
+
+List families not yet assigned to any accommodation in the proposal.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "registrationId": "...",
+      "familyUnitId": "...",
+      "familyName": "Martínez Ruiz",
+      "representativeName": "Ana Martínez",
+      "memberCount": 3,
+      "adultCount": 2,
+      "childCount": 1,
+      "hasPet": true,
+      "specialNeeds": null,
+      "campatesPreference": "Familia López",
+      "accommodationPreferences": []
+    }
+  ]
+}
+```
+
+---
+
 ## Registration Accommodation Preference Endpoints
 
 Families rank up to 3 accommodation preferences per registration.
@@ -3059,3 +3476,206 @@ Payments must be completed in order: P1 before P2, P2 before P3. Manual payments
 - Manual payments: Always actionable when Pending
 
 **Server-side enforcement:** Uploading proof for a non-actionable payment returns **422 Unprocessable Entity** with message "Debes completar el pago anterior antes de subir un comprobante."
+
+---
+
+## Accommodation Features Endpoints
+
+Manage the global catalogue of accommodation features (characteristics assignable to accommodations or zones, e.g. "WiFi", "Pool").
+
+**Base Path:** `/api/accommodation-features`
+
+**Authorization:** Admin or Board (all endpoints)
+
+---
+
+### GET /api/accommodation-features
+
+List all features in the catalogue.
+
+**Query Parameters:**
+
+- `activeOnly` (optional, boolean): When `true`, returns only active features; when `false`, returns all; when omitted, returns all.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "...",
+      "name": "WiFi",
+      "icon": "wifi",
+      "description": null,
+      "applicabilityLevel": "Any",
+      "isActive": true,
+      "sortOrder": 0,
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/accommodation-features/{id}
+
+Get a single feature by ID.
+
+**Success Response (200 OK):** Returns a single `AccommodationFeatureResponse` object.
+
+**Error Responses:**
+
+- **404 Not Found**: Feature not found
+
+---
+
+### POST /api/accommodation-features
+
+Create a new feature in the catalogue.
+
+**Request Body:**
+
+```json
+{
+  "name": "WiFi",
+  "icon": "wifi",
+  "description": null,
+  "applicabilityLevel": "Any"
+}
+```
+
+**Validation:**
+
+- `name`: Required, max 200 characters, must be unique
+- `icon`: Required, max 100 characters
+- `description`: Optional, max 500 characters
+- `applicabilityLevel`: Required, enum: `Zone` | `Accommodation` | `AccommodationType` | `Any`
+
+**Success Response (201 Created):** Returns created `AccommodationFeatureResponse`.
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **422 Unprocessable Entity**: Feature name already exists
+
+---
+
+### PUT /api/accommodation-features/{id}
+
+Update an existing feature.
+
+**Request Body:**
+
+```json
+{
+  "name": "WiFi de alta velocidad",
+  "icon": "wifi-high",
+  "description": "Fibra óptica disponible en todas las habitaciones",
+  "applicabilityLevel": "Accommodation",
+  "isActive": true,
+  "sortOrder": 1
+}
+```
+
+**Success Response (200 OK):** Returns updated `AccommodationFeatureResponse`.
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **404 Not Found**: Feature not found
+- **422 Unprocessable Entity**: Name already in use by another feature
+
+---
+
+### DELETE /api/accommodation-features/{id}
+
+Delete a feature from the catalogue. Fails if the feature has any active assignments.
+
+**Success Response:** 204 No Content
+
+**Error Responses:**
+
+- **404 Not Found**: Feature not found
+- **422 Unprocessable Entity**: Feature has active assignments (deactivate instead)
+
+---
+
+## Accommodation Feature Assignment Endpoints
+
+Replace-all endpoints for assigning features to specific accommodations or zones. Each PUT replaces all current assignments for the target entity.
+
+**Authorization:** Admin or Board
+
+---
+
+### PUT /api/camps/editions/{editionId}/accommodations/{accommodationId}/features
+
+Replace all feature assignments for an accommodation.
+
+**Request Body:**
+
+```json
+{
+  "featureIds": ["<uuid1>", "<uuid2>"]
+}
+```
+
+**Validation:**
+
+- All IDs must reference existing, active features
+- Empty array is valid (removes all features)
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "...",
+      "name": "WiFi",
+      "icon": "wifi",
+      "description": null,
+      "applicabilityLevel": "Any",
+      "isActive": true,
+      "sortOrder": 0,
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request**: One or more feature IDs do not exist or are inactive
+- **404 Not Found**: Accommodation not found
+
+---
+
+### PUT /api/camps/editions/{editionId}/accommodation-zones/{zoneId}/features
+
+Replace all feature assignments for an accommodation zone.
+
+**Request Body:**
+
+```json
+{
+  "featureIds": ["<uuid1>", "<uuid2>"]
+}
+```
+
+**Validation:**
+
+- All IDs must reference existing, active features
+- Empty array is valid (removes all features)
+
+**Success Response (200 OK):** Returns list of `AccommodationFeatureResponse` (same shape as accommodation endpoint above).
+
+**Error Responses:**
+
+- **400 Bad Request**: One or more feature IDs do not exist or are inactive
+- **404 Not Found**: Zone not found
