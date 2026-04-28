@@ -94,6 +94,26 @@ describe('MembershipDialog', () => {
     useMembershipsMock.mockReturnValue(makeComposableReturn(null))
   })
 
+  it('calls getMembership on mount when visible=true', async () => {
+    mount(MembershipDialog, {
+      props: defaultProps,
+      global: { plugins: [createPinia()], stubs: componentStubs },
+    })
+
+    await Promise.resolve()
+    expect(getMembershipMock).toHaveBeenCalledWith('fu1', 'member1')
+  })
+
+  it('does not call getMembership on mount when visible=false', async () => {
+    mount(MembershipDialog, {
+      props: { ...defaultProps, visible: false },
+      global: { plugins: [createPinia()], stubs: componentStubs },
+    })
+
+    await Promise.resolve()
+    expect(getMembershipMock).not.toHaveBeenCalled()
+  })
+
   it('renders InputNumber year picker when member has no membership', () => {
     const wrapper = mount(MembershipDialog, {
       props: defaultProps,

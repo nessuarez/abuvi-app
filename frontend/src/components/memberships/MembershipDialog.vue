@@ -41,7 +41,7 @@ const currentYear = new Date().getFullYear()
 const createStartYear = ref<number>(currentYear)
 const reactivateYear = ref<number>(currentYear)
 
-// Fetch membership data when dialog opens
+// Fetch membership data when dialog opens (immediate fires on mount when visible starts as true)
 watch(
   () => props.visible,
   async (val) => {
@@ -49,6 +49,7 @@ watch(
       await getMembership(props.familyUnitId, props.memberId)
     }
   },
+  { immediate: true },
 )
 
 const formatDate = (dateString: string): string => {
