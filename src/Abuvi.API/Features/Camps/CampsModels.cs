@@ -366,6 +366,7 @@ public class CampEditionAccommodation
     public AccommodationType AccommodationType { get; set; }
     public string? Description { get; set; }
     public int? Capacity { get; set; }
+    public bool CountByFamily { get; set; } = false;
     public bool IsActive { get; set; } = true;
     public int SortOrder { get; set; } = 0;
     public DateTime CreatedAt { get; set; }
@@ -386,6 +387,7 @@ public record CampEditionAccommodationResponse(
     AccommodationType AccommodationType,
     string? Description,
     int? Capacity,
+    bool CountByFamily,
     bool IsActive,
     int SortOrder,
     int CurrentPreferenceCount,
@@ -402,6 +404,7 @@ public record CreateCampEditionAccommodationRequest(
     AccommodationType AccommodationType,
     string? Description,
     int? Capacity,
+    bool? CountByFamily = null,
     Guid? ZoneId = null,
     int SortOrder = 0
 );
@@ -411,6 +414,7 @@ public record UpdateCampEditionAccommodationRequest(
     AccommodationType AccommodationType,
     string? Description,
     int? Capacity,
+    bool CountByFamily,
     bool IsActive,
     Guid? ZoneId,
     int SortOrder

@@ -53,6 +53,8 @@ public class CampEditionAccommodationsService(
             AccommodationType = request.AccommodationType,
             Description = request.Description,
             Capacity = request.Capacity,
+            CountByFamily = request.CountByFamily
+                ?? request.AccommodationType is AccommodationType.Tent or AccommodationType.Caravan,
             ZoneId = request.ZoneId,
             IsActive = true,
             SortOrder = request.SortOrder,
@@ -77,6 +79,7 @@ public class CampEditionAccommodationsService(
         accommodation.AccommodationType = request.AccommodationType;
         accommodation.Description = request.Description;
         accommodation.Capacity = request.Capacity;
+        accommodation.CountByFamily = request.CountByFamily;
         accommodation.IsActive = request.IsActive;
         accommodation.ZoneId = request.ZoneId;
         accommodation.SortOrder = request.SortOrder;
@@ -148,6 +151,7 @@ internal static class CampEditionAccommodationExtensions
             a.AccommodationType,
             a.Description,
             a.Capacity,
+            a.CountByFamily,
             a.IsActive,
             a.SortOrder,
             currentPreferenceCount,

@@ -8,9 +8,6 @@ namespace Abuvi.API.Features.Camps;
 
 public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodationAssignmentsRepository
 {
-    private static readonly HashSet<AccommodationType> ByFamilyTypes =
-        [AccommodationType.Caravan, AccommodationType.Tent];
-
     public async Task<ProposalAssignmentStateResponse> GetAssignmentStateAsync(
         Guid campEditionId,
         Guid proposalId,
@@ -76,7 +73,7 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
             a.Name,
             a.AccommodationType,
             a.Capacity,
-            ByFamilyTypes.Contains(a.AccommodationType),
+            a.CountByFamily,
             a.ZoneId,
             a.Zone?.Name,
             a.SortOrder
@@ -174,7 +171,7 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
                     var acc = accommodations.First(a => a.Id == accGroup.Key);
                     if (acc.Capacity is null) continue;
 
-                    if (ByFamilyTypes.Contains(acc.AccommodationType))
+                    if (acc.CountByFamily)
                     {
                         if (accGroup.Count() > acc.Capacity)
                             throw new BusinessRuleException(
