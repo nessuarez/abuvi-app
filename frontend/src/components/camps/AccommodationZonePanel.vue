@@ -4,20 +4,22 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
+import Tag from 'primevue/tag'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
-import Listbox from 'primevue/listbox'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import FeatureAssignmentDialog from './FeatureAssignmentDialog.vue'
+import CampEditionAccommodationDialog from './CampEditionAccommodationDialog.vue'
 import { useAccommodationZones } from '@/composables/useAccommodationZones'
 import { useAccommodationFeatureAssignment } from '@/composables/useAccommodationFeatureAssignment'
+import { useCampAccommodations } from '@/composables/useCampAccommodations'
 import type { AccommodationZoneResponse, AccommodationTypeValue } from '@/types/accommodation-assignment'
 import { ACCOMMODATION_TYPE_LABELS } from '@/types/accommodation-assignment'
-import type { CampEditionAccommodation } from '@/types/camp-edition'
+import type { CampEditionAccommodation, AccommodationType } from '@/types/camp-edition'
 import type { AccommodationFeature } from '@/types/accommodation-feature'
 
 const props = defineProps<{
@@ -26,15 +28,26 @@ const props = defineProps<{
   availableFeatures: AccommodationFeature[]
 }>()
 
+const emit = defineEmits<{
+  'unit-saved': []
+}>()
+
 const toast = useToast()
 const campEditionIdRef = computed(() => props.campEditionId)
-const { zones, loading, error, loadZones, createZone, updateZone, deleteZone, attachAccommodations } =
+const { zones, loading, error, loadZones, createZone, updateZone, deleteZone } =
   useAccommodationZones(campEditionIdRef)
 const {
   saving: featureSaving,
   error: featureError,
   setZoneFeatures,
 } = useAccommodationFeatureAssignment(props.campEditionId)
+const {
+  loading: unitLoading,
+  error: unitError,
+  deleteAccommodation,
+  activateAccommodation,
+  deactivateAccommodation,
+} = useCampAccommodations(props.campEditionId)
 
 // Zone form dialog
 const showZoneDialog = ref(false)
@@ -45,30 +58,39 @@ const formCapacity = ref<number | null>(null)
 const formNotes = ref('')
 const formNameError = ref('')
 
-// Delete dialog
+// Delete zone dialog
 const showDeleteDialog = ref(false)
 const deleteTarget = ref<AccommodationZoneResponse | null>(null)
-
-// Attach accommodations dialog
-const showAttachDialog = ref(false)
-const attachingZone = ref<AccommodationZoneResponse | null>(null)
-const selectedAccommodationIds = ref<string[]>([])
 
 // Feature assignment dialog
 const showFeatureDialog = ref(false)
 const featureTarget = ref<AccommodationZoneResponse | null>(null)
+
+// Row expansion
+const expandedRows = ref<Record<string, boolean>>({})
+
+// Unit create/edit dialog
+const showUnitDialog = ref(false)
+const editingUnit = ref<CampEditionAccommodation | undefined>(undefined)
+const unitDialogZoneId = ref<string | null>(null)
+const unitDialogType = ref<AccommodationType | undefined>(undefined)
+
+// Delete unit dialog
+const showDeleteUnitDialog = ref(false)
+const deleteUnitTarget = ref<CampEditionAccommodation | null>(null)
 
 const TYPE_OPTIONS = Object.entries(ACCOMMODATION_TYPE_LABELS).map(([value, label]) => ({
   value,
   label,
 }))
 
-const accommodationsForZoneType = computed(() => {
-  if (!attachingZone.value) return []
-  return props.accommodations
-    .filter((a) => a.accommodationType === attachingZone.value!.accommodationType && a.isActive)
-    .map((a) => ({ id: a.id, name: a.name }))
-})
+function unitsForZone(zoneId: string): CampEditionAccommodation[] {
+  return props.accommodations.filter((a) => a.zoneId === zoneId)
+}
+
+function occupancyLabel(acc: CampEditionAccommodation): string {
+  return acc.countByFamily ? 'Por unidad' : 'Por personas'
+}
 
 function openCreate() {
   editingZone.value = null
@@ -144,23 +166,6 @@ async function handleDelete() {
   deleteTarget.value = null
 }
 
-function openAttachDialog(zone: AccommodationZoneResponse) {
-  attachingZone.value = zone
-  selectedAccommodationIds.value = [...zone.accommodationIds]
-  showAttachDialog.value = true
-}
-
-async function handleAttach() {
-  if (!attachingZone.value) return
-  const success = await attachAccommodations(attachingZone.value.id, selectedAccommodationIds.value)
-  showAttachDialog.value = false
-  if (success) {
-    toast.add({ severity: 'success', summary: 'Alojamientos actualizados', life: 3000 })
-  } else {
-    toast.add({ severity: 'error', summary: 'Error', detail: error.value, life: 5000 })
-  }
-}
-
 function openFeatureAssign(zone: AccommodationZoneResponse) {
   featureTarget.value = zone
   showFeatureDialog.value = true
@@ -177,6 +182,53 @@ async function handleFeaturesSaved(featureIds: string[]) {
     toast.add({ severity: 'success', summary: 'Características actualizadas', life: 3000 })
   } else {
     toast.add({ severity: 'error', summary: 'Error', detail: featureError.value, life: 5000 })
+  }
+}
+
+function openCreateUnit(zone: AccommodationZoneResponse) {
+  editingUnit.value = undefined
+  unitDialogZoneId.value = zone.id
+  unitDialogType.value = zone.accommodationType as AccommodationType
+  showUnitDialog.value = true
+}
+
+function openEditUnit(acc: CampEditionAccommodation) {
+  editingUnit.value = acc
+  unitDialogZoneId.value = null
+  unitDialogType.value = undefined
+  showUnitDialog.value = true
+}
+
+function handleUnitSaved() {
+  emit('unit-saved')
+}
+
+function confirmDeleteUnit(acc: CampEditionAccommodation) {
+  deleteUnitTarget.value = acc
+  showDeleteUnitDialog.value = true
+}
+
+async function handleDeleteUnit() {
+  if (!deleteUnitTarget.value) return
+  const success = await deleteAccommodation(deleteUnitTarget.value.id)
+  showDeleteUnitDialog.value = false
+  if (success) {
+    emit('unit-saved')
+    toast.add({ severity: 'success', summary: 'Unidad eliminada', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error', detail: unitError.value, life: 5000 })
+  }
+  deleteUnitTarget.value = null
+}
+
+async function handleToggleUnitActive(acc: CampEditionAccommodation) {
+  const success = acc.isActive
+    ? await deactivateAccommodation(acc.id)
+    : await activateAccommodation(acc.id)
+  if (success) {
+    emit('unit-saved')
+  } else {
+    toast.add({ severity: 'error', summary: 'Error', detail: unitError.value, life: 5000 })
   }
 }
 
@@ -205,7 +257,15 @@ onMounted(loadZones)
       No hay zonas configuradas. Crea una zona para agrupar alojamientos.
     </div>
 
-    <DataTable v-else :value="zones" :loading="loading" class="text-sm">
+    <DataTable
+      v-else
+      v-model:expanded-rows="expandedRows"
+      :value="zones"
+      :loading="loading"
+      data-key="id"
+      class="text-sm"
+    >
+      <Column expander style="width: 3rem" />
       <Column header="Nombre">
         <template #body="{ data }">
           <div>
@@ -235,12 +295,12 @@ onMounted(loadZones)
           {{ data.maxCapacity ?? '—' }}
         </template>
       </Column>
-      <Column header="Alojamientos">
+      <Column header="Unidades">
         <template #body="{ data }">
-          {{ data.accommodationIds.length }}
+          {{ unitsForZone(data.id).length }}
         </template>
       </Column>
-      <Column header="Acciones" style="width: 13rem">
+      <Column header="Acciones" style="width: 10rem">
         <template #body="{ data }">
           <div class="flex gap-1">
             <Button
@@ -250,14 +310,6 @@ onMounted(loadZones)
               severity="secondary"
               title="Características"
               @click="openFeatureAssign(data)"
-            />
-            <Button
-              icon="pi pi-link"
-              size="small"
-              text
-              severity="secondary"
-              title="Gestionar alojamientos"
-              @click="openAttachDialog(data)"
             />
             <Button
               icon="pi pi-pencil"
@@ -278,10 +330,109 @@ onMounted(loadZones)
           </div>
         </template>
       </Column>
+
+      <template #expansion="{ data: zone }">
+        <div class="px-4 pb-4 pt-2">
+          <div class="mb-2 flex items-center justify-between">
+            <span class="text-sm font-medium text-gray-700">Unidades</span>
+            <Button
+              label="Añadir unidad"
+              icon="pi pi-plus"
+              size="small"
+              severity="secondary"
+              @click="openCreateUnit(zone)"
+            />
+          </div>
+
+          <div
+            v-if="unitsForZone(zone.id).length === 0"
+            class="rounded border border-dashed border-gray-200 px-4 py-6 text-center text-xs text-gray-400"
+          >
+            Sin unidades. Añade la primera.
+          </div>
+
+          <DataTable v-else :value="unitsForZone(zone.id)" class="text-xs">
+            <Column header="Nombre">
+              <template #body="{ data: unit }">
+                <div>
+                  <span :class="{ 'opacity-50': !unit.isActive }">{{ unit.name }}</span>
+                  <div v-if="(unit.features ?? []).length > 0" class="mt-1 flex flex-wrap gap-1">
+                    <span
+                      v-for="f in (unit.features ?? []).slice(0, 3)"
+                      :key="f.id"
+                      class="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-gray-600"
+                    >
+                      {{ f.icon }} {{ f.name }}
+                    </span>
+                    <span v-if="(unit.features ?? []).length > 3" class="text-gray-400">
+                      +{{ (unit.features ?? []).length - 3 }} más
+                    </span>
+                  </div>
+                </div>
+              </template>
+            </Column>
+            <Column header="Cap.">
+              <template #body="{ data: unit }">
+                {{ unit.capacity ?? '—' }}
+              </template>
+            </Column>
+            <Column header="Ocupación">
+              <template #body="{ data: unit }">
+                <Tag
+                  :value="occupancyLabel(unit)"
+                  :severity="unit.countByFamily ? 'warn' : 'info'"
+                  class="text-xs"
+                />
+              </template>
+            </Column>
+            <Column header="Estado">
+              <template #body="{ data: unit }">
+                <Tag
+                  v-if="!unit.isActive"
+                  value="Inactivo"
+                  severity="secondary"
+                  class="text-xs"
+                />
+              </template>
+            </Column>
+            <Column header="Acciones" style="width: 9rem">
+              <template #body="{ data: unit }">
+                <div class="flex gap-1">
+                  <Button
+                    :icon="unit.isActive ? 'pi pi-eye-slash' : 'pi pi-eye'"
+                    size="small"
+                    text
+                    severity="secondary"
+                    :title="unit.isActive ? 'Desactivar' : 'Activar'"
+                    :loading="unitLoading"
+                    @click="handleToggleUnitActive(unit)"
+                  />
+                  <Button
+                    icon="pi pi-pencil"
+                    size="small"
+                    text
+                    severity="secondary"
+                    title="Editar"
+                    @click="openEditUnit(unit)"
+                  />
+                  <Button
+                    icon="pi pi-trash"
+                    size="small"
+                    text
+                    severity="danger"
+                    title="Eliminar"
+                    @click="confirmDeleteUnit(unit)"
+                  />
+                </div>
+              </template>
+            </Column>
+          </DataTable>
+        </div>
+      </template>
     </DataTable>
   </div>
 
-  <!-- Create / Edit Dialog -->
+  <!-- Create / Edit Zone Dialog -->
   <Dialog
     v-model:visible="showZoneDialog"
     :header="editingZone ? 'Editar zona' : 'Nueva zona'"
@@ -335,7 +486,7 @@ onMounted(loadZones)
     </template>
   </Dialog>
 
-  <!-- Delete Confirmation Dialog -->
+  <!-- Delete Zone Confirmation -->
   <Dialog v-model:visible="showDeleteDialog" header="Eliminar zona" modal class="w-full max-w-sm">
     <p class="text-sm text-gray-700">
       ¿Eliminar la zona <strong>{{ deleteTarget?.name }}</strong>? Esta acción no se puede deshacer.
@@ -348,33 +499,40 @@ onMounted(loadZones)
     </template>
   </Dialog>
 
-  <!-- Attach Accommodations Dialog -->
+  <!-- Unit Create/Edit Dialog -->
+  <CampEditionAccommodationDialog
+    v-model:visible="showUnitDialog"
+    :edition-id="campEditionId"
+    :accommodation="editingUnit"
+    :prefilled-zone-id="unitDialogZoneId"
+    :prefilled-type="unitDialogType"
+    @saved="handleUnitSaved"
+  />
+
+  <!-- Delete Unit Confirmation -->
   <Dialog
-    v-model:visible="showAttachDialog"
-    header="Gestionar alojamientos de la zona"
+    v-model:visible="showDeleteUnitDialog"
+    header="Eliminar unidad"
     modal
-    class="w-full max-w-md"
+    class="w-full max-w-sm"
   >
-    <p class="mb-3 text-sm text-gray-500">
-      Selecciona los alojamientos de tipo
-      <strong>{{
-        attachingZone ? ACCOMMODATION_TYPE_LABELS[attachingZone.accommodationType] : ''
-      }}</strong>
-      que pertenecen a esta zona.
+    <p class="text-sm text-gray-700">
+      ¿Eliminar <strong>{{ deleteUnitTarget?.name }}</strong>? Esta acción no se puede deshacer.
     </p>
-    <Listbox
-      v-model="selectedAccommodationIds"
-      :options="accommodationsForZoneType"
-      option-label="name"
-      option-value="id"
-      multiple
-      class="w-full"
-      :empty-message="'No hay alojamientos de este tipo'"
-    />
     <template #footer>
       <div class="flex justify-end gap-2">
-        <Button label="Cancelar" severity="secondary" text @click="showAttachDialog = false" />
-        <Button label="Guardar" :loading="loading" @click="handleAttach" />
+        <Button
+          label="Cancelar"
+          severity="secondary"
+          text
+          @click="showDeleteUnitDialog = false"
+        />
+        <Button
+          label="Eliminar"
+          severity="danger"
+          :loading="unitLoading"
+          @click="handleDeleteUnit"
+        />
       </div>
     </template>
   </Dialog>
