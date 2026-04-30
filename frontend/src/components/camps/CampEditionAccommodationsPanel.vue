@@ -150,6 +150,8 @@ onMounted(() => fetchAccommodations())
               severity="info"
               class="text-xs"
             />
+            <Tag v-if="acc.countByFamily" value="Por unidad" severity="warn" class="text-xs" />
+            <Tag v-else value="Por personas" severity="info" class="text-xs" />
             <Tag v-if="!acc.isActive" value="Inactivo" severity="secondary" class="text-xs" />
           </div>
           <div class="mt-1 flex flex-wrap gap-4 text-xs text-gray-500">

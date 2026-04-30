@@ -20,7 +20,9 @@ import { useCampEditions } from '@/composables/useCampEditions'
 import { useAccommodationFeatures } from '@/composables/useAccommodationFeatures'
 import { useAuthStore } from '@/stores/auth'
 import { parseDateSafe, formatDateLocal } from '@/utils/date'
-import type { CampEdition, UpdateCampEditionRequest } from '@/types/camp-edition'
+import { api } from '@/utils/api'
+import type { CampEdition, UpdateCampEditionRequest, CampEditionAccommodation } from '@/types/camp-edition'
+import type { ApiResponse } from '@/types/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -30,7 +32,21 @@ const { loading, error, getEditionById, updateEdition } = useCampEditions()
 const { features: availableFeatures, fetchFeatures } = useAccommodationFeatures()
 
 const edition = ref<CampEdition | null>(null)
+const sharedAccommodations = ref<CampEditionAccommodation[]>([])
 const isBoard = computed(() => auth.user?.role === 'Admin' || auth.user?.role === 'Board')
+
+async function loadSharedAccommodations(editionId: string): Promise<void> {
+  try {
+    const response = await api.get<ApiResponse<CampEditionAccommodation[]>>(
+      `/camps/editions/${editionId}/accommodations`
+    )
+    if (response.data.success && response.data.data) {
+      sharedAccommodations.value = response.data.data
+    }
+  } catch {
+    sharedAccommodations.value = []
+  }
+}
 
 const activeTab = ref('0')
 
@@ -286,6 +302,9 @@ onMounted(async () => {
     router.replace({ query: {} })
   }
   fetchFeatures(true)
+  if (edition.value) {
+    loadSharedAccommodations(edition.value.id)
+  }
 })
 </script>
 
@@ -743,8 +762,9 @@ onMounted(async () => {
                   <div class="mt-6">
                     <AccommodationZonePanel
                       :camp-edition-id="edition.id"
-                      :accommodations="[]"
+                      :accommodations="sharedAccommodations"
                       :available-features="availableFeatures"
+                      @unit-saved="loadSharedAccommodations(edition.id)"
                     />
                   </div>
                   <div class="mt-6">
