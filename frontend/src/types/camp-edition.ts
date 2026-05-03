@@ -153,6 +153,7 @@ export interface CampEditionAccommodation {
   accommodationType: AccommodationType
   description?: string
   capacity?: number
+  countByFamily: boolean
   isActive: boolean
   sortOrder: number
   currentPreferenceCount: number
@@ -169,6 +170,8 @@ export interface CreateCampEditionAccommodationRequest {
   accommodationType: AccommodationType
   description?: string
   capacity?: number
+  countByFamily?: boolean
+  zoneId?: string | null
   sortOrder?: number
 }
 
@@ -177,7 +180,9 @@ export interface UpdateCampEditionAccommodationRequest {
   accommodationType: AccommodationType
   description?: string
   capacity?: number
+  countByFamily: boolean
   isActive: boolean
+  zoneId?: string | null
   sortOrder: number
 }
 
