@@ -651,4 +651,275 @@ public class ResendEmailService : IEmailService
             throw new InvalidOperationException($"Failed to send event reminder: {ex.Message}", ex);
         }
     }
+
+    // ========================================
+    // Registration Status Notifications
+    // ========================================
+
+    public async Task SendRegistrationPartiallyPaidAsync(
+        RegistrationStatusEmailData data,
+        CancellationToken ct)
+    {
+        var message = new EmailMessage
+        {
+            From = $"{_fromName} <{_fromEmail}>",
+            To = data.ToEmail,
+            Bcc = [_boardBccEmail],
+            Subject = $"Tu inscripción al campamento está al corriente — {data.CampName}",
+            HtmlBody = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                    <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                        <h2 style='color: #2563eb;'>¡Hola, {data.RecipientFirstName}!</h2>
+                        <p>Nos complace informarte de que hemos recibido el primer plazo de tu inscripción al campamento <strong>{data.CampName}</strong> y hemos verificado que todos los datos son correctos.</p>
+                        <p>Tu inscripción está ahora <strong>al corriente</strong>. La junta ha confirmado que todo está en orden.</p>
+                        <p>Si tienes alguna pregunta, no dudes en ponerte en contacto con nosotros.</p>
+                        <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;' />
+                        <p style='color: #999; font-size: 12px;'>
+                            Saludos cordiales,<br>
+                            El equipo de Abuvi
+                        </p>
+                    </div>
+                </body>
+                </html>
+            "
+        };
+
+        try
+        {
+            var messageId = await _resend.SendEmailAsync(message);
+            _logger.LogInformation(
+                "PartiallyPaid notification sent to {Email} for registration {RegistrationId}, Resend ID: {MessageId}",
+                data.ToEmail, data.RegistrationId, messageId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send PartiallyPaid notification to {Email}", data.ToEmail);
+            throw new InvalidOperationException($"Failed to send PartiallyPaid notification: {ex.Message}", ex);
+        }
+    }
+
+    public async Task SendAllPaymentsReceivedAsync(
+        AllPaymentsReceivedEmailData data,
+        CancellationToken ct)
+    {
+        var message = new EmailMessage
+        {
+            From = $"{_fromName} <{_fromEmail}>",
+            To = data.ToEmail,
+            Bcc = [_boardBccEmail],
+            Subject = $"Todos los pagos de tu inscripción han sido recibidos — {data.CampName}",
+            HtmlBody = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                    <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                        <h2 style='color: #2563eb;'>¡Hola, {data.RecipientFirstName}!</h2>
+                        <p>Hemos recibido y confirmado todos los pagos de tu inscripción al campamento <strong>{data.CampName}</strong>.</p>
+                        <p>Importe total confirmado: <strong>{data.TotalAmount.ToString("F2", CultureInfo.InvariantCulture)} €</strong></p>
+                        <p>Tu inscripción está pendiente de revisión final por parte de la junta antes de la confirmación definitiva.</p>
+                        <p>Si tienes alguna pregunta, no dudes en ponerte en contacto con nosotros.</p>
+                        <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;' />
+                        <p style='color: #999; font-size: 12px;'>
+                            Saludos cordiales,<br>
+                            El equipo de Abuvi
+                        </p>
+                    </div>
+                </body>
+                </html>
+            "
+        };
+
+        try
+        {
+            var messageId = await _resend.SendEmailAsync(message);
+            _logger.LogInformation(
+                "AllPaymentsReceived notification sent to {Email} for registration {RegistrationId}, Resend ID: {MessageId}",
+                data.ToEmail, data.RegistrationId, messageId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send AllPaymentsReceived notification to {Email}", data.ToEmail);
+            throw new InvalidOperationException($"Failed to send AllPaymentsReceived notification: {ex.Message}", ex);
+        }
+    }
+
+    public async Task SendPaymentReceivedAsync(
+        PaymentReceivedEmailData data,
+        CancellationToken ct)
+    {
+        var message = new EmailMessage
+        {
+            From = $"{_fromName} <{_fromEmail}>",
+            To = data.ToEmail,
+            Bcc = [_boardBccEmail],
+            Subject = $"Pago recibido — Plazo {data.InstallmentNumber} de {data.TotalInstallments} — {data.CampName}",
+            HtmlBody = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                    <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                        <h2 style='color: #2563eb;'>¡Hola, {data.RecipientFirstName}!</h2>
+                        <p>Hemos confirmado la recepción del plazo <strong>{data.InstallmentNumber} de {data.TotalInstallments}</strong> de tu inscripción al campamento <strong>{data.CampName}</strong>.</p>
+                        <p>Importe confirmado: <strong>{data.Amount.ToString("F2", CultureInfo.InvariantCulture)} €</strong></p>
+                        <p>Si tienes alguna pregunta, no dudes en ponerte en contacto con nosotros.</p>
+                        <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;' />
+                        <p style='color: #999; font-size: 12px;'>
+                            Saludos cordiales,<br>
+                            El equipo de Abuvi
+                        </p>
+                    </div>
+                </body>
+                </html>
+            "
+        };
+
+        try
+        {
+            var messageId = await _resend.SendEmailAsync(message);
+            _logger.LogInformation(
+                "PaymentReceived notification sent to {Email} for registration {RegistrationId} installment {Installment}/{Total}, Resend ID: {MessageId}",
+                data.ToEmail, data.RegistrationId, data.InstallmentNumber, data.TotalInstallments, messageId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send PaymentReceived notification to {Email}", data.ToEmail);
+            throw new InvalidOperationException($"Failed to send PaymentReceived notification: {ex.Message}", ex);
+        }
+    }
+
+    public async Task SendRegistrationFinallyConfirmedAsync(
+        RegistrationStatusEmailData data,
+        CancellationToken ct)
+    {
+        var message = new EmailMessage
+        {
+            From = $"{_fromName} <{_fromEmail}>",
+            To = data.ToEmail,
+            Bcc = [_boardBccEmail],
+            Subject = $"¡Tu inscripción está totalmente confirmada! — {data.CampName}",
+            HtmlBody = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                    <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                        <h2 style='color: #2563eb;'>¡Enhorabuena, {data.RecipientFirstName}!</h2>
+                        <p>La junta ha dado su aprobación final. Tu inscripción al campamento <strong>{data.CampName}</strong> está <strong>totalmente confirmada</strong>.</p>
+                        <p>Estamos muy contentos de contar con vosotros este año. ¡Nos vemos en el campamento!</p>
+                        <p>Si tienes alguna pregunta, no dudes en ponerte en contacto con nosotros.</p>
+                        <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;' />
+                        <p style='color: #999; font-size: 12px;'>
+                            Saludos cordiales,<br>
+                            El equipo de Abuvi
+                        </p>
+                    </div>
+                </body>
+                </html>
+            "
+        };
+
+        try
+        {
+            var messageId = await _resend.SendEmailAsync(message);
+            _logger.LogInformation(
+                "FinallyConfirmed notification sent to {Email} for registration {RegistrationId}, Resend ID: {MessageId}",
+                data.ToEmail, data.RegistrationId, messageId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send FinallyConfirmed notification to {Email}", data.ToEmail);
+            throw new InvalidOperationException($"Failed to send FinallyConfirmed notification: {ex.Message}", ex);
+        }
+    }
+
+    public async Task SendDraftChangesNotificationAsync(
+        RegistrationStatusEmailData data,
+        CancellationToken ct)
+    {
+        var registrationUrl = $"{_frontendUrl}/registrations/{data.RegistrationId}";
+
+        var message = new EmailMessage
+        {
+            From = $"{_fromName} <{_fromEmail}>",
+            To = data.ToEmail,
+            Bcc = [_boardBccEmail],
+            Subject = $"Hay cambios en tu inscripción que revisar — {data.CampName}",
+            HtmlBody = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                    <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                        <h2 style='color: #2563eb;'>¡Hola, {data.RecipientFirstName}!</h2>
+                        <p>La junta ha realizado cambios en tu inscripción al campamento <strong>{data.CampName}</strong>.</p>
+                        <p>Por favor, accede a tu área de usuario, revisa los cambios y confírmalos para que tu inscripción quede al día.</p>
+                        <p style='margin: 30px 0;'>
+                            <a href=""{registrationUrl}""
+                               style='background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;'>
+                                Ver mi inscripción
+                            </a>
+                        </p>
+                        <p style='color: #666; font-size: 14px;'>Si tienes alguna pregunta, no dudes en ponerte en contacto con nosotros.</p>
+                        <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;' />
+                        <p style='color: #999; font-size: 12px;'>
+                            Saludos cordiales,<br>
+                            El equipo de Abuvi
+                        </p>
+                    </div>
+                </body>
+                </html>
+            "
+        };
+
+        try
+        {
+            var messageId = await _resend.SendEmailAsync(message);
+            _logger.LogInformation(
+                "DraftChangesNotification sent to {Email} for registration {RegistrationId}, Resend ID: {MessageId}",
+                data.ToEmail, data.RegistrationId, messageId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send DraftChangesNotification to {Email}", data.ToEmail);
+            throw new InvalidOperationException($"Failed to send DraftChangesNotification: {ex.Message}", ex);
+        }
+    }
+
+    public async Task SendDraftChangesConfirmedAsync(
+        DraftChangesConfirmedEmailData data,
+        CancellationToken ct)
+    {
+        var message = new EmailMessage
+        {
+            From = $"{_fromName} <{_fromEmail}>",
+            To = data.ToEmail,
+            Bcc = [_boardBccEmail],
+            Subject = $"Has confirmado los cambios en tu inscripción — {data.CampName}",
+            HtmlBody = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                    <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                        <h2 style='color: #2563eb;'>¡Hola, {data.RecipientFirstName}!</h2>
+                        <p>Has confirmado los cambios en tu inscripción al campamento <strong>{data.CampName}</strong>.</p>
+                        <p>El estado actual de tu inscripción es: <strong>{data.NewStatusEs}</strong>.</p>
+                        <p>Si tienes alguna pregunta, no dudes en ponerte en contacto con nosotros.</p>
+                        <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;' />
+                        <p style='color: #999; font-size: 12px;'>
+                            Saludos cordiales,<br>
+                            El equipo de Abuvi
+                        </p>
+                    </div>
+                </body>
+                </html>
+            "
+        };
+
+        try
+        {
+            var messageId = await _resend.SendEmailAsync(message);
+            _logger.LogInformation(
+                "DraftChangesConfirmed notification sent to {Email} for registration {RegistrationId}, Resend ID: {MessageId}",
+                data.ToEmail, data.RegistrationId, messageId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send DraftChangesConfirmed notification to {Email}", data.ToEmail);
+            throw new InvalidOperationException($"Failed to send DraftChangesConfirmed notification: {ex.Message}", ex);
+        }
+    }
 }

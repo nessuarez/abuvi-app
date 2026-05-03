@@ -73,6 +73,12 @@ public static class RegistrationsEndpoints
             .Produces<ApiResponse<CancelRegistrationResponse>>()
             .Produces(403).Produces(404).Produces(422);
 
+        group.MapPost("/{id:guid}/confirm-changes", ConfirmRegistrationChanges)
+            .WithName("ConfirmRegistrationChanges")
+            .WithSummary("Confirm pending Draft changes (own registration or Admin/Board force-confirm)")
+            .Produces<ApiResponse<RegistrationResponse>>()
+            .Produces(401).Produces(403).Produces(404).Produces(422);
+
         group.MapDelete("/{id:guid}", DeleteRegistration)
             .WithName("DeleteRegistration")
             .WithSummary("Permanently delete a registration (representative within 24h or Admin/Board)")
@@ -123,6 +129,13 @@ public static class RegistrationsEndpoints
             .WithName("AdminEditRegistration")
             .WithSummary("Edit registration as Admin/Board (sets status to Draft)")
             .AddEndpointFilter<ValidationFilter<AdminEditRegistrationRequest>>()
+            .Produces<ApiResponse<RegistrationResponse>>()
+            .Produces(400).Produces(401).Produces(403).Produces(404).Produces(422);
+
+        adminEditGroup.MapPatch("/{id:guid}/status", ChangeRegistrationStatus)
+            .WithName("ChangeRegistrationStatus")
+            .WithSummary("Change registration status manually (Admin/Board only)")
+            .AddEndpointFilter<ValidationFilter<ChangeRegistrationStatusRequest>>()
             .Produces<ApiResponse<RegistrationResponse>>()
             .Produces(400).Produces(401).Produces(403).Produces(404).Produces(422);
 
@@ -492,11 +505,15 @@ public static class RegistrationsEndpoints
         Guid id,
         AdminEditRegistrationRequest request,
         RegistrationsService service,
+        ClaimsPrincipal user,
         CancellationToken ct)
     {
+        var adminUserId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+
         try
         {
-            var result = await service.AdminUpdateAsync(id, request, ct);
+            var result = await service.AdminUpdateAsync(id, adminUserId, request, ct);
             return TypedResults.Ok(ApiResponse<RegistrationResponse>.Ok(result));
         }
         catch (NotFoundException ex)
@@ -507,6 +524,57 @@ public static class RegistrationsEndpoints
         {
             return TypedResults.UnprocessableEntity(
                 ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
+        }
+    }
+
+    private static async Task<IResult> ChangeRegistrationStatus(
+        Guid id, ChangeRegistrationStatusRequest request,
+        RegistrationsService service, ClaimsPrincipal user, CancellationToken ct)
+    {
+        var adminUserId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+
+        try
+        {
+            var result = await service.ChangeStatusAsync(id, adminUserId, request, ct);
+            return TypedResults.Ok(ApiResponse<RegistrationResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.UnprocessableEntity(
+                ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
+        }
+    }
+
+    private static async Task<IResult> ConfirmRegistrationChanges(
+        Guid id, RegistrationsService service, ClaimsPrincipal user, CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
+        var isAdminOrBoard = userRole is "Admin" or "Board";
+
+        try
+        {
+            var result = await service.ConfirmChangesAsync(id, userId, isAdminOrBoard, ct);
+            return TypedResults.Ok(ApiResponse<RegistrationResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.UnprocessableEntity(
+                ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
         }
     }
 }

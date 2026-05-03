@@ -79,6 +79,40 @@ public interface IEmailService
         CancellationToken ct);
 
     // ========================================
+    // Registration Status Notifications
+    // ========================================
+
+    /// <summary>Sends "Al corriente — plazo 1 confirmado" when board sets PartiallyPaid</summary>
+    Task SendRegistrationPartiallyPaidAsync(
+        RegistrationStatusEmailData data,
+        CancellationToken ct);
+
+    /// <summary>Sends "Todos los pagos recibidos" when last payment confirmed (auto → FullyPaid)</summary>
+    Task SendAllPaymentsReceivedAsync(
+        AllPaymentsReceivedEmailData data,
+        CancellationToken ct);
+
+    /// <summary>Sends "Pago recibido — plazo N de M" for intermediate payment confirmations</summary>
+    Task SendPaymentReceivedAsync(
+        PaymentReceivedEmailData data,
+        CancellationToken ct);
+
+    /// <summary>Sends "Inscripción totalmente confirmada" when board sets Confirmed (from FullyPaid)</summary>
+    Task SendRegistrationFinallyConfirmedAsync(
+        RegistrationStatusEmailData data,
+        CancellationToken ct);
+
+    /// <summary>Sends "Hay cambios en tu inscripción" when board notifies user of Draft changes</summary>
+    Task SendDraftChangesNotificationAsync(
+        RegistrationStatusEmailData data,
+        CancellationToken ct);
+
+    /// <summary>Sends "Has confirmado los cambios" after user or board force-confirms Draft</summary>
+    Task SendDraftChangesConfirmedAsync(
+        DraftChangesConfirmedEmailData data,
+        CancellationToken ct);
+
+    // ========================================
     // Engagement & Feedback
     // ========================================
 
@@ -140,4 +174,41 @@ public record RegistrationMemberEmailData
     public required int AgeAtCamp { get; init; }
     public required string AttendancePeriod { get; init; }
     public required decimal IndividualAmount { get; init; }
+}
+
+public record RegistrationStatusEmailData
+{
+    public required string ToEmail { get; init; }
+    public required string RecipientFirstName { get; init; }
+    public required string CampName { get; init; }
+    public required Guid RegistrationId { get; init; }
+}
+
+public record PaymentReceivedEmailData
+{
+    public required string ToEmail { get; init; }
+    public required string RecipientFirstName { get; init; }
+    public required string CampName { get; init; }
+    public required Guid RegistrationId { get; init; }
+    public required int InstallmentNumber { get; init; }
+    public required int TotalInstallments { get; init; }
+    public required decimal Amount { get; init; }
+}
+
+public record AllPaymentsReceivedEmailData
+{
+    public required string ToEmail { get; init; }
+    public required string RecipientFirstName { get; init; }
+    public required string CampName { get; init; }
+    public required Guid RegistrationId { get; init; }
+    public required decimal TotalAmount { get; init; }
+}
+
+public record DraftChangesConfirmedEmailData
+{
+    public required string ToEmail { get; init; }
+    public required string RecipientFirstName { get; init; }
+    public required string CampName { get; init; }
+    public required Guid RegistrationId { get; init; }
+    public required string NewStatusEs { get; init; }
 }

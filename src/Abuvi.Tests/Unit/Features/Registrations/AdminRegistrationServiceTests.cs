@@ -171,7 +171,7 @@ public class AdminRegistrationServiceTests
             Notes: "Updated notes", SpecialNeeds: null, CampatesPreference: null, HasPet: null);
 
         // Act
-        var result = await _sut.AdminUpdateAsync(RegistrationId, request, CancellationToken.None);
+        var result = await _sut.AdminUpdateAsync(RegistrationId, UserId, request, CancellationToken.None);
 
         // Assert
         await _repo.Received(1).UpdateAsync(
@@ -191,7 +191,7 @@ public class AdminRegistrationServiceTests
             Notes: "test", SpecialNeeds: null, CampatesPreference: null, HasPet: null);
 
         // Act
-        var act = () => _sut.AdminUpdateAsync(RegistrationId, request, CancellationToken.None);
+        var act = () => _sut.AdminUpdateAsync(RegistrationId, UserId, request, CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<BusinessRuleException>()
@@ -210,7 +210,7 @@ public class AdminRegistrationServiceTests
             Notes: "test", SpecialNeeds: null, CampatesPreference: null, HasPet: null);
 
         // Act
-        var act = () => _sut.AdminUpdateAsync(RegistrationId, request, CancellationToken.None);
+        var act = () => _sut.AdminUpdateAsync(RegistrationId, UserId, request, CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();
@@ -240,7 +240,7 @@ public class AdminRegistrationServiceTests
             Notes: "admin edit", SpecialNeeds: null, CampatesPreference: null, HasPet: null);
 
         // Act
-        var act = () => _sut.AdminUpdateAsync(RegistrationId, request, CancellationToken.None);
+        var act = () => _sut.AdminUpdateAsync(RegistrationId, UserId, request, CancellationToken.None);
 
         // Assert
         await act.Should().NotThrowAsync();

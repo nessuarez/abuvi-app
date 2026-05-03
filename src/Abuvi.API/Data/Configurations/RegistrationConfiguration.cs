@@ -38,6 +38,13 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
             .HasColumnName("admin_modified_at")
             .IsRequired(false);
 
+        builder.Property(r => r.DraftTargetStatus)
+            .HasConversion<string>().HasMaxLength(30).HasColumnName("draft_target_status")
+            .IsRequired(false);
+
+        builder.Property(r => r.HasPendingUserAcknowledgement)
+            .HasDefaultValue(false).HasColumnName("has_pending_user_acknowledgement");
+
         builder.Property(r => r.CreatedAt).IsRequired().HasColumnName("created_at")
             .HasDefaultValueSql("NOW()");
         builder.Property(r => r.UpdatedAt).IsRequired().HasColumnName("updated_at")

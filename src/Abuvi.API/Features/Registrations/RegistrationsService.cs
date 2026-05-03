@@ -470,8 +470,12 @@ public class RegistrationsService(
             throw new BusinessRuleException("La inscripción ya ha sido cancelada");
 
         // 4. Cancel
+        var previousStatus = registration.Status;
         registration.Status = RegistrationStatus.Cancelled;
         await registrationsRepo.UpdateAsync(registration, ct);
+
+        await LogStatusHistoryAsync(registrationId, previousStatus, RegistrationStatus.Cancelled,
+            userId, StatusChangeTrigger.AdminAction, null, ct);
 
         logger.LogInformation(
             "Registration {RegistrationId} cancelled by user {UserId}", registrationId, userId);
@@ -744,7 +748,7 @@ public class RegistrationsService(
     }
 
     public async Task<RegistrationResponse> AdminUpdateAsync(
-        Guid registrationId, AdminEditRegistrationRequest request, CancellationToken ct)
+        Guid registrationId, Guid adminUserId, AdminEditRegistrationRequest request, CancellationToken ct)
     {
         var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
             ?? throw new NotFoundException("Inscripción", registrationId);
@@ -755,7 +759,8 @@ public class RegistrationsService(
         var edition = await campEditionsRepo.GetByIdAsync(registration.CampEditionId, ct)
             ?? throw new NotFoundException("Edición de Campamento", registration.CampEditionId);
 
-        // Capture old values before any mutation (needed for sync)
+        // Capture old values before any mutation (needed for sync and history)
+        var previousStatus = registration.Status;
         var oldBaseTotalAmount = registration.BaseTotalAmount;
 
         // Update members if provided
@@ -866,9 +871,18 @@ public class RegistrationsService(
 
         // Set status to Draft and record admin modification
         registration.Status = RegistrationStatus.Draft;
+        registration.DraftTargetStatus = request.DraftTargetStatus ?? previousStatus;
+        registration.HasPendingUserAcknowledgement = true;
         registration.AdminModifiedAt = DateTime.UtcNow;
 
         await registrationsRepo.UpdateAsync(registration, ct);
+
+        // Log status history only when actually transitioning into Draft
+        if (previousStatus != RegistrationStatus.Draft)
+        {
+            await LogStatusHistoryAsync(registrationId, previousStatus, RegistrationStatus.Draft,
+                adminUserId, StatusChangeTrigger.AdminAction, null, ct);
+        }
 
         // Sync payments after save
         if (request.Members != null)
@@ -889,6 +903,26 @@ public class RegistrationsService(
 
         logger.LogInformation("Registration {RegistrationId} edited by admin, status set to Draft", registrationId);
 
+        if (request.NotifyUser)
+        {
+            try
+            {
+                await emailService.SendDraftChangesNotificationAsync(new RegistrationStatusEmailData
+                {
+                    ToEmail = updated.RegisteredByUser.Email,
+                    RecipientFirstName = updated.RegisteredByUser.FirstName,
+                    CampName = updated.CampEdition.Camp.Name,
+                    RegistrationId = updated.Id
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Failed to send draft notification email for registration {RegistrationId}",
+                    registrationId);
+            }
+        }
+
         return updated.ToResponse(amountPaid);
     }
 
@@ -907,9 +941,10 @@ public class RegistrationsService(
         }
 
         // 3. Validate status
-        // Confirmed is always blocked; Cancelled is only blocked for representatives (admins can delete it)
-        if (registration.Status is RegistrationStatus.Confirmed)
-            throw new BusinessRuleException("Confirmed registrations cannot be deleted. Please cancel first.");
+        // Confirmed/FullyPaid always blocked; Cancelled is only blocked for representatives (admins can delete it)
+        if (registration.Status is RegistrationStatus.Confirmed or RegistrationStatus.FullyPaid)
+            throw new BusinessRuleException(
+                "Confirmed or fully-paid registrations cannot be deleted. Please cancel first.");
         if (registration.Status is RegistrationStatus.Cancelled && !isAdminOrBoard)
             throw new BusinessRuleException("Cancelled registrations cannot be deleted.");
 
@@ -1053,6 +1088,179 @@ public class RegistrationsService(
         return (Encoding.UTF8.GetBytes(csv.ToString()), fileName);
     }
 
+    public async Task<RegistrationResponse> ChangeStatusAsync(
+        Guid registrationId, Guid adminUserId, ChangeRegistrationStatusRequest request, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var previousStatus = registration.Status;
+
+        if (request.NewStatus == RegistrationStatus.Cancelled)
+            throw new BusinessRuleException(
+                "Use el endpoint de cancelación para cancelar una inscripción.");
+        if (request.NewStatus == RegistrationStatus.Draft)
+            throw new BusinessRuleException(
+                "El estado En revisión se asigna automáticamente al editar la inscripción.");
+        if (request.NewStatus == RegistrationStatus.FullyPaid)
+            throw new BusinessRuleException(
+                "El estado Pago completo se asigna automáticamente al confirmar todos los pagos.");
+
+        var validTransitions = new Dictionary<RegistrationStatus, HashSet<RegistrationStatus>>
+        {
+            [RegistrationStatus.Pending]       = [RegistrationStatus.PartiallyPaid, RegistrationStatus.Confirmed],
+            [RegistrationStatus.PartiallyPaid] = [RegistrationStatus.Pending, RegistrationStatus.Confirmed],
+            [RegistrationStatus.FullyPaid]     = [RegistrationStatus.Confirmed, RegistrationStatus.Pending],
+            [RegistrationStatus.Confirmed]     = [RegistrationStatus.Pending, RegistrationStatus.PartiallyPaid],
+            [RegistrationStatus.Draft]         = [RegistrationStatus.Pending, RegistrationStatus.PartiallyPaid,
+                                                  RegistrationStatus.FullyPaid, RegistrationStatus.Confirmed],
+            [RegistrationStatus.Cancelled]     = [],
+        };
+
+        if (!validTransitions.TryGetValue(previousStatus, out var allowed) || !allowed.Contains(request.NewStatus))
+            throw new BusinessRuleException(
+                $"La transición de {MapStatusEs(previousStatus)} a {MapStatusEs(request.NewStatus)} no está permitida.");
+
+        registration.Status = request.NewStatus;
+        if (previousStatus == RegistrationStatus.Draft)
+        {
+            registration.DraftTargetStatus = null;
+            registration.HasPendingUserAcknowledgement = false;
+        }
+
+        await registrationsRepo.UpdateAsync(registration, ct);
+
+        await LogStatusHistoryAsync(registrationId, previousStatus, request.NewStatus,
+            adminUserId, StatusChangeTrigger.AdminAction, request.Notes, ct);
+
+        logger.LogInformation(
+            "Registration {RegistrationId} status changed {Previous} → {New} by admin {AdminUserId}",
+            registrationId, previousStatus, request.NewStatus, adminUserId);
+
+        if (request.NotifyUser)
+        {
+            try
+            {
+                var emailData = new RegistrationStatusEmailData
+                {
+                    ToEmail = registration.RegisteredByUser.Email,
+                    RecipientFirstName = registration.RegisteredByUser.FirstName,
+                    CampName = registration.CampEdition.Camp.Name,
+                    RegistrationId = registration.Id
+                };
+
+                Task emailTask = request.NewStatus switch
+                {
+                    RegistrationStatus.PartiallyPaid =>
+                        emailService.SendRegistrationPartiallyPaidAsync(emailData, ct),
+                    RegistrationStatus.Confirmed =>
+                        emailService.SendRegistrationFinallyConfirmedAsync(emailData, ct),
+                    _ => Task.CompletedTask
+                };
+                await emailTask;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Failed to send status change notification email for registration {RegistrationId}",
+                    registrationId);
+            }
+        }
+
+        var updated = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var amountPaid = updated.Payments
+            .Where(p => p.Status == PaymentStatus.Completed)
+            .Sum(p => p.Amount);
+
+        return updated.ToResponse(amountPaid);
+    }
+
+    public async Task<RegistrationResponse> ConfirmChangesAsync(
+        Guid registrationId, Guid requestingUserId, bool isAdminOrBoard, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        if (registration.Status != RegistrationStatus.Draft)
+            throw new BusinessRuleException(
+                "La inscripción no está en estado de revisión pendiente.");
+
+        if (!isAdminOrBoard && registration.FamilyUnit.RepresentativeUserId != requestingUserId)
+            throw new UnauthorizedAccessException(
+                "No tienes permiso para confirmar los cambios de esta inscripción.");
+
+        var previousStatus = registration.Status;
+        var targetStatus = registration.DraftTargetStatus ?? RegistrationStatus.Pending;
+
+        registration.Status = targetStatus;
+        registration.DraftTargetStatus = null;
+        registration.HasPendingUserAcknowledgement = false;
+
+        await registrationsRepo.UpdateAsync(registration, ct);
+
+        var trigger = isAdminOrBoard
+            ? StatusChangeTrigger.AdminAction
+            : StatusChangeTrigger.UserConfirmed;
+        await LogStatusHistoryAsync(registrationId, previousStatus, targetStatus,
+            requestingUserId, trigger, null, ct);
+
+        logger.LogInformation(
+            "Registration {RegistrationId} Draft confirmed by {UserId} (isAdmin={IsAdmin}), → {Target}",
+            registrationId, requestingUserId, isAdminOrBoard, targetStatus);
+
+        try
+        {
+            await emailService.SendDraftChangesConfirmedAsync(new DraftChangesConfirmedEmailData
+            {
+                ToEmail = registration.RegisteredByUser.Email,
+                RecipientFirstName = registration.RegisteredByUser.FirstName,
+                CampName = registration.CampEdition.Camp.Name,
+                RegistrationId = registration.Id,
+                NewStatusEs = MapStatusEs(targetStatus)
+            }, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to send draft-confirmed email for registration {RegistrationId}",
+                registrationId);
+        }
+
+        var updated = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var amountPaid = updated.Payments
+            .Where(p => p.Status == PaymentStatus.Completed)
+            .Sum(p => p.Amount);
+
+        return updated.ToResponse(amountPaid);
+    }
+
+    private async Task LogStatusHistoryAsync(
+        Guid registrationId,
+        RegistrationStatus previousStatus,
+        RegistrationStatus newStatus,
+        Guid? changedByUserId,
+        StatusChangeTrigger trigger,
+        string? notes,
+        CancellationToken ct)
+    {
+        var history = new RegistrationStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            RegistrationId = registrationId,
+            PreviousStatus = previousStatus,
+            NewStatus = newStatus,
+            ChangedByUserId = changedByUserId,
+            ChangedAt = DateTime.UtcNow,
+            Trigger = trigger,
+            Notes = notes
+        };
+        await registrationsRepo.AddStatusHistoryAsync(history, ct);
+    }
+
     private static string EscapeCsvValue(string value)
     {
         if (value.Length > 0 && "=+-@\t\r".Contains(value[0]))
@@ -1066,11 +1274,13 @@ public class RegistrationsService(
 
     private static string MapStatusEs(RegistrationStatus status) => status switch
     {
-        RegistrationStatus.Pending => "Pendiente",
-        RegistrationStatus.Confirmed => "Confirmada",
-        RegistrationStatus.Cancelled => "Cancelada",
-        RegistrationStatus.Draft => "Borrador",
-        _ => status.ToString()
+        RegistrationStatus.Pending       => "Pendiente",
+        RegistrationStatus.PartiallyPaid => "Al corriente",
+        RegistrationStatus.FullyPaid     => "Pago completo",
+        RegistrationStatus.Confirmed     => "Confirmada",
+        RegistrationStatus.Cancelled     => "Cancelada",
+        RegistrationStatus.Draft         => "En revisión",
+        _                                => status.ToString()
     };
 
     private static string MapAccommodationTypeEs(AccommodationType type) => type switch

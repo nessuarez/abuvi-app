@@ -47,6 +47,7 @@ public interface IRegistrationsRepository
     Task AddMembersAsync(IEnumerable<RegistrationMember> members, CancellationToken ct);
     Task DeleteMembersByRegistrationIdAsync(Guid registrationId, CancellationToken ct);
     Task DeleteAsync(Guid id, CancellationToken ct);
+    Task AddStatusHistoryAsync(RegistrationStatusHistory history, CancellationToken ct);
 }
 
 public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsRepository
@@ -65,6 +66,7 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
             .Include(r => r.Members).ThenInclude(m => m.FamilyMember)
             .Include(r => r.Extras).ThenInclude(e => e.CampEditionExtra)
             .Include(r => r.Payments)
+            .Include(r => r.StatusHistory).ThenInclude(h => h.ChangedByUser)
             .FirstOrDefaultAsync(r => r.Id == id, ct);
 
     public async Task<IReadOnlyList<Registration>> GetByFamilyUnitAsync(Guid familyUnitId, CancellationToken ct)
@@ -364,6 +366,12 @@ public class RegistrationsRepository(AbuviDbContext db) : IRegistrationsReposito
         var entity = await db.Registrations.FindAsync([id], ct);
         if (entity is null) return;
         db.Registrations.Remove(entity);
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task AddStatusHistoryAsync(RegistrationStatusHistory history, CancellationToken ct)
+    {
+        db.RegistrationStatusHistories.Add(history);
         await db.SaveChangesAsync(ct);
     }
 }
