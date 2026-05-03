@@ -1,4 +1,5 @@
 using Abuvi.API.Common.Exceptions;
+using Abuvi.API.Common.Services;
 using Abuvi.API.Features.BlobStorage;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
@@ -17,6 +18,7 @@ public class PaymentsService_SyncTests
     private readonly IRegistrationsRepository _registrationsRepo = Substitute.For<IRegistrationsRepository>();
     private readonly IAssociationSettingsRepository _settingsRepo = Substitute.For<IAssociationSettingsRepository>();
     private readonly IBlobStorageService _blobStorageService = Substitute.For<IBlobStorageService>();
+    private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly ILogger<PaymentsService> _logger = Substitute.For<ILogger<PaymentsService>>();
     private readonly PaymentsService _sut;
 
@@ -28,7 +30,8 @@ public class PaymentsService_SyncTests
     public PaymentsService_SyncTests()
     {
         _sut = new PaymentsService(
-            _paymentsRepo, _registrationsRepo, _settingsRepo, _blobStorageService, _logger);
+            _paymentsRepo, _registrationsRepo, _settingsRepo,
+            _blobStorageService, _emailService, _logger);
     }
 
     // ── SyncExtrasInstallmentAsync ──────────────────────────────────────────

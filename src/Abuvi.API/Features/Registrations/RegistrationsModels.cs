@@ -24,6 +24,8 @@ public class Registration
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public DateTime? AdminModifiedAt { get; set; }
+    public RegistrationStatus? DraftTargetStatus { get; set; }
+    public bool HasPendingUserAcknowledgement { get; set; } = false;
 
     // Navigation properties
     public FamilyUnit FamilyUnit { get; set; } = null!;
@@ -33,6 +35,7 @@ public class Registration
     public ICollection<RegistrationExtra> Extras { get; set; } = [];
     public ICollection<RegistrationAccommodationPreference> AccommodationPreferences { get; set; } = [];
     public ICollection<Payment> Payments { get; set; } = [];
+    public ICollection<RegistrationStatusHistory> StatusHistory { get; set; } = [];
 }
 
 public class RegistrationMember
@@ -108,9 +111,33 @@ public class Payment
     public Registration Registration { get; set; } = null!;
 }
 
+public class RegistrationStatusHistory
+{
+    public Guid Id { get; set; }
+    public Guid RegistrationId { get; set; }
+    public RegistrationStatus PreviousStatus { get; set; }
+    public RegistrationStatus NewStatus { get; set; }
+    public Guid? ChangedByUserId { get; set; }
+    public DateTime ChangedAt { get; set; }
+    public StatusChangeTrigger Trigger { get; set; }
+    public string? Notes { get; set; }
+
+    public Registration Registration { get; set; } = null!;
+    public User? ChangedByUser { get; set; }
+}
+
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
-public enum RegistrationStatus { Pending, Confirmed, Cancelled, Draft }
+public enum RegistrationStatus
+{
+    Pending,        // Registration created, awaiting board review
+    PartiallyPaid,  // Board confirmed P1 received + data valid
+    FullyPaid,      // All payments confirmed (automatic); board review pending
+    Confirmed,      // Board gave final approval
+    Draft,          // Board editing; user must acknowledge
+    Cancelled
+}
+
 public enum AgeCategory { Baby, Child, Adult }
 public enum PaymentMethod { Card, Transfer, Cash }
 public enum PaymentStatus { Pending, PendingReview, Completed, Failed, Refunded }
@@ -121,6 +148,13 @@ public enum AttendancePeriod
     FirstWeek,
     SecondWeek,
     WeekendVisit   // Short visit, max 3 days, configurable window
+}
+
+public enum StatusChangeTrigger
+{
+    Automatic,       // System-triggered (e.g., last payment confirmed)
+    AdminAction,     // Board/admin explicitly changed status
+    UserConfirmed    // User acknowledged Draft changes
 }
 
 // ── Request DTOs ──────────────────────────────────────────────────────────────
@@ -199,6 +233,16 @@ public record AvailableCampEditionResponse(
 
 public record AgeRangesInfo(int BabyMaxAge, int ChildMinAge, int ChildMaxAge, int AdultMinAge);
 
+public record StatusHistoryItemResponse(
+    Guid Id,
+    RegistrationStatus PreviousStatus,
+    RegistrationStatus NewStatus,
+    DateTime ChangedAt,
+    string? ChangedByUserName,
+    StatusChangeTrigger Trigger,
+    string? Notes
+);
+
 public record RegistrationResponse(
     Guid Id,
     RegistrationFamilyUnitSummary FamilyUnit,
@@ -214,7 +258,10 @@ public record RegistrationResponse(
     string? SpecialNeeds,
     string? CampatesPreference,
     bool HasPet,
-    bool IsAdminModified
+    bool IsAdminModified,
+    RegistrationStatus? DraftTargetStatus,
+    bool HasPendingUserAcknowledgement,
+    List<StatusHistoryItemResponse> StatusHistory
 );
 
 public record RegistrationFamilyUnitSummary(Guid Id, string Name, Guid RepresentativeUserId);
@@ -357,7 +404,15 @@ public record AdminEditRegistrationRequest(
     string? Notes,
     string? SpecialNeeds,
     string? CampatesPreference,
-    bool? HasPet
+    bool? HasPet,
+    bool NotifyUser = true,
+    RegistrationStatus? DraftTargetStatus = null
+);
+
+public record ChangeRegistrationStatusRequest(
+    RegistrationStatus NewStatus,
+    string? Notes,
+    bool NotifyUser = true
 );
 
 /// <summary>
@@ -416,7 +471,22 @@ public static class RegistrationMappingExtensions
         r.SpecialNeeds,
         r.CampatesPreference,
         r.HasPet,
-        r.AdminModifiedAt != null && r.Status == RegistrationStatus.Draft
+        r.AdminModifiedAt != null && r.Status == RegistrationStatus.Draft,
+        r.DraftTargetStatus,
+        r.HasPendingUserAcknowledgement,
+        r.StatusHistory
+            .OrderBy(h => h.ChangedAt)
+            .Select(h => new StatusHistoryItemResponse(
+                h.Id,
+                h.PreviousStatus,
+                h.NewStatus,
+                h.ChangedAt,
+                h.ChangedByUser != null
+                    ? $"{h.ChangedByUser.FirstName} {h.ChangedByUser.LastName}"
+                    : null,
+                h.Trigger,
+                h.Notes))
+            .ToList()
     );
 
     private static string BuildCalculation(RegistrationExtra e)

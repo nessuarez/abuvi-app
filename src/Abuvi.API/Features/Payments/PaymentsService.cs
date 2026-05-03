@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Abuvi.API.Common.Exceptions;
+using Abuvi.API.Common.Services;
 using Abuvi.API.Features.BlobStorage;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.Registrations;
@@ -13,6 +14,7 @@ public class PaymentsService(
     IRegistrationsRepository registrationsRepo,
     IAssociationSettingsRepository settingsRepo,
     IBlobStorageService blobStorageService,
+    IEmailService emailService,
     ILogger<PaymentsService> logger) : IPaymentsService
 {
     private const string PaymentSettingsKey = "payment_settings";
@@ -176,19 +178,71 @@ public class PaymentsService(
             "Payment {PaymentId} confirmed by admin {AdminUserId}",
             paymentId, adminUserId);
 
-        // Check if all installments are completed -> confirm registration
+        // Check if all installments are completed
         var allPayments = await paymentsRepo.GetByRegistrationIdAsync(
             payment.RegistrationId, ct);
 
-        if (allPayments.All(p => p.Status == PaymentStatus.Completed))
+        var completedCount = allPayments.Count(p => p.Status == PaymentStatus.Completed);
+        var totalCount = allPayments.Count;
+        var registration = payment.Registration;
+
+        if (completedCount == totalCount)
         {
-            var registration = payment.Registration;
-            registration.Status = RegistrationStatus.Confirmed;
+            // Last payment: auto-transition to FullyPaid
+            var previousStatus = registration.Status;
+            registration.Status = RegistrationStatus.FullyPaid;
             await registrationsRepo.UpdateAsync(registration, ct);
 
+            await AddStatusHistoryInternalAsync(registration.Id, previousStatus, RegistrationStatus.FullyPaid,
+                adminUserId, StatusChangeTrigger.Automatic, null, ct);
+
             logger.LogInformation(
-                "Registration {RegistrationId} confirmed - all installments paid",
-                payment.RegistrationId);
+                "Registration {RegistrationId} auto-transitioned to FullyPaid - all {Count} installments confirmed",
+                registration.Id, totalCount);
+
+            try
+            {
+                await emailService.SendAllPaymentsReceivedAsync(new AllPaymentsReceivedEmailData
+                {
+                    ToEmail = registration.RegisteredByUser.Email,
+                    RecipientFirstName = registration.RegisteredByUser.FirstName,
+                    CampName = registration.CampEdition.Camp.Name,
+                    RegistrationId = registration.Id,
+                    TotalAmount = registration.TotalAmount
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Failed to send all-payments-received email for registration {RegistrationId}",
+                    registration.Id);
+            }
+        }
+        else
+        {
+            // Intermediate payment: send receipt only, no status change
+            logger.LogInformation(
+                "Registration {RegistrationId} partial payment confirmed ({Completed}/{Total})",
+                registration.Id, completedCount, totalCount);
+
+            try
+            {
+                await emailService.SendPaymentReceivedAsync(new PaymentReceivedEmailData
+                {
+                    ToEmail = registration.RegisteredByUser.Email,
+                    RecipientFirstName = registration.RegisteredByUser.FirstName,
+                    CampName = registration.CampEdition.Camp.Name,
+                    RegistrationId = registration.Id,
+                    InstallmentNumber = payment.InstallmentNumber,
+                    TotalInstallments = totalCount,
+                    Amount = payment.Amount
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Failed to send payment-received email for payment {PaymentId}", paymentId);
+            }
         }
 
         return MapToResponse(payment, allPayments);
@@ -806,5 +860,28 @@ public class PaymentsService(
         // Key is everything after the domain: payment-proofs/xxx/file.jpg
         var uri = new Uri(fileUrl);
         return uri.AbsolutePath.TrimStart('/');
+    }
+
+    private async Task AddStatusHistoryInternalAsync(
+        Guid registrationId,
+        RegistrationStatus previousStatus,
+        RegistrationStatus newStatus,
+        Guid? changedByUserId,
+        StatusChangeTrigger trigger,
+        string? notes,
+        CancellationToken ct)
+    {
+        var history = new RegistrationStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            RegistrationId = registrationId,
+            PreviousStatus = previousStatus,
+            NewStatus = newStatus,
+            ChangedByUserId = changedByUserId,
+            ChangedAt = DateTime.UtcNow,
+            Trigger = trigger,
+            Notes = notes
+        };
+        await registrationsRepo.AddStatusHistoryAsync(history, ct);
     }
 }

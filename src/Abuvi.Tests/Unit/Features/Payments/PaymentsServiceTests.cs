@@ -1,13 +1,16 @@
 using Abuvi.API.Common.Exceptions;
+using Abuvi.API.Common.Services;
 using Abuvi.API.Features.BlobStorage;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.Payments;
 using Abuvi.API.Features.Registrations;
+using Abuvi.API.Features.Users;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using NSubstitute.ReturnsExtensions;
 
 namespace Abuvi.Tests.Unit.Features.Payments;
@@ -18,6 +21,7 @@ public class PaymentsServiceTests
     private readonly IRegistrationsRepository _registrationsRepo = Substitute.For<IRegistrationsRepository>();
     private readonly IAssociationSettingsRepository _settingsRepo = Substitute.For<IAssociationSettingsRepository>();
     private readonly IBlobStorageService _blobStorageService = Substitute.For<IBlobStorageService>();
+    private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly ILogger<PaymentsService> _logger = Substitute.For<ILogger<PaymentsService>>();
     private readonly PaymentsService _sut;
 
@@ -29,7 +33,8 @@ public class PaymentsServiceTests
     public PaymentsServiceTests()
     {
         _sut = new PaymentsService(
-            _paymentsRepo, _registrationsRepo, _settingsRepo, _blobStorageService, _logger);
+            _paymentsRepo, _registrationsRepo, _settingsRepo,
+            _blobStorageService, _emailService, _logger);
     }
 
     // ── CreateInstallmentsAsync ──────────────────────────────────────────────
@@ -284,24 +289,36 @@ public class PaymentsServiceTests
     }
 
     [Fact]
-    public async Task ConfirmPaymentAsync_BothInstallmentsCompleted_ConfirmsRegistration()
+    public async Task ConfirmPaymentAsync_AllInstallmentsCompleted_TransitionsToFullyPaid()
     {
         var payment = CreatePayment(PaymentStatus.PendingReview);
         _paymentsRepo.GetByIdWithRegistrationAsync(PaymentId, Arg.Any<CancellationToken>())
             .Returns(payment);
 
-        // After confirm, both are Completed
-        var otherPayment = CreatePaymentEntity(PaymentStatus.Completed, 1);
-        // The current payment will be set to Completed in the service, but
-        // GetByRegistrationIdAsync returns the DB state - we simulate both completed
+        // Both payments completed
         _paymentsRepo.GetByRegistrationIdAsync(RegistrationId, Arg.Any<CancellationToken>())
-            .Returns([otherPayment, CreatePaymentEntity(PaymentStatus.Completed, 2)]);
+            .Returns([
+                CreatePaymentEntity(PaymentStatus.Completed, 1),
+                CreatePaymentEntity(PaymentStatus.Completed, 2)
+            ]);
 
         await _sut.ConfirmPaymentAsync(PaymentId, AdminUserId, null, CancellationToken.None);
 
+        // Assert: registration auto-set to FullyPaid (board must explicitly confirm → Confirmed)
         await _registrationsRepo.Received(1).UpdateAsync(
-            Arg.Is<Registration>(r => r.Status == RegistrationStatus.Confirmed),
+            Arg.Is<Registration>(r => r.Status == RegistrationStatus.FullyPaid),
             Arg.Any<CancellationToken>());
+
+        // Assert: status history logged as Automatic
+        await _registrationsRepo.Received(1).AddStatusHistoryAsync(
+            Arg.Is<RegistrationStatusHistory>(h =>
+                h.NewStatus == RegistrationStatus.FullyPaid &&
+                h.Trigger == StatusChangeTrigger.Automatic),
+            Arg.Any<CancellationToken>());
+
+        // Assert: "all payments received" email sent
+        await _emailService.Received(1).SendAllPaymentsReceivedAsync(
+            Arg.Any<AllPaymentsReceivedEmailData>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -320,8 +337,52 @@ public class PaymentsServiceTests
 
         await _sut.ConfirmPaymentAsync(PaymentId, AdminUserId, null, CancellationToken.None);
 
+        // Assert: no registration status change
         await _registrationsRepo.DidNotReceive().UpdateAsync(
             Arg.Any<Registration>(), Arg.Any<CancellationToken>());
+
+        // Assert: payment received email sent
+        await _emailService.Received(1).SendPaymentReceivedAsync(
+            Arg.Any<PaymentReceivedEmailData>(), Arg.Any<CancellationToken>());
+
+        // Assert: all-payments email NOT sent
+        await _emailService.DidNotReceive().SendAllPaymentsReceivedAsync(
+            Arg.Any<AllPaymentsReceivedEmailData>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ConfirmPaymentAsync_AllPaid_EmailFailureIsNonBlocking()
+    {
+        var payment = CreatePayment(PaymentStatus.PendingReview);
+        _paymentsRepo.GetByIdWithRegistrationAsync(PaymentId, Arg.Any<CancellationToken>())
+            .Returns(payment);
+        _paymentsRepo.GetByRegistrationIdAsync(RegistrationId, Arg.Any<CancellationToken>())
+            .Returns([
+                CreatePaymentEntity(PaymentStatus.Completed, 1),
+                CreatePaymentEntity(PaymentStatus.Completed, 2)
+            ]);
+        _emailService.SendAllPaymentsReceivedAsync(Arg.Any<AllPaymentsReceivedEmailData>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new Exception("SMTP failure"));
+
+        var act = () => _sut.ConfirmPaymentAsync(PaymentId, AdminUserId, null, CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task ConfirmPaymentAsync_IntermediatePayment_NoStatusHistoryLogged()
+    {
+        var payment = CreatePayment(PaymentStatus.PendingReview);
+        _paymentsRepo.GetByIdWithRegistrationAsync(PaymentId, Arg.Any<CancellationToken>())
+            .Returns(payment);
+        // Only 1 of 2 completed (intermediate)
+        _paymentsRepo.GetByRegistrationIdAsync(RegistrationId, Arg.Any<CancellationToken>())
+            .Returns([CreatePaymentEntity(PaymentStatus.Pending, 1), payment]);
+
+        await _sut.ConfirmPaymentAsync(PaymentId, AdminUserId, null, CancellationToken.None);
+
+        await _registrationsRepo.DidNotReceive().AddStatusHistoryAsync(
+            Arg.Any<RegistrationStatusHistory>(), Arg.Any<CancellationToken>());
     }
 
     // ── RejectPaymentAsync ───────────────────────────────────────────────────
@@ -461,6 +522,7 @@ public class PaymentsServiceTests
         {
             Id = RegistrationId,
             RegisteredByUserId = UserId,
+            TotalAmount = 200m,
             Status = RegistrationStatus.Pending,
             FamilyUnit = new FamilyUnit
             {
@@ -475,6 +537,13 @@ public class PaymentsServiceTests
                 StartDate = new DateTime(2026, 7, 15, 0, 0, 0, DateTimeKind.Utc),
                 EndDate = new DateTime(2026, 7, 30, 0, 0, 0, DateTimeKind.Utc),
                 Camp = new Camp { Id = Guid.NewGuid(), Name = "Camp Test" }
+            },
+            RegisteredByUser = new User
+            {
+                Id = UserId,
+                Email = "familia@test.com",
+                FirstName = "Familia",
+                LastName = "García"
             }
         }
     };
