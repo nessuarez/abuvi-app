@@ -1,7 +1,25 @@
 import type { AccommodationType } from './camp-edition'
 
 // Registration status and related enums
-export type RegistrationStatus = 'Pending' | 'Confirmed' | 'Cancelled' | 'Draft'
+export type RegistrationStatus =
+  | 'Pending'
+  | 'PartiallyPaid'
+  | 'FullyPaid'
+  | 'Confirmed'
+  | 'Draft'
+  | 'Cancelled'
+
+export type StatusChangeTrigger = 'Automatic' | 'AdminAction' | 'UserConfirmed'
+
+export interface RegistrationStatusHistoryEntry {
+  id: string
+  previousStatus: RegistrationStatus
+  newStatus: RegistrationStatus
+  changedAt: string
+  changedByUserName: string | null
+  trigger: StatusChangeTrigger
+  notes: string | null
+}
 export type AgeCategory = 'Baby' | 'Child' | 'Adult'
 export type PaymentMethod = 'Card' | 'Transfer' | 'Cash'
 export type PaymentStatus = 'Pending' | 'PendingReview' | 'Completed' | 'Failed' | 'Refunded'
@@ -100,6 +118,7 @@ export interface RegistrationListItem {
   amountPaid: number
   amountRemaining: number
   createdAt: string
+  hasPendingUserAcknowledgement: boolean
 }
 
 // Detail endpoint response (full, used by GET /api/registrations/:id)
@@ -118,6 +137,9 @@ export interface RegistrationResponse {
   specialNeeds: string | null
   campatesPreference: string | null
   hasPet: boolean
+  draftTargetStatus: RegistrationStatus | null
+  hasPendingUserAcknowledgement: boolean
+  statusHistory: RegistrationStatusHistoryEntry[]
 }
 
 // Admin registration list types
@@ -285,4 +307,20 @@ export interface AdminRegistrationFilters {
   ageCategories?: AgeCategory[]
   sortBy?: 'createdAt' | 'familyName'
   sortDirection?: 'asc' | 'desc'
+}
+
+export interface ChangeRegistrationStatusRequest {
+  newStatus: RegistrationStatus
+  notes: string
+  notifyUser: boolean
+}
+
+export interface AdminUpdateRegistrationRequest {
+  members?: MemberAttendanceRequest[]
+  extras?: ExtraSelectionRequest[]
+  specialNeeds?: string | null
+  campatesPreference?: string | null
+  hasPet?: boolean
+  notifyUser: boolean
+  draftTargetStatus: RegistrationStatus | null
 }

@@ -7,18 +7,22 @@ import Button from 'primevue/button'
 import Container from '@/components/ui/Container.vue'
 import RegistrationCard from '@/components/registrations/RegistrationCard.vue'
 import { useRegistrations } from '@/composables/useRegistrations'
-import type { RegistrationListItem } from '@/types/registration'
+import type { RegistrationListItem, RegistrationStatus } from '@/types/registration'
 
 const router = useRouter()
 const { registrations, loading, error, fetchMyRegistrations } = useRegistrations()
 
-const sortedRegistrations = computed<RegistrationListItem[]>(() => {
-  const active = registrations.value.filter(
-    (r) => r.status === 'Pending' || r.status === 'Confirmed'
-  )
-  const cancelled = registrations.value.filter((r) => r.status === 'Cancelled')
-  return [...active, ...cancelled]
-})
+const ACTIVE_STATUSES: RegistrationStatus[] = ['Pending', 'PartiallyPaid', 'FullyPaid', 'Confirmed', 'Draft']
+
+const sortedRegistrations = computed<RegistrationListItem[]>(() =>
+  [...registrations.value].sort((a, b) => {
+    const aActive = ACTIVE_STATUSES.includes(a.status)
+    const bActive = ACTIVE_STATUSES.includes(b.status)
+    if (aActive && !bActive) return -1
+    if (!aActive && bActive) return 1
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
+)
 
 const navigateToDetail = (id: string) => {
   router.push({ name: 'registration-detail', params: { id } })
