@@ -776,6 +776,7 @@ A family's registration to a specific camp. One registration per family per camp
 - `campatesPreference`: Preferred campmates for the family (optional, max 500 characters)
 - `hasPet`: Whether the family unit will attend camp with a pet (required, boolean, default: false)
 - `adminModifiedAt`: Timestamp of last admin modification (optional, set when admin edits the registration)
+- `accommodationInternalNotes`: Internal notes about accommodation needs, visible only to Admin/Board (optional, max 4000 characters)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 
@@ -921,6 +922,63 @@ A family's ranked accommodation preference for a registration (1st, 2nd, or 3rd 
 
 - Each RegistrationAccommodationPreference belongs to one Registration (via `registrationId`, CASCADE delete)
 - Each RegistrationAccommodationPreference references one CampEditionAccommodation (via `campEditionAccommodationId`, RESTRICT delete)
+
+---
+
+### RegistrationAccommodationNeed
+
+An accommodation feature tag applied by Admin/Board to a registration, indicating a specific need the family has (e.g. private room, adapted access, crib). These are internal labels not visible to the registered family.
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID, default: `gen_random_uuid()`)
+- `registrationId`: The registration this need belongs to (required, FK -> Registration)
+- `accommodationFeatureId`: The feature being tagged (required, FK -> AccommodationFeature)
+- `taggedByUserId`: Admin/Board user who applied the tag (required, FK -> User)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+
+**Validation rules:**
+
+- Unique constraint on `(registrationId, accommodationFeatureId)`: a feature can only be tagged once per registration
+- Maximum 20 feature tags per registration
+- All provided featureIds must exist in the AccommodationFeature catalog
+- The full set is replaced atomically on each update (full replacement, not partial patch)
+- Only users with Admin or Board role may create, update, or view accommodation needs
+
+**Relationships:**
+
+- Each RegistrationAccommodationNeed belongs to one Registration (via `registrationId`, CASCADE delete)
+- Each RegistrationAccommodationNeed references one AccommodationFeature (via `accommodationFeatureId`, RESTRICT delete)
+- Each RegistrationAccommodationNeed is created by one User (via `taggedByUserId`)
+
+---
+
+### RegistrationFriendLink
+
+A bidirectional "wants to be near" link between two registrations in the same camp edition. Stored as two symmetric rows (A→B and B→A) to simplify querying. Managed atomically as a full replacement.
+
+**Fields:**
+
+- `id`: Unique identifier (Primary Key, UUID, default: `gen_random_uuid()`)
+- `registrationId`: The source registration (required, FK -> Registration)
+- `linkedRegistrationId`: The target registration (required, FK -> Registration)
+- `createdByUserId`: Admin/Board user who created the link (required, FK -> User)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+
+**Validation rules:**
+
+- Unique constraint on `(registrationId, linkedRegistrationId)`
+- Check constraint: `registrationId <> linkedRegistrationId` (no self-links)
+- Both registrations must belong to the same camp edition
+- Maximum 10 friend links per registration (counting outgoing direction only)
+- No duplicate linkedRegistrationIds in a single update request
+- Only users with Admin or Board role may manage friend links
+
+**Relationships:**
+
+- Each RegistrationFriendLink belongs to one Registration as source (via `registrationId`, CASCADE delete)
+- Each RegistrationFriendLink belongs to one Registration as target (via `linkedRegistrationId`, CASCADE delete)
+- Each RegistrationFriendLink is created by one User (via `createdByUserId`)
 
 ---
 

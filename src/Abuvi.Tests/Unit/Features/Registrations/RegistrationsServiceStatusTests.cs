@@ -39,10 +39,13 @@ public class RegistrationsServiceStatusTests
         var logger = Substitute.For<ILogger<RegistrationsService>>();
         var pricingService = new RegistrationPricingService(settingsRepo);
 
+        var accommodationNeedsRepo = Substitute.For<IRegistrationAccommodationNeedsRepository>();
+        var friendLinksRepo = Substitute.For<IRegistrationFriendLinksRepository>();
+        var accommodationFeaturesRepo = Substitute.For<IAccommodationFeaturesRepository>();
         _sut = new RegistrationsService(
             _repo, extrasRepo, accommodationPrefsRepo, familyUnitsRepo,
             editionsRepo, accommodationsRepo, extrasDefinitionRepo, pricingService, _emailService,
-            _paymentsService, membershipsRepo, logger);
+            _paymentsService, membershipsRepo, accommodationNeedsRepo, friendLinksRepo, accommodationFeaturesRepo, logger);
     }
 
     // ── ChangeStatusAsync ─────────────────────────────────────────────────────

@@ -22,6 +22,9 @@ public class RegistrationsService(
     IEmailService emailService,
     Payments.IPaymentsService paymentsService,
     IMembershipsRepository membershipsRepo,
+    IRegistrationAccommodationNeedsRepository accommodationNeedsRepo,
+    IRegistrationFriendLinksRepository friendLinksRepo,
+    IAccommodationFeaturesRepository accommodationFeaturesRepo,
     ILogger<RegistrationsService> logger)
 {
     public async Task<RegistrationResponse> CreateAsync(
@@ -608,7 +611,25 @@ public class RegistrationsService(
             .Where(p => p.Status == PaymentStatus.Completed)
             .Sum(p => p.Amount);
 
-        return registration.ToResponse(amountPaid);
+        if (!isAdminOrBoard)
+            return registration.ToResponse(amountPaid);
+
+        var needs = await accommodationNeedsRepo.GetByRegistrationIdAsync(registrationId, ct);
+        var friendLinks = await friendLinksRepo.GetByRegistrationIdAsync(registrationId, ct);
+
+        return registration.ToAdminResponse(
+            amountPaid,
+            needs.Select(n => new AccommodationNeedResponse(
+                n.AccommodationFeatureId,
+                n.AccommodationFeature.Name,
+                n.AccommodationFeature.ApplicabilityLevel.ToString(),
+                n.TaggedByUserId,
+                n.CreatedAt)).ToList(),
+            friendLinks.Select(l => new FriendLinkResponse(
+                l.LinkedRegistrationId,
+                l.LinkedRegistration.FamilyUnit.Name,
+                l.CreatedByUserId,
+                l.CreatedAt)).ToList());
     }
 
     public async Task<List<RegistrationListResponse>> GetByFamilyUnitAsync(Guid userId, CancellationToken ct)
@@ -1349,4 +1370,127 @@ public class RegistrationsService(
         AttendancePeriod.WeekendVisit => "Visita fin de semana",
         _ => period.ToString()
     };
+
+    // ── Accommodation Needs ──────────────────────────────────────────────────────
+
+    public async Task<AccommodationNeedsResponse> UpdateAccommodationNeedsAsync(
+        Guid registrationId, Guid taggedByUserId, UpdateAccommodationNeedsRequest request, CancellationToken ct)
+    {
+        _ = await registrationsRepo.GetByIdAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        if (request.FeatureIds.Count > 0)
+        {
+            var features = await accommodationFeaturesRepo.GetByIdsAsync(request.FeatureIds, ct);
+            if (features.Count != request.FeatureIds.Count)
+                throw new ValidationException(
+                    "Uno o más identificadores de característica no existen en el catálogo");
+        }
+
+        var needs = request.FeatureIds.Select(featureId => new RegistrationAccommodationNeed
+        {
+            Id = Guid.NewGuid(),
+            RegistrationId = registrationId,
+            AccommodationFeatureId = featureId,
+            TaggedByUserId = taggedByUserId
+        }).ToList();
+
+        await accommodationNeedsRepo.ReplaceAsync(registrationId, needs, ct);
+
+        var saved = await accommodationNeedsRepo.GetByRegistrationIdAsync(registrationId, ct);
+
+        return new AccommodationNeedsResponse(
+            registrationId,
+            saved.Select(n => new AccommodationNeedResponse(
+                n.AccommodationFeatureId,
+                n.AccommodationFeature.Name,
+                n.AccommodationFeature.ApplicabilityLevel.ToString(),
+                n.TaggedByUserId,
+                n.CreatedAt)).ToList());
+    }
+
+    public async Task<List<AccommodationNeedResponse>> GetAccommodationNeedsAsync(
+        Guid registrationId, CancellationToken ct)
+    {
+        _ = await registrationsRepo.GetByIdAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var needs = await accommodationNeedsRepo.GetByRegistrationIdAsync(registrationId, ct);
+
+        return needs.Select(n => new AccommodationNeedResponse(
+            n.AccommodationFeatureId,
+            n.AccommodationFeature.Name,
+            n.AccommodationFeature.ApplicabilityLevel.ToString(),
+            n.TaggedByUserId,
+            n.CreatedAt)).ToList();
+    }
+
+    // ── Accommodation Notes ──────────────────────────────────────────────────────
+
+    public async Task<AccommodationNotesResponse> UpdateAccommodationNotesAsync(
+        Guid registrationId, UpdateAccommodationNotesRequest request, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        registration.AccommodationInternalNotes = string.IsNullOrWhiteSpace(request.AccommodationInternalNotes)
+            ? null
+            : request.AccommodationInternalNotes;
+
+        await registrationsRepo.UpdateAsync(registration, ct);
+
+        return new AccommodationNotesResponse(
+            registrationId,
+            registration.AccommodationInternalNotes,
+            DateTime.UtcNow);
+    }
+
+    // ── Friend Links ─────────────────────────────────────────────────────────────
+
+    public async Task<FriendLinksResponse> UpdateFriendLinksAsync(
+        Guid registrationId, Guid createdByUserId, UpdateFriendLinksRequest request, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        if (request.LinkedRegistrationIds.Contains(registrationId))
+            throw new BusinessRuleException("NO_SELF_LINK: No se puede crear un vínculo de una inscripción consigo misma");
+
+        foreach (var linkedId in request.LinkedRegistrationIds)
+        {
+            var linked = await registrationsRepo.GetByIdAsync(linkedId, ct)
+                ?? throw new NotFoundException("Inscripción vinculada", linkedId);
+
+            if (linked.CampEditionId != registration.CampEditionId)
+                throw new BusinessRuleException(
+                    "SAME_EDITION_REQUIRED: Todas las inscripciones vinculadas deben pertenecer a la misma edición de campamento");
+        }
+
+        await friendLinksRepo.ReplaceAsync(registrationId, request.LinkedRegistrationIds, createdByUserId, ct);
+
+        var saved = await friendLinksRepo.GetByRegistrationIdAsync(registrationId, ct);
+
+        return new FriendLinksResponse(
+            registrationId,
+            saved.Select(l => new FriendLinkResponse(
+                l.LinkedRegistrationId,
+                l.LinkedRegistration.FamilyUnit.Name,
+                l.CreatedByUserId,
+                l.CreatedAt)).ToList());
+    }
+
+    public async Task<List<FriendLinkResponse>> GetFriendLinksAsync(
+        Guid registrationId, CancellationToken ct)
+    {
+        _ = await registrationsRepo.GetByIdAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var links = await friendLinksRepo.GetByRegistrationIdAsync(registrationId, ct);
+
+        return links.Select(l => new FriendLinkResponse(
+            l.LinkedRegistrationId,
+            l.LinkedRegistration.FamilyUnit.Name,
+            l.CreatedByUserId,
+            l.CreatedAt)).ToList();
+    }
 }

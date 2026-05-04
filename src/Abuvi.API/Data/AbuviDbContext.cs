@@ -38,6 +38,8 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     public DbSet<RegistrationAccommodationPreference> RegistrationAccommodationPreferences => Set<RegistrationAccommodationPreference>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<RegistrationStatusHistory> RegistrationStatusHistories => Set<RegistrationStatusHistory>();
+    public DbSet<RegistrationAccommodationNeed> RegistrationAccommodationNeeds => Set<RegistrationAccommodationNeed>();
+    public DbSet<RegistrationFriendLink> RegistrationFriendLinks => Set<RegistrationFriendLink>();
     public DbSet<Memory> Memories => Set<Memory>();
     public DbSet<MediaItem> MediaItems => Set<MediaItem>();
     public DbSet<AccommodationFeature> AccommodationFeatures => Set<AccommodationFeature>();
