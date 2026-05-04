@@ -9,7 +9,9 @@ import type {
   UpdateRegistrationExtrasRequest,
   UpdateRegistrationInfoRequest,
   UpdateAccommodationPreferencesRequest,
-  AccommodationPreferenceResponse
+  AccommodationPreferenceResponse,
+  ChangeRegistrationStatusRequest,
+  AdminUpdateRegistrationRequest
 } from '@/types/registration'
 
 function toListItem(r: RegistrationResponse): RegistrationListItem {
@@ -21,7 +23,8 @@ function toListItem(r: RegistrationResponse): RegistrationListItem {
     totalAmount: r.pricing.totalAmount,
     amountPaid: r.amountPaid,
     amountRemaining: r.amountRemaining,
-    createdAt: r.createdAt
+    createdAt: r.createdAt,
+    hasPendingUserAcknowledgement: r.hasPendingUserAcknowledgement
   }
 }
 
@@ -257,6 +260,80 @@ export function useRegistrations() {
     }
   }
 
+  const changeStatus = async (
+    id: string,
+    request: ChangeRegistrationStatusRequest
+  ): Promise<RegistrationResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.patch<ApiResponse<RegistrationResponse>>(
+        `/registrations/${id}/status`,
+        request
+      )
+      if (response.data.success && response.data.data) {
+        registration.value = response.data.data
+        return response.data.data
+      }
+      return null
+    } catch (err: unknown) {
+      error.value =
+        (err as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message ?? 'Error al cambiar estado'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const confirmChanges = async (id: string): Promise<RegistrationResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post<ApiResponse<RegistrationResponse>>(
+        `/registrations/${id}/confirm-changes`
+      )
+      if (response.data.success && response.data.data) {
+        registration.value = response.data.data
+        return response.data.data
+      }
+      return null
+    } catch (err: unknown) {
+      error.value =
+        (err as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message ?? 'Error al confirmar cambios'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const adminUpdateRegistration = async (
+    id: string,
+    request: AdminUpdateRegistrationRequest
+  ): Promise<RegistrationResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.put<ApiResponse<RegistrationResponse>>(
+        `/registrations/${id}/admin`,
+        request
+      )
+      if (response.data.success && response.data.data) {
+        registration.value = response.data.data
+        return response.data.data
+      }
+      return null
+    } catch (err: unknown) {
+      error.value =
+        (err as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message ?? 'Error al actualizar inscripción'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     registrations,
     registration,
@@ -271,6 +348,9 @@ export function useRegistrations() {
     setAccommodationPreferences,
     getAccommodationPreferences,
     cancelRegistration,
-    deleteRegistration
+    deleteRegistration,
+    changeStatus,
+    confirmChanges,
+    adminUpdateRegistration
   }
 }

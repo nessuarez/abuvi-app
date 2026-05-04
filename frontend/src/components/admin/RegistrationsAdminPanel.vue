@@ -57,11 +57,13 @@ const selectedEditionOption = computed(() =>
 )
 
 const statusOptions = [
-  { label: 'Todos', value: null },
-  { label: 'Pendiente', value: 'Pending' },
-  { label: 'Confirmada', value: 'Confirmed' },
-  { label: 'Cancelada', value: 'Cancelled' },
-  { label: 'Borrador', value: 'Draft' }
+  { label: 'Todos',          value: null },
+  { label: 'Pendiente',      value: 'Pending' },
+  { label: 'Al corriente',   value: 'PartiallyPaid' },
+  { label: 'Pago completo',  value: 'FullyPaid' },
+  { label: 'Confirmada',     value: 'Confirmed' },
+  { label: 'En revisión',    value: 'Draft' },
+  { label: 'Cancelada',      value: 'Cancelled' },
 ]
 
 const PREFERENCE_LABELS: Record<1 | 2 | 3, string> = {
@@ -108,20 +110,24 @@ const extraOptions = computed(() =>
 
 const statusSeverity = (status: RegistrationStatus): string => {
   const map: Record<RegistrationStatus, string> = {
-    Pending: 'warn',
-    Confirmed: 'success',
-    Cancelled: 'danger',
-    Draft: 'info'
+    Pending:       'warn',
+    PartiallyPaid: 'info',
+    FullyPaid:     'secondary',
+    Confirmed:     'success',
+    Cancelled:     'danger',
+    Draft:         'warn',
   }
   return map[status] ?? 'secondary'
 }
 
 const statusLabel = (status: RegistrationStatus): string => {
   const map: Record<RegistrationStatus, string> = {
-    Pending: 'Pendiente',
-    Confirmed: 'Confirmada',
-    Cancelled: 'Cancelada',
-    Draft: 'Borrador'
+    Pending:       'Pendiente',
+    PartiallyPaid: 'Al corriente',
+    FullyPaid:     'Pago completo',
+    Confirmed:     'Confirmada',
+    Cancelled:     'Cancelada',
+    Draft:         'En revisión',
   }
   return map[status] ?? status
 }
