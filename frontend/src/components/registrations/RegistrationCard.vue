@@ -37,6 +37,13 @@ const formatCurrency = (amount: number): string =>
         <p v-if="registration.campEdition.location" class="mt-0.5 text-sm text-gray-400">
           <i class="pi pi-map-marker mr-1" />{{ registration.campEdition.location }}
         </p>
+        <span
+          v-if="registration.hasPendingUserAcknowledgement"
+          class="mt-1 inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-800"
+          data-testid="pending-ack-badge"
+        >
+          Cambios pendientes
+        </span>
       </div>
       <RegistrationStatusBadge :status="registration.status" />
     </div>

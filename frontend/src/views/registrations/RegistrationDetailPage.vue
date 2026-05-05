@@ -7,11 +7,14 @@ import Message from 'primevue/message'
 import Button from 'primevue/button'
 import Textarea from 'primevue/textarea'
 import Checkbox from 'primevue/checkbox'
+import ToggleSwitch from 'primevue/toggleswitch'
 import Container from '@/components/ui/Container.vue'
 import RegistrationStatusBadge from '@/components/registrations/RegistrationStatusBadge.vue'
 import RegistrationPricingBreakdown from '@/components/registrations/RegistrationPricingBreakdown.vue'
 import RegistrationMemberSelector from '@/components/registrations/RegistrationMemberSelector.vue'
 import RegistrationExtrasSelector from '@/components/registrations/RegistrationExtrasSelector.vue'
+import RegistrationStatusTimeline from '@/components/registrations/RegistrationStatusTimeline.vue'
+import AdminStatusChangeDialog from '@/components/registrations/AdminStatusChangeDialog.vue'
 import RegistrationCancelDialog from '@/components/registrations/RegistrationCancelDialog.vue'
 import RegistrationDeleteDialog from '@/components/registrations/RegistrationDeleteDialog.vue'
 import BankTransferInstructions from '@/components/payments/BankTransferInstructions.vue'
@@ -28,7 +31,9 @@ import type {
   AccommodationPreferenceResponse,
   WizardMemberSelection,
   WizardExtrasSelection,
-  UpdateRegistrationInfoRequest
+  UpdateRegistrationInfoRequest,
+  RegistrationStatus,
+  RegistrationResponse
 } from '@/types/registration'
 import type { AccommodationType, CampEdition, CampEditionExtra } from '@/types/camp-edition'
 import type { FamilyMemberResponse } from '@/types/family-unit'
@@ -61,7 +66,10 @@ const {
   updateInfo,
   cancelRegistration,
   deleteRegistration,
-  getAccommodationPreferences
+  getAccommodationPreferences,
+  changeStatus,
+  confirmChanges,
+  adminUpdateRegistration
 } = useRegistrations()
 const { getRegistrationPayments, getPaymentSettings } = usePayments()
 const { getFamilyMembers } = useFamilyUnits()
@@ -72,6 +80,11 @@ const cancelling = ref(false)
 const showDeleteDialog = ref(false)
 const deleting = ref(false)
 const showManualPaymentDialog = ref(false)
+const showStatusChangeDialog = ref(false)
+const changingStatus = ref(false)
+const confirmingChanges = ref(false)
+const notifyFamilyOnAdminSave = ref(true)
+const draftTargetStatusOnAdminSave = ref<RegistrationStatus | null>(null)
 const installments = ref<PaymentResponse[]>([])
 const paymentSettingsData = ref<PaymentSettings | null>(null)
 const accommodationPrefs = ref<AccommodationPreferenceResponse[]>([])
@@ -113,7 +126,7 @@ const isAdminOrBoard = computed(() => auth.isAdmin || auth.isBoard)
 
 const isDraft = computed(() => registration.value?.status === 'Draft')
 
-const canEdit = computed(() => {
+const canUserEdit = computed(() => {
   if (!registration.value) return false
   const status = registration.value.status
   if (status !== 'Pending' && status !== 'Draft') return false
@@ -121,12 +134,22 @@ const canEdit = computed(() => {
   return !installments.value.some((p) => p.proofFileUrl != null)
 })
 
-const canCancel = computed(
-  () =>
-    registration.value?.status === 'Pending' ||
-    registration.value?.status === 'Confirmed' ||
-    registration.value?.status === 'Draft'
+const canAdminEdit = computed(
+  () => isAdminOrBoard.value && registration.value?.status !== 'Cancelled'
 )
+
+const canEdit = canUserEdit
+
+const canCancel = computed(() => {
+  const s = registration.value?.status
+  return (
+    s === 'Pending' ||
+    s === 'PartiallyPaid' ||
+    s === 'FullyPaid' ||
+    s === 'Confirmed' ||
+    s === 'Draft'
+  )
+})
 
 const canDelete = computed(() => {
   if (!registration.value) return false
@@ -306,6 +329,102 @@ const handleSaveExtras = async () => {
   }
 }
 
+// --- Confirm changes (Draft acknowledgement) ---
+
+const handleConfirmChanges = async () => {
+  confirmingChanges.value = true
+  const result = await confirmChanges(registrationId.value)
+  confirmingChanges.value = false
+  if (result) {
+    toast.add({
+      severity: 'success',
+      summary: 'Cambios confirmados',
+      detail: 'Has confirmado los cambios en tu inscripción.',
+      life: 3000,
+    })
+  } else {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.value ?? 'Error al confirmar cambios',
+      life: 5000,
+    })
+  }
+}
+
+const handleStatusChanged = async (updated: RegistrationResponse) => {
+  showStatusChangeDialog.value = false
+  registration.value = updated
+  await refreshInstallments()
+}
+
+// --- Admin save handlers ---
+
+const handleAdminSaveMembers = async () => {
+  savingMembers.value = true
+  const result = await adminUpdateRegistration(registrationId.value, {
+    members: memberSelections.value.map((s) => ({
+      memberId: s.memberId,
+      attendancePeriod: s.attendancePeriod,
+      visitStartDate: s.visitStartDate,
+      visitEndDate: s.visitEndDate,
+      guardianName: s.guardianName,
+      guardianDocumentNumber: s.guardianDocumentNumber,
+    })),
+    notifyUser: notifyFamilyOnAdminSave.value,
+    draftTargetStatus: draftTargetStatusOnAdminSave.value,
+  })
+  savingMembers.value = false
+  if (result) {
+    isEditingMembers.value = false
+    await refreshInstallments()
+    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Miembros actualizados', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error', detail: error.value ?? 'Error al actualizar miembros', life: 5000 })
+  }
+}
+
+const handleAdminSaveExtras = async () => {
+  savingExtras.value = true
+  const result = await adminUpdateRegistration(registrationId.value, {
+    extras: extrasSelections.value
+      .filter((e) => e.quantity > 0)
+      .map((e) => ({
+        campEditionExtraId: e.campEditionExtraId,
+        quantity: e.quantity,
+        userInput: e.userInput,
+      })),
+    notifyUser: notifyFamilyOnAdminSave.value,
+    draftTargetStatus: draftTargetStatusOnAdminSave.value,
+  })
+  savingExtras.value = false
+  if (result) {
+    isEditingExtras.value = false
+    await refreshInstallments()
+    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Extras actualizados', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error', detail: error.value ?? 'Error al actualizar extras', life: 5000 })
+  }
+}
+
+const handleAdminSaveInfo = async () => {
+  savingInfo.value = true
+  const result = await adminUpdateRegistration(registrationId.value, {
+    specialNeeds: editSpecialNeeds.value.trim() || null,
+    campatesPreference: editCampatesPreference.value.trim() || null,
+    hasPet: editHasPet.value,
+    notifyUser: notifyFamilyOnAdminSave.value,
+    draftTargetStatus: draftTargetStatusOnAdminSave.value,
+  })
+  savingInfo.value = false
+  if (result) {
+    isEditingInfo.value = false
+    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Información actualizada', life: 3000 })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error', detail: error.value ?? 'Error al actualizar', life: 5000 })
+  }
+}
+
 // --- Cancel / Delete ---
 
 const handleCancel = async () => {
@@ -420,15 +539,31 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Draft banner -->
-        <Message v-if="isDraft" severity="warn" :closable="false" class="mb-6" data-testid="draft-banner">
-          Esta inscripción fue modificada por un administrador. El representante familiar debe
-          volver a confirmarla.
-        </Message>
+        <!-- Confirm-changes banner (spec §7.3) -->
+        <div
+          v-if="registration.status === 'Draft' && registration.hasPendingUserAcknowledgement"
+          class="mb-6 rounded-lg border border-orange-200 bg-orange-50 p-4"
+          data-testid="confirm-changes-banner"
+        >
+          <p class="text-sm font-medium text-orange-800">
+            La Junta ha realizado cambios en tu inscripción. Revisa los detalles y confirma que
+            todo es correcto.
+          </p>
+          <Button
+            v-if="isRepresentative || isAdminOrBoard"
+            label="Confirmar cambios"
+            icon="pi pi-check"
+            severity="warning"
+            class="mt-3"
+            :loading="confirmingChanges"
+            @click="handleConfirmChanges"
+            data-testid="confirm-changes-btn"
+          />
+        </div>
 
-        <!-- Draft info for representative -->
+        <!-- Generic draft info when no pending ack -->
         <Message
-          v-if="isDraft && isRepresentative"
+          v-else-if="registration.status === 'Draft' && isRepresentative"
           severity="info"
           :closable="false"
           class="mb-6"
@@ -436,6 +571,30 @@ onMounted(async () => {
         >
           Puedes revisar y editar los miembros o extras antes de confirmar.
         </Message>
+
+        <!-- Admin: manual status change button (spec §7.4) -->
+        <div
+          v-if="isAdminOrBoard && registration.status !== 'Cancelled'"
+          class="mb-4 flex items-center gap-2"
+        >
+          <Button
+            label="Cambiar estado"
+            icon="pi pi-exchange"
+            severity="secondary"
+            outlined
+            size="small"
+            @click="showStatusChangeDialog = true"
+            data-testid="change-status-btn"
+          />
+        </div>
+
+        <AdminStatusChangeDialog
+          v-model:visible="showStatusChangeDialog"
+          :registration-id="registrationId"
+          :current-status="registration.status"
+          :loading="changingStatus"
+          @changed="handleStatusChanged"
+        />
 
         <!-- Notes -->
         <div v-if="registration.notes" class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -448,7 +607,7 @@ onMounted(async () => {
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-sm font-semibold text-gray-700">Información adicional</h2>
             <Button
-              v-if="canEdit && !isEditingInfo"
+              v-if="(canEdit || canAdminEdit) && !isEditingInfo"
               icon="pi pi-pencil"
               label="Editar"
               size="small"
@@ -476,10 +635,31 @@ onMounted(async () => {
                 <label for="edit-has-pet" class="cursor-pointer text-sm text-gray-700">¿Viene con mascota?</label>
               </div>
             </div>
-            <div class="mt-4 flex gap-2">
-              <Button label="Guardar" icon="pi pi-check" :loading="savingInfo" @click="handleSaveInfo" />
-              <Button label="Cancelar" severity="secondary" text :disabled="savingInfo" @click="isEditingInfo = false" />
-            </div>
+            <template v-if="isAdminOrBoard">
+              <div class="mt-3 rounded-md border border-orange-100 bg-orange-50 p-3">
+                <div class="mb-2 flex items-center gap-2">
+                  <ToggleSwitch v-model="notifyFamilyOnAdminSave" input-id="notify-admin-info" />
+                  <label for="notify-admin-info" class="cursor-pointer text-sm text-orange-800">
+                    Notificar a la familia
+                  </label>
+                </div>
+                <p class="mb-3 text-xs text-orange-700">
+                  Al guardar, la inscripción pasará a estado "En revisión" hasta que la familia confirme los cambios.
+                </p>
+                <div class="flex gap-2">
+                  <Button label="Guardar (admin)" icon="pi pi-check" :loading="savingInfo"
+                          severity="warning" @click="handleAdminSaveInfo" />
+                  <Button label="Cancelar" severity="secondary" text :disabled="savingInfo"
+                          @click="isEditingInfo = false" />
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <div class="mt-4 flex gap-2">
+                <Button label="Guardar" icon="pi pi-check" :loading="savingInfo" @click="handleSaveInfo" />
+                <Button label="Cancelar" severity="secondary" text :disabled="savingInfo" @click="isEditingInfo = false" />
+              </div>
+            </template>
           </template>
 
           <!-- Read view -->
@@ -522,7 +702,7 @@ onMounted(async () => {
         <div class="mb-6">
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-base font-semibold text-gray-900">Desglose de precio</h2>
-            <div v-if="canEdit" class="flex gap-2">
+            <div v-if="canEdit || canAdminEdit" class="flex gap-2">
               <Button
                 label="Editar participantes"
                 icon="pi pi-pencil"
@@ -555,20 +735,62 @@ onMounted(async () => {
               :members="familyMembersData"
               :edition="campEditionData"
             />
-            <div class="mt-4 flex gap-2">
-              <Button label="Guardar" icon="pi pi-check" :loading="savingMembers" @click="handleSaveMembers" />
-              <Button label="Cancelar" severity="secondary" text :disabled="savingMembers" @click="isEditingMembers = false" />
-            </div>
+            <template v-if="isAdminOrBoard">
+              <div class="mt-3 rounded-md border border-orange-100 bg-orange-50 p-3">
+                <div class="mb-2 flex items-center gap-2">
+                  <ToggleSwitch v-model="notifyFamilyOnAdminSave" input-id="notify-admin-members" />
+                  <label for="notify-admin-members" class="cursor-pointer text-sm text-orange-800">
+                    Notificar a la familia
+                  </label>
+                </div>
+                <p class="mb-3 text-xs text-orange-700">
+                  Al guardar, la inscripción pasará a estado "En revisión" hasta que la familia confirme los cambios.
+                </p>
+                <div class="flex gap-2">
+                  <Button label="Guardar (admin)" icon="pi pi-check" :loading="savingMembers"
+                          severity="warning" @click="handleAdminSaveMembers" />
+                  <Button label="Cancelar" severity="secondary" text :disabled="savingMembers"
+                          @click="isEditingMembers = false" />
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <div class="mt-4 flex gap-2">
+                <Button label="Guardar" icon="pi pi-check" :loading="savingMembers" @click="handleSaveMembers" />
+                <Button label="Cancelar" severity="secondary" text :disabled="savingMembers" @click="isEditingMembers = false" />
+              </div>
+            </template>
           </div>
 
           <!-- Edit extras form -->
           <div v-if="isEditingExtras" class="mb-4 rounded-lg border border-blue-200 bg-blue-50/30 p-4">
             <h3 class="mb-3 text-sm font-semibold text-gray-900">Editar extras</h3>
             <RegistrationExtrasSelector v-model="extrasSelections" :extras="campExtrasData" />
-            <div class="mt-4 flex gap-2">
-              <Button label="Guardar" icon="pi pi-check" :loading="savingExtras" @click="handleSaveExtras" />
-              <Button label="Cancelar" severity="secondary" text :disabled="savingExtras" @click="isEditingExtras = false" />
-            </div>
+            <template v-if="isAdminOrBoard">
+              <div class="mt-3 rounded-md border border-orange-100 bg-orange-50 p-3">
+                <div class="mb-2 flex items-center gap-2">
+                  <ToggleSwitch v-model="notifyFamilyOnAdminSave" input-id="notify-admin-extras" />
+                  <label for="notify-admin-extras" class="cursor-pointer text-sm text-orange-800">
+                    Notificar a la familia
+                  </label>
+                </div>
+                <p class="mb-3 text-xs text-orange-700">
+                  Al guardar, la inscripción pasará a estado "En revisión" hasta que la familia confirme los cambios.
+                </p>
+                <div class="flex gap-2">
+                  <Button label="Guardar (admin)" icon="pi pi-check" :loading="savingExtras"
+                          severity="warning" @click="handleAdminSaveExtras" />
+                  <Button label="Cancelar" severity="secondary" text :disabled="savingExtras"
+                          @click="isEditingExtras = false" />
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <div class="mt-4 flex gap-2">
+                <Button label="Guardar" icon="pi pi-check" :loading="savingExtras" @click="handleSaveExtras" />
+                <Button label="Cancelar" severity="secondary" text :disabled="savingExtras" @click="isEditingExtras = false" />
+              </div>
+            </template>
           </div>
 
           <RegistrationPricingBreakdown :pricing="registration.pricing" />
@@ -637,6 +859,13 @@ onMounted(async () => {
             </span>
           </div>
         </div>
+
+        <!-- Status history timeline (spec §7.2) -->
+        <RegistrationStatusTimeline
+          v-if="registration.statusHistory?.length"
+          :history="registration.statusHistory"
+          class="mt-8 mb-6"
+        />
 
         <!-- Actions -->
         <div v-if="(isRepresentative && canCancel) || canDelete" class="flex justify-end gap-2">
