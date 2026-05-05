@@ -27,6 +27,8 @@ public class Registration
     public RegistrationStatus? DraftTargetStatus { get; set; }
     public bool HasPendingUserAcknowledgement { get; set; } = false;
 
+    public string? AccommodationInternalNotes { get; set; }
+
     // Navigation properties
     public FamilyUnit FamilyUnit { get; set; } = null!;
     public CampEdition CampEdition { get; set; } = null!;
@@ -36,6 +38,8 @@ public class Registration
     public ICollection<RegistrationAccommodationPreference> AccommodationPreferences { get; set; } = [];
     public ICollection<Payment> Payments { get; set; } = [];
     public ICollection<RegistrationStatusHistory> StatusHistory { get; set; } = [];
+    public ICollection<RegistrationAccommodationNeed> AccommodationNeeds { get; set; } = [];
+    public ICollection<RegistrationFriendLink> FriendLinks { get; set; } = [];
 }
 
 public class RegistrationMember
@@ -84,6 +88,30 @@ public class RegistrationAccommodationPreference
     // Navigation
     public Registration Registration { get; set; } = null!;
     public CampEditionAccommodation CampEditionAccommodation { get; set; } = null!;
+}
+
+public class RegistrationAccommodationNeed
+{
+    public Guid Id { get; set; }
+    public Guid RegistrationId { get; set; }
+    public Guid AccommodationFeatureId { get; set; }
+    public Guid? TaggedByUserId { get; set; }
+    public DateTime CreatedAt { get; set; }
+
+    public Registration Registration { get; set; } = null!;
+    public AccommodationFeature AccommodationFeature { get; set; } = null!;
+}
+
+public class RegistrationFriendLink
+{
+    public Guid Id { get; set; }
+    public Guid RegistrationId { get; set; }
+    public Guid LinkedRegistrationId { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public DateTime CreatedAt { get; set; }
+
+    public Registration Registration { get; set; } = null!;
+    public Registration LinkedRegistration { get; set; } = null!;
 }
 
 public class Payment
@@ -243,6 +271,37 @@ public record StatusHistoryItemResponse(
     string? Notes
 );
 
+public record AccommodationNeedResponse(
+    Guid FeatureId,
+    string FeatureName,
+    string FeatureCategory,
+    Guid? TaggedByUserId,
+    DateTime CreatedAt
+);
+
+public record AccommodationNeedsResponse(
+    Guid RegistrationId,
+    List<AccommodationNeedResponse> Needs
+);
+
+public record AccommodationNotesResponse(
+    Guid RegistrationId,
+    string? AccommodationInternalNotes,
+    DateTime UpdatedAt
+);
+
+public record FriendLinkResponse(
+    Guid LinkedRegistrationId,
+    string LinkedFamilyName,
+    Guid? CreatedByUserId,
+    DateTime CreatedAt
+);
+
+public record FriendLinksResponse(
+    Guid RegistrationId,
+    List<FriendLinkResponse> FriendLinks
+);
+
 public record RegistrationResponse(
     Guid Id,
     RegistrationFamilyUnitSummary FamilyUnit,
@@ -261,7 +320,10 @@ public record RegistrationResponse(
     bool IsAdminModified,
     RegistrationStatus? DraftTargetStatus,
     bool HasPendingUserAcknowledgement,
-    List<StatusHistoryItemResponse> StatusHistory
+    List<StatusHistoryItemResponse> StatusHistory,
+    string? AccommodationInternalNotes = null,
+    List<AccommodationNeedResponse>? AccommodationNeeds = null,
+    List<FriendLinkResponse>? FriendLinks = null
 );
 
 public record RegistrationFamilyUnitSummary(Guid Id, string Name, Guid RepresentativeUserId);
@@ -415,6 +477,10 @@ public record ChangeRegistrationStatusRequest(
     bool NotifyUser = true
 );
 
+public record UpdateAccommodationNeedsRequest(List<Guid> FeatureIds);
+public record UpdateAccommodationNotesRequest(string? AccommodationInternalNotes);
+public record UpdateFriendLinksRequest(List<Guid> LinkedRegistrationIds);
+
 /// <summary>
 /// Represents an (accommodation, preference position) filter pair.
 /// Multiple pairs are AND-combined: each pair must independently match a preference on the registration.
@@ -488,6 +554,18 @@ public static class RegistrationMappingExtensions
                 h.Notes))
             .ToList()
     );
+
+    public static RegistrationResponse ToAdminResponse(
+        this Registration r,
+        decimal amountPaid,
+        List<AccommodationNeedResponse> needs,
+        List<FriendLinkResponse> friendLinks)
+        => r.ToResponse(amountPaid) with
+        {
+            AccommodationInternalNotes = r.AccommodationInternalNotes,
+            AccommodationNeeds = needs,
+            FriendLinks = friendLinks
+        };
 
     private static string BuildCalculation(RegistrationExtra e)
     {

@@ -40,10 +40,13 @@ public class RegistrationsExportServiceTests
             .Returns(true);
         var pricingService = new RegistrationPricingService(settingsRepo);
 
+        var accommodationNeedsRepo = Substitute.For<IRegistrationAccommodationNeedsRepository>();
+        var friendLinksRepo = Substitute.For<IRegistrationFriendLinksRepository>();
+        var accommodationFeaturesRepo = Substitute.For<IAccommodationFeaturesRepository>();
         _sut = new RegistrationsService(
             _repo, extrasRepo, accommodationPrefsRepo, familyUnitsRepo,
             _editionsRepo, accommodationsRepo, _extrasDefinitionRepo,
-            pricingService, emailService, paymentsService, membershipsRepo, logger);
+            pricingService, emailService, paymentsService, membershipsRepo, accommodationNeedsRepo, friendLinksRepo, accommodationFeaturesRepo, logger);
     }
 
     [Fact]

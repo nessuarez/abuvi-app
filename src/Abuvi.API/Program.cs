@@ -202,6 +202,8 @@ builder.Services.AddScoped<MembershipsService>();
 builder.Services.AddScoped<IRegistrationsRepository, RegistrationsRepository>();
 builder.Services.AddScoped<IRegistrationExtrasRepository, RegistrationExtrasRepository>();
 builder.Services.AddScoped<IRegistrationAccommodationPreferencesRepository, RegistrationAccommodationPreferencesRepository>();
+builder.Services.AddScoped<IRegistrationAccommodationNeedsRepository, RegistrationAccommodationNeedsRepository>();
+builder.Services.AddScoped<IRegistrationFriendLinksRepository, RegistrationFriendLinksRepository>();
 builder.Services.AddScoped<RegistrationPricingService>();
 builder.Services.AddScoped<RegistrationsService>();
 

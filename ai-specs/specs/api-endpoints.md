@@ -3159,6 +3159,178 @@ All fields are optional (null = no change).
 
 ---
 
+### PUT /api/registrations/{id}/accommodation-needs
+
+Replace the full set of accommodation feature tags for a registration. Admin/Board only. Sending an empty list clears all tags.
+
+**Request Body:**
+
+```json
+{
+  "featureIds": ["uuid1", "uuid2"]
+}
+```
+
+**Validation Rules:**
+
+- Maximum 20 feature IDs
+- No duplicate IDs
+- All IDs must exist in the AccommodationFeature catalog
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "registrationId": "...",
+    "needs": [
+      {
+        "featureId": "...",
+        "featureName": "Habitación privada",
+        "featureIcon": "icon",
+        "featureCategory": "Any"
+      }
+    ]
+  }
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed or feature ID not found in catalog
+- **404 Not Found**: Registration not found
+
+---
+
+### GET /api/registrations/{id}/accommodation-needs
+
+Get the current accommodation feature tags for a registration. Admin/Board only.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "featureId": "...",
+      "featureName": "Habitación privada",
+      "featureIcon": "icon",
+      "featureCategory": "Any"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **404 Not Found**: Registration not found
+
+---
+
+### PATCH /api/registrations/{id}/accommodation-notes
+
+Set or clear the internal accommodation notes for a registration. Admin/Board only. Send null or empty string to clear.
+
+**Request Body:**
+
+```json
+{
+  "accommodationInternalNotes": "La familia necesita habitaciones contiguas."
+}
+```
+
+**Validation Rules:**
+
+- Maximum 4000 characters
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "registrationId": "...",
+    "accommodationInternalNotes": "La familia necesita habitaciones contiguas."
+  }
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed
+- **404 Not Found**: Registration not found
+
+---
+
+### PUT /api/registrations/{id}/friend-links
+
+Replace the full set of friend links for a registration. Admin/Board only. Links are bidirectional — both directions are stored atomically. Sending an empty list removes all links.
+
+**Request Body:**
+
+```json
+{
+  "linkedRegistrationIds": ["uuid1", "uuid2"]
+}
+```
+
+**Validation Rules:**
+
+- Maximum 10 linked registration IDs
+- No duplicate IDs
+- Cannot link a registration to itself
+- All linked registrations must belong to the same camp edition
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "registrationId": "...",
+    "friendLinks": [
+      {
+        "linkedRegistrationId": "...",
+        "linkedFamilyName": "Martínez Family"
+      }
+    ]
+  }
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request**: `NO_SELF_LINK` or `SAME_EDITION_REQUIRED` business rule violation
+- **404 Not Found**: Registration or linked registration not found
+
+---
+
+### GET /api/registrations/{id}/friend-links
+
+Get the current friend links for a registration. Admin/Board only.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "linkedRegistrationId": "...",
+      "linkedFamilyName": "Martínez Family"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **404 Not Found**: Registration not found
+
+---
+
 ## Blob Storage Endpoints
 
 Blob Storage endpoints manage file uploads to and deletions from the configured S3-compatible object store (Hetzner Object Storage). All upload operations are available to any authenticated user; delete and stats operations require Admin role.
