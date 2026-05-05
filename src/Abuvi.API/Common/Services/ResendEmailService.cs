@@ -48,6 +48,12 @@ public class ResendEmailService : IEmailService
         string verificationToken,
         CancellationToken ct)
     {
+        if (IsTestAddress(toEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", toEmail);
+            return;
+        }
+
         var verificationUrl = $"{_frontendUrl}/verify-email?token={verificationToken}";
 
         var message = new EmailMessage
@@ -101,6 +107,12 @@ public class ResendEmailService : IEmailService
         string lastName,
         CancellationToken ct)
     {
+        if (IsTestAddress(toEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", toEmail);
+            return;
+        }
+
         var dashboardUrl = $"{_frontendUrl}/home";
 
         var message = new EmailMessage
@@ -160,6 +172,12 @@ public class ResendEmailService : IEmailService
         string resetToken,
         CancellationToken ct)
     {
+        if (IsTestAddress(toEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", toEmail);
+            return;
+        }
+
         var resetUrl = $"{_frontendUrl}/reset-password?token={resetToken}";
 
         var message = new EmailMessage
@@ -218,6 +236,12 @@ public class ResendEmailService : IEmailService
         CampRegistrationEmailData data,
         CancellationToken ct)
     {
+        if (IsTestAddress(data.ToEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", data.ToEmail);
+            return;
+        }
+
         var culture = new CultureInfo("es-ES");
         var registrationUrl = $"{_frontendUrl}/registrations/{data.RegistrationId}";
         var startDate = data.StartDate.ToString("d 'de' MMMM", culture);
@@ -372,6 +396,12 @@ public class ResendEmailService : IEmailService
         CampRegistrationEmailData data,
         CancellationToken ct)
     {
+        if (IsTestAddress(data.ToEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", data.ToEmail);
+            return;
+        }
+
         var culture = new CultureInfo("es-ES");
         var campUrl = $"{_frontendUrl}/camp";
         var startDate = data.StartDate.ToString("d 'de' MMMM", culture);
@@ -431,6 +461,12 @@ public class ResendEmailService : IEmailService
         string updateMessage,
         CancellationToken ct)
     {
+        if (IsTestAddress(toEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", toEmail);
+            return;
+        }
+
         var message = new EmailMessage
         {
             From = $"{_fromName} <{_fromEmail}>",
@@ -485,6 +521,12 @@ public class ResendEmailService : IEmailService
         string paymentReference,
         CancellationToken ct)
     {
+        if (IsTestAddress(toEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", toEmail);
+            return;
+        }
+
         var paymentsUrl = $"{_frontendUrl}/payments";
         var formattedAmount = amount.ToString("F2");
 
@@ -550,6 +592,12 @@ public class ResendEmailService : IEmailService
         string campName,
         CancellationToken ct)
     {
+        if (IsTestAddress(toEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", toEmail);
+            return;
+        }
+
         var feedbackUrl = $"{_frontendUrl}/feedback";
 
         var message = new EmailMessage
@@ -606,6 +654,12 @@ public class ResendEmailService : IEmailService
         DateTime eventDate,
         CancellationToken ct)
     {
+        if (IsTestAddress(toEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", toEmail);
+            return;
+        }
+
         var formattedDate = eventDate.ToString("dddd, MMMM d, yyyy 'at' h:mm tt");
 
         var message = new EmailMessage
@@ -660,6 +714,12 @@ public class ResendEmailService : IEmailService
         RegistrationStatusEmailData data,
         CancellationToken ct)
     {
+        if (IsTestAddress(data.ToEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", data.ToEmail);
+            return;
+        }
+
         var message = new EmailMessage
         {
             From = $"{_fromName} <{_fromEmail}>",
@@ -703,6 +763,12 @@ public class ResendEmailService : IEmailService
         AllPaymentsReceivedEmailData data,
         CancellationToken ct)
     {
+        if (IsTestAddress(data.ToEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", data.ToEmail);
+            return;
+        }
+
         var message = new EmailMessage
         {
             From = $"{_fromName} <{_fromEmail}>",
@@ -747,6 +813,12 @@ public class ResendEmailService : IEmailService
         PaymentReceivedEmailData data,
         CancellationToken ct)
     {
+        if (IsTestAddress(data.ToEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", data.ToEmail);
+            return;
+        }
+
         var message = new EmailMessage
         {
             From = $"{_fromName} <{_fromEmail}>",
@@ -790,6 +862,12 @@ public class ResendEmailService : IEmailService
         RegistrationStatusEmailData data,
         CancellationToken ct)
     {
+        if (IsTestAddress(data.ToEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", data.ToEmail);
+            return;
+        }
+
         var message = new EmailMessage
         {
             From = $"{_fromName} <{_fromEmail}>",
@@ -833,6 +911,12 @@ public class ResendEmailService : IEmailService
         RegistrationStatusEmailData data,
         CancellationToken ct)
     {
+        if (IsTestAddress(data.ToEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", data.ToEmail);
+            return;
+        }
+
         var registrationUrl = $"{_frontendUrl}/registrations/{data.RegistrationId}";
 
         var message = new EmailMessage
@@ -884,6 +968,12 @@ public class ResendEmailService : IEmailService
         DraftChangesConfirmedEmailData data,
         CancellationToken ct)
     {
+        if (IsTestAddress(data.ToEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", data.ToEmail);
+            return;
+        }
+
         var message = new EmailMessage
         {
             From = $"{_fromName} <{_fromEmail}>",
@@ -922,4 +1012,7 @@ public class ResendEmailService : IEmailService
             throw new InvalidOperationException($"Failed to send DraftChangesConfirmed notification: {ex.Message}", ex);
         }
     }
+
+    private static bool IsTestAddress(string email)
+        => email.EndsWith("@example.com", StringComparison.OrdinalIgnoreCase);
 }

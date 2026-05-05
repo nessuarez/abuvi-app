@@ -33,7 +33,6 @@ public class AuthEndpointsTests_Registration
             "Password123!",
             "John",
             "Doe",
-            "12345678A",
             "+34612345678",
             true
         );
@@ -75,7 +74,6 @@ public class AuthEndpointsTests_Registration
             "Password123!",
             "John",
             "Doe",
-            "12345678A",
             null,
             true
         );
@@ -95,37 +93,6 @@ public class AuthEndpointsTests_Registration
         jsonResult.Value!.Success.Should().BeFalse();
         jsonResult.Value.Error.Should().NotBeNull();
         jsonResult.Value.Error!.Code.Should().Be("EMAIL_EXISTS");
-    }
-
-    [Fact]
-    public async Task RegisterUser_WithDuplicateDocumentNumber_ReturnsBadRequest()
-    {
-        // Arrange
-        var request = new RegisterUserRequest(
-            "user@example.com",
-            "Password123!",
-            "John",
-            "Doe",
-            "12345678A",
-            null,
-            true
-        );
-
-        _authService
-            .RegisterUserAsync(request, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new BusinessRuleException("An account with this document number already exists"));
-
-        // Act
-        var result = await AuthEndpoints.RegisterUser(request, _authService, CancellationToken.None);
-
-        // Assert
-        result.Should().BeOfType<JsonHttpResult<ApiResponse<UserResponse>>>();
-        var jsonResult = (JsonHttpResult<ApiResponse<UserResponse>>)result;
-        jsonResult.StatusCode.Should().Be(400);
-        jsonResult.Value.Should().NotBeNull();
-        jsonResult.Value!.Success.Should().BeFalse();
-        jsonResult.Value.Error.Should().NotBeNull();
-        jsonResult.Value.Error!.Message.Should().Contain("document number");
     }
 
     [Fact]

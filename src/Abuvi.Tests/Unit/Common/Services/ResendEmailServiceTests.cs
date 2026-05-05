@@ -79,7 +79,7 @@ public class ResendEmailServiceTests
     public async Task SendVerificationEmailAsync_WithValidInputs_SendsEmailSuccessfully()
     {
         // Arrange
-        var toEmail = "user@example.com";
+        var toEmail = "user@abuvi-test.internal";
         var firstName = "John";
         var token = "verification_token_123";
 
@@ -108,7 +108,7 @@ public class ResendEmailServiceTests
             .Returns("msg_123");
 
         // Act
-        await _sut.SendVerificationEmailAsync("test@example.com", "John", token, CancellationToken.None);
+        await _sut.SendVerificationEmailAsync("test@abuvi-test.internal", "John", token, CancellationToken.None);
 
         // Assert
         await _resendClient.Received(1).SendEmailAsync(
@@ -124,7 +124,7 @@ public class ResendEmailServiceTests
             .Returns(messageId);
 
         // Act
-        await _sut.SendVerificationEmailAsync("user@example.com", "John", "token", CancellationToken.None);
+        await _sut.SendVerificationEmailAsync("user@abuvi-test.internal", "John", "token", CancellationToken.None);
 
         // Assert
         _logger.Received(1).Log(
@@ -144,7 +144,7 @@ public class ResendEmailServiceTests
 
         // Act
         Func<Task> act = async () => await _sut.SendVerificationEmailAsync(
-            "user@example.com", "John", "token", CancellationToken.None);
+            "user@abuvi-test.internal", "John", "token", CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -161,7 +161,7 @@ public class ResendEmailServiceTests
         // Act
         try
         {
-            await _sut.SendVerificationEmailAsync("user@example.com", "John", "token", CancellationToken.None);
+            await _sut.SendVerificationEmailAsync("user@abuvi-test.internal", "John", "token", CancellationToken.None);
         }
         catch { /* Expected */ }
 
@@ -182,7 +182,7 @@ public class ResendEmailServiceTests
     public async Task SendWelcomeEmailAsync_WithValidInputs_SendsEmailSuccessfully()
     {
         // Arrange
-        var toEmail = "user@example.com";
+        var toEmail = "user@abuvi-test.internal";
         var firstName = "Jane";
         var lastName = "Smith";
 
@@ -203,7 +203,7 @@ public class ResendEmailServiceTests
     public async Task SendWelcomeEmailAsync_SubjectIncludesFullName()
     {
         // Arrange
-        var toEmail = "user@example.com";
+        var toEmail = "user@abuvi-test.internal";
         var firstName = "Jane";
         var lastName = "Smith";
 
@@ -224,7 +224,7 @@ public class ResendEmailServiceTests
     public async Task SendWelcomeEmailAsync_IncludesBccToBoard()
     {
         // Arrange
-        var toEmail = "user@example.com";
+        var toEmail = "user@abuvi-test.internal";
         var firstName = "Jane";
         var lastName = "Smith";
         EmailMessage? capturedMessage = null;
@@ -249,7 +249,7 @@ public class ResendEmailServiceTests
 
         // Act
         Func<Task> act = async () => await _sut.SendWelcomeEmailAsync(
-            "user@example.com", "Jane", "Smith", CancellationToken.None);
+            "user@abuvi-test.internal", "Jane", "Smith", CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>();
@@ -263,7 +263,7 @@ public class ResendEmailServiceTests
     public async Task SendPasswordResetEmailAsync_WithValidInputs_SendsEmailSuccessfully()
     {
         // Arrange
-        var toEmail = "user@example.com";
+        var toEmail = "user@abuvi-test.internal";
         var firstName = "John";
         var resetToken = "reset_token_456";
 
@@ -291,7 +291,7 @@ public class ResendEmailServiceTests
             .Returns("msg_123");
 
         // Act
-        await _sut.SendPasswordResetEmailAsync("test@example.com", "John", token, CancellationToken.None);
+        await _sut.SendPasswordResetEmailAsync("test@abuvi-test.internal", "John", token, CancellationToken.None);
 
         // Assert
         await _resendClient.Received(1).SendEmailAsync(
@@ -463,7 +463,7 @@ public class ResendEmailServiceTests
     public async Task SendPaymentReceiptAsync_WithValidInputs_SendsEmailSuccessfully()
     {
         // Arrange
-        var toEmail = "parent@example.com";
+        var toEmail = "parent@abuvi-test.internal";
         var firstName = "Carlos";
         var amount = 150.00m;
         var paymentReference = "PAY-2026-001";
@@ -487,7 +487,7 @@ public class ResendEmailServiceTests
     public async Task SendEventReminderAsync_WithValidInputs_SendsEmailSuccessfully()
     {
         // Arrange
-        var toEmail = "user@example.com";
+        var toEmail = "user@abuvi-test.internal";
         var firstName = "Luis";
         var eventName = "Parent Meeting";
         var eventDate = new DateTime(2026, 6, 20);
@@ -514,7 +514,7 @@ public class ResendEmailServiceTests
     public async Task SendFeedbackRequestAsync_WithValidInputs_SendsEmailSuccessfully()
     {
         // Arrange
-        var toEmail = "parent@example.com";
+        var toEmail = "parent@abuvi-test.internal";
         var firstName = "Ana";
         var campName = "Winter Camp 2026";
 
@@ -540,7 +540,7 @@ public class ResendEmailServiceTests
     public async Task SendCampUpdateNotificationAsync_WithValidInputs_SendsEmailSuccessfully()
     {
         // Arrange
-        var toEmail = "parent@example.com";
+        var toEmail = "parent@abuvi-test.internal";
         var firstName = "Pedro";
         var campName = "Spring Camp";
         var updateMessage = "The camp start time has been changed to 9:00 AM";
@@ -573,7 +573,7 @@ public class ResendEmailServiceTests
 
         // Act
         Func<Task> act = async () => await _sut.SendVerificationEmailAsync(
-            "user@example.com", "John", "token", CancellationToken.None);
+            "user@abuvi-test.internal", "John", "token", CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -590,7 +590,7 @@ public class ResendEmailServiceTests
 
         // Act
         Func<Task> act = async () => await _sut.SendWelcomeEmailAsync(
-            "user@example.com", "Jane", "Smith", CancellationToken.None);
+            "user@abuvi-test.internal", "Jane", "Smith", CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>();
@@ -602,7 +602,7 @@ public class ResendEmailServiceTests
 
     private static CampRegistrationEmailData CreateTestRegistrationEmailData() => new()
     {
-        ToEmail = "test@example.com",
+        ToEmail = "test@abuvi-test.internal",
         RecipientFirstName = "María",
         CampName = "Campamento Sierra",
         CampLocation = "Sierra de Gredos",
