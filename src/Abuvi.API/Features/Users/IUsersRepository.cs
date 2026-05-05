@@ -16,11 +16,6 @@ public interface IUsersRepository
     Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets a user by their document number
-    /// </summary>
-    Task<User?> GetByDocumentNumberAsync(string documentNumber, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets a user by their email verification token
     /// </summary>
     Task<User?> GetByVerificationTokenAsync(string token, CancellationToken cancellationToken = default);

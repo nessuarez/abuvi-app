@@ -113,16 +113,6 @@ public class AuthService : IAuthService
             throw new BusinessRuleException("Ya existe una cuenta con este correo electrónico");
         }
 
-        // Check for duplicate document number (only if provided)
-        if (!string.IsNullOrWhiteSpace(request.DocumentNumber))
-        {
-            var existingByDocument = await _usersRepository.GetByDocumentNumberAsync(request.DocumentNumber, ct);
-            if (existingByDocument is not null)
-            {
-                throw new BusinessRuleException("Ya existe una cuenta con este número de documento");
-            }
-        }
-
         // Hash password
         var passwordHash = _passwordHasher.HashPassword(request.Password);
 
@@ -138,7 +128,6 @@ public class AuthService : IAuthService
             FirstName = request.FirstName,
             LastName = request.LastName,
             Phone = request.Phone,
-            DocumentNumber = request.DocumentNumber,
             Role = UserRole.Member,
             IsActive = false,
             EmailVerified = false,

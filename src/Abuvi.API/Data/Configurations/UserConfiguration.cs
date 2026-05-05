@@ -49,16 +49,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(20)
             .HasColumnName("phone");
 
-        // NEW: Document number: optional, max 50, unique index when not null
-        builder.Property(u => u.DocumentNumber)
-            .HasMaxLength(50)
-            .HasColumnName("document_number");
-
-        builder.HasIndex(u => u.DocumentNumber)
-            .IsUnique()
-            .HasDatabaseName("IX_Users_DocumentNumber")
-            .HasFilter("document_number IS NOT NULL"); // Partial index - only enforces uniqueness for non-null values
-
         // Role: stored as string, max 20
         builder.Property(u => u.Role)
             .HasConversion<string>()
