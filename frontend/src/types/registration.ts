@@ -140,6 +140,10 @@ export interface RegistrationResponse {
   draftTargetStatus: RegistrationStatus | null
   hasPendingUserAcknowledgement: boolean
   statusHistory: RegistrationStatusHistoryEntry[]
+  // Admin/Board-only fields (absent for Member role)
+  accommodationInternalNotes?: string | null
+  accommodationNeeds?: AccommodationNeedResponse[]
+  friendLinks?: FriendLinkResponse[]
 }
 
 // Admin registration list types
@@ -323,4 +327,49 @@ export interface AdminUpdateRegistrationRequest {
   hasPet?: boolean
   notifyUser: boolean
   draftTargetStatus: RegistrationStatus | null
+}
+
+// === Accommodation Needs Tagging (Admin/Board) ===
+
+export interface AccommodationNeedResponse {
+  featureId: string
+  featureName: string
+  featureCategory: string
+  taggedByUserId: string | null
+  createdAt: string
+}
+
+export interface FriendLinkResponse {
+  linkedRegistrationId: string
+  linkedFamilyName: string
+  createdByUserId: string | null
+  createdAt: string
+}
+
+export interface UpdateAccommodationNeedsRequest {
+  featureIds: string[]
+}
+
+export interface UpdateAccommodationNotesRequest {
+  accommodationInternalNotes: string | null
+}
+
+export interface UpdateFriendLinksRequest {
+  linkedRegistrationIds: string[]
+}
+
+export interface AccommodationNeedsResponse {
+  registrationId: string
+  needs: AccommodationNeedResponse[]
+}
+
+export interface AccommodationNotesResponse {
+  registrationId: string
+  accommodationInternalNotes: string | null
+  updatedAt: string
+}
+
+export interface FriendLinksResponse {
+  registrationId: string
+  friendLinks: FriendLinkResponse[]
 }

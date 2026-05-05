@@ -20,6 +20,8 @@ import RegistrationDeleteDialog from '@/components/registrations/RegistrationDel
 import BankTransferInstructions from '@/components/payments/BankTransferInstructions.vue'
 import PaymentInstallmentCard from '@/components/payments/PaymentInstallmentCard.vue'
 import ManualPaymentDialog from '@/components/admin/ManualPaymentDialog.vue'
+import RegistrationAccommodationNeeds from '@/components/admin/registration-accommodation-needs/RegistrationAccommodationNeeds.vue'
+import RegistrationFriendLinks from '@/components/admin/registration-accommodation-needs/RegistrationFriendLinks.vue'
 import { useRegistrations } from '@/composables/useRegistrations'
 import { usePayments } from '@/composables/usePayments'
 import { useFamilyUnits } from '@/composables/useFamilyUnits'
@@ -33,7 +35,9 @@ import type {
   WizardExtrasSelection,
   UpdateRegistrationInfoRequest,
   RegistrationStatus,
-  RegistrationResponse
+  RegistrationResponse,
+  AccommodationNeedResponse,
+  FriendLinkResponse
 } from '@/types/registration'
 import type { AccommodationType, CampEdition, CampEditionExtra } from '@/types/camp-edition'
 import type { FamilyMemberResponse } from '@/types/family-unit'
@@ -88,6 +92,8 @@ const draftTargetStatusOnAdminSave = ref<RegistrationStatus | null>(null)
 const installments = ref<PaymentResponse[]>([])
 const paymentSettingsData = ref<PaymentSettings | null>(null)
 const accommodationPrefs = ref<AccommodationPreferenceResponse[]>([])
+const localAccommodationNeeds = ref<AccommodationNeedResponse[]>([])
+const localFriendLinks = ref<FriendLinkResponse[]>([])
 
 // Edit mode state
 const isEditingMembers = ref(false)
@@ -485,6 +491,8 @@ const handleManualPaymentCreated = async () => {
 
 onMounted(async () => {
   await getRegistrationById(registrationId.value)
+  localAccommodationNeeds.value = registration.value?.accommodationNeeds ?? []
+  localFriendLinks.value = registration.value?.friendLinks ?? []
   const [prefs, paymentsResult, settingsResult] = await Promise.all([
     getAccommodationPreferences(registrationId.value),
     getRegistrationPayments(registrationId.value),
@@ -697,6 +705,28 @@ onMounted(async () => {
             </li>
           </ol>
         </div>
+
+        <!-- Accommodation needs tagging (Admin/Board only) -->
+        <template v-if="isAdminOrBoard">
+          <RegistrationAccommodationNeeds
+            :registration-id="registrationId"
+            :initial-needs="localAccommodationNeeds"
+            :initial-notes="registration.accommodationInternalNotes ?? null"
+            :special-needs="registration.specialNeeds"
+            :campates-preference="registration.campatesPreference"
+            class="mb-6"
+            data-testid="accommodation-needs-section"
+            @updated="localAccommodationNeeds = $event"
+          />
+          <RegistrationFriendLinks
+            :registration-id="registrationId"
+            :camp-edition-id="registration.campEdition.id"
+            :initial-friend-links="localFriendLinks"
+            class="mb-6"
+            data-testid="friend-links-section"
+            @updated="localFriendLinks = $event"
+          />
+        </template>
 
         <!-- Pricing breakdown -->
         <div class="mb-6">
