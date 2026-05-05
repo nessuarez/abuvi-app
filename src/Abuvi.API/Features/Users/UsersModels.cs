@@ -11,9 +11,6 @@ public class User
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string? Phone { get; set; }
-
-    // NEW FIELDS FOR EMAIL VERIFICATION
-    public string? DocumentNumber { get; set; }
     public UserRole Role { get; set; } = UserRole.Member;
     public Guid? FamilyUnitId { get; set; }
     public bool IsActive { get; set; } = false; // Changed default to false

@@ -8,7 +8,6 @@ public record RegisterUserRequest(
     string Password,
     string FirstName,
     string LastName,
-    string? DocumentNumber,
     string? Phone,
     bool AcceptedTerms
 );

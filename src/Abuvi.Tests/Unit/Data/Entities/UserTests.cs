@@ -38,20 +38,4 @@ public class UserTests
         user.IsActive.Should().BeFalse();
     }
 
-    [Fact]
-    public void User_DocumentNumber_ShouldAcceptValidFormat()
-    {
-        // Arrange & Act
-        var user = new User
-        {
-            DocumentNumber = "12345678A",
-            Email = "test@example.com",
-            PasswordHash = "hash",
-            FirstName = "Test",
-            LastName = "User"
-        };
-
-        // Assert
-        user.DocumentNumber.Should().Be("12345678A");
-    }
 }
