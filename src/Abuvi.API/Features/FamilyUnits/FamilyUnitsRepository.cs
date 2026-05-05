@@ -58,6 +58,13 @@ public interface IFamilyUnitsRepository
     Task ClearAllUserFamilyUnitLinksAsync(Guid familyUnitId, CancellationToken ct);
     Task UpdateFamilyUnitStatusAsync(Guid familyUnitId, bool isActive, CancellationToken ct);
     Task<bool> MemberHasActiveRegistrationsAsync(Guid memberId, CancellationToken ct);
+
+    // Soft-delete support
+    Task<FamilyMember?> GetFamilyMemberByIdIgnoringFiltersAsync(Guid id, CancellationToken ct);
+    Task<bool> MemberHasAnyRegistrationsAsync(Guid memberId, CancellationToken ct);
+    Task<bool> MemberHasMembershipAsync(Guid memberId, CancellationToken ct);
+    Task SoftDeleteFamilyMemberAsync(Guid id, CancellationToken ct);
+    Task AnonymiseFamilyMemberAsync(Guid id, CancellationToken ct);
 }
 
 /// <summary>
@@ -277,5 +284,48 @@ public class FamilyUnitsRepository(AbuviDbContext db) : IFamilyUnitsRepository
             .AnyAsync(rm => rm.FamilyMemberId == memberId
                 && (rm.Registration.Status == Registrations.RegistrationStatus.Pending
                     || rm.Registration.Status == Registrations.RegistrationStatus.Confirmed), ct);
+    }
+
+    public async Task<FamilyMember?> GetFamilyMemberByIdIgnoringFiltersAsync(Guid id, CancellationToken ct)
+        => await db.FamilyMembers
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(fm => fm.Id == id, ct);
+
+    public async Task<bool> MemberHasAnyRegistrationsAsync(Guid memberId, CancellationToken ct)
+        => await db.RegistrationMembers
+            .AnyAsync(rm => rm.FamilyMemberId == memberId, ct);
+
+    public async Task<bool> MemberHasMembershipAsync(Guid memberId, CancellationToken ct)
+        => await db.Memberships
+            .AnyAsync(m => m.FamilyMemberId == memberId, ct);
+
+    public async Task SoftDeleteFamilyMemberAsync(Guid id, CancellationToken ct)
+    {
+        await db.FamilyMembers
+            .Where(fm => fm.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(fm => fm.DeletedAt, DateTime.UtcNow)
+                .SetProperty(fm => fm.UpdatedAt, DateTime.UtcNow), ct);
+    }
+
+    public async Task AnonymiseFamilyMemberAsync(Guid id, CancellationToken ct)
+    {
+        await db.FamilyMembers
+            .IgnoreQueryFilters()
+            .Where(fm => fm.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(fm => fm.FirstName, "[deleted]")
+                .SetProperty(fm => fm.LastName, "[deleted]")
+                .SetProperty(fm => fm.DateOfBirth, new DateOnly(1900, 1, 1))
+                .SetProperty(fm => fm.DocumentNumber, (string?)null)
+                .SetProperty(fm => fm.Email, (string?)null)
+                .SetProperty(fm => fm.Phone, (string?)null)
+                .SetProperty(fm => fm.MedicalNotes, (string?)null)
+                .SetProperty(fm => fm.Allergies, (string?)null)
+                .SetProperty(fm => fm.ProfilePhotoUrl, (string?)null)
+                .SetProperty(fm => fm.UserId, (Guid?)null)
+                .SetProperty(fm => fm.DeletedAt, DateTime.UtcNow)
+                .SetProperty(fm => fm.UpdatedAt, DateTime.UtcNow), ct);
     }
 }

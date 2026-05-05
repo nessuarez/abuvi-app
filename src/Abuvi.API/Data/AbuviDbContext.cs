@@ -57,6 +57,10 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     {
         // Apply all entity configurations from assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AbuviDbContext).Assembly);
+
+        // Soft-delete filter: exclude soft-deleted family members from all queries
+        modelBuilder.Entity<FamilyMember>()
+            .HasQueryFilter(m => m.DeletedAt == null);
     }
 
     private sealed class UtcDateTimeConverter()

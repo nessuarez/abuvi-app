@@ -107,5 +107,8 @@ public class FamilyMemberConfiguration : IEntityTypeConfiguration<FamilyMember>
             .IsRequired()
             .HasColumnName("updated_at")
             .HasDefaultValueSql("NOW()");
+
+        builder.Property(fm => fm.DeletedAt)
+            .HasColumnName("deleted_at");
     }
 }
