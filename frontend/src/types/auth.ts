@@ -23,7 +23,6 @@ export interface RegisterUserRequest {
   password: string
   firstName: string
   lastName: string
-  documentNumber?: string | null
   phone?: string | null
   acceptedTerms: boolean
 }
