@@ -1,0 +1,42 @@
+{
+  "friendLinks": [
+    {
+      "linkedRegistrationId": "reg-xyz",
+      "linkedFamilyName": "Martínez Family",
+      "createdByUserId": "user-admin-1",
+      "createdAt": "2026-05-01T10:00:00Z"
+    }
+  ],
+  "editionRegistrations": {
+    "items": [
+      {
+        "id": "reg-abc",
+        "familyUnit": { "id": "fu-abc", "name": "García Family" },
+        "representative": { "id": "user-1", "firstName": "Ana", "lastName": "García", "email": "ana@test.com" },
+        "status": "Confirmed",
+        "memberCount": 3,
+        "totalAmount": 600,
+        "amountPaid": 600,
+        "amountRemaining": 0,
+        "createdAt": "2026-03-01T00:00:00Z",
+        "attendancePeriods": ["Complete"],
+        "accommodationPreferences": []
+      },
+      {
+        "id": "reg-xyz",
+        "familyUnit": { "id": "fu-xyz", "name": "Martínez Family" },
+        "representative": { "id": "user-2", "firstName": "Pedro", "lastName": "Martínez", "email": "pedro@test.com" },
+        "status": "Confirmed",
+        "memberCount": 4,
+        "totalAmount": 800,
+        "amountPaid": 800,
+        "amountRemaining": 0,
+        "createdAt": "2026-03-01T00:00:00Z",
+        "attendancePeriods": ["Complete"],
+        "accommodationPreferences": []
+      }
+    ],
+    "totalCount": 2,
+    "totals": { "totalRegistrations": 2, "totalMembers": 7, "totalAmount": 1400, "totalPaid": 1400, "totalRemaining": 0 }
+  }
+}

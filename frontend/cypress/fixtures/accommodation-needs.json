@@ -1,0 +1,23 @@
+{
+  "needs": [
+    {
+      "featureId": "feat-1",
+      "featureName": "Habitación privada",
+      "featureCategory": "Accessibility",
+      "taggedByUserId": "user-admin-1",
+      "createdAt": "2026-05-01T10:00:00Z"
+    },
+    {
+      "featureId": "feat-2",
+      "featureName": "Planta baja",
+      "featureCategory": "Mobility",
+      "taggedByUserId": "user-admin-1",
+      "createdAt": "2026-05-01T10:00:00Z"
+    }
+  ],
+  "features": [
+    { "id": "feat-1", "name": "Habitación privada", "icon": "pi pi-home", "description": null, "applicabilityLevel": "Any", "isActive": true, "sortOrder": 1, "createdAt": "2026-01-01T00:00:00Z", "updatedAt": "2026-01-01T00:00:00Z" },
+    { "id": "feat-2", "name": "Planta baja", "icon": "pi pi-arrow-down", "description": null, "applicabilityLevel": "Any", "isActive": true, "sortOrder": 2, "createdAt": "2026-01-01T00:00:00Z", "updatedAt": "2026-01-01T00:00:00Z" },
+    { "id": "feat-3", "name": "Baño adaptado", "icon": "pi pi-star", "description": null, "applicabilityLevel": "Any", "isActive": true, "sortOrder": 3, "createdAt": "2026-01-01T00:00:00Z", "updatedAt": "2026-01-01T00:00:00Z" }
+  ]
+}
