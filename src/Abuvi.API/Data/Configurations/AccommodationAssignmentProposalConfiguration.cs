@@ -38,6 +38,9 @@ public class AccommodationAssignmentProposalConfiguration
             .IsRequired()
             .HasColumnName("created_by_user_id");
 
+        builder.Property(p => p.LastModifiedByUserId)
+            .HasColumnName("last_modified_by_user_id");
+
         builder.Property(p => p.CreatedAt)
             .IsRequired()
             .HasColumnName("created_at")

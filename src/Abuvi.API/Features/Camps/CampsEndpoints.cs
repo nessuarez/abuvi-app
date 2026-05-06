@@ -1672,11 +1672,16 @@ public static class CampsEndpoints
         Guid proposalId,
         Guid registrationId,
         [FromServices] AccommodationAssignmentsService service,
+        ClaimsPrincipal user,
         CancellationToken ct)
     {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+            return Results.Unauthorized();
+
         try
         {
-            await service.UnassignAsync(campEditionId, proposalId, registrationId, ct);
+            await service.UnassignAsync(campEditionId, proposalId, registrationId, userId, ct);
             return Results.NoContent();
         }
         catch (NotFoundException ex)

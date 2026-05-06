@@ -713,6 +713,7 @@ A named, versioned plan that assigns families to accommodations for a camp editi
 - `notes`: Optional description or notes for the Board (nullable, max 500 characters)
 - `isActive`: Whether this is the currently active proposal for the edition (required, default: false; only one can be true per edition)
 - `createdByUserId`: User who created the proposal (required, FK -> User)
+- `lastModifiedByUserId`: User who last performed an assign/unassign/bulk-replace operation on this proposal (nullable, FK -> User)
 - `createdAt`: Record creation timestamp (required, auto-generated)
 - `updatedAt`: Last update timestamp (required, auto-updated)
 

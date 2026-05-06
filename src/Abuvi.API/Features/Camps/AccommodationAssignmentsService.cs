@@ -31,10 +31,11 @@ public class AccommodationAssignmentsService(
         Guid campEditionId,
         Guid proposalId,
         Guid registrationId,
+        Guid modifiedByUserId,
         CancellationToken ct = default)
     {
         await EnsureProposalBelongsToEditionAsync(proposalId, campEditionId, ct);
-        await assignmentsRepository.UnassignAsync(proposalId, registrationId, ct);
+        await assignmentsRepository.UnassignAsync(proposalId, registrationId, modifiedByUserId, ct);
     }
 
     public async Task<ProposalAssignmentStateResponse> BulkReplaceAsync(

@@ -24,6 +24,7 @@ public static class AutoAssignService
         }
 
         var sizeMap = state.Families.ToDictionary(f => f.RegistrationId, f => f.MemberCount);
+        var registrationToFamilyUnit = state.Families.ToDictionary(f => f.RegistrationId, f => f.FamilyUnitId);
 
         var unassigned = state.Families
             .Where(f => !assignments.ContainsKey(f.RegistrationId))
@@ -50,7 +51,8 @@ public static class AutoAssignService
 
             var fallback = state.Accommodations
                 .Where(acc => HasCapacity(acc, occupancy[acc.Id], family.MemberCount, sizeMap))
-                .OrderBy(acc => GetRemainingCapacity(acc, occupancy[acc.Id], sizeMap))
+                .OrderByDescending(acc => ScoreAccommodation(acc, family, occupancy, sizeMap, registrationToFamilyUnit, state))
+                .ThenBy(acc => GetRemainingCapacity(acc, occupancy[acc.Id], sizeMap))
                 .FirstOrDefault();
 
             if (fallback is not null)
@@ -86,5 +88,52 @@ public static class AutoAssignService
             ? assignedRegIds.Count
             : assignedRegIds.Sum(id => sizeMap.GetValueOrDefault(id, 0));
         return acc.Capacity.Value - used;
+    }
+
+    private static int ScoreAccommodation(
+        AssignmentAccommodationResponse acc,
+        AssignmentFamilyResponse family,
+        Dictionary<Guid, List<Guid>> occupancy,
+        Dictionary<Guid, int> sizeMap,
+        IReadOnlyDictionary<Guid, Guid> registrationToFamilyUnit,
+        ProposalAssignmentStateResponse state)
+    {
+        var score = 0;
+
+        // +5 per required feature covered by this accommodation
+        score += family.RequiredFeatures.Count(req => acc.AvailableFeatures.Contains(req)) * 5;
+
+        // +15 if a friendly family is already assigned to this exact accommodation
+        foreach (var assignedRegId in occupancy[acc.Id])
+        {
+            if (!registrationToFamilyUnit.TryGetValue(assignedRegId, out var fuId)) continue;
+            if (family.FriendlyFamilyUnitIds.Contains(fuId)) score += 15;
+        }
+
+        // +10 if a friendly family is in another accommodation of the same zone
+        if (acc.ZoneId.HasValue)
+        {
+            var sameZoneAccIds = state.Accommodations
+                .Where(a => a.ZoneId == acc.ZoneId && a.Id != acc.Id)
+                .Select(a => a.Id)
+                .ToHashSet();
+
+            var bonusGiven = false;
+            foreach (var sameZoneAccId in sameZoneAccIds)
+            {
+                if (bonusGiven) break;
+                if (!occupancy.TryGetValue(sameZoneAccId, out var sameZoneRegIds)) continue;
+                foreach (var regId in sameZoneRegIds)
+                {
+                    if (!registrationToFamilyUnit.TryGetValue(regId, out var fuId)) continue;
+                    if (!family.FriendlyFamilyUnitIds.Contains(fuId)) continue;
+                    score += 10;
+                    bonusGiven = true;
+                    break;
+                }
+            }
+        }
+
+        return score;
     }
 }
