@@ -8,6 +8,7 @@ import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import EmojiPickerField from '@/components/ui/EmojiPickerField.vue'
 import { useAccommodationFeatures } from '@/composables/useAccommodationFeatures'
 import { FEATURE_APPLICABILITY_LABELS } from '@/types/accommodation-feature'
 import type { AccommodationFeature, FeatureApplicabilityLevel } from '@/types/accommodation-feature'
@@ -68,7 +69,6 @@ const validate = (): boolean => {
   if (!name.value.trim()) errors.name = 'El nombre es obligatorio'
   else if (name.value.trim().length > 100) errors.name = 'Máximo 100 caracteres'
   if (!icon.value.trim()) errors.icon = 'El icono es obligatorio'
-  else if (icon.value.trim().length > 100) errors.icon = 'Máximo 100 caracteres'
   if (description.value.length > 500) errors.description = 'Máximo 500 caracteres'
   if (sortOrder.value < 0) errors.sortOrder = 'El orden debe ser mayor o igual a 0'
   validationErrors.value = errors
@@ -133,21 +133,14 @@ const handleSave = async () => {
         <small v-if="validationErrors.name" class="text-red-500">{{ validationErrors.name }}</small>
       </div>
 
-      <!-- Icon with preview -->
+      <!-- Icon picker -->
       <div>
         <label class="mb-1 block text-sm font-medium text-gray-700">Icono *</label>
-        <div class="flex items-center gap-2">
-          <InputText
-            v-model="icon"
-            :maxlength="100"
-            placeholder="Ej: 📶"
-            class="w-full"
-            :invalid="!!validationErrors.icon"
-          />
-          <span v-if="icon" class="text-2xl leading-none">{{ icon }}</span>
-        </div>
-        <small v-if="validationErrors.icon" class="text-red-500">{{ validationErrors.icon }}</small>
-        <small v-else class="text-gray-400">Introduce un emoji directamente desde el teclado</small>
+        <p class="mb-1 text-xs text-gray-400">
+          Busca por nombre en inglés (ej: "wifi", "pool", "bed", "shower").
+        </p>
+        <EmojiPickerField v-model="icon" :error="validationErrors.icon" />
+        <small v-if="validationErrors.icon" class="mt-1 block text-red-500">{{ validationErrors.icon }}</small>
       </div>
 
       <!-- Applicability Level -->

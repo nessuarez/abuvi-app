@@ -16,6 +16,7 @@ const makeAccommodation = (overrides: Partial<AssignmentAccommodationResponse> =
   zoneId: null,
   zoneName: null,
   sortOrder: 1,
+  availableFeatures: [],
   ...overrides
 })
 
@@ -31,6 +32,9 @@ const makeFamily = (overrides: Partial<AssignmentFamilyResponse> = {}): Assignme
   specialNeeds: null,
   campatesPreference: null,
   accommodationPreferences: [],
+  hasSpecialNeeds: false,
+  requiredFeatures: [],
+  friendlyFamilyUnitIds: [],
   ...overrides
 })
 
@@ -40,7 +44,8 @@ describe('AccommodationSlotCard', () => {
       props: {
         accommodation: makeAccommodation({ name: 'Cabaña Norte', capacity: 20 }),
         assignedFamilies: [],
-        selectedFamily: null
+        selectedFamily: null,
+        hasFriendlyFamilyInZone: false
       }
     })
     expect(wrapper.text()).toContain('Cabaña Norte')
@@ -55,7 +60,8 @@ describe('AccommodationSlotCard', () => {
       props: {
         accommodation: makeAccommodation(),
         assignedFamilies: [],
-        selectedFamily: family
+        selectedFamily: family,
+        hasFriendlyFamilyInZone: false
       }
     })
     expect(wrapper.find('div').classes().join(' ')).toContain('border-green-400')
@@ -69,13 +75,14 @@ describe('AccommodationSlotCard', () => {
       props: {
         accommodation: makeAccommodation(),
         assignedFamilies: [],
-        selectedFamily: family
+        selectedFamily: family,
+        hasFriendlyFamilyInZone: false
       }
     })
     expect(wrapper.find('div').classes().join(' ')).toContain('border-amber-400')
   })
 
-  it('showsRedBorder_whenOverCapacity', () => {
+  it('showsRedBorder_whenFamilyDoesNotFit', () => {
     const families = [
       makeFamily({ registrationId: 'reg-1', memberCount: 6 }),
       makeFamily({ registrationId: 'reg-2', memberCount: 6 })
@@ -84,10 +91,11 @@ describe('AccommodationSlotCard', () => {
       props: {
         accommodation: makeAccommodation({ capacity: 10, countByFamily: false }),
         assignedFamilies: families,
-        selectedFamily: makeFamily({ accommodationPreferences: [] })
+        selectedFamily: makeFamily({ accommodationPreferences: [] }),
+        hasFriendlyFamilyInZone: false
       }
     })
-    expect(wrapper.find('div').classes().join(' ')).toContain('border-red-400')
+    expect(wrapper.find('div').classes().join(' ')).toContain('border-red-500')
   })
 
   it('emitsAssign_onClickWhenFamilySelected', async () => {
@@ -95,7 +103,8 @@ describe('AccommodationSlotCard', () => {
       props: {
         accommodation: makeAccommodation(),
         assignedFamilies: [],
-        selectedFamily: makeFamily()
+        selectedFamily: makeFamily(),
+        hasFriendlyFamilyInZone: false
       }
     })
     await wrapper.find('div').trigger('click')
@@ -108,7 +117,8 @@ describe('AccommodationSlotCard', () => {
       props: {
         accommodation: makeAccommodation(),
         assignedFamilies: [makeFamily()],
-        selectedFamily: null
+        selectedFamily: null,
+        hasFriendlyFamilyInZone: false
       }
     })
     await wrapper.find('button').trigger('click')
@@ -125,7 +135,8 @@ describe('AccommodationSlotCard', () => {
       props: {
         accommodation: makeAccommodation({ type: 'Caravan', capacity: 4, countByFamily: true }),
         assignedFamilies: families,
-        selectedFamily: null
+        selectedFamily: null,
+        hasFriendlyFamilyInZone: false
       }
     })
     // 2 families, not 8 persons
@@ -141,10 +152,150 @@ describe('AccommodationSlotCard', () => {
       props: {
         accommodation: makeAccommodation({ type: 'Lodge', capacity: 20, countByFamily: false }),
         assignedFamilies: families,
-        selectedFamily: null
+        selectedFamily: null,
+        hasFriendlyFamilyInZone: false
       }
     })
     // 5 + 3 = 8 persons
     expect(wrapper.text()).toContain('8 / 20')
+  })
+
+  it('showsGreenBadge_whenAllFeaturesMatch', () => {
+    const family = makeFamily({ requiredFeatures: ['feat-1'] })
+    const accommodation = makeAccommodation({ availableFeatures: ['feat-1'] })
+    const wrapper = mount(AccommodationSlotCard, {
+      props: {
+        accommodation,
+        assignedFamilies: [],
+        selectedFamily: family,
+        hasFriendlyFamilyInZone: false
+      }
+    })
+    expect(wrapper.text()).toContain('Cumple todas las preferencias')
+  })
+
+  it('showsGreenBadge_whenFriendlyFamilyIsAlreadyAssignedHere', () => {
+    const family = makeFamily({ friendlyFamilyUnitIds: ['fu-friend'] })
+    const assignedFriend = makeFamily({ registrationId: 'reg-friend', familyUnitId: 'fu-friend' })
+    const wrapper = mount(AccommodationSlotCard, {
+      props: {
+        accommodation: makeAccommodation(),
+        assignedFamilies: [assignedFriend],
+        selectedFamily: family,
+        hasFriendlyFamilyInZone: false
+      }
+    })
+    expect(wrapper.text()).toContain('Familia amiga ya aquí')
+  })
+
+  it('showsBlueBadge_whenFriendlyFamilyInZone_hasFriendlyFamilyInZone_prop_true', () => {
+    const family = makeFamily({ friendlyFamilyUnitIds: ['fu-other'] })
+    const wrapper = mount(AccommodationSlotCard, {
+      props: {
+        accommodation: makeAccommodation(),
+        assignedFamilies: [],
+        selectedFamily: family,
+        hasFriendlyFamilyInZone: true
+      }
+    })
+    expect(wrapper.text()).toContain('Familia amiga en misma zona')
+  })
+
+  it('showsAmberBadge_whenSomeRequiredFeaturesAreMissing', () => {
+    const family = makeFamily({ requiredFeatures: ['feat-1', 'feat-2'] })
+    const accommodation = makeAccommodation({ availableFeatures: ['feat-1'] })
+    const wrapper = mount(AccommodationSlotCard, {
+      props: {
+        accommodation,
+        assignedFamilies: [],
+        selectedFamily: family,
+        hasFriendlyFamilyInZone: false
+      }
+    })
+    expect(wrapper.text()).toContain('Preferencia no cubierta: feat-2')
+  })
+
+  it('showsMissingFeaturesList_inAmberBadge', () => {
+    const family = makeFamily({ requiredFeatures: ['feat-1', 'feat-2'] })
+    const accommodation = makeAccommodation({ availableFeatures: ['feat-1'] })
+    const wrapper = mount(AccommodationSlotCard, {
+      props: {
+        accommodation,
+        assignedFamilies: [],
+        selectedFamily: family,
+        hasFriendlyFamilyInZone: false
+      }
+    })
+    const badge = wrapper.find('[title^="Faltan:"]')
+    expect(badge.exists()).toBe(true)
+    expect(badge.attributes('title')).toContain('feat-2')
+  })
+
+  it('showsImprovedCapacityMessage_whenFamilyDoesNotFit', () => {
+    const family = makeFamily({ memberCount: 3 })
+    const assigned = [
+      makeFamily({ registrationId: 'reg-x', memberCount: 1 }),
+      makeFamily({ registrationId: 'reg-y', memberCount: 1 })
+    ]
+    const wrapper = mount(AccommodationSlotCard, {
+      props: {
+        accommodation: makeAccommodation({ capacity: 2, countByFamily: false }),
+        assignedFamilies: assigned,
+        selectedFamily: family,
+        hasFriendlyFamilyInZone: false
+      }
+    })
+    expect(wrapper.text()).toContain('Necesitan 3 pers., quedan 0')
+  })
+
+  it('signalClass_isGreen_whenAllFeaturesMatchEvenWithNoPreference', () => {
+    const family = makeFamily({ requiredFeatures: ['feat-1'], accommodationPreferences: [] })
+    const accommodation = makeAccommodation({ availableFeatures: ['feat-1'] })
+    const wrapper = mount(AccommodationSlotCard, {
+      props: {
+        accommodation,
+        assignedFamilies: [],
+        selectedFamily: family,
+        hasFriendlyFamilyInZone: false
+      }
+    })
+    expect(wrapper.find('div').classes().join(' ')).toContain('border-green-400')
+  })
+
+  it('signalClass_priority_redBeatsGreen', () => {
+    // family has 1st preference but capacity is full → red
+    const family = makeFamily({
+      memberCount: 4,
+      accommodationPreferences: [{ accommodationId: 'acc-1', preferenceOrder: 1 }]
+    })
+    const assigned = [
+      makeFamily({ registrationId: 'reg-x', memberCount: 5 }),
+      makeFamily({ registrationId: 'reg-y', memberCount: 6 })
+    ]
+    const wrapper = mount(AccommodationSlotCard, {
+      props: {
+        accommodation: makeAccommodation({ capacity: 10, countByFamily: false }),
+        assignedFamilies: assigned,
+        selectedFamily: family,
+        hasFriendlyFamilyInZone: false
+      }
+    })
+    // occupied=11, remaining=-1, needed=4 → red
+    expect(wrapper.find('div').classes().join(' ')).toContain('border-red-500')
+    expect(wrapper.find('div').classes().join(' ')).not.toContain('border-green-400')
+  })
+
+  it('signalClass_isBlue_whenHasFriendlyFamilyInZone', () => {
+    // no preference, no required features, friendly family in zone but not here
+    const family = makeFamily({ friendlyFamilyUnitIds: ['fu-other'] })
+    const wrapper = mount(AccommodationSlotCard, {
+      props: {
+        accommodation: makeAccommodation(),
+        assignedFamilies: [],
+        selectedFamily: family,
+        hasFriendlyFamilyInZone: true
+      }
+    })
+    expect(wrapper.find('div').classes().join(' ')).toContain('border-blue-400')
   })
 })

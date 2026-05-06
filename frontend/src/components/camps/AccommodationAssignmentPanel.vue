@@ -3,14 +3,15 @@ import { ref, computed } from 'vue'
 import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
+import Select from 'primevue/select'
+import ToggleSwitch from 'primevue/toggleswitch'
 import FamilyAssignmentCard from './FamilyAssignmentCard.vue'
 import AccommodationSlotCard from './AccommodationSlotCard.vue'
 import type {
   ProposalAssignmentStateResponse,
   AssignmentFamilyResponse,
   AssignmentAccommodationResponse,
-  AccommodationTypeValue,
-  ACCOMMODATION_TYPE_LABELS as _labels
+  AccommodationTypeValue
 } from '@/types/accommodation-assignment'
 import { ACCOMMODATION_TYPE_LABELS } from '@/types/accommodation-assignment'
 
@@ -28,6 +29,10 @@ const emit = defineEmits<{
 }>()
 
 const searchQuery = ref('')
+const filterSpecialNeeds = ref(false)
+const filterType = ref<string | null>(null)
+const filterZone = ref<string | null>(null)
+const filterOnlyAvailable = ref(false)
 
 const sortedFamilies = computed((): AssignmentFamilyResponse[] =>
   [...props.state.families].sort((a, b) => {
@@ -40,12 +45,14 @@ const sortedFamilies = computed((): AssignmentFamilyResponse[] =>
 
 const filteredFamilies = computed(() => {
   const q = searchQuery.value.toLowerCase()
-  if (!q) return sortedFamilies.value
-  return sortedFamilies.value.filter(
-    (f) =>
+  return sortedFamilies.value.filter((f) => {
+    const matchesSearch =
+      !q ||
       f.familyName.toLowerCase().includes(q) ||
       f.representativeName.toLowerCase().includes(q)
-  )
+    const matchesSpecialNeeds = !filterSpecialNeeds.value || f.hasSpecialNeeds
+    return matchesSearch && matchesSpecialNeeds
+  })
 })
 
 const unassignedCount = computed(
@@ -56,6 +63,36 @@ const selectedFamily = computed(
   () =>
     props.state.families.find((f) => f.registrationId === props.selectedRegistrationId) ?? null
 )
+
+const friendlyFamilyInZoneMap = computed((): Map<string, boolean> => {
+  const map = new Map<string, boolean>()
+  if (!selectedFamily.value || (selectedFamily.value.friendlyFamilyUnitIds ?? []).length === 0) {
+    props.state.accommodations.forEach((acc) => map.set(acc.id, false))
+    return map
+  }
+
+  const zoneToAccIds = new Map<string | null, string[]>()
+  for (const acc of props.state.accommodations) {
+    const zoneKey = acc.zoneId ?? null
+    if (!zoneToAccIds.has(zoneKey)) zoneToAccIds.set(zoneKey, [])
+    zoneToAccIds.get(zoneKey)!.push(acc.id)
+  }
+
+  for (const acc of props.state.accommodations) {
+    const zoneKey = acc.zoneId ?? null
+    const sameZoneAccIds = (zoneToAccIds.get(zoneKey) ?? []).filter((id) => id !== acc.id)
+
+    const hasFriendlyInZone = sameZoneAccIds.some((sameZoneAccId) => {
+      const familiesHere = assignedFamiliesFor(sameZoneAccId)
+      return familiesHere.some((f) =>
+        selectedFamily.value!.friendlyFamilyUnitIds.includes(f.familyUnitId)
+      )
+    })
+
+    map.set(acc.id, hasFriendlyInZone)
+  }
+  return map
+})
 
 const accommodationNameMap = computed((): Map<string, string> => {
   const map = new Map<string, string>()
@@ -73,11 +110,36 @@ function assignedFamiliesFor(accId: string): AssignmentFamilyResponse[] {
   return props.state.families.filter((f) => props.assignmentsMap.get(f.registrationId) === accId)
 }
 
-// Group: type → zone → accommodations
+const availableTypeOptions = computed(() => {
+  const types = [...new Set(props.state.accommodations.map((a) => a.type))]
+  return types.map((t) => ({ label: ACCOMMODATION_TYPE_LABELS[t as AccommodationTypeValue], value: t }))
+})
+
+const availableZoneOptions = computed(() => {
+  const zones = [
+    ...new Set(
+      props.state.accommodations.map((a) => a.zoneName).filter((z): z is string => z !== null)
+    ),
+  ]
+  return zones.map((z) => ({ label: z, value: z }))
+})
+
+// Group: type → zone → accommodations (with filters applied)
 const groupedAccommodations = computed((): Map<string, Map<string, AssignmentAccommodationResponse[]>> => {
   const byType = new Map<string, Map<string, AssignmentAccommodationResponse[]>>()
   const sorted = [...props.state.accommodations].sort((a, b) => a.sortOrder - b.sortOrder)
+
   for (const acc of sorted) {
+    if (filterType.value && acc.type !== filterType.value) continue
+    if (filterZone.value && acc.zoneName !== filterZone.value) continue
+    if (filterOnlyAvailable.value) {
+      const families = assignedFamiliesFor(acc.id)
+      const used = acc.countByFamily
+        ? families.length
+        : families.reduce((sum, f) => sum + f.memberCount, 0)
+      if (acc.capacity !== null && used >= acc.capacity) continue
+    }
+
     if (!byType.has(acc.type)) byType.set(acc.type, new Map())
     const byZone = byType.get(acc.type)!
     const zoneKey = acc.zoneName ?? 'Sin zona'
@@ -111,6 +173,12 @@ function handleAssign(accId: string) {
         <p class="mt-1 text-xs text-gray-500">
           {{ unassignedCount }} sin asignar · {{ state.families.length }} total
         </p>
+        <div class="mt-2 flex items-center gap-2">
+          <ToggleSwitch v-model="filterSpecialNeeds" input-id="filter-special-needs" size="small" />
+          <label for="filter-special-needs" class="cursor-pointer text-xs text-gray-600">
+            Solo con necesidades especiales
+          </label>
+        </div>
       </div>
       <div class="flex flex-col gap-1 overflow-y-auto p-2">
         <FamilyAssignmentCard
@@ -140,6 +208,36 @@ function handleAssign(accId: string) {
         haz clic en un alojamiento para asignarla
       </div>
 
+      <!-- Accommodation filter bar -->
+      <div class="mb-4 flex flex-wrap items-center gap-2">
+        <Select
+          v-model="filterType"
+          :options="availableTypeOptions"
+          option-label="label"
+          option-value="value"
+          placeholder="Todos los tipos"
+          show-clear
+          class="w-44"
+          size="small"
+        />
+        <Select
+          v-model="filterZone"
+          :options="availableZoneOptions"
+          option-label="label"
+          option-value="value"
+          placeholder="Todas las zonas"
+          show-clear
+          class="w-44"
+          size="small"
+        />
+        <div class="flex items-center gap-1.5">
+          <ToggleSwitch v-model="filterOnlyAvailable" input-id="filter-available" size="small" />
+          <label for="filter-available" class="cursor-pointer text-xs text-gray-600">
+            Solo disponibles
+          </label>
+        </div>
+      </div>
+
       <div
         v-for="[type, byZone] in groupedAccommodations"
         :key="type"
@@ -157,6 +255,7 @@ function handleAssign(accId: string) {
               :accommodation="acc"
               :assigned-families="assignedFamiliesFor(acc.id)"
               :selected-family="selectedFamily"
+              :has-friendly-family-in-zone="friendlyFamilyInZoneMap.get(acc.id) ?? false"
               @assign="handleAssign"
               @unassign="$emit('unassign', $event)"
             />
