@@ -115,9 +115,16 @@ function handleAutoAssign() {
       @click="autoAssignDialog = true"
     />
 
-    <span v-if="selectedProposal" class="ml-auto text-sm text-gray-500">
-      {{ selectedProposal.unassignedCount }} sin asignar ·
-      {{ selectedProposal.assignmentCount }} asignadas
+    <span v-if="selectedProposal" class="ml-auto flex flex-col items-end text-right">
+      <span class="text-sm text-gray-500">
+        {{ selectedProposal.unassignedCount }} sin asignar · {{ selectedProposal.assignmentCount }} asignadas
+      </span>
+      <span
+        v-if="selectedProposal.lastModifiedByUserName"
+        class="text-xs text-gray-400"
+      >
+        Última modificación por {{ selectedProposal.lastModifiedByUserName }}
+      </span>
     </span>
   </div>
 

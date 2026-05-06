@@ -53,6 +53,7 @@ export interface AccommodationAssignmentProposalSummaryResponse {
   createdByUserId: string
   createdAt: string
   updatedAt: string
+  lastModifiedByUserName: string | null
 }
 
 export interface AccommodationPreferenceItem {
@@ -72,6 +73,9 @@ export interface AssignmentFamilyResponse {
   specialNeeds: string | null
   campatesPreference: string | null
   accommodationPreferences: AccommodationPreferenceItem[]
+  hasSpecialNeeds: boolean
+  requiredFeatures: string[]
+  friendlyFamilyUnitIds: string[]
 }
 
 export interface AssignmentAccommodationResponse {
@@ -83,6 +87,7 @@ export interface AssignmentAccommodationResponse {
   zoneId: string | null
   zoneName: string | null
   sortOrder: number
+  availableFeatures: string[]
 }
 
 export interface AssignmentEntry {
