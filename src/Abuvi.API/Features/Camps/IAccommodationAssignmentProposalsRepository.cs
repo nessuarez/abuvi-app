@@ -11,4 +11,5 @@ public interface IAccommodationAssignmentProposalsRepository
     Task<int> CountAssignmentsAsync(Guid proposalId, CancellationToken ct = default);
     Task<int> CountRegistrationsAsync(Guid campEditionId, CancellationToken ct = default);
     Task CopyAssignmentsAsync(Guid sourceProposalId, Guid targetProposalId, Guid assignedByUserId, CancellationToken ct = default);
+    Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(IEnumerable<Guid> userIds, CancellationToken ct = default);
 }

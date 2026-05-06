@@ -13,11 +13,20 @@ public class AccommodationAssignmentProposalsService(
         var proposals = await proposalsRepository.GetByCampEditionAsync(campEditionId, ct);
         var totalRegistrations = await proposalsRepository.CountRegistrationsAsync(campEditionId, ct);
 
+        var modifierIds = proposals
+            .Where(p => p.LastModifiedByUserId.HasValue)
+            .Select(p => p.LastModifiedByUserId!.Value)
+            .Distinct();
+        var userNames = await proposalsRepository.GetUserDisplayNamesAsync(modifierIds, ct);
+
         var result = new List<AccommodationAssignmentProposalSummaryResponse>(proposals.Count);
         foreach (var proposal in proposals)
         {
             var assignmentCount = await proposalsRepository.CountAssignmentsAsync(proposal.Id, ct);
-            result.Add(ToSummaryResponse(proposal, assignmentCount, totalRegistrations - assignmentCount));
+            var lastModifiedName = proposal.LastModifiedByUserId.HasValue
+                ? userNames.GetValueOrDefault(proposal.LastModifiedByUserId.Value)
+                : null;
+            result.Add(ToSummaryResponse(proposal, assignmentCount, totalRegistrations - assignmentCount, lastModifiedName));
         }
 
         return result;
@@ -112,7 +121,8 @@ public class AccommodationAssignmentProposalsService(
     private static AccommodationAssignmentProposalSummaryResponse ToSummaryResponse(
         AccommodationAssignmentProposal p,
         int assignmentCount,
-        int unassignedCount)
+        int unassignedCount,
+        string? lastModifiedByUserName = null)
         => new(
             p.Id,
             p.CampEditionId,
@@ -123,6 +133,7 @@ public class AccommodationAssignmentProposalsService(
             unassignedCount,
             p.CreatedByUserId,
             p.CreatedAt,
-            p.UpdatedAt
+            p.UpdatedAt,
+            lastModifiedByUserName
         );
 }

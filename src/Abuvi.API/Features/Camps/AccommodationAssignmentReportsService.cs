@@ -123,7 +123,10 @@ public class AccommodationAssignmentReportsService(AbuviDbContext db)
                 r.AccommodationPreferences
                     .OrderBy(p => p.PreferenceOrder)
                     .Select(p => new AccommodationPreferenceItem(p.CampEditionAccommodationId, p.PreferenceOrder))
-                    .ToList()
+                    .ToList(),
+                r.SpecialNeeds is { Length: > 0 },
+                [],
+                []
             );
         }).ToList();
     }

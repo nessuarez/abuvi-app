@@ -63,6 +63,18 @@ public class AccommodationAssignmentProposalsRepository(AbuviDbContext db)
             .CountAsync(r => r.CampEditionId == campEditionId
                 && r.Status != Registrations.RegistrationStatus.Cancelled, ct);
 
+    public async Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(
+        IEnumerable<Guid> userIds,
+        CancellationToken ct = default)
+    {
+        var ids = userIds.ToList();
+        if (ids.Count == 0) return [];
+        return await db.Users
+            .AsNoTracking()
+            .Where(u => ids.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => $"{u.FirstName} {u.LastName}", ct);
+    }
+
     public async Task CopyAssignmentsAsync(
         Guid sourceProposalId,
         Guid targetProposalId,

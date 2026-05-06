@@ -9,7 +9,7 @@ public interface IAccommodationAssignmentsRepository
         Guid proposalId, Guid registrationId, Guid accommodationId,
         Guid assignedByUserId, CancellationToken ct = default);
 
-    Task UnassignAsync(Guid proposalId, Guid registrationId, CancellationToken ct = default);
+    Task UnassignAsync(Guid proposalId, Guid registrationId, Guid modifiedByUserId, CancellationToken ct = default);
 
     Task BulkReplaceAsync(
         Guid proposalId, Guid campEditionId,

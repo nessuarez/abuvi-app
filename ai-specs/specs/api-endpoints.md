@@ -2696,7 +2696,8 @@ List all proposals for a camp edition, ordered by active first then creation dat
       "unassignedCount": 8,
       "createdByUserId": "...",
       "createdAt": "...",
-      "updatedAt": "..."
+      "updatedAt": "...",
+      "lastModifiedByUserName": "Carlos García"
     }
   ]
 }
@@ -2794,7 +2795,10 @@ Load the full assignment state for a proposal: all families (including unassigne
         "campatesPreference": null,
         "accommodationPreferences": [
           { "accommodationId": "...", "preferenceOrder": 1 }
-        ]
+        ],
+        "hasSpecialNeeds": false,
+        "requiredFeatures": ["..."],
+        "friendlyFamilyUnitIds": ["..."]
       }
     ],
     "accommodations": [
@@ -2806,7 +2810,8 @@ Load the full assignment state for a proposal: all families (including unassigne
         "countByFamily": false,
         "zoneId": "...",
         "zoneName": "Zona Refugios Norte",
-        "sortOrder": 0
+        "sortOrder": 0,
+        "availableFeatures": ["..."]
       }
     ],
     "assignments": [
@@ -2868,8 +2873,8 @@ Remove the assignment for a single family.
 Run the greedy auto-assign algorithm on unassigned (or all) families.
 
 - Sort families largest-first.
-- Phase 1: try each accommodation preference in order; pick tightest fit.
-- Phase 2: fallback to any accommodation with space (tightest fit).
+- Phase 1: try each accommodation preference in order; assign the first one with capacity.
+- Phase 2: fallback scored selection — rank candidates by: +5 per required feature covered, +15 per friendly family already in the same accommodation, +10 if a friendly family is in another accommodation of the same zone; tiebreak by tightest remaining capacity.
 - Families that cannot be placed are left unassigned.
 
 **Request Body:**

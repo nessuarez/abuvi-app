@@ -19,6 +19,7 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
             .Include(r => r.FamilyUnit)
             .Include(r => r.Members)
             .Include(r => r.AccommodationPreferences)
+            .Include(r => r.AccommodationNeeds)
             .ToListAsync(ct);
 
         var repUserIds = registrations.Select(r => r.FamilyUnit.RepresentativeUserId).Distinct().ToList();
@@ -26,6 +27,24 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
             .AsNoTracking()
             .Where(u => repUserIds.Contains(u.Id))
             .ToDictionaryAsync(u => u.Id, ct);
+
+        // Build friend-link map: registrationId → list of friendly FamilyUnitIds
+        var regIds = registrations.Select(r => r.Id).ToHashSet();
+        var registrationFamilyMap = registrations.ToDictionary(r => r.Id, r => r.FamilyUnitId);
+        var friendLinks = await db.RegistrationFriendLinks
+            .AsNoTracking()
+            .Where(fl => regIds.Contains(fl.RegistrationId))
+            .ToListAsync(ct);
+        var friendlyFamilyMap = friendLinks
+            .GroupBy(fl => fl.RegistrationId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<Guid>)g
+                    .Select(fl => registrationFamilyMap.GetValueOrDefault(fl.LinkedRegistrationId))
+                    .Where(id => id != Guid.Empty)
+                    .Distinct()
+                    .ToList()
+            );
 
         var accommodations = await db.CampEditionAccommodations
             .AsNoTracking()
@@ -64,7 +83,10 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
                 r.AccommodationPreferences
                     .OrderBy(p => p.PreferenceOrder)
                     .Select(p => new AccommodationPreferenceItem(p.CampEditionAccommodationId, p.PreferenceOrder))
-                    .ToList()
+                    .ToList(),
+                r.SpecialNeeds is { Length: > 0 },
+                r.AccommodationNeeds.Select(n => n.AccommodationFeatureId).ToList(),
+                friendlyFamilyMap.GetValueOrDefault(r.Id, [])
             );
         }).ToList();
 
@@ -76,7 +98,8 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
             a.CountByFamily,
             a.ZoneId,
             a.Zone?.Name,
-            a.SortOrder
+            a.SortOrder,
+            []  // AvailableFeatures: populated when Ticket A adds features to CampEditionAccommodation
         )).ToList();
 
         var assignmentEntries = assignments
@@ -118,14 +141,22 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
             });
         }
 
+        await StampProposalModifierAsync(proposalId, assignedByUserId, ct);
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task UnassignAsync(Guid proposalId, Guid registrationId, CancellationToken ct = default)
+    public async Task UnassignAsync(
+        Guid proposalId,
+        Guid registrationId,
+        Guid modifiedByUserId,
+        CancellationToken ct = default)
     {
-        await db.AccommodationAssignments
-            .Where(a => a.ProposalId == proposalId && a.RegistrationId == registrationId)
-            .ExecuteDeleteAsync(ct);
+        var assignment = await db.AccommodationAssignments
+            .FirstOrDefaultAsync(a => a.ProposalId == proposalId && a.RegistrationId == registrationId, ct);
+        if (assignment is not null) db.AccommodationAssignments.Remove(assignment);
+
+        await StampProposalModifierAsync(proposalId, modifiedByUserId, ct);
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task BulkReplaceAsync(
@@ -208,8 +239,10 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
                 }).ToList();
 
                 await db.AccommodationAssignments.AddRangeAsync(newAssignments, ct);
-                await db.SaveChangesAsync(ct);
             }
+
+            await StampProposalModifierAsync(proposalId, assignedByUserId, ct);
+            await db.SaveChangesAsync(ct);
 
             await tx.CommitAsync(ct);
         }
@@ -226,4 +259,13 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
         CancellationToken ct = default)
         => await db.AccommodationAssignmentProposals
             .AnyAsync(p => p.Id == proposalId && p.CampEditionId == campEditionId, ct);
+
+    private async Task StampProposalModifierAsync(Guid proposalId, Guid userId, CancellationToken ct)
+    {
+        var proposal = await db.AccommodationAssignmentProposals
+            .FirstOrDefaultAsync(p => p.Id == proposalId, ct);
+        if (proposal is null) return;
+        proposal.LastModifiedByUserId = userId;
+        proposal.UpdatedAt = DateTime.UtcNow;
+    }
 }

@@ -998,6 +998,7 @@ public class AccommodationAssignmentProposal
     public string? Notes { get; set; }
     public bool IsActive { get; set; } = false;
     public Guid CreatedByUserId { get; set; }
+    public Guid? LastModifiedByUserId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
@@ -1024,7 +1025,8 @@ public record AccommodationAssignmentProposalSummaryResponse(
     int UnassignedCount,
     Guid CreatedByUserId,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    string? LastModifiedByUserName
 );
 
 // ── Accommodation Assignments ────────────────────────────────────────────────
@@ -1069,7 +1071,10 @@ public record AssignmentFamilyResponse(
     bool HasPet,
     string? SpecialNeeds,
     string? CampatesPreference,
-    IReadOnlyList<AccommodationPreferenceItem> AccommodationPreferences
+    IReadOnlyList<AccommodationPreferenceItem> AccommodationPreferences,
+    bool HasSpecialNeeds,
+    IReadOnlyList<Guid> RequiredFeatures,
+    IReadOnlyList<Guid> FriendlyFamilyUnitIds
 );
 
 public record AssignmentAccommodationResponse(
@@ -1080,7 +1085,8 @@ public record AssignmentAccommodationResponse(
     bool CountByFamily,
     Guid? ZoneId,
     string? ZoneName,
-    int SortOrder
+    int SortOrder,
+    IReadOnlyList<Guid> AvailableFeatures
 );
 
 public record ProposalAssignmentStateResponse(
