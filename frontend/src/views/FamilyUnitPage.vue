@@ -42,6 +42,7 @@ const {
   getFamilyMembers,
   updateFamilyMember,
   deleteFamilyMember,
+  anonymiseFamilyMemberPii,
   uploadMemberProfilePhoto,
   removeMemberProfilePhoto,
   uploadUnitProfilePhoto,
@@ -240,6 +241,38 @@ const handleDeleteMember = (member: FamilyMemberResponse) => {
   })
 }
 
+const handleAnonymiseMemberPii = (member: FamilyMemberResponse) => {
+  if (!familyUnit.value) return
+
+  confirm.require({
+    header: 'Anonimizar datos personales',
+    message: `¿Anonimizar los datos personales de "${member.firstName} ${member.lastName}"? Esta acción elimina todos los datos identificativos del miembro de forma permanente (RGPD). El registro histórico se conserva sin datos personales.`,
+    acceptLabel: 'Anonimizar',
+    rejectLabel: 'Cancelar',
+    acceptClass: 'p-button-warning',
+    icon: 'pi pi-exclamation-triangle',
+    accept: async () => {
+      const success = await anonymiseFamilyMemberPii(familyUnit.value!.id, member.id)
+
+      if (success) {
+        toast.add({
+          severity: 'success',
+          summary: 'Datos anonimizados',
+          detail: 'Los datos personales del miembro han sido eliminados correctamente.',
+          life: 4000
+        })
+      } else {
+        toast.add({
+          severity: 'error',
+          summary: 'Error al anonimizar',
+          detail: error.value || 'No se pudieron anonimizar los datos del miembro.',
+          life: 5000
+        })
+      }
+    }
+  })
+}
+
 const handleManageMembership = (member: FamilyMemberResponse) => {
   selectedMemberForMembership.value = member
   showMembershipDialog.value = true
@@ -417,6 +450,7 @@ async function onRemoveMemberPhoto(memberId: string) {
             :uploading-member-id="uploadingMemberPhotoId"
             @edit="openEditMemberDialog"
             @delete="handleDeleteMember"
+            @anonymise-pii="handleAnonymiseMemberPii"
             @manage-membership="handleManageMembership"
             @upload-photo="onUploadMemberPhoto"
             @remove-photo="onRemoveMemberPhoto"

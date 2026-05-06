@@ -24,6 +24,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   edit: [member: FamilyMemberResponse]
   delete: [member: FamilyMemberResponse]
+  anonymisePii: [member: FamilyMemberResponse]
   manageMembership: [member: FamilyMemberResponse]
   uploadPhoto: [memberId: string, file: File]
   removePhoto: [memberId: string]
@@ -189,6 +190,17 @@ const isRepresentative = (member: FamilyMemberResponse) => {
               rounded
               @click="handleDelete(data)"
               v-tooltip.top="isRepresentative(data) ? 'No se puede eliminar al representante' : 'Eliminar'"
+            />
+            <Button
+              v-if="props.isAdminOrBoard"
+              :disabled="isRepresentative(data)"
+              icon="pi pi-eraser"
+              severity="warning"
+              text
+              rounded
+              v-tooltip.top="isRepresentative(data) ? 'No se puede anonimizar al representante' : 'Anonimizar datos personales (RGPD)'"
+              @click="emit('anonymisePii', data)"
+              aria-label="Anonimizar datos personales"
             />
           </div>
         </template>
