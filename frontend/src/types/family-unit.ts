@@ -64,6 +64,7 @@ export interface FamilyMemberResponse {
   profilePhotoUrl: string | null
   createdAt: string
   updatedAt: string
+  deletedAt?: string | null
 }
 
 // Request to create family member

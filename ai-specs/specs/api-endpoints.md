@@ -933,16 +933,30 @@ Updates a family member.
 
 ### DELETE /api/family-units/{familyUnitId}/members/{memberId}
 
-Deletes a family member. Representatives cannot delete their own family member record.
+Deletes a family member. If the member has any registration or membership history the record is soft-deleted (hidden from all API responses but preserved for audit integrity). If the member has no history it is hard-deleted. Both outcomes return 204 — the distinction is transparent to the caller.
 
-**Authorization**: Representative only
-**Success Response:** 204 No Content
+**Authorization**: Representative or Admin/Board
 **Success Response:** 204 No Content
 **Error Responses:**
 
-- **403 Forbidden**: User is not the representative
+- **403 Forbidden**: User is not the representative or admin/board
 - **404 Not Found**: Family unit or member doesn't exist
-- **409 Conflict**: Attempting to delete representative's own record (`CANNOT_DELETE_REPRESENTATIVE`)
+- **409 Conflict**: Attempting to delete the family representative's own record (`CANNOT_DELETE_REPRESENTATIVE`)
+
+---
+
+### DELETE /api/family-units/{familyUnitId}/members/{memberId}/pii
+
+GDPR right-to-erasure. Anonymises all PII fields of a family member in-place, preserving the row and FK references for audit history. Also soft-deletes the record so it is hidden from normal API responses.
+
+PII fields anonymised: `firstName`, `lastName` → `"[deleted]"`; `dateOfBirth` → `1900-01-01`; `documentNumber`, `email`, `phone`, `medicalNotes`, `allergies`, `profilePhotoUrl` → `null`; `userId` → `null`.
+
+**Authorization**: Admin/Board only
+**Success Response:** 204 No Content
+**Error Responses:**
+
+- **403 Forbidden**: User is not Admin/Board
+- **404 Not Found**: Family unit or member doesn't exist
 
 ---
 

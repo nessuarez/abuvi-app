@@ -320,7 +320,7 @@ export function useFamilyUnits() {
   }
 
   /**
-   * Delete family member
+   * Delete family member (hard delete if no history, soft delete otherwise — transparent to caller)
    */
   const deleteFamilyMember = async (
     familyUnitId: string,
@@ -338,6 +338,28 @@ export function useFamilyUnits() {
       return true
     } catch (err: any) {
       error.value = err.response?.data?.error?.message || 'Error al eliminar el miembro familiar'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Anonymise all PII of a family member — GDPR right to erasure (Admin/Board only)
+   */
+  const anonymiseFamilyMemberPii = async (
+    familyUnitId: string,
+    memberId: string
+  ): Promise<boolean> => {
+    loading.value = true
+    error.value = null
+
+    try {
+      await api.delete(`/family-units/${familyUnitId}/members/${memberId}/pii`)
+      familyMembers.value = familyMembers.value.filter((m) => m.id !== memberId)
+      return true
+    } catch (err: any) {
+      error.value = err.response?.data?.error?.message || 'Error al anonimizar los datos del miembro'
       return false
     } finally {
       loading.value = false
@@ -502,6 +524,7 @@ export function useFamilyUnits() {
     getFamilyMemberById,
     updateFamilyMember,
     deleteFamilyMember,
+    anonymiseFamilyMemberPii,
 
     // Profile Photo Methods
     uploadMemberProfilePhoto,
