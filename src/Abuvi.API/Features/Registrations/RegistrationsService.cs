@@ -1198,6 +1198,120 @@ public class RegistrationsService(
         return updated.ToResponse(amountPaid);
     }
 
+    public async Task<RegistrationResponse> AdminUpdateMembersAsync(
+        Guid registrationId, Guid adminUserId, UpdateRegistrationMembersRequest request, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var edition = await campEditionsRepo.GetByIdAsync(registration.CampEditionId, ct)
+            ?? throw new NotFoundException("Edición de Campamento", registration.CampEditionId);
+
+        // Build new members with pricing
+        var newMembers = new List<RegistrationMember>();
+        foreach (var m in request.Members)
+        {
+            var member = await familyUnitsRepo.GetFamilyMemberByIdAsync(m.MemberId, ct)
+                ?? throw new NotFoundException("Miembro Familiar", m.MemberId);
+
+            if (member.FamilyUnitId != registration.FamilyUnitId)
+                throw new BusinessRuleException(
+                    $"El miembro {member.FirstName} {member.LastName} no pertenece a esta unidad familiar");
+
+            if (m.AttendancePeriod == AttendancePeriod.WeekendVisit)
+            {
+                var campStart = DateOnly.FromDateTime(edition.StartDate);
+                var campEnd = DateOnly.FromDateTime(edition.EndDate);
+                if (m.VisitStartDate < campStart || m.VisitEndDate > campEnd)
+                    throw new BusinessRuleException(
+                        "Las fechas de la visita deben estar dentro del periodo del campamento");
+            }
+
+            var age = pricingService.CalculateAge(member.DateOfBirth, edition.StartDate);
+            var category = await pricingService.GetAgeCategoryAsync(age, edition, ct);
+            var price = pricingService.GetPriceForCategory(category, m.AttendancePeriod, edition);
+
+            newMembers.Add(new RegistrationMember
+            {
+                Id = Guid.NewGuid(),
+                RegistrationId = registrationId,
+                FamilyMemberId = m.MemberId,
+                AgeAtCamp = age,
+                AgeCategory = category,
+                IndividualAmount = price,
+                AttendancePeriod = m.AttendancePeriod,
+                VisitStartDate = m.VisitStartDate,
+                VisitEndDate = m.VisitEndDate,
+                GuardianName = m.GuardianName,
+                GuardianDocumentNumber = m.GuardianDocumentNumber,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        // Require at least one adult
+        if (!newMembers.Any(m => m.AgeCategory == AgeCategory.Adult))
+            throw new BusinessRuleException("La inscripción debe tener al menos un adulto responsable");
+
+        var oldBaseTotalAmount = registration.BaseTotalAmount;
+        var newBaseTotalAmount = newMembers.Sum(m => m.IndividualAmount);
+
+        var completedBasePayments = registration.Payments
+            .Where(p => p.Status == PaymentStatus.Completed && !p.IsManual)
+            .Sum(p => p.Amount);
+
+        // Replace members
+        await registrationsRepo.DeleteMembersByRegistrationIdAsync(registrationId, ct);
+        await registrationsRepo.AddMembersAsync(newMembers, ct);
+
+        registration.BaseTotalAmount = newBaseTotalAmount;
+        registration.TotalAmount = newBaseTotalAmount + registration.ExtrasAmount;
+
+        // Generate refund if overpaid
+        if (completedBasePayments > newBaseTotalAmount)
+        {
+            var refundAmount = completedBasePayments - newBaseTotalAmount;
+            await paymentsService.GenerateRefundPaymentAsync(
+                registrationId, refundAmount, "Devolución por baja de participante", adminUserId, ct);
+            // TotalAmount adjustment happens inside GenerateRefundPaymentAsync; reload registration
+            registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+                ?? throw new NotFoundException("Inscripción", registrationId);
+            registration.BaseTotalAmount = newBaseTotalAmount;
+        }
+
+        // Sync P1/P2 installments
+        await paymentsService.SyncBaseInstallmentsAsync(
+            registrationId, newBaseTotalAmount, oldBaseTotalAmount, ct);
+
+        // Determine draft target status
+        var draftTargetStatus = completedBasePayments > 0
+            ? RegistrationStatus.PartiallyPaid
+            : RegistrationStatus.Pending;
+
+        registration.Status = RegistrationStatus.Draft;
+        registration.DraftTargetStatus = draftTargetStatus;
+        registration.HasPendingUserAcknowledgement = true;
+        registration.AdminModifiedAt = DateTime.UtcNow;
+        registration.UpdatedAt = DateTime.UtcNow;
+
+        await registrationsRepo.UpdateAsync(registration, ct);
+
+        await LogStatusHistoryAsync(registrationId, registration.Status, RegistrationStatus.Draft,
+            adminUserId, StatusChangeTrigger.AdminAction, "Admin member update", ct);
+
+        logger.LogInformation(
+            "Admin {AdminUserId} updated members for registration {RegistrationId}. New base total={NewTotal}, refund triggered={Refund}",
+            adminUserId, registrationId, newBaseTotalAmount, completedBasePayments > newBaseTotalAmount);
+
+        var updated = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var amountPaid = updated.Payments
+            .Where(p => p.Status == PaymentStatus.Completed)
+            .Sum(p => p.Amount);
+
+        return updated.ToResponse(amountPaid);
+    }
+
     public async Task<RegistrationResponse> ConfirmChangesAsync(
         Guid registrationId, Guid requestingUserId, bool isAdminOrBoard, CancellationToken ct)
     {

@@ -875,6 +875,8 @@ A partial or full payment for a registration. Supports multiple payments per reg
 - `dueDate`: Payment deadline (optional, datetime UTC)
 - `transferConcept`: Bank transfer reference identifier (optional, max 100 chars, e.g., "CAMP-GAR-1")
 - `isManual`: Whether this payment was manually created by an admin (required, boolean, default false)
+- `conceptOverridden`: Set to `true` when an admin edits the amount or concept of any payment for the first time (required, boolean, default false). Used to flag adjusted payments in admin views.
+- `originalAmount`: Snapshot of the payment's amount **before the first admin edit** (optional, decimal). Write-once — never overwritten on subsequent edits. Only set when `conceptOverridden` becomes true.
 - `proofFileUrl`: URL to uploaded proof of transfer in blob storage (optional, max 500 chars)
 - `proofFileName`: Original filename of the uploaded proof (optional, max 255 chars)
 - `proofUploadedAt`: When the proof was uploaded (optional, datetime UTC)
@@ -887,7 +889,7 @@ A partial or full payment for a registration. Supports multiple payments per reg
 
 **Validation rules:**
 
-- Amount must be greater than 0
+- Amount can be negative only for system-generated refund payments (`isManual = true`, `status = Refunded`). All other payments require `amount > 0`.
 - The sum of all Completed payments for a Registration must not exceed Registration.totalAmount
 - When the sum of Completed payments equals Registration.totalAmount, the Registration status should transition to Confirmed
 - ExternalReference is required when method is Card (payment gateway integration)

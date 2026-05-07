@@ -603,6 +603,7 @@ public class PaymentsService(
             null, // ConfirmedByUserName - would need user lookup, kept null for now
             p.ConfirmedAt, p.CreatedAt,
             ComputeIsActionable(p, allPayments), p.IsManual,
+            p.ConceptOverridden, p.OriginalAmount,
             memberLines, extraLines, manualLine);
     }
 
@@ -709,6 +710,234 @@ public class PaymentsService(
         return string.Concat(
             cleanName.Split(' ', StringSplitOptions.RemoveEmptyEntries)
                 .Select(word => word.Length >= 3 ? word[..3] : word));
+    }
+
+    // --- Payment adjustment methods (admin only) ---
+
+    public async Task<AdminPaymentResponse> AdminEditPaymentAsync(
+        Guid paymentId, AdminEditPaymentRequest request, Guid adminUserId, CancellationToken ct)
+    {
+        var payment = await paymentsRepo.GetByIdWithRegistrationAsync(paymentId, ct)
+            ?? throw new NotFoundException("Pago", paymentId);
+
+        if (payment.Status is PaymentStatus.Failed or PaymentStatus.Refunded)
+            throw new BusinessRuleException("No se puede editar un pago en estado fallido o devuelto");
+
+        if (request.Amount.HasValue && request.Amount.Value != payment.Amount)
+        {
+            if (payment.OriginalAmount is null)
+                payment.OriginalAmount = payment.Amount;
+
+            payment.Amount = request.Amount.Value;
+            payment.ConceptOverridden = true;
+
+            if (payment.Status == PaymentStatus.Completed)
+                await RecalculatePendingInstallmentsAsync(payment.RegistrationId, adminUserId, ct);
+        }
+
+        if (request.ConceptDescription is not null)
+        {
+            var conceptLines = new PaymentConceptLinesJson(
+                MemberLines: null,
+                ExtraLines: null,
+                ManualLine: new ManualPaymentConceptLine(request.ConceptDescription, payment.Amount)
+            );
+            payment.ConceptLinesSerialized = JsonSerializer.Serialize(conceptLines);
+            payment.ConceptOverridden = true;
+        }
+
+        if (request.DueDate.HasValue)
+            payment.DueDate = request.DueDate.Value;
+
+        if (request.AdminNotes is not null)
+            payment.AdminNotes = request.AdminNotes;
+
+        payment.UpdatedAt = DateTime.UtcNow;
+        await paymentsRepo.UpdateAsync(payment, ct);
+
+        logger.LogInformation(
+            "Admin {AdminUserId} edited payment {PaymentId}: Amount={Amount}",
+            adminUserId, paymentId, payment.Amount);
+
+        var allPayments = await paymentsRepo.GetByRegistrationIdAsync(payment.RegistrationId, ct);
+        return MapToAdminResponse(payment, allPayments);
+    }
+
+    public async Task RecalculatePendingInstallmentsAsync(
+        Guid registrationId, Guid adminUserId, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var allPayments = await paymentsRepo.GetByRegistrationIdTrackedAsync(registrationId, ct);
+
+        var totalOwed = registration.BaseTotalAmount + registration.ExtrasAmount;
+        var completedNonManual = allPayments
+            .Where(p => p.Status == PaymentStatus.Completed && !p.IsManual)
+            .Sum(p => p.Amount);
+
+        var remaining = totalOwed - completedNonManual;
+
+        var pendingAuto = allPayments
+            .Where(p => p.Status == PaymentStatus.Pending && !p.IsManual)
+            .OrderBy(p => p.InstallmentNumber)
+            .ToList();
+
+        if (pendingAuto.Count == 0)
+        {
+            if (remaining < 0)
+            {
+                var surplus = Math.Abs(remaining);
+                await GenerateRefundPaymentAsync(registrationId, surplus,
+                    "Devolución por ajuste de pago", adminUserId, ct);
+            }
+            return;
+        }
+
+        // Assign all remaining to first pending, set rest to 0
+        for (var i = 0; i < pendingAuto.Count; i++)
+        {
+            pendingAuto[i].Amount = i == 0 ? Math.Max(0m, remaining) : 0m;
+            await paymentsRepo.UpdateAsync(pendingAuto[i], ct);
+        }
+
+        if (remaining < 0)
+        {
+            var surplus = Math.Abs(remaining);
+            await GenerateRefundPaymentAsync(registrationId, surplus,
+                "Devolución por ajuste de pago", adminUserId, ct);
+        }
+
+        logger.LogInformation(
+            "Recalculated pending installments for registration {RegistrationId}: remaining={Remaining}",
+            registrationId, remaining);
+    }
+
+    public async Task<List<AdminPaymentResponse>> ConfirmCombinedPaymentsAsync(
+        Guid registrationId, ConfirmCombinedPaymentsRequest request, Guid adminUserId, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var allPayments = await paymentsRepo.GetByRegistrationIdTrackedAsync(registrationId, ct);
+
+        var targetPayments = allPayments
+            .Where(p => request.PaymentIds.Contains(p.Id))
+            .OrderBy(p => p.InstallmentNumber)
+            .ToList();
+
+        if (targetPayments.Count != request.PaymentIds.Count)
+            throw new NotFoundException("Uno o más pagos no se encontraron en esta inscripción", registrationId);
+
+        if (targetPayments.Any(p => p.Status is not (PaymentStatus.Pending or PaymentStatus.PendingReview)))
+            throw new BusinessRuleException("Solo se pueden confirmar pagos en estado pendiente o en revisión");
+
+        // Greedy fill in installment order
+        var remaining = request.TotalReceivedAmount;
+        foreach (var p in targetPayments)
+        {
+            var assign = Math.Min(remaining, p.Amount);
+            p.Amount = assign;
+            remaining -= assign;
+        }
+
+        // Apply surplus to next pending if requested
+        if (remaining > 0 && request.ApplySurplusToNext)
+        {
+            var targetIds = request.PaymentIds.ToHashSet();
+            var nextPending = allPayments
+                .Where(p => !targetIds.Contains(p.Id) && p.Status == PaymentStatus.Pending && !p.IsManual)
+                .OrderBy(p => p.InstallmentNumber)
+                .FirstOrDefault();
+
+            if (nextPending is not null)
+                nextPending.Amount = Math.Max(0m, nextPending.Amount - remaining);
+        }
+
+        foreach (var p in targetPayments)
+        {
+            p.Status = PaymentStatus.Completed;
+            p.ConfirmedByUserId = adminUserId;
+            p.ConfirmedAt = DateTime.UtcNow;
+            p.AdminNotes = request.AdminNotes ?? p.AdminNotes;
+            p.UpdatedAt = DateTime.UtcNow;
+            await paymentsRepo.UpdateAsync(p, ct);
+        }
+
+        // Check if all non-refunded payments completed → update registration status
+        var freshPayments = await paymentsRepo.GetByRegistrationIdAsync(registrationId, ct);
+        var nonRefunded = freshPayments.Where(p => p.Status != PaymentStatus.Refunded).ToList();
+        if (nonRefunded.All(p => p.Status == PaymentStatus.Completed))
+        {
+            var previousStatus = registration.Status;
+            registration.Status = RegistrationStatus.FullyPaid;
+            await registrationsRepo.UpdateAsync(registration, ct);
+
+            await AddStatusHistoryInternalAsync(registrationId, previousStatus, RegistrationStatus.FullyPaid,
+                adminUserId, StatusChangeTrigger.AdminAction, null, ct);
+        }
+
+        logger.LogInformation(
+            "Admin {AdminUserId} confirmed combined payments {PaymentIds} for registration {RegistrationId}, total={TotalAmount}",
+            adminUserId, string.Join(",", request.PaymentIds), registrationId, request.TotalReceivedAmount);
+
+        // Reload with navigation properties for response
+        var responsePayments = new List<AdminPaymentResponse>();
+        foreach (var p in targetPayments)
+        {
+            var withNav = await paymentsRepo.GetByIdWithRegistrationAsync(p.Id, ct);
+            if (withNav is not null)
+                responsePayments.Add(MapToAdminResponse(withNav, freshPayments));
+        }
+        return responsePayments;
+    }
+
+    public async Task<Payment> GenerateRefundPaymentAsync(
+        Guid registrationId, decimal refundAmount, string reason, Guid adminUserId, CancellationToken ct)
+    {
+        var allPayments = await paymentsRepo.GetByRegistrationIdAsync(registrationId, ct);
+        var nextInstallment = allPayments.Any() ? allPayments.Max(p => p.InstallmentNumber) + 1 : 4;
+
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var settings = await LoadPaymentSettingsAsync(ct);
+        var familyName = NormalizeName(registration.FamilyUnit.Name);
+        var concept = $"{settings.TransferConceptPrefix}-{familyName}-{nextInstallment}";
+        if (concept.Length > 100) concept = concept[..100];
+
+        var lines = new PaymentConceptLinesJson(null, null,
+            new ManualPaymentConceptLine(reason, refundAmount));
+
+        var payment = new Payment
+        {
+            Id = Guid.NewGuid(),
+            RegistrationId = registrationId,
+            Amount = -refundAmount,
+            PaymentDate = DateTime.UtcNow,
+            Method = PaymentMethod.Transfer,
+            Status = PaymentStatus.Refunded,
+            InstallmentNumber = nextInstallment,
+            TransferConcept = concept,
+            IsManual = true,
+            ConceptLinesSerialized = JsonSerializer.Serialize(lines),
+            AdminNotes = reason,
+            ConfirmedByUserId = adminUserId,
+            ConfirmedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        await paymentsRepo.AddAsync(payment, ct);
+
+        registration.TotalAmount -= refundAmount;
+        await registrationsRepo.UpdateAsync(registration, ct);
+
+        logger.LogInformation(
+            "Generated refund payment {PaymentId} of {Amount}€ for registration {RegistrationId}: {Reason}",
+            payment.Id, refundAmount, registrationId, reason);
+
+        return payment;
     }
 
     public async Task DeleteByRegistrationIdAsync(Guid registrationId, CancellationToken ct)

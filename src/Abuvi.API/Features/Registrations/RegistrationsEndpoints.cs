@@ -172,6 +172,13 @@ public static class RegistrationsEndpoints
             .Produces<ApiResponse<List<FriendLinkResponse>>>()
             .Produces(401).Produces(403).Produces(404);
 
+        adminEditGroup.MapPut("/{id:guid}/members/admin", AdminUpdateRegistrationMembers)
+            .WithName("AdminUpdateRegistrationMembers")
+            .WithSummary("Update registration members (admin — triggers refund if payments exist)")
+            .AddEndpointFilter<ValidationFilter<UpdateRegistrationMembersRequest>>()
+            .Produces<ApiResponse<RegistrationResponse>>()
+            .Produces(400).Produces(401).Produces(403).Produces(404).Produces(422);
+
         return app;
     }
 
@@ -709,6 +716,32 @@ public static class RegistrationsEndpoints
         catch (NotFoundException ex)
         {
             return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> AdminUpdateRegistrationMembers(
+        Guid id,
+        UpdateRegistrationMembersRequest request,
+        RegistrationsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+
+        try
+        {
+            var result = await service.AdminUpdateMembersAsync(id, userId, request, ct);
+            return TypedResults.Ok(ApiResponse<RegistrationResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.UnprocessableEntity(
+                ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE"));
         }
     }
 }
