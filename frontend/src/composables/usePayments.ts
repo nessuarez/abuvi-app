@@ -8,7 +8,9 @@ import type {
   PaymentSettings,
   PaymentFilterParams,
   CreateManualPaymentRequest,
-  UpdateManualPaymentRequest
+  UpdateManualPaymentRequest,
+  AdminEditPaymentRequest,
+  ConfirmCombinedPaymentsRequest
 } from '@/types/payment'
 
 type ApiErrorShape = { response?: { data?: { error?: { message?: string } }; status?: number } }
@@ -264,6 +266,52 @@ export function usePayments() {
     }
   }
 
+  const adminEditPayment = async (
+    paymentId: string,
+    request: AdminEditPaymentRequest
+  ): Promise<AdminPaymentResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.put<ApiResponse<AdminPaymentResponse>>(
+        `/admin/payments/${paymentId}`,
+        request
+      )
+      if (response.data.success && response.data.data) return response.data.data
+      error.value = response.data.error?.message ?? 'Error al actualizar el pago'
+      return null
+    } catch (err: unknown) {
+      error.value = extractError(err, 'Error al actualizar el pago')
+      console.error('Failed to edit payment:', err)
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const confirmCombinedPayments = async (
+    registrationId: string,
+    request: ConfirmCombinedPaymentsRequest
+  ): Promise<AdminPaymentResponse[] | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post<ApiResponse<AdminPaymentResponse[]>>(
+        `/admin/registrations/${registrationId}/payments/confirm-combined`,
+        request
+      )
+      if (response.data.success && response.data.data) return response.data.data
+      error.value = response.data.error?.message ?? 'Error al confirmar los pagos combinados'
+      return null
+    } catch (err: unknown) {
+      error.value = extractError(err, 'Error al confirmar los pagos combinados')
+      console.error('Failed to confirm combined payments:', err)
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Settings
 
   const getPaymentSettings = async (): Promise<PaymentSettings | null> => {
@@ -311,6 +359,8 @@ export function usePayments() {
     updateManualPayment,
     deleteManualPayment,
     getPaymentSettings,
-    updatePaymentSettings
+    updatePaymentSettings,
+    adminEditPayment,
+    confirmCombinedPayments
   }
 }
