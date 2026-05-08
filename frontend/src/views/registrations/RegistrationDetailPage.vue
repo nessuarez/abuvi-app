@@ -5,6 +5,7 @@ import { useToast } from 'primevue/usetoast'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
 import Textarea from 'primevue/textarea'
 import Checkbox from 'primevue/checkbox'
 import ToggleSwitch from 'primevue/toggleswitch'
@@ -34,6 +35,7 @@ import type {
   WizardMemberSelection,
   WizardExtrasSelection,
   UpdateRegistrationInfoRequest,
+  UpdateRegistrationMembersRequest,
   RegistrationStatus,
   RegistrationResponse,
   AccommodationNeedResponse,
@@ -73,7 +75,8 @@ const {
   getAccommodationPreferences,
   changeStatus,
   confirmChanges,
-  adminUpdateRegistration
+  adminUpdateRegistration,
+  adminUpdateMembers
 } = useRegistrations()
 const { getRegistrationPayments, getPaymentSettings } = usePayments()
 const { getFamilyMembers } = useFamilyUnits()
@@ -106,6 +109,11 @@ const loadingEditData = ref(false)
 const editSpecialNeeds = ref('')
 const editCampatesPreference = ref('')
 const editHasPet = ref(false)
+
+// Refund warning state (admin member update)
+const showRefundWarning = ref(false)
+const pendingMemberRequest = ref<UpdateRegistrationMembersRequest | null>(null)
+const estimatedRefundAmount = ref(0)
 
 // Data for edit mode (loaded on demand)
 const familyMembersData = ref<FamilyMemberResponse[]>([])
@@ -366,28 +374,59 @@ const handleStatusChanged = async (updated: RegistrationResponse) => {
 
 // --- Admin save handlers ---
 
-const handleAdminSaveMembers = async () => {
+const submitAdminMembersUpdate = async (request: UpdateRegistrationMembersRequest) => {
   savingMembers.value = true
-  const result = await adminUpdateRegistration(registrationId.value, {
+  const result = await adminUpdateMembers(registrationId.value, request)
+  savingMembers.value = false
+  if (result) {
+    isEditingMembers.value = false
+    showRefundWarning.value = false
+    await refreshInstallments()
+    toast.add({
+      severity: 'success',
+      summary: 'Participantes actualizados',
+      detail: 'La inscripción ha pasado a estado Borrador pendiente de confirmación de la familia.',
+      life: 5000
+    })
+  } else {
+    toast.add({ severity: 'error', summary: 'Error', detail: error.value ?? 'Error al actualizar participantes', life: 5000 })
+  }
+}
+
+const handleAdminSaveMembers = async () => {
+  const request = {
     members: memberSelections.value.map((s) => ({
       memberId: s.memberId,
       attendancePeriod: s.attendancePeriod,
       visitStartDate: s.visitStartDate,
       visitEndDate: s.visitEndDate,
       guardianName: s.guardianName,
-      guardianDocumentNumber: s.guardianDocumentNumber,
-    })),
-    notifyUser: notifyFamilyOnAdminSave.value,
-    draftTargetStatus: draftTargetStatusOnAdminSave.value,
-  })
-  savingMembers.value = false
-  if (result) {
-    isEditingMembers.value = false
-    await refreshInstallments()
-    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Miembros actualizados', life: 3000 })
-  } else {
-    toast.add({ severity: 'error', summary: 'Error', detail: error.value ?? 'Error al actualizar miembros', life: 5000 })
+      guardianDocumentNumber: s.guardianDocumentNumber
+    }))
   }
+
+  const completedBasePayments = installments.value
+    .filter((p) => p.status === 'Completed' && !p.isManual && p.installmentNumber <= 2)
+    .reduce((s, p) => s + p.amount, 0)
+
+  if (completedBasePayments > 0) {
+    const newMemberIds = request.members.map((m) => m.memberId)
+    const originalMembers = registration.value?.pricing.members ?? []
+    const removedAmount = originalMembers
+      .filter((m) => !newMemberIds.includes(m.familyMemberId))
+      .reduce((s, m) => s + m.individualAmount, 0)
+    const newBaseTotal = originalMembers.reduce((s, m) => s + m.individualAmount, 0) - removedAmount
+    const refund = Math.max(0, completedBasePayments - newBaseTotal)
+
+    if (refund > 0) {
+      estimatedRefundAmount.value = refund
+      pendingMemberRequest.value = request
+      showRefundWarning.value = true
+      return
+    }
+  }
+
+  await submitAdminMembersUpdate(request)
 }
 
 const handleAdminSaveExtras = async () => {
@@ -937,6 +976,32 @@ onMounted(async () => {
           :family-unit-name="registration.familyUnit.name"
           @created="handleManualPaymentCreated"
         />
+
+        <!-- Refund warning dialog -->
+        <Dialog
+          v-model:visible="showRefundWarning"
+          header="Confirmación de cambio"
+          :modal="true"
+          :style="{ width: '90vw', maxWidth: '500px' }"
+        >
+          <Message severity="warn" :closable="false">
+            Al eliminar este participante se generará automáticamente una devolución de
+            <strong>{{ formatCurrency(estimatedRefundAmount) }}</strong> en los pagos de la inscripción.
+            La inscripción pasará a estado "Borrador" hasta que la familia lo confirme.
+          </Message>
+          <p class="mt-3 text-xs text-gray-500">
+            El importe exacto de la devolución será calculado por el sistema.
+          </p>
+          <template #footer>
+            <Button label="Cancelar" severity="secondary" text @click="showRefundWarning = false" />
+            <Button
+              label="Confirmar cambio y generar devolución"
+              severity="warning"
+              :loading="savingMembers"
+              @click="pendingMemberRequest && submitAdminMembersUpdate(pendingMemberRequest)"
+            />
+          </template>
+        </Dialog>
       </template>
     </div>
   </Container>

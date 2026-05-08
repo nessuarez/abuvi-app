@@ -308,6 +308,34 @@ export function useRegistrations() {
     }
   }
 
+  const adminUpdateMembers = async (
+    id: string,
+    request: UpdateRegistrationMembersRequest
+  ): Promise<RegistrationResponse | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.put<ApiResponse<RegistrationResponse>>(
+        `/admin/registrations/${id}/members/admin`,
+        request
+      )
+      if (response.data.success && response.data.data) {
+        const updated = response.data.data
+        if (registration.value?.id === id) registration.value = updated
+        return updated
+      }
+      return null
+    } catch (err: unknown) {
+      error.value =
+        (err as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message ?? 'Error al actualizar los participantes'
+      console.error('Failed to admin update members:', err)
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
   const adminUpdateRegistration = async (
     id: string,
     request: AdminUpdateRegistrationRequest
@@ -351,6 +379,7 @@ export function useRegistrations() {
     deleteRegistration,
     changeStatus,
     confirmChanges,
-    adminUpdateRegistration
+    adminUpdateRegistration,
+    adminUpdateMembers
   }
 }
