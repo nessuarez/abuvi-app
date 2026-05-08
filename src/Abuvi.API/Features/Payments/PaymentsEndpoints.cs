@@ -103,6 +103,20 @@ public static class PaymentsEndpoints
             .Produces<ApiResponse<object>>()
             .Produces(403).Produces(404).Produces(422);
 
+        admin.MapPut("/{paymentId:guid}", AdminEditPayment)
+            .WithName("AdminEditPayment")
+            .WithSummary("Edit any payment (admin)")
+            .AddEndpointFilter<ValidationFilter<AdminEditPaymentRequest>>()
+            .Produces<ApiResponse<AdminPaymentResponse>>()
+            .Produces(403).Produces(404).Produces(409);
+
+        adminReg.MapPost("/{registrationId:guid}/payments/confirm-combined", ConfirmCombinedPayments)
+            .WithName("ConfirmCombinedPayments")
+            .WithSummary("Confirm multiple payments from a single transfer (admin)")
+            .AddEndpointFilter<ValidationFilter<ConfirmCombinedPaymentsRequest>>()
+            .Produces<ApiResponse<List<AdminPaymentResponse>>>()
+            .Produces(403).Produces(404).Produces(409);
+
         // Payment settings
         var settings = app.MapGroup("/api/settings/payment")
             .WithTags("Payment Settings")
@@ -427,6 +441,64 @@ public static class PaymentsEndpoints
         {
             return TypedResults.UnprocessableEntity(
                 ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE"));
+        }
+    }
+
+    private static async Task<IResult> AdminEditPayment(
+        Guid paymentId,
+        AdminEditPaymentRequest request,
+        ClaimsPrincipal user,
+        IPaymentsService service,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
+
+        if (userRole is not ("Admin" or "Board"))
+            return TypedResults.Forbid();
+
+        try
+        {
+            var result = await service.AdminEditPaymentAsync(paymentId, request, userId, ct);
+            return TypedResults.Ok(ApiResponse<AdminPaymentResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.Conflict(ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE"));
+        }
+    }
+
+    private static async Task<IResult> ConfirmCombinedPayments(
+        Guid registrationId,
+        ConfirmCombinedPaymentsRequest request,
+        ClaimsPrincipal user,
+        IPaymentsService service,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
+
+        if (userRole is not ("Admin" or "Board"))
+            return TypedResults.Forbid();
+
+        try
+        {
+            var result = await service.ConfirmCombinedPaymentsAsync(registrationId, request, userId, ct);
+            return TypedResults.Ok(ApiResponse<List<AdminPaymentResponse>>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.Conflict(ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE"));
         }
     }
 }

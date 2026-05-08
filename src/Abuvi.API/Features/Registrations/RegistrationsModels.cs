@@ -132,6 +132,8 @@ public class Payment
     public string? AdminNotes { get; set; }
     public string? ConceptLinesSerialized { get; set; }
     public bool IsManual { get; set; } = false;
+    public bool ConceptOverridden { get; set; } = false;
+    public decimal? OriginalAmount { get; set; }
     public Guid? ConfirmedByUserId { get; set; }
     public DateTime? ConfirmedAt { get; set; }
     public DateTime CreatedAt { get; set; }

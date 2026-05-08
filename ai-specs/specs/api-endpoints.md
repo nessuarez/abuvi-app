@@ -3654,6 +3654,96 @@ Delete a manual payment. Only Pending manual payments can be deleted. Admin or B
 - **404 Not Found**: Payment not found
 - **422 Unprocessable Entity**: Payment is not manual, or not in Pending status
 
+### PUT /api/admin/payments/{paymentId}
+
+Edit any payment (including auto-generated ones). Admin or Board role required.
+
+**Request body:**
+
+```json
+{
+  "amount": 450.00,
+  "conceptDescription": "Primer plazo ajustado",
+  "dueDate": "2026-06-15T00:00:00Z",
+  "adminNotes": "Corregido por error de cálculo"
+}
+```
+
+All fields are optional; at least one must be provided. `amount` must be > 0.
+
+**Response (HTTP 200):** `ApiResponse<AdminPaymentResponse>` with the updated payment.
+
+- If `amount` changes: `conceptOverridden = true` and `originalAmount` is snapshotted (write-once on first edit).
+- If `status` was `Completed` and `amount` changed: pending installments are recalculated automatically. If overpaid, a refund payment is generated.
+- `Failed` and `Refunded` payments cannot be edited (409).
+
+**Error Responses:**
+
+- **400 Bad Request**: Validation failed (no fields provided, or amount ≤ 0)
+- **403 Forbidden**: User is not Admin or Board
+- **404 Not Found**: Payment not found
+- **409 Conflict**: Payment is in Failed or Refunded status
+
+### POST /api/admin/registrations/{registrationId}/payments/confirm-combined
+
+Confirm multiple payments that were received in a single bank transfer. Admin or Board role required.
+
+**Request body:**
+
+```json
+{
+  "paymentIds": ["uuid1", "uuid2"],
+  "totalReceivedAmount": 950.00,
+  "applySurplusToNext": false,
+  "adminNotes": "Transferencia única recibida el 2026-05-10"
+}
+```
+
+**Behavior:** Greedy fill in installment order — `totalReceivedAmount` is distributed to the listed payments from lowest to highest installment number. If `applySurplusToNext = true`, any remaining amount reduces the next pending auto payment not in the list.
+
+All listed payments must be `Pending` or `PendingReview`; completed payments are rejected (409). Sequential ordering is bypassed for this operation.
+
+**Response (HTTP 200):** `ApiResponse<AdminPaymentResponse[]>` with all confirmed payments.
+
+**Error Responses:**
+
+- **403 Forbidden**: User is not Admin or Board
+- **404 Not Found**: Registration or one or more payments not found
+- **409 Conflict**: One or more payments are already Completed, Failed, or Refunded
+
+### PUT /api/admin/registrations/{registrationId}/members/admin
+
+Update the member list of a registration as admin. Triggers refund generation if completed payments exceed the new total. Admin or Board role required.
+
+**Request body:** Same as `UpdateRegistrationMembersRequest` — list of `MemberAttendanceRequest`.
+
+**Behavior:**
+
+1. Replaces all existing members with the new list (re-prices each member).
+2. Requires at least one adult in the new member list.
+3. If `completedBasePayments > newBaseTotalAmount`: generates a refund payment for the difference.
+4. Calls `SyncBaseInstallmentsAsync` to recalculate pending P1/P2.
+5. Sets registration to `Draft` status with `HasPendingUserAcknowledgement = true` so the family representative must confirm the changes.
+
+**Response (HTTP 200):** `ApiResponse<RegistrationResponse>` with updated registration in Draft status.
+
+**Error Responses:**
+
+- **403 Forbidden**: User is not Admin or Board
+- **404 Not Found**: Registration or a family member not found
+- **422 Unprocessable Entity**: No adult remaining, or member does not belong to the family unit
+
+---
+
+## AdminPaymentResponse fields (updated)
+
+`AdminPaymentResponse` now includes two additional fields:
+
+| Field               | Type       | Description                                                               |
+|---------------------|------------|---------------------------------------------------------------------------|
+| `conceptOverridden` | `boolean`  | `true` if an admin has edited this payment's amount or concept            |
+| `originalAmount`    | `decimal?` | Snapshot of the amount before the first admin edit (null if never edited) |
+
 ---
 
 ## Sequential Payment Enforcement

@@ -1,3 +1,5 @@
+using Abuvi.API.Features.Registrations;
+
 namespace Abuvi.API.Features.Payments;
 
 public interface IPaymentsService
@@ -27,4 +29,16 @@ public interface IPaymentsService
     /// <summary>Recalculates P1 and/or P2 when the base member total changes.</summary>
     Task SyncBaseInstallmentsAsync(
         Guid registrationId, decimal newBaseTotalAmount, decimal oldBaseTotalAmount, CancellationToken ct);
+
+    // Payment adjustment methods (admin only)
+    Task<AdminPaymentResponse> AdminEditPaymentAsync(
+        Guid paymentId, AdminEditPaymentRequest request, Guid adminUserId, CancellationToken ct);
+
+    Task<List<AdminPaymentResponse>> ConfirmCombinedPaymentsAsync(
+        Guid registrationId, ConfirmCombinedPaymentsRequest request, Guid adminUserId, CancellationToken ct);
+
+    Task RecalculatePendingInstallmentsAsync(Guid registrationId, Guid adminUserId, CancellationToken ct);
+
+    Task<Payment> GenerateRefundPaymentAsync(
+        Guid registrationId, decimal refundAmount, string reason, Guid adminUserId, CancellationToken ct);
 }

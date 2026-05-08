@@ -13,7 +13,6 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.Property(p => p.Id).HasDefaultValueSql("gen_random_uuid()").HasColumnName("id");
         builder.Property(p => p.RegistrationId).IsRequired().HasColumnName("registration_id");
         builder.Property(p => p.Amount).HasPrecision(10, 2).IsRequired().HasColumnName("amount");
-        builder.ToTable(t => t.HasCheckConstraint("CK_Payments_Amount", "amount > 0"));
         builder.Property(p => p.PaymentDate).IsRequired().HasColumnName("payment_date");
         builder.Property(p => p.Method)
             .HasConversion<string>().IsRequired().HasMaxLength(20).HasColumnName("method");
@@ -56,6 +55,15 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .HasColumnName("is_manual")
             .IsRequired()
             .HasDefaultValue(false);
+
+        builder.Property(p => p.ConceptOverridden)
+            .HasColumnName("concept_overridden")
+            .IsRequired()
+            .HasDefaultValue(false);
+
+        builder.Property(p => p.OriginalAmount)
+            .HasPrecision(10, 2)
+            .HasColumnName("original_amount");
 
         builder.Property(p => p.ConfirmedByUserId)
             .HasColumnName("confirmed_by_user_id");

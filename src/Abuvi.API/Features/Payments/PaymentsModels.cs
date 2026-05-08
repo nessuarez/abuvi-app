@@ -75,6 +75,8 @@ public record AdminPaymentResponse(
     DateTime CreatedAt,
     bool IsActionable,
     bool IsManual,
+    bool ConceptOverridden,
+    decimal? OriginalAmount,
     List<PaymentConceptLine>? ConceptLines = null,
     List<PaymentExtraConceptLine>? ExtraConceptLines = null,
     ManualPaymentConceptLine? ManualConceptLine = null
@@ -109,6 +111,22 @@ public record UpdateManualPaymentRequest(
     DateTime? DueDate = null,
     string? AdminNotes = null
 );
+
+public record AdminEditPaymentRequest
+{
+    public decimal? Amount { get; init; }
+    public string? ConceptDescription { get; init; }
+    public DateTime? DueDate { get; init; }
+    public string? AdminNotes { get; init; }
+}
+
+public record ConfirmCombinedPaymentsRequest
+{
+    public List<Guid> PaymentIds { get; init; } = [];
+    public decimal TotalReceivedAmount { get; init; }
+    public bool ApplySurplusToNext { get; init; } = false;
+    public string? AdminNotes { get; init; }
+}
 
 // --- Payment Settings (stored in AssociationSettings as JSON) ---
 public record PaymentSettingsResponse(
