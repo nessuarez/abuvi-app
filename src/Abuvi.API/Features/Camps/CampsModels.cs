@@ -367,6 +367,7 @@ public class CampEditionAccommodation
     public string? Description { get; set; }
     public int? Capacity { get; set; }
     public bool CountByFamily { get; set; } = false;
+    public int Quantity { get; set; } = 1;
     public bool IsActive { get; set; } = true;
     public int SortOrder { get; set; } = 0;
     public DateTime CreatedAt { get; set; }
@@ -388,6 +389,7 @@ public record CampEditionAccommodationResponse(
     string? Description,
     int? Capacity,
     bool CountByFamily,
+    int Quantity,
     bool IsActive,
     int SortOrder,
     int CurrentPreferenceCount,
@@ -405,6 +407,7 @@ public record CreateCampEditionAccommodationRequest(
     string? Description,
     int? Capacity,
     bool? CountByFamily = null,
+    int Quantity = 1,
     Guid? ZoneId = null,
     int SortOrder = 0
 );
@@ -415,6 +418,7 @@ public record UpdateCampEditionAccommodationRequest(
     string? Description,
     int? Capacity,
     bool CountByFamily,
+    int Quantity,
     bool IsActive,
     Guid? ZoneId,
     int SortOrder
@@ -1040,6 +1044,7 @@ public class AccommodationAssignment
     public Guid ProposalId { get; set; }
     public Guid RegistrationId { get; set; }
     public Guid AccommodationId { get; set; }
+    public int? UnitIndex { get; set; }
     public Guid AssignedByUserId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -1050,9 +1055,9 @@ public class AccommodationAssignment
     public CampEditionAccommodation Accommodation { get; set; } = null!;
 }
 
-public record AssignmentEntry(Guid RegistrationId, Guid AccommodationId);
+public record AssignmentEntry(Guid RegistrationId, Guid AccommodationId, int? UnitIndex = null);
 
-public record SingleAssignRequest(Guid AccommodationId);
+public record SingleAssignRequest(Guid AccommodationId, int? UnitIndex = null);
 
 public record BulkAssignRequest(IReadOnlyList<AssignmentEntry> Assignments);
 
@@ -1086,7 +1091,9 @@ public record AssignmentAccommodationResponse(
     Guid? ZoneId,
     string? ZoneName,
     int SortOrder,
-    IReadOnlyList<Guid> AvailableFeatures
+    IReadOnlyList<Guid> AvailableFeatures,
+    int Quantity,
+    int? UnitIndex
 );
 
 public record ProposalAssignmentStateResponse(

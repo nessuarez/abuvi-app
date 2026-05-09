@@ -405,6 +405,9 @@ public class CreateCampEditionAccommodationRequestValidator
             .GreaterThan(0).WithMessage("Capacity must be greater than 0")
             .When(x => x.Capacity.HasValue);
 
+        RuleFor(x => x.Quantity)
+            .GreaterThanOrEqualTo(1).WithMessage("Quantity must be at least 1.");
+
         RuleFor(x => x.SortOrder)
             .GreaterThanOrEqualTo(0).WithMessage("Sort order must be greater than or equal to 0");
     }
@@ -432,6 +435,9 @@ public class UpdateCampEditionAccommodationRequestValidator
         RuleFor(x => x.Capacity)
             .GreaterThan(0).WithMessage("Capacity must be greater than 0")
             .When(x => x.Capacity.HasValue);
+
+        RuleFor(x => x.Quantity)
+            .GreaterThanOrEqualTo(1).WithMessage("Quantity must be at least 1.");
 
         RuleFor(x => x.SortOrder)
             .GreaterThanOrEqualTo(0).WithMessage("Sort order must be greater than or equal to 0");

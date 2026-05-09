@@ -23,7 +23,7 @@ public class AccommodationAssignmentsService(
         CancellationToken ct = default)
     {
         await EnsureProposalBelongsToEditionAsync(proposalId, campEditionId, ct);
-        await assignmentsRepository.AssignAsync(proposalId, registrationId, request.AccommodationId, assignedByUserId, ct);
+        await assignmentsRepository.AssignAsync(proposalId, registrationId, request.AccommodationId, request.UnitIndex, assignedByUserId, ct);
         return await assignmentsRepository.GetAssignmentStateAsync(campEditionId, proposalId, ct);
     }
 

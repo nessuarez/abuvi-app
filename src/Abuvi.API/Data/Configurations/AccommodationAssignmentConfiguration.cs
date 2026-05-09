@@ -28,6 +28,9 @@ public class AccommodationAssignmentConfiguration
             .IsRequired()
             .HasColumnName("accommodation_id");
 
+        builder.Property(a => a.UnitIndex)
+            .HasColumnName("unit_index");
+
         builder.Property(a => a.AssignedByUserId)
             .IsRequired()
             .HasColumnName("assigned_by_user_id");
@@ -46,6 +49,12 @@ public class AccommodationAssignmentConfiguration
         builder.HasIndex(a => new { a.ProposalId, a.RegistrationId })
             .IsUnique()
             .HasDatabaseName("IX_AccommodationAssignments_Proposal_Registration");
+
+        // Prevent double-booking the same physical unit within a proposal
+        builder.HasIndex(a => new { a.ProposalId, a.AccommodationId, a.UnitIndex })
+            .IsUnique()
+            .HasFilter("unit_index IS NOT NULL")
+            .HasDatabaseName("IX_AccommodationAssignments_Proposal_Accommodation_UnitIndex");
 
         builder.HasOne(a => a.Proposal)
             .WithMany(p => p.Assignments)

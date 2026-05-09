@@ -34,7 +34,7 @@ public class AutoAssignServiceTests
         Guid? zoneId = null,
         IEnumerable<Guid>? availableFeatures = null)
         => new(id ?? Guid.NewGuid(), "Alojamiento Test", type, capacity, countByFamily,
-            zoneId, null, 0, availableFeatures?.ToList() ?? []);
+            zoneId, null, 0, availableFeatures?.ToList() ?? [], 1, null);
 
     private static ProposalAssignmentStateResponse MakeState(
         IEnumerable<AssignmentFamilyResponse> families,

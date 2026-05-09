@@ -140,7 +140,7 @@ public class CampEditionAccommodationsServiceTests
 
         var request = new UpdateCampEditionAccommodationRequest(
             "Habitación 101", AccommodationType.Lodge, null, 4,
-            CountByFamily: true, IsActive: true, ZoneId: null, SortOrder: 0);
+            CountByFamily: true, Quantity: 1, IsActive: true, ZoneId: null, SortOrder: 0);
 
         var result = await _sut.UpdateAsync(id, request, CancellationToken.None);
 

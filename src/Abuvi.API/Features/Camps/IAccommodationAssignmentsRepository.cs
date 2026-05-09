@@ -7,6 +7,7 @@ public interface IAccommodationAssignmentsRepository
 
     Task AssignAsync(
         Guid proposalId, Guid registrationId, Guid accommodationId,
+        int? unitIndex,
         Guid assignedByUserId, CancellationToken ct = default);
 
     Task UnassignAsync(Guid proposalId, Guid registrationId, Guid modifiedByUserId, CancellationToken ct = default);
