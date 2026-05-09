@@ -8,9 +8,6 @@ namespace Abuvi.API.Features.Camps;
 
 public class AccommodationAssignmentReportsService(AbuviDbContext db)
 {
-    private static readonly HashSet<AccommodationType> ByFamilyTypes =
-        [AccommodationType.Caravan, AccommodationType.Tent];
-
     public async Task<List<AssignmentReportGroupResponse>> GetByTypeAsync(
         Guid campEditionId,
         Guid proposalId,
@@ -193,11 +190,13 @@ public class AccommodationAssignmentReportsService(AbuviDbContext db)
                 a.AccommodationType,
                 a.Capacity,
                 a.Zone != null ? a.Zone.Name : null,
-                a.ZoneId))
+                a.ZoneId,
+                a.CountByFamily,
+                a.Quantity))
             .ToListAsync(ct);
 
     private int ComputeGroupCapacity(List<AccommodationReportItem> accommodations)
-        => accommodations.Sum(a => a.Capacity ?? 0);
+        => accommodations.Sum(a => (a.Capacity ?? 0) * a.Quantity);
 
     private int ComputeUsedCapacity(
         List<AccommodationReportItem> accommodations,
@@ -207,7 +206,7 @@ public class AccommodationAssignmentReportsService(AbuviDbContext db)
         foreach (var acc in accommodations)
         {
             var accAssignments = assignments.Where(a => a.AccommodationId == acc.AccommodationId).ToList();
-            total += ByFamilyTypes.Contains(acc.AccommodationType)
+            total += acc.CountByFamily
                 ? accAssignments.Count
                 : accAssignments.Sum(a => a.MemberCount);
         }
@@ -241,5 +240,7 @@ public class AccommodationAssignmentReportsService(AbuviDbContext db)
         AccommodationType AccommodationType,
         int? Capacity,
         string? ZoneName,
-        Guid? ZoneId);
+        Guid? ZoneId,
+        bool CountByFamily,
+        int Quantity);
 }

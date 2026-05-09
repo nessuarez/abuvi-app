@@ -90,20 +90,28 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
             );
         }).ToList();
 
-        var accommodationResponses = accommodations.Select(a => new AssignmentAccommodationResponse(
-            a.Id,
-            a.Name,
-            a.AccommodationType,
-            a.Capacity,
-            a.CountByFamily,
-            a.ZoneId,
-            a.Zone?.Name,
-            a.SortOrder,
-            []  // AvailableFeatures: populated when Ticket A adds features to CampEditionAccommodation
-        )).ToList();
+        var accommodationResponses = accommodations
+            .SelectMany(a => Enumerable.Range(0, a.Quantity).Select(unitIndex =>
+                new AssignmentAccommodationResponse(
+                    a.Id,
+                    a.Quantity > 1 ? $"{a.Name} #{unitIndex + 1}" : a.Name,
+                    a.AccommodationType,
+                    a.Capacity,
+                    a.CountByFamily,
+                    a.ZoneId,
+                    a.Zone?.Name,
+                    a.SortOrder,
+                    [],
+                    a.Quantity,
+                    a.Quantity > 1 ? unitIndex : (int?)null
+                )
+            ))
+            .OrderBy(s => s.SortOrder)
+            .ThenBy(s => s.Name)
+            .ToList();
 
         var assignmentEntries = assignments
-            .Select(a => new AssignmentEntry(a.RegistrationId, a.AccommodationId))
+            .Select(a => new AssignmentEntry(a.RegistrationId, a.AccommodationId, a.UnitIndex))
             .ToList();
 
         return new ProposalAssignmentStateResponse(proposalId, families, accommodationResponses, assignmentEntries);
@@ -113,6 +121,7 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
         Guid proposalId,
         Guid registrationId,
         Guid accommodationId,
+        int? unitIndex,
         Guid assignedByUserId,
         CancellationToken ct = default)
     {
@@ -123,6 +132,7 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
         if (existing is not null)
         {
             existing.AccommodationId = accommodationId;
+            existing.UnitIndex = unitIndex;
             existing.AssignedByUserId = assignedByUserId;
             existing.UpdatedAt = now;
             db.AccommodationAssignments.Update(existing);
@@ -135,6 +145,7 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
                 ProposalId = proposalId,
                 RegistrationId = registrationId,
                 AccommodationId = accommodationId,
+                UnitIndex = unitIndex,
                 AssignedByUserId = assignedByUserId,
                 CreatedAt = now,
                 UpdatedAt = now
@@ -197,25 +208,39 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
                     .Select(g => new { RegistrationId = g.Key, Size = g.Count() })
                     .ToDictionaryAsync(x => x.RegistrationId, x => x.Size, ct);
 
+                // Validate UnitIndex bounds
+                foreach (var entry in assignments.Where(a => a.UnitIndex.HasValue))
+                {
+                    var acc = accommodations.FirstOrDefault(a => a.Id == entry.AccommodationId);
+                    if (acc is not null && entry.UnitIndex >= acc.Quantity)
+                        throw new BusinessRuleException(
+                            $"El índice de unidad {entry.UnitIndex} no es válido para el alojamiento " +
+                            $"'{acc.Name}' (máximo: {acc.Quantity - 1}).");
+                }
+
+                // Per-unit capacity validation
                 foreach (var accGroup in assignments.GroupBy(a => a.AccommodationId))
                 {
                     var acc = accommodations.First(a => a.Id == accGroup.Key);
                     if (acc.Capacity is null) continue;
 
-                    if (acc.CountByFamily)
+                    foreach (var unitGroup in accGroup.GroupBy(a => a.UnitIndex))
                     {
-                        if (accGroup.Count() > acc.Capacity)
-                            throw new BusinessRuleException(
-                                $"El alojamiento '{acc.Name}' no tiene capacidad para {accGroup.Count()} familias " +
-                                $"(máximo: {acc.Capacity}).");
-                    }
-                    else
-                    {
-                        var totalPersons = accGroup.Sum(a => regSizes.GetValueOrDefault(a.RegistrationId, 0));
-                        if (totalPersons > acc.Capacity)
-                            throw new BusinessRuleException(
-                                $"El alojamiento '{acc.Name}' no tiene capacidad para {totalPersons} personas " +
-                                $"(máximo: {acc.Capacity}).");
+                        if (acc.CountByFamily)
+                        {
+                            if (unitGroup.Count() > acc.Capacity)
+                                throw new BusinessRuleException(
+                                    $"La unidad '{acc.Name}'{UnitLabel(unitGroup.Key)} no tiene capacidad " +
+                                    $"para {unitGroup.Count()} familias (máximo: {acc.Capacity}).");
+                        }
+                        else
+                        {
+                            var totalPersons = unitGroup.Sum(a => regSizes.GetValueOrDefault(a.RegistrationId, 0));
+                            if (totalPersons > acc.Capacity)
+                                throw new BusinessRuleException(
+                                    $"La unidad '{acc.Name}'{UnitLabel(unitGroup.Key)} no tiene capacidad " +
+                                    $"para {totalPersons} personas (máximo: {acc.Capacity}).");
+                        }
                     }
                 }
             }
@@ -233,6 +258,7 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
                     ProposalId = proposalId,
                     RegistrationId = a.RegistrationId,
                     AccommodationId = a.AccommodationId,
+                    UnitIndex = a.UnitIndex,
                     AssignedByUserId = assignedByUserId,
                     CreatedAt = now,
                     UpdatedAt = now
@@ -268,4 +294,7 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
         proposal.LastModifiedByUserId = userId;
         proposal.UpdatedAt = DateTime.UtcNow;
     }
+
+    private static string UnitLabel(int? unitIndex)
+        => unitIndex.HasValue ? $" #{unitIndex + 1}" : string.Empty;
 }
