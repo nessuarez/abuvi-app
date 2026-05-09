@@ -17,14 +17,14 @@ import { ACCOMMODATION_TYPE_LABELS } from '@/types/accommodation-assignment'
 
 const props = defineProps<{
   state: ProposalAssignmentStateResponse
-  assignmentsMap: Map<string, string>
+  assignmentsMap: Map<string, { accommodationId: string; unitIndex: number | null }>
   selectedRegistrationId: string | null
   saving: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'selectFamily', registrationId: string): void
-  (e: 'assign', registrationId: string, accommodationId: string): void
+  (e: 'assign', registrationId: string, accommodationId: string, unitIndex: number | null): void
   (e: 'unassign', registrationId: string): void
 }>()
 
@@ -67,29 +67,32 @@ const selectedFamily = computed(
 const friendlyFamilyInZoneMap = computed((): Map<string, boolean> => {
   const map = new Map<string, boolean>()
   if (!selectedFamily.value || (selectedFamily.value.friendlyFamilyUnitIds ?? []).length === 0) {
-    props.state.accommodations.forEach((acc) => map.set(acc.id, false))
+    props.state.accommodations.forEach((acc) => map.set(slotKey(acc), false))
     return map
   }
 
-  const zoneToAccIds = new Map<string | null, string[]>()
+  const zoneToSlotKeys = new Map<string | null, string[]>()
   for (const acc of props.state.accommodations) {
     const zoneKey = acc.zoneId ?? null
-    if (!zoneToAccIds.has(zoneKey)) zoneToAccIds.set(zoneKey, [])
-    zoneToAccIds.get(zoneKey)!.push(acc.id)
+    if (!zoneToSlotKeys.has(zoneKey)) zoneToSlotKeys.set(zoneKey, [])
+    zoneToSlotKeys.get(zoneKey)!.push(slotKey(acc))
   }
 
   for (const acc of props.state.accommodations) {
     const zoneKey = acc.zoneId ?? null
-    const sameZoneAccIds = (zoneToAccIds.get(zoneKey) ?? []).filter((id) => id !== acc.id)
+    const currentKey = slotKey(acc)
+    const sameZoneSlotKeys = (zoneToSlotKeys.get(zoneKey) ?? []).filter((k) => k !== currentKey)
 
-    const hasFriendlyInZone = sameZoneAccIds.some((sameZoneAccId) => {
-      const familiesHere = assignedFamiliesFor(sameZoneAccId)
+    const hasFriendlyInZone = sameZoneSlotKeys.some((k) => {
+      const slotAcc = props.state.accommodations.find((a) => slotKey(a) === k)
+      if (!slotAcc) return false
+      const familiesHere = assignedFamiliesFor(slotAcc)
       return familiesHere.some((f) =>
         selectedFamily.value!.friendlyFamilyUnitIds.includes(f.familyUnitId)
       )
     })
 
-    map.set(acc.id, hasFriendlyInZone)
+    map.set(currentKey, hasFriendlyInZone)
   }
   return map
 })
@@ -100,14 +103,21 @@ const accommodationNameMap = computed((): Map<string, string> => {
   return map
 })
 
-function assignedAccommodationName(registrationId: string): string | null {
-  const accId = props.assignmentsMap.get(registrationId)
-  if (!accId) return null
-  return accommodationNameMap.value.get(accId) ?? null
+function slotKey(acc: AssignmentAccommodationResponse): string {
+  return `${acc.id}|${acc.unitIndex ?? ''}`
 }
 
-function assignedFamiliesFor(accId: string): AssignmentFamilyResponse[] {
-  return props.state.families.filter((f) => props.assignmentsMap.get(f.registrationId) === accId)
+function assignedAccommodationName(registrationId: string): string | null {
+  const assignment = props.assignmentsMap.get(registrationId)
+  if (!assignment) return null
+  return accommodationNameMap.value.get(assignment.accommodationId) ?? null
+}
+
+function assignedFamiliesFor(acc: AssignmentAccommodationResponse): AssignmentFamilyResponse[] {
+  return props.state.families.filter((f) => {
+    const a = props.assignmentsMap.get(f.registrationId)
+    return a?.accommodationId === acc.id && a?.unitIndex === acc.unitIndex
+  })
 }
 
 const availableTypeOptions = computed(() => {
@@ -133,7 +143,7 @@ const groupedAccommodations = computed((): Map<string, Map<string, AssignmentAcc
     if (filterType.value && acc.type !== filterType.value) continue
     if (filterZone.value && acc.zoneName !== filterZone.value) continue
     if (filterOnlyAvailable.value) {
-      const families = assignedFamiliesFor(acc.id)
+      const families = assignedFamiliesFor(acc)
       const used = acc.countByFamily
         ? families.length
         : families.reduce((sum, f) => sum + f.memberCount, 0)
@@ -149,9 +159,9 @@ const groupedAccommodations = computed((): Map<string, Map<string, AssignmentAcc
   return byType
 })
 
-function handleAssign(accId: string) {
+function handleAssign(accId: string, unitIndex: number | null) {
   if (props.selectedRegistrationId) {
-    emit('assign', props.selectedRegistrationId, accId)
+    emit('assign', props.selectedRegistrationId, accId, unitIndex)
   }
 }
 </script>
@@ -251,12 +261,12 @@ function handleAssign(accId: string) {
           <div class="grid grid-cols-2 gap-2 lg:grid-cols-3 xl:grid-cols-4">
             <AccommodationSlotCard
               v-for="acc in accommodations"
-              :key="acc.id"
+              :key="`${acc.id}-${acc.unitIndex ?? 'null'}`"
               :accommodation="acc"
-              :assigned-families="assignedFamiliesFor(acc.id)"
+              :assigned-families="assignedFamiliesFor(acc)"
               :selected-family="selectedFamily"
-              :has-friendly-family-in-zone="friendlyFamilyInZoneMap.get(acc.id) ?? false"
-              @assign="handleAssign"
+              :has-friendly-family-in-zone="friendlyFamilyInZoneMap.get(slotKey(acc)) ?? false"
+              @assign="(accId, unitIndex) => handleAssign(accId, unitIndex)"
               @unassign="$emit('unassign', $event)"
             />
           </div>

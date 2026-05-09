@@ -14,7 +14,7 @@ const props = defineProps<{
 }>()
 
 defineEmits<{
-  (e: 'assign', accommodationId: string): void
+  (e: 'assign', accommodationId: string, unitIndex: number | null): void
   (e: 'unassign', registrationId: string): void
 }>()
 
@@ -94,7 +94,7 @@ const signalClass = computed(() => {
   <div
     class="rounded-lg border-2 p-3 transition-all"
     :class="[signalClass, selectedFamily ? 'cursor-pointer hover:shadow-sm' : '']"
-    @click="selectedFamily && $emit('assign', accommodation.id)"
+    @click="selectedFamily && $emit('assign', accommodation.id, accommodation.unitIndex)"
   >
     <div class="flex items-center justify-between">
       <span class="text-sm font-semibold text-gray-800">{{ accommodation.name }}</span>

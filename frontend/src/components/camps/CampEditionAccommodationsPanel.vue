@@ -146,6 +146,13 @@ onMounted(() => fetchAccommodations())
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium text-gray-900">{{ acc.name }}</span>
             <Tag
+              v-if="acc.quantity > 1"
+              :value="`×${acc.quantity}`"
+              severity="secondary"
+              class="text-xs"
+              title="Número de unidades"
+            />
+            <Tag
               :value="ACCOMMODATION_TYPE_LABELS[acc.accommodationType]"
               severity="info"
               class="text-xs"
@@ -155,7 +162,9 @@ onMounted(() => fetchAccommodations())
             <Tag v-if="!acc.isActive" value="Inactivo" severity="secondary" class="text-xs" />
           </div>
           <div class="mt-1 flex flex-wrap gap-4 text-xs text-gray-500">
-            <span v-if="acc.capacity">Capacidad: {{ acc.capacity }}</span>
+            <span v-if="acc.capacity">
+              Capacidad: {{ acc.capacity }}<template v-if="acc.quantity > 1"> × {{ acc.quantity }} = {{ acc.capacity * acc.quantity }}</template>
+            </span>
             <span>Preferencias: {{ acc.currentPreferenceCount }}</span>
             <span>1ª opción: {{ acc.firstChoiceCount }}</span>
             <span v-if="acc.zoneName" class="rounded bg-gray-100 px-2 py-0.5 text-gray-600">

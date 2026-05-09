@@ -16,9 +16,11 @@ export function useAccommodationAssignment(campEditionId: Ref<string>) {
   const saving = ref(false)
   const error = ref<string | null>(null)
 
-  const assignmentsMap = computed((): Map<string, string> => {
-    const map = new Map<string, string>()
-    assignmentState.value?.assignments.forEach((a) => map.set(a.registrationId, a.accommodationId))
+  const assignmentsMap = computed((): Map<string, { accommodationId: string; unitIndex: number | null }> => {
+    const map = new Map<string, { accommodationId: string; unitIndex: number | null }>()
+    assignmentState.value?.assignments.forEach((a) =>
+      map.set(a.registrationId, { accommodationId: a.accommodationId, unitIndex: a.unitIndex })
+    )
     return map
   })
 
@@ -163,14 +165,14 @@ export function useAccommodationAssignment(campEditionId: Ref<string>) {
     }
   }
 
-  async function assignFamily(registrationId: string, accommodationId: string): Promise<void> {
+  async function assignFamily(registrationId: string, accommodationId: string, unitIndex: number | null): Promise<void> {
     if (!selectedProposalId.value) return
     saving.value = true
     error.value = null
     try {
       await api.post(
         `/camps/editions/${campEditionId.value}/assignment-proposals/${selectedProposalId.value}/assignments/${registrationId}`,
-        { accommodationId }
+        { accommodationId, unitIndex }
       )
       await loadAssignmentState()
       selectedRegistrationId.value = null

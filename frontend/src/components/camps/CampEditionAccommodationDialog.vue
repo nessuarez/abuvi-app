@@ -45,6 +45,7 @@ const accommodationType = ref<AccommodationType>('Lodge')
 const description = ref('')
 const capacity = ref<number | null>(null)
 const countByFamily = ref(false)
+const quantity = ref<number>(1)
 const sortOrder = ref(0)
 const isActive = ref(true)
 const validationErrors = ref<Record<string, string>>({})
@@ -61,6 +62,7 @@ watch(
         description.value = props.accommodation.description ?? ''
         capacity.value = props.accommodation.capacity ?? null
         countByFamily.value = props.accommodation.countByFamily
+        quantity.value = props.accommodation.quantity ?? 1
         sortOrder.value = props.accommodation.sortOrder
         isActive.value = props.accommodation.isActive
       } else {
@@ -71,6 +73,7 @@ watch(
         countByFamily.value = props.prefilledType
           ? (['Tent', 'Caravan', 'Motorhome'] as AccommodationType[]).includes(props.prefilledType)
           : false
+        quantity.value = 1
         sortOrder.value = 0
         isActive.value = true
       }
@@ -84,6 +87,7 @@ const validate = (): boolean => {
   else if (name.value.trim().length > 200) errors.name = 'Máximo 200 caracteres'
   if (description.value.length > 1000) errors.description = 'Máximo 1000 caracteres'
   if (capacity.value !== null && capacity.value < 1) errors.capacity = 'Mínimo 1'
+  if (quantity.value < 1) errors.quantity = 'Mínimo 1 unidad'
   validationErrors.value = errors
   return Object.keys(errors).length === 0
 }
@@ -98,6 +102,7 @@ const handleSave = async () => {
       description: description.value.trim() || undefined,
       capacity: capacity.value ?? undefined,
       countByFamily: countByFamily.value,
+      quantity: quantity.value,
       isActive: isActive.value,
       zoneId: props.accommodation.zoneId ?? undefined,
       sortOrder: sortOrder.value
@@ -118,6 +123,7 @@ const handleSave = async () => {
       description: description.value.trim() || undefined,
       capacity: capacity.value ?? undefined,
       countByFamily: countByFamily.value,
+      quantity: quantity.value,
       zoneId: props.prefilledZoneId ?? undefined,
       sortOrder: sortOrder.value
     })
@@ -206,6 +212,29 @@ const handleSave = async () => {
           {{ validationErrors.capacity }}
         </small>
         <small v-else class="text-gray-400">Dejar vacío si no hay límite</small>
+      </div>
+
+      <!-- Quantity -->
+      <div>
+        <label class="mb-1 block text-sm font-medium text-gray-700">Número de unidades</label>
+        <InputNumber
+          v-model="quantity"
+          :min="1"
+          class="w-full"
+          :invalid="!!validationErrors.quantity"
+        />
+        <small v-if="validationErrors.quantity" class="text-red-500">
+          {{ validationErrors.quantity }}
+        </small>
+        <small v-else class="text-gray-400">Cuántas unidades físicas de este tipo hay disponibles en la zona.</small>
+        <Message
+          v-if="quantity > 1 && !countByFamily"
+          severity="info"
+          :closable="false"
+          class="mt-1"
+        >
+          Múltiples unidades por personas: cada unidad aparecerá como una plaza independiente en el tablero.
+        </Message>
       </div>
 
       <!-- Occupancy model -->

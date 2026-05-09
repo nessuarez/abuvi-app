@@ -88,11 +88,14 @@ export interface AssignmentAccommodationResponse {
   zoneName: string | null
   sortOrder: number
   availableFeatures: string[]
+  quantity: number
+  unitIndex: number | null
 }
 
 export interface AssignmentEntry {
   registrationId: string
   accommodationId: string
+  unitIndex: number | null
 }
 
 export interface ProposalAssignmentStateResponse {
