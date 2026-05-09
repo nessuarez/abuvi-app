@@ -41,8 +41,8 @@ const {
   autoAssign
 } = useAccommodationAssignment(campEditionId)
 
-async function handleAssign(registrationId: string, accommodationId: string) {
-  await assignFamily(registrationId, accommodationId)
+async function handleAssign(registrationId: string, accommodationId: string, unitIndex: number | null) {
+  await assignFamily(registrationId, accommodationId, unitIndex)
   if (error.value) {
     toast.add({ severity: 'error', summary: 'Error', detail: error.value, life: 4000 })
     error.value = null

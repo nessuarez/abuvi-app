@@ -42,7 +42,7 @@ const makeState = (overrides = {}) => ({
   proposalId: 'proposal-1',
   families: [makeFamily()],
   accommodations: [],
-  assignments: [],
+  assignments: [] as { registrationId: string; accommodationId: string; unitIndex: number | null }[],
   ...overrides
 })
 
@@ -81,11 +81,26 @@ describe('useAccommodationAssignment', () => {
       const { selectedProposalId, assignFamily } = useAccommodationAssignment(campEditionId)
       selectedProposalId.value = 'proposal-1'
 
-      await assignFamily('reg-1', 'acc-1')
+      await assignFamily('reg-1', 'acc-1', 2)
 
       expect(api.post).toHaveBeenCalledWith(
         '/camps/editions/edition-1/assignment-proposals/proposal-1/assignments/reg-1',
-        { accommodationId: 'acc-1' }
+        { accommodationId: 'acc-1', unitIndex: 2 }
+      )
+    })
+
+    it('assignFamily_withNullUnitIndex_sendsNullInBody', async () => {
+      vi.mocked(api.get).mockResolvedValue({ data: { success: true, data: makeState(), error: null } })
+      vi.mocked(api.post).mockResolvedValueOnce({ data: { success: true, data: null, error: null } })
+
+      const { selectedProposalId, assignFamily } = useAccommodationAssignment(campEditionId)
+      selectedProposalId.value = 'proposal-1'
+
+      await assignFamily('reg-1', 'acc-1', null)
+
+      expect(api.post).toHaveBeenCalledWith(
+        '/camps/editions/edition-1/assignment-proposals/proposal-1/assignments/reg-1',
+        { accommodationId: 'acc-1', unitIndex: null }
       )
     })
 
@@ -97,7 +112,7 @@ describe('useAccommodationAssignment', () => {
       const { selectedProposalId, error, assignFamily } = useAccommodationAssignment(campEditionId)
       selectedProposalId.value = 'proposal-1'
 
-      await assignFamily('reg-1', 'acc-1')
+      await assignFamily('reg-1', 'acc-1', null)
 
       expect(error.value).toBe('Capacidad máxima alcanzada')
     })
@@ -121,7 +136,7 @@ describe('useAccommodationAssignment', () => {
 
   describe('autoAssign', () => {
     it('autoAssign_callsAutoAssignEndpoint_andUpdatesState', async () => {
-      const newState = makeState({ assignments: [{ registrationId: 'reg-1', accommodationId: 'acc-1' }] })
+      const newState = makeState({ assignments: [{ registrationId: 'reg-1', accommodationId: 'acc-1', unitIndex: null }] })
       vi.mocked(api.post).mockResolvedValueOnce({ data: { success: true, data: newState, error: null } })
       vi.mocked(api.get).mockResolvedValueOnce({ data: { success: true, data: [], error: null } })
 
@@ -142,8 +157,8 @@ describe('useAccommodationAssignment', () => {
     it('assignmentsMap_returnsCorrectLookup', async () => {
       const state = makeState({
         assignments: [
-          { registrationId: 'reg-1', accommodationId: 'acc-A' },
-          { registrationId: 'reg-2', accommodationId: 'acc-B' }
+          { registrationId: 'reg-1', accommodationId: 'acc-A', unitIndex: 0 },
+          { registrationId: 'reg-2', accommodationId: 'acc-B', unitIndex: null }
         ]
       })
       vi.mocked(api.get).mockResolvedValue({ data: { success: true, data: state, error: null } })
@@ -152,8 +167,8 @@ describe('useAccommodationAssignment', () => {
       selectedProposalId.value = 'proposal-1'
       await loadAssignmentState()
 
-      expect(assignmentsMap.value.get('reg-1')).toBe('acc-A')
-      expect(assignmentsMap.value.get('reg-2')).toBe('acc-B')
+      expect(assignmentsMap.value.get('reg-1')).toEqual({ accommodationId: 'acc-A', unitIndex: 0 })
+      expect(assignmentsMap.value.get('reg-2')).toEqual({ accommodationId: 'acc-B', unitIndex: null })
       expect(assignmentsMap.value.has('reg-3')).toBe(false)
     })
 
@@ -163,7 +178,7 @@ describe('useAccommodationAssignment', () => {
           makeFamily({ registrationId: 'reg-assigned', familyName: 'Martínez' }),
           makeFamily({ registrationId: 'reg-unassigned', familyName: 'Abad' })
         ],
-        assignments: [{ registrationId: 'reg-assigned', accommodationId: 'acc-1' }]
+        assignments: [{ registrationId: 'reg-assigned', accommodationId: 'acc-1', unitIndex: null }]
       })
       vi.mocked(api.get).mockResolvedValue({ data: { success: true, data: state, error: null } })
 

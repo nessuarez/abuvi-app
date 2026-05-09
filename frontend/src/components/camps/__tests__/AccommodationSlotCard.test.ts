@@ -17,6 +17,8 @@ const makeAccommodation = (overrides: Partial<AssignmentAccommodationResponse> =
   zoneName: null,
   sortOrder: 1,
   availableFeatures: [],
+  quantity: 1,
+  unitIndex: null,
   ...overrides
 })
 
@@ -109,7 +111,7 @@ describe('AccommodationSlotCard', () => {
     })
     await wrapper.find('div').trigger('click')
     expect(wrapper.emitted('assign')).toBeTruthy()
-    expect(wrapper.emitted('assign')![0]).toEqual(['acc-1'])
+    expect(wrapper.emitted('assign')![0]).toEqual(['acc-1', null])
   })
 
   it('emitsUnassign_onChipClose', async () => {
