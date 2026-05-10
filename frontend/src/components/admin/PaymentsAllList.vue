@@ -32,6 +32,7 @@ const {
   getAllPayments,
   updateManualPayment,
   deleteManualPayment,
+  adminRemoveProof,
   loading,
   error
 } = usePayments()
@@ -65,6 +66,11 @@ const saving = ref(false)
 const showDeleteDialog = ref(false)
 const deleteTarget = ref<AdminPaymentResponse | null>(null)
 const deleting = ref(false)
+
+// Delete proof dialog
+const showDeleteProofDialog = ref(false)
+const deleteProofTarget = ref<AdminPaymentResponse | null>(null)
+const deletingProof = ref(false)
 
 // Admin edit payment dialog
 const showAdminEditDialog = ref(false)
@@ -189,6 +195,24 @@ const handleDelete = async () => {
   if (success) {
     showDeleteDialog.value = false
     toast.add({ severity: 'success', summary: 'Pago eliminado', life: 3000 })
+    await fetchPayments()
+  }
+}
+
+// Delete proof
+const openDeleteProofDialog = (payment: AdminPaymentResponse) => {
+  deleteProofTarget.value = payment
+  showDeleteProofDialog.value = true
+}
+
+const handleDeleteProof = async () => {
+  if (!deleteProofTarget.value) return
+  deletingProof.value = true
+  const success = await adminRemoveProof(deleteProofTarget.value.id)
+  deletingProof.value = false
+  if (success) {
+    showDeleteProofDialog.value = false
+    toast.add({ severity: 'success', summary: 'Justificante eliminado', life: 3000 })
     await fetchPayments()
   }
 }
@@ -407,17 +431,29 @@ onMounted(async () => {
           <span v-else class="text-gray-400">&mdash;</span>
         </template>
       </Column>
-      <Column header="Justificante" style="width: 6rem">
+      <Column header="Justificante" style="width: 8rem">
         <template #body="{ data }">
-          <a
-            v-if="data.proofFileUrl"
-            :href="data.proofFileUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-blue-600 hover:underline"
-          >
-            <i :class="isImage(data.proofFileName) ? 'pi pi-image' : 'pi pi-file-pdf'" />
-          </a>
+          <div v-if="data.proofFileUrl" class="flex items-center gap-1">
+            <a
+              :href="data.proofFileUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-blue-600 hover:underline"
+              :aria-label="isImage(data.proofFileName) ? 'Ver imagen del justificante' : 'Ver PDF del justificante'"
+            >
+              <i :class="isImage(data.proofFileName) ? 'pi pi-image' : 'pi pi-file-pdf'" />
+            </a>
+            <Button
+              icon="pi pi-trash"
+              text
+              rounded
+              size="small"
+              severity="danger"
+              aria-label="Eliminar justificante"
+              v-tooltip="'Eliminar justificante'"
+              @click="openDeleteProofDialog(data)"
+            />
+          </div>
           <span v-else class="text-gray-400">&mdash;</span>
         </template>
       </Column>
@@ -540,6 +576,28 @@ onMounted(async () => {
           :loading="saving"
           :disabled="!editAmount || !editDescription"
           @click="handleSaveEdit"
+        />
+      </template>
+    </Dialog>
+
+    <!-- Delete proof dialog -->
+    <Dialog
+      v-model:visible="showDeleteProofDialog"
+      header="Eliminar justificante"
+      :modal="true"
+      :style="{ width: '28rem' }"
+    >
+      <p class="text-sm text-gray-600">
+        ¿Seguro que quieres eliminar el justificante de este pago? Esta acción no se puede deshacer.
+      </p>
+      <template #footer>
+        <Button label="Cancelar" severity="secondary" text @click="showDeleteProofDialog = false" />
+        <Button
+          label="Eliminar"
+          severity="danger"
+          icon="pi pi-trash"
+          :loading="deletingProof"
+          @click="handleDeleteProof"
         />
       </template>
     </Dialog>
