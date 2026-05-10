@@ -286,6 +286,25 @@ export function useRegistrations() {
     }
   }
 
+  const notifyDraft = async (id: string): Promise<boolean> => {
+    loading.value = true
+    error.value = null
+    try {
+      await api.post(`/registrations/${id}/notify-draft`)
+      if (registration.value?.id === id) {
+        registration.value = { ...registration.value, familyNotifiedOfDraft: true }
+      }
+      return true
+    } catch (err: unknown) {
+      error.value =
+        (err as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message ?? 'Error al notificar a la familia'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   const confirmChanges = async (id: string): Promise<RegistrationResponse | null> => {
     loading.value = true
     error.value = null
@@ -378,6 +397,7 @@ export function useRegistrations() {
     cancelRegistration,
     deleteRegistration,
     changeStatus,
+    notifyDraft,
     confirmChanges,
     adminUpdateRegistration,
     adminUpdateMembers

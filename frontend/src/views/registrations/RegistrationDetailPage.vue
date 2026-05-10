@@ -76,7 +76,8 @@ const {
   changeStatus,
   confirmChanges,
   adminUpdateRegistration,
-  adminUpdateMembers
+  adminUpdateMembers,
+  notifyDraft
 } = useRegistrations()
 const { getRegistrationPayments, getPaymentSettings } = usePayments()
 const { getFamilyMembers } = useFamilyUnits()
@@ -90,6 +91,7 @@ const showManualPaymentDialog = ref(false)
 const showStatusChangeDialog = ref(false)
 const changingStatus = ref(false)
 const confirmingChanges = ref(false)
+const notifyingDraft = ref(false)
 const notifyFamilyOnAdminSave = ref(true)
 const draftTargetStatusOnAdminSave = ref<RegistrationStatus | null>(null)
 const installments = ref<PaymentResponse[]>([])
@@ -139,6 +141,13 @@ const isRepresentative = computed(
 const isAdminOrBoard = computed(() => auth.isAdmin || auth.isBoard)
 
 const isDraft = computed(() => registration.value?.status === 'Draft')
+
+const hasUnnotifiedDraftChanges = computed(
+  () =>
+    registration.value?.status === 'Draft' &&
+    registration.value.hasPendingUserAcknowledgement &&
+    !registration.value.familyNotifiedOfDraft
+)
 
 const canUserEdit = computed(() => {
   if (!registration.value) return false
@@ -361,6 +370,28 @@ const handleConfirmChanges = async () => {
       severity: 'error',
       summary: 'Error',
       detail: error.value ?? 'Error al confirmar cambios',
+      life: 5000,
+    })
+  }
+}
+
+const handleNotifyDraft = async () => {
+  if (!registration.value) return
+  notifyingDraft.value = true
+  const success = await notifyDraft(registration.value.id)
+  notifyingDraft.value = false
+  if (success) {
+    toast.add({
+      severity: 'success',
+      summary: 'Notificación enviada',
+      detail: 'La familia ha sido notificada por correo.',
+      life: 4000,
+    })
+  } else {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.value ?? 'No se pudo enviar la notificación.',
       life: 5000,
     })
   }
@@ -592,6 +623,30 @@ onMounted(async () => {
           class="mb-6 rounded-lg border border-orange-200 bg-orange-50 p-4"
           data-testid="confirm-changes-banner"
         >
+          <!-- Unnotified-changes warning (admin/board only) -->
+          <div
+            v-if="isAdminOrBoard && hasUnnotifiedDraftChanges"
+            class="mb-3 flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-3"
+            data-testid="unnotified-draft-banner"
+          >
+            <i class="pi pi-exclamation-triangle mt-0.5 text-amber-600" />
+            <div class="flex-1">
+              <p class="text-sm font-medium text-amber-800">
+                La familia <strong>no ha sido notificada</strong> de los cambios en esta inscripción.
+              </p>
+              <Button
+                label="Notificar a la familia"
+                icon="pi pi-send"
+                severity="warning"
+                size="small"
+                class="mt-2"
+                :loading="notifyingDraft"
+                @click="handleNotifyDraft"
+                data-testid="notify-draft-btn"
+              />
+            </div>
+          </div>
+
           <p class="text-sm font-medium text-orange-800">
             La Junta ha realizado cambios en tu inscripción. Revisa los detalles y confirma que
             todo es correcto.

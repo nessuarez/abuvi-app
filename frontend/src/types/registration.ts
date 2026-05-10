@@ -139,6 +139,7 @@ export interface RegistrationResponse {
   hasPet: boolean
   draftTargetStatus: RegistrationStatus | null
   hasPendingUserAcknowledgement: boolean
+  familyNotifiedOfDraft: boolean
   statusHistory: RegistrationStatusHistoryEntry[]
   // Admin/Board-only fields (absent for Member role)
   accommodationInternalNotes?: string | null
