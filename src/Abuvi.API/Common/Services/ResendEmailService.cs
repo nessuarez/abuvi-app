@@ -720,6 +720,8 @@ public class ResendEmailService : IEmailService
             return;
         }
 
+        var boardNotesHtml = BuildBoardNotesHtml(data.BoardNotes);
+
         var message = new EmailMessage
         {
             From = $"{_fromName} <{_fromEmail}>",
@@ -733,6 +735,7 @@ public class ResendEmailService : IEmailService
                         <h2 style='color: #2563eb;'>¡Hola, {data.RecipientFirstName}!</h2>
                         <p>Nos complace informarte de que hemos recibido el primer plazo de tu inscripción al campamento <strong>{data.CampName}</strong> y hemos verificado que todos los datos son correctos.</p>
                         <p>Tu inscripción está ahora <strong>al corriente</strong>. La junta ha confirmado que todo está en orden.</p>
+                        {boardNotesHtml}
                         <p>Si tienes alguna pregunta, no dudes en ponerte en contacto con nosotros.</p>
                         <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;' />
                         <p style='color: #999; font-size: 12px;'>
@@ -858,6 +861,64 @@ public class ResendEmailService : IEmailService
         }
     }
 
+    public async Task SendRegistrationRevertedToPendingAsync(
+        RegistrationStatusEmailData data,
+        CancellationToken ct)
+    {
+        if (IsTestAddress(data.ToEmail))
+        {
+            _logger.LogDebug("Skipping email to test address {Email}", data.ToEmail);
+            return;
+        }
+
+        var boardNotesHtml = BuildBoardNotesHtml(data.BoardNotes);
+        var registrationUrl = $"{_frontendUrl}/registrations/{data.RegistrationId}";
+
+        var message = new EmailMessage
+        {
+            From = $"{_fromName} <{_fromEmail}>",
+            To = data.ToEmail,
+            Bcc = [_boardBccEmail],
+            Subject = $"Tu inscripción ha sido devuelta a pendiente — {data.CampName}",
+            HtmlBody = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                    <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                        <h2 style='color: #d97706;'>¡Hola, {data.RecipientFirstName}!</h2>
+                        <p>La junta ha devuelto tu inscripción al campamento <strong>{data.CampName}</strong> al estado <strong>pendiente</strong>.</p>
+                        {boardNotesHtml}
+                        <p>Si tienes alguna pregunta, no dudes en ponerte en contacto con nosotros.</p>
+                        <p style='margin: 30px 0;'>
+                            <a href=""{registrationUrl}""
+                               style='background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;'>
+                                Ver mi inscripción
+                            </a>
+                        </p>
+                        <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;' />
+                        <p style='color: #999; font-size: 12px;'>
+                            Saludos cordiales,<br>
+                            El equipo de Abuvi
+                        </p>
+                    </div>
+                </body>
+                </html>
+            "
+        };
+
+        try
+        {
+            var messageId = await _resend.SendEmailAsync(message);
+            _logger.LogInformation(
+                "RevertedToPending notification sent to {Email} for registration {RegistrationId}, Resend ID: {MessageId}",
+                data.ToEmail, data.RegistrationId, messageId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send RevertedToPending notification to {Email}", data.ToEmail);
+            throw new InvalidOperationException($"Failed to send RevertedToPending notification: {ex.Message}", ex);
+        }
+    }
+
     public async Task SendRegistrationFinallyConfirmedAsync(
         RegistrationStatusEmailData data,
         CancellationToken ct)
@@ -867,6 +928,8 @@ public class ResendEmailService : IEmailService
             _logger.LogDebug("Skipping email to test address {Email}", data.ToEmail);
             return;
         }
+
+        var boardNotesHtml = BuildBoardNotesHtml(data.BoardNotes);
 
         var message = new EmailMessage
         {
@@ -881,6 +944,7 @@ public class ResendEmailService : IEmailService
                         <h2 style='color: #2563eb;'>¡Enhorabuena, {data.RecipientFirstName}!</h2>
                         <p>La junta ha dado su aprobación final. Tu inscripción al campamento <strong>{data.CampName}</strong> está <strong>totalmente confirmada</strong>.</p>
                         <p>Estamos muy contentos de contar con vosotros este año. ¡Nos vemos en el campamento!</p>
+                        {boardNotesHtml}
                         <p>Si tienes alguna pregunta, no dudes en ponerte en contacto con nosotros.</p>
                         <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;' />
                         <p style='color: #999; font-size: 12px;'>
@@ -908,7 +972,7 @@ public class ResendEmailService : IEmailService
     }
 
     public async Task SendDraftChangesNotificationAsync(
-        RegistrationStatusEmailData data,
+        DraftChangesEmailData data,
         CancellationToken ct)
     {
         if (IsTestAddress(data.ToEmail))
@@ -918,6 +982,8 @@ public class ResendEmailService : IEmailService
         }
 
         var registrationUrl = $"{_frontendUrl}/registrations/{data.RegistrationId}";
+        var boardNotesHtml = BuildBoardNotesHtml(data.BoardNotes);
+        var changeSummaryHtml = BuildChangeSummaryHtml(data.ChangeSummary);
 
         var message = new EmailMessage
         {
@@ -931,6 +997,8 @@ public class ResendEmailService : IEmailService
                     <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
                         <h2 style='color: #2563eb;'>¡Hola, {data.RecipientFirstName}!</h2>
                         <p>La junta ha realizado cambios en tu inscripción al campamento <strong>{data.CampName}</strong>.</p>
+                        {changeSummaryHtml}
+                        {boardNotesHtml}
                         <p>Por favor, accede a tu área de usuario, revisa los cambios y confírmalos para que tu inscripción quede al día.</p>
                         <p style='margin: 30px 0;'>
                             <a href=""{registrationUrl}""
@@ -1011,6 +1079,31 @@ public class ResendEmailService : IEmailService
             _logger.LogError(ex, "Failed to send DraftChangesConfirmed notification to {Email}", data.ToEmail);
             throw new InvalidOperationException($"Failed to send DraftChangesConfirmed notification: {ex.Message}", ex);
         }
+    }
+
+    private static string BuildBoardNotesHtml(string? notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes)) return "";
+        var encodedNotes = WebUtility.HtmlEncode(notes);
+        return $@"
+            <div style='background-color: #fef9c3; border-left: 4px solid #eab308; padding: 14px 18px; margin: 20px 0; border-radius: 4px;'>
+                <p style='margin: 0 0 6px; font-weight: bold; color: #78350f;'>Nota de la junta:</p>
+                <p style='margin: 0; color: #451a03;'>{encodedNotes}</p>
+            </div>";
+    }
+
+    private static string BuildChangeSummaryHtml(IReadOnlyList<string>? changeSummary)
+    {
+        if (changeSummary is not { Count: > 0 }) return "";
+        var sb = new StringBuilder();
+        sb.Append(@"
+            <div style='background-color: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 14px 18px; margin: 20px 0; border-radius: 4px;'>
+                <p style='margin: 0 0 10px; font-weight: bold; color: #0c4a6e;'>Resumen de cambios:</p>
+                <ul style='margin: 0; padding-left: 20px; color: #0c4a6e;'>");
+        foreach (var item in changeSummary)
+            sb.Append($"<li style='margin: 4px 0;'>{WebUtility.HtmlEncode(item)}</li>");
+        sb.Append("</ul></div>");
+        return sb.ToString();
     }
 
     private static bool IsTestAddress(string email)

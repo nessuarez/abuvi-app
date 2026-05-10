@@ -249,6 +249,140 @@ public class AdminRegistrationServiceTests
         await act.Should().NotThrowAsync();
     }
 
+    [Fact]
+    public async Task AdminUpdateAsync_NotifyUser_True_EmailSuccess_SetsFamilyNotifiedTrue()
+    {
+        // Arrange
+        var registration = BuildRegistration(RegistrationStatus.Confirmed);
+        var edition = CreateEdition();
+
+        Registration? firstCaptured = null;
+        Registration? secondCaptured = null;
+        var captureCount = 0;
+        _repo.GetByIdWithDetailsAsync(RegistrationId, Arg.Any<CancellationToken>())
+            .Returns(registration, BuildRegistration(RegistrationStatus.Draft));
+        _editionsRepo.GetByIdAsync(registration.CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
+        _repo.UpdateAsync(Arg.Do<Registration>(r =>
+        {
+            captureCount++;
+            if (captureCount == 1) firstCaptured = r;
+            else secondCaptured = r;
+        }), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _emailService.SendDraftChangesNotificationAsync(Arg.Any<DraftChangesEmailData>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        var request = new AdminEditRegistrationRequest(
+            Members: null, Extras: null, Preferences: null,
+            Notes: "Test note", SpecialNeeds: null, CampatesPreference: null, HasPet: null,
+            NotifyUser: true);
+
+        // Act
+        await _sut.AdminUpdateAsync(RegistrationId, UserId, request, CancellationToken.None);
+
+        // Assert: two UpdateAsync calls; second sets FamilyNotifiedOfDraft = true
+        captureCount.Should().Be(2);
+        firstCaptured!.FamilyNotifiedOfDraft.Should().BeFalse();
+        secondCaptured!.FamilyNotifiedOfDraft.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AdminUpdateAsync_NotifyUser_True_EmailFailure_FamilyNotifiedRemainsfalse()
+    {
+        // Arrange
+        var registration = BuildRegistration(RegistrationStatus.Confirmed);
+        var edition = CreateEdition();
+
+        Registration? captured = null;
+        _repo.GetByIdWithDetailsAsync(RegistrationId, Arg.Any<CancellationToken>())
+            .Returns(registration, BuildRegistration(RegistrationStatus.Draft));
+        _editionsRepo.GetByIdAsync(registration.CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
+        _repo.UpdateAsync(Arg.Do<Registration>(r => captured = r), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _emailService.SendDraftChangesNotificationAsync(Arg.Any<DraftChangesEmailData>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("SMTP error")));
+
+        var request = new AdminEditRegistrationRequest(
+            Members: null, Extras: null, Preferences: null,
+            Notes: null, SpecialNeeds: null, CampatesPreference: null, HasPet: null,
+            NotifyUser: true);
+
+        // Act (should not throw despite email failure)
+        await _sut.AdminUpdateAsync(RegistrationId, UserId, request, CancellationToken.None);
+
+        // Assert: only one UpdateAsync, FamilyNotifiedOfDraft = false
+        await _repo.Received(1).UpdateAsync(
+            Arg.Is<Registration>(r => !r.FamilyNotifiedOfDraft),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AdminUpdateAsync_NotifyUser_SendsDraftChangesEmailDataWithBoardNotes()
+    {
+        // Arrange
+        var registration = BuildRegistration(RegistrationStatus.Pending);
+        var edition = CreateEdition();
+
+        _repo.GetByIdWithDetailsAsync(RegistrationId, Arg.Any<CancellationToken>())
+            .Returns(registration, BuildRegistration(RegistrationStatus.Draft));
+        _editionsRepo.GetByIdAsync(registration.CampEditionId, Arg.Any<CancellationToken>()).Returns(edition);
+        _repo.UpdateAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _emailService.SendDraftChangesNotificationAsync(Arg.Any<DraftChangesEmailData>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        var request = new AdminEditRegistrationRequest(
+            Members: null, Extras: null, Preferences: null,
+            Notes: "Cuota pendiente", SpecialNeeds: null, CampatesPreference: null, HasPet: null,
+            NotifyUser: true);
+
+        // Act
+        await _sut.AdminUpdateAsync(RegistrationId, UserId, request, CancellationToken.None);
+
+        // Assert
+        await _emailService.Received(1).SendDraftChangesNotificationAsync(
+            Arg.Is<DraftChangesEmailData>(d => d.BoardNotes == "Cuota pendiente"),
+            Arg.Any<CancellationToken>());
+    }
+
+    // ── NotifyDraftAsync ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task NotifyDraftAsync_NonDraftStatus_ThrowsBusinessRuleException()
+    {
+        // Arrange
+        var registration = BuildRegistration(RegistrationStatus.Pending);
+        _repo.GetByIdWithDetailsAsync(RegistrationId, Arg.Any<CancellationToken>()).Returns(registration);
+
+        // Act
+        var act = () => _sut.NotifyDraftAsync(RegistrationId, null, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage("*En revisión*");
+    }
+
+    [Fact]
+    public async Task NotifyDraftAsync_DraftStatus_SendsEmailAndSetsFamilyNotifiedTrue()
+    {
+        // Arrange
+        var registration = BuildRegistration(RegistrationStatus.Draft);
+        _repo.GetByIdWithDetailsAsync(RegistrationId, Arg.Any<CancellationToken>()).Returns(registration);
+        _emailService.SendDraftChangesNotificationAsync(Arg.Any<DraftChangesEmailData>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _repo.UpdateAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _sut.NotifyDraftAsync(RegistrationId, "Motivo junta", CancellationToken.None);
+
+        // Assert
+        await _emailService.Received(1).SendDraftChangesNotificationAsync(
+            Arg.Is<DraftChangesEmailData>(d => d.BoardNotes == "Motivo junta"),
+            Arg.Any<CancellationToken>());
+        await _repo.Received(1).UpdateAsync(
+            Arg.Is<Registration>(r => r.FamilyNotifiedOfDraft),
+            Arg.Any<CancellationToken>());
+        result.FamilyNotifiedOfDraft.Should().BeTrue();
+    }
+
     // ── Sort parameters ──────────────────────────────────────────────────────────
 
     [Fact]
@@ -463,6 +597,8 @@ public class AdminRegistrationServiceTests
         },
         Members = [],
         Extras = [],
-        Payments = []
+        Payments = [],
+        StatusHistory = [],
+        AccommodationPreferences = []
     };
 }

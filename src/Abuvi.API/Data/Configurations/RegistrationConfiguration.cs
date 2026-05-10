@@ -47,6 +47,9 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
         builder.Property(r => r.HasPendingUserAcknowledgement)
             .HasDefaultValue(false).HasColumnName("has_pending_user_acknowledgement");
 
+        builder.Property(r => r.FamilyNotifiedOfDraft)
+            .HasDefaultValue(false).HasColumnName("family_notified_of_draft");
+
         builder.Property(r => r.CreatedAt).IsRequired().HasColumnName("created_at")
             .HasDefaultValueSql("NOW()");
         builder.Property(r => r.UpdatedAt).IsRequired().HasColumnName("updated_at")
