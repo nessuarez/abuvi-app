@@ -21,6 +21,7 @@ public interface IPaymentsService
     Task<AdminPaymentResponse> CreateManualPaymentAsync(Guid registrationId, CreateManualPaymentRequest request, Guid adminUserId, CancellationToken ct);
     Task<AdminPaymentResponse> UpdateManualPaymentAsync(Guid paymentId, UpdateManualPaymentRequest request, Guid adminUserId, CancellationToken ct);
     Task DeleteManualPaymentAsync(Guid paymentId, Guid adminUserId, CancellationToken ct);
+    Task AdminRemoveProofAsync(Guid paymentId, Guid adminUserId, CancellationToken ct);
 
     /// <summary>Creates, updates, or deletes the extras installment (P3) for a registration.</summary>
     Task<PaymentResponse?> SyncExtrasInstallmentAsync(

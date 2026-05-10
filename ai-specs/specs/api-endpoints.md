@@ -3654,6 +3654,21 @@ Delete a manual payment. Only Pending manual payments can be deleted. Admin or B
 - **404 Not Found**: Payment not found
 - **422 Unprocessable Entity**: Payment is not manual, or not in Pending status
 
+### DELETE /api/admin/payments/{paymentId}/proof
+
+Remove a payment proof (justificante) uploaded by any family. Admin or Board role required. No ownership validation — any payment's proof can be deleted regardless of who uploaded it.
+
+**Status transition:** If the payment was in `PendingReview`, it is reset to `Pending`. All other statuses (`Pending`, `Completed`, `Failed`, `Refunded`) are left unchanged.
+
+The proof file is deleted from blob storage before the database fields are cleared. The deletion is logged with admin user ID, file name, payment ID, registration ID, and previous status.
+
+**Response (HTTP 204):** No content.
+
+**Error Responses:**
+- **403 Forbidden**: User is not Admin or Board
+- **404 Not Found**: Payment not found
+- **422 Unprocessable Entity**: Payment has no proof attached
+
 ### PUT /api/admin/payments/{paymentId}
 
 Edit any payment (including auto-generated ones). Admin or Board role required.
