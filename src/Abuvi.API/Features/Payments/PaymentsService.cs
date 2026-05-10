@@ -158,6 +158,34 @@ public class PaymentsService(
         return MapToResponse(payment, allPayments);
     }
 
+    public async Task AdminRemoveProofAsync(Guid paymentId, Guid adminUserId, CancellationToken ct)
+    {
+        var payment = await paymentsRepo.GetByIdAsync(paymentId, ct)
+            ?? throw new NotFoundException("Pago", paymentId);
+
+        if (payment.ProofFileUrl is null)
+            throw new BusinessRuleException("El pago no tiene ningún justificante adjunto");
+
+        var previousStatus = payment.Status;
+        var proofFileName = payment.ProofFileName;
+
+        var key = ExtractBlobKey(payment.ProofFileUrl);
+        await blobStorageService.DeleteManyAsync([key], ct);
+
+        payment.ProofFileUrl = null;
+        payment.ProofFileName = null;
+        payment.ProofUploadedAt = null;
+
+        if (payment.Status == PaymentStatus.PendingReview)
+            payment.Status = PaymentStatus.Pending;
+
+        await paymentsRepo.UpdateAsync(payment, ct);
+
+        logger.LogInformation(
+            "Admin {AdminUserId} removed proof {FileName} from payment {PaymentId} (registration {RegistrationId}). Previous status: {PreviousStatus}",
+            adminUserId, proofFileName, payment.Id, payment.RegistrationId, previousStatus);
+    }
+
     public async Task<PaymentResponse> ConfirmPaymentAsync(
         Guid paymentId, Guid adminUserId, string? notes, CancellationToken ct)
     {

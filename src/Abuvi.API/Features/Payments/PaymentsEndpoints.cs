@@ -103,6 +103,12 @@ public static class PaymentsEndpoints
             .Produces<ApiResponse<object>>()
             .Produces(403).Produces(404).Produces(422);
 
+        admin.MapDelete("/{paymentId:guid}/proof", AdminRemoveProof)
+            .WithName("AdminRemovePaymentProof")
+            .WithSummary("Remove a payment proof (admin)")
+            .Produces(204)
+            .Produces(403).Produces(404).Produces(422);
+
         admin.MapPut("/{paymentId:guid}", AdminEditPayment)
             .WithName("AdminEditPayment")
             .WithSummary("Edit any payment (admin)")
@@ -432,6 +438,35 @@ public static class PaymentsEndpoints
         {
             await service.DeleteManualPaymentAsync(paymentId, userId, ct);
             return TypedResults.Ok(ApiResponse<object>.Ok(null!));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.UnprocessableEntity(
+                ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE"));
+        }
+    }
+
+    private static async Task<IResult> AdminRemoveProof(
+        Guid paymentId,
+        ClaimsPrincipal user,
+        IPaymentsService service,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
+
+        if (userRole is not ("Admin" or "Board"))
+            return TypedResults.Forbid();
+
+        try
+        {
+            await service.AdminRemoveProofAsync(paymentId, userId, ct);
+            return TypedResults.NoContent();
         }
         catch (NotFoundException ex)
         {
