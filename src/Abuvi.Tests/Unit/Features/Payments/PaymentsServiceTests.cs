@@ -467,6 +467,109 @@ public class PaymentsServiceTests
             Arg.Any<AssociationSettings>(), Arg.Any<CancellationToken>());
     }
 
+    // ── AdminRemoveProofAsync ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AdminRemoveProofAsync_WhenPaymentHasProofAndStatusIsPendingReview_ClearsProofAndResetsStatusToPending()
+    {
+        // Arrange
+        var payment = CreatePayment(PaymentStatus.PendingReview);
+        payment.ProofFileUrl = "https://cdn.test.com/payment-proofs/abc/proof.jpg";
+        payment.ProofFileName = "proof.jpg";
+        payment.ProofUploadedAt = DateTime.UtcNow;
+        _paymentsRepo.GetByIdAsync(PaymentId, Arg.Any<CancellationToken>()).Returns(payment);
+
+        // Act
+        await _sut.AdminRemoveProofAsync(PaymentId, AdminUserId, CancellationToken.None);
+
+        // Assert
+        payment.ProofFileUrl.Should().BeNull();
+        payment.ProofFileName.Should().BeNull();
+        payment.ProofUploadedAt.Should().BeNull();
+        payment.Status.Should().Be(PaymentStatus.Pending);
+        await _paymentsRepo.Received(1).UpdateAsync(payment, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AdminRemoveProofAsync_WhenPaymentHasProofAndStatusIsCompleted_ClearsProofAndKeepsStatusCompleted()
+    {
+        // Arrange
+        var payment = CreatePayment(PaymentStatus.Completed);
+        payment.ProofFileUrl = "https://cdn.test.com/payment-proofs/abc/proof.jpg";
+        payment.ProofFileName = "proof.jpg";
+        _paymentsRepo.GetByIdAsync(PaymentId, Arg.Any<CancellationToken>()).Returns(payment);
+
+        // Act
+        await _sut.AdminRemoveProofAsync(PaymentId, AdminUserId, CancellationToken.None);
+
+        // Assert
+        payment.ProofFileUrl.Should().BeNull();
+        payment.Status.Should().Be(PaymentStatus.Completed);
+    }
+
+    [Fact]
+    public async Task AdminRemoveProofAsync_WhenPaymentHasProofAndStatusIsFailed_ClearsProofAndKeepsStatusFailed()
+    {
+        // Arrange
+        var payment = CreatePayment(PaymentStatus.Failed);
+        payment.ProofFileUrl = "https://cdn.test.com/payment-proofs/abc/proof.jpg";
+        payment.ProofFileName = "proof.jpg";
+        _paymentsRepo.GetByIdAsync(PaymentId, Arg.Any<CancellationToken>()).Returns(payment);
+
+        // Act
+        await _sut.AdminRemoveProofAsync(PaymentId, AdminUserId, CancellationToken.None);
+
+        // Assert
+        payment.ProofFileUrl.Should().BeNull();
+        payment.Status.Should().Be(PaymentStatus.Failed);
+    }
+
+    [Fact]
+    public async Task AdminRemoveProofAsync_WhenPaymentHasNoProof_ThrowsBusinessRuleException()
+    {
+        // Arrange
+        var payment = CreatePayment(PaymentStatus.PendingReview);
+        payment.ProofFileUrl = null;
+        _paymentsRepo.GetByIdAsync(PaymentId, Arg.Any<CancellationToken>()).Returns(payment);
+
+        // Act
+        var act = () => _sut.AdminRemoveProofAsync(PaymentId, AdminUserId, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage("El pago no tiene ningún justificante adjunto");
+    }
+
+    [Fact]
+    public async Task AdminRemoveProofAsync_WhenPaymentDoesNotExist_ThrowsNotFoundException()
+    {
+        // Arrange
+        _paymentsRepo.GetByIdAsync(PaymentId, Arg.Any<CancellationToken>()).ReturnsNull();
+
+        // Act
+        var act = () => _sut.AdminRemoveProofAsync(PaymentId, AdminUserId, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task AdminRemoveProofAsync_WhenProofRemoved_DeletesBlobFromStorage()
+    {
+        // Arrange
+        var payment = CreatePayment(PaymentStatus.PendingReview);
+        payment.ProofFileUrl = "https://cdn.test.com/payment-proofs/abc/proof.jpg";
+        payment.ProofFileName = "proof.jpg";
+        _paymentsRepo.GetByIdAsync(PaymentId, Arg.Any<CancellationToken>()).Returns(payment);
+
+        // Act
+        await _sut.AdminRemoveProofAsync(PaymentId, AdminUserId, CancellationToken.None);
+
+        // Assert
+        await _blobStorageService.Received(1).DeleteManyAsync(
+            Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static Registration CreateRegistration(decimal totalAmount) => new()
