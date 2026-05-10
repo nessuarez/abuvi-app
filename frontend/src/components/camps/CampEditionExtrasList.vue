@@ -34,7 +34,7 @@ const {
 
 const canManage = computed(() => auth.user?.role === 'Admin' || auth.user?.role === 'Board')
 const canAdd = computed(
-  () => canManage.value && props.editionStatus !== 'Completed' && props.editionStatus !== 'Closed'
+  () => canManage.value && props.editionStatus !== 'Completed'
 )
 
 const showDialog = ref(false)
