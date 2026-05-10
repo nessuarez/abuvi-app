@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
@@ -45,6 +45,18 @@ const VALID_TRANSITIONS: Partial<Record<RegistrationStatus, RegistrationStatus[]
   Confirmed:     ['Pending', 'PartiallyPaid'],
   Draft:         ['Pending', 'PartiallyPaid', 'FullyPaid', 'Confirmed'],
 }
+
+// Mirrors the backend ChangeStatusAsync switch arms that send an email
+const STATUSES_WITH_EMAIL: RegistrationStatus[] = ['PartiallyPaid', 'Confirmed', 'Pending']
+
+const notifyEnabled = computed(
+  () => selectedStatus.value !== null && STATUSES_WITH_EMAIL.includes(selectedStatus.value)
+)
+
+watch(notifyEnabled, (enabled) => {
+  if (!enabled) notifyUser.value = false
+  else notifyUser.value = true
+})
 
 const validTargetStatuses = computed(() =>
   (VALID_TRANSITIONS[props.currentStatus] ?? []).map((s) => ({
@@ -116,11 +128,23 @@ const handleClose = () => {
           data-testid="status-notes"
         />
       </div>
-      <div class="flex items-center gap-2">
-        <ToggleSwitch v-model="notifyUser" input-id="notify-status-toggle" />
-        <label for="notify-status-toggle" class="cursor-pointer text-sm text-gray-700">
-          Notificar a la familia
-        </label>
+      <div class="space-y-1">
+        <div class="flex items-center gap-2">
+          <ToggleSwitch
+            v-model="notifyUser"
+            input-id="notify-status-toggle"
+            :disabled="!notifyEnabled"
+          />
+          <label
+            for="notify-status-toggle"
+            :class="['text-sm', notifyEnabled ? 'cursor-pointer text-gray-700' : 'cursor-not-allowed text-gray-400']"
+          >
+            Notificar a la familia
+          </label>
+        </div>
+        <p v-if="selectedStatus && !notifyEnabled" class="text-xs text-gray-400">
+          Este cambio de estado no envía notificación por correo.
+        </p>
       </div>
     </div>
     <template #footer>

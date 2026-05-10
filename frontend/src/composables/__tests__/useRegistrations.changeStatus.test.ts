@@ -21,6 +21,7 @@ const mockRegistration = {
   status: 'PartiallyPaid',
   draftTargetStatus: null,
   hasPendingUserAcknowledgement: false,
+  familyNotifiedOfDraft: false,
   statusHistory: [],
   notes: null,
   pricing: {

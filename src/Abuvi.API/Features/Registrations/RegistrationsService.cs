@@ -784,11 +784,21 @@ public class RegistrationsService(
         var previousStatus = registration.Status;
         var oldBaseTotalAmount = registration.BaseTotalAmount;
 
+        // Capture old state for change summary BEFORE any mutations
+        var oldMemberNames = registration.Members.ToDictionary(
+            m => m.FamilyMemberId,
+            m => $"{m.FamilyMember.FirstName} {m.FamilyMember.LastName}");
+        var oldExtrasInfo = registration.Extras.ToDictionary(
+            e => e.CampEditionExtraId,
+            e => (Name: e.CampEditionExtra.Name, Quantity: e.Quantity));
+        var changeSummary = new List<string>();
+
         // Update members if provided
         if (request.Members != null)
         {
             await registrationsRepo.DeleteMembersByRegistrationIdAsync(registrationId, ct);
 
+            var newMemberIdToName = new Dictionary<Guid, string>();
             var newMembers = new List<RegistrationMember>();
             foreach (var memberReq in request.Members)
             {
@@ -807,6 +817,9 @@ public class RegistrationsService(
                 var age = pricingService.CalculateAge(familyMember.DateOfBirth, edition.StartDate);
                 var category = await pricingService.GetAgeCategoryAsync(age, edition, ct);
                 var price = pricingService.GetPriceForCategory(category, memberReq.AttendancePeriod, edition);
+
+                newMemberIdToName[memberReq.MemberId] =
+                    $"{familyMember.FirstName} {familyMember.LastName}";
 
                 newMembers.Add(new RegistrationMember
                 {
@@ -828,6 +841,13 @@ public class RegistrationsService(
             await registrationsRepo.AddMembersAsync(newMembers, ct);
             registration.BaseTotalAmount = newMembers.Sum(m => m.IndividualAmount);
             registration.TotalAmount = registration.BaseTotalAmount + registration.ExtrasAmount;
+
+            foreach (var (id, name) in oldMemberNames)
+                if (!newMemberIdToName.ContainsKey(id))
+                    changeSummary.Add($"Eliminada persona: {name}");
+            foreach (var (id, name) in newMemberIdToName)
+                if (!oldMemberNames.ContainsKey(id))
+                    changeSummary.Add($"Añadida persona: {name}");
         }
 
         // Update extras if provided
@@ -836,6 +856,7 @@ public class RegistrationsService(
             await extrasRepo.DeleteByRegistrationIdAsync(registrationId, ct);
 
             var campDurationDays = (edition.EndDate - edition.StartDate).Days;
+            var newExtraIdToInfo = new Dictionary<Guid, (string Name, int Quantity)>();
             var newExtras = new List<RegistrationExtra>();
             foreach (var extraReq in request.Extras)
             {
@@ -847,6 +868,8 @@ public class RegistrationsService(
                         $"El extra '{campExtra.Name}' no pertenece a esta edición del campamento");
 
                 var totalAmount = pricingService.CalculateExtraAmount(campExtra, extraReq.Quantity, campDurationDays);
+
+                newExtraIdToInfo[extraReq.CampEditionExtraId] = (campExtra.Name, extraReq.Quantity);
 
                 newExtras.Add(new RegistrationExtra
                 {
@@ -864,6 +887,17 @@ public class RegistrationsService(
             await extrasRepo.AddRangeAsync(newExtras, ct);
             registration.ExtrasAmount = newExtras.Sum(e => e.TotalAmount);
             registration.TotalAmount = registration.BaseTotalAmount + registration.ExtrasAmount;
+
+            foreach (var (id, (name, qty)) in oldExtrasInfo)
+            {
+                if (!newExtraIdToInfo.TryGetValue(id, out var newInfo))
+                    changeSummary.Add($"Eliminado cargo extra: {name}");
+                else if (newInfo.Quantity != qty)
+                    changeSummary.Add($"Cantidad modificada para {name}: {qty} → {newInfo.Quantity}");
+            }
+            foreach (var (id, (name, _)) in newExtraIdToInfo)
+                if (!oldExtrasInfo.ContainsKey(id))
+                    changeSummary.Add($"Añadido cargo extra: {name}");
         }
 
         // Update accommodation preferences if provided
@@ -895,6 +929,7 @@ public class RegistrationsService(
         registration.DraftTargetStatus = request.DraftTargetStatus ?? previousStatus;
         registration.HasPendingUserAcknowledgement = true;
         registration.AdminModifiedAt = DateTime.UtcNow;
+        registration.FamilyNotifiedOfDraft = false;
 
         await registrationsRepo.UpdateAsync(registration, ct);
 
@@ -928,13 +963,19 @@ public class RegistrationsService(
         {
             try
             {
-                await emailService.SendDraftChangesNotificationAsync(new RegistrationStatusEmailData
+                await emailService.SendDraftChangesNotificationAsync(new DraftChangesEmailData
                 {
                     ToEmail = updated.RegisteredByUser.Email,
                     RecipientFirstName = updated.RegisteredByUser.FirstName,
                     CampName = updated.CampEdition.Camp.Name,
-                    RegistrationId = updated.Id
+                    RegistrationId = updated.Id,
+                    BoardNotes = request.Notes,
+                    ChangeSummary = changeSummary.Count > 0 ? changeSummary : null
                 }, ct);
+
+                registration.FamilyNotifiedOfDraft = true;
+                await registrationsRepo.UpdateAsync(registration, ct);
+                updated.FamilyNotifiedOfDraft = true;
             }
             catch (Exception ex)
             {
@@ -1167,11 +1208,14 @@ public class RegistrationsService(
                     ToEmail = registration.RegisteredByUser.Email,
                     RecipientFirstName = registration.RegisteredByUser.FirstName,
                     CampName = registration.CampEdition.Camp.Name,
-                    RegistrationId = registration.Id
+                    RegistrationId = registration.Id,
+                    BoardNotes = request.Notes
                 };
 
                 Task emailTask = request.NewStatus switch
                 {
+                    RegistrationStatus.Pending =>
+                        emailService.SendRegistrationRevertedToPendingAsync(emailData, ct),
                     RegistrationStatus.PartiallyPaid =>
                         emailService.SendRegistrationPartiallyPaidAsync(emailData, ct),
                     RegistrationStatus.Confirmed =>
@@ -1371,6 +1415,39 @@ public class RegistrationsService(
             .Sum(p => p.Amount);
 
         return updated.ToResponse(amountPaid);
+    }
+
+    public async Task<RegistrationResponse> NotifyDraftAsync(
+        Guid registrationId, string? boardNotes, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        if (registration.Status != RegistrationStatus.Draft)
+            throw new BusinessRuleException(
+                "Solo se puede notificar de cambios a inscripciones en estado En revisión.");
+
+        await emailService.SendDraftChangesNotificationAsync(new DraftChangesEmailData
+        {
+            ToEmail = registration.RegisteredByUser.Email,
+            RecipientFirstName = registration.RegisteredByUser.FirstName,
+            CampName = registration.CampEdition.Camp.Name,
+            RegistrationId = registration.Id,
+            BoardNotes = boardNotes
+        }, ct);
+
+        registration.FamilyNotifiedOfDraft = true;
+        await registrationsRepo.UpdateAsync(registration, ct);
+
+        logger.LogInformation(
+            "Draft notification sent for registration {RegistrationId}", registrationId);
+
+        var amountPaid = registration.Payments
+            .Where(p => p.Status == PaymentStatus.Completed)
+            .Sum(p => p.Amount);
+
+        registration.FamilyNotifiedOfDraft = true;
+        return registration.ToResponse(amountPaid);
     }
 
     private async Task LogStatusHistoryAsync(
