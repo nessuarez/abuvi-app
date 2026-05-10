@@ -20,6 +20,9 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     public DbSet<CampEdition> CampEditions => Set<CampEdition>();
     public DbSet<CampEditionExtra> CampEditionExtras => Set<CampEditionExtra>();
     public DbSet<CampEditionAccommodation> CampEditionAccommodations => Set<CampEditionAccommodation>();
+    public DbSet<AccommodationZone> AccommodationZones => Set<AccommodationZone>();
+    public DbSet<AccommodationAssignmentProposal> AccommodationAssignmentProposals => Set<AccommodationAssignmentProposal>();
+    public DbSet<AccommodationAssignment> AccommodationAssignments => Set<AccommodationAssignment>();
     public DbSet<AssociationSettings> AssociationSettings => Set<AssociationSettings>();
     public DbSet<CampPhoto> CampPhotos => Set<CampPhoto>();
     public DbSet<CampObservation> CampObservations => Set<CampObservation>();
@@ -34,8 +37,14 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     public DbSet<RegistrationExtra> RegistrationExtras => Set<RegistrationExtra>();
     public DbSet<RegistrationAccommodationPreference> RegistrationAccommodationPreferences => Set<RegistrationAccommodationPreference>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<RegistrationStatusHistory> RegistrationStatusHistories => Set<RegistrationStatusHistory>();
+    public DbSet<RegistrationAccommodationNeed> RegistrationAccommodationNeeds => Set<RegistrationAccommodationNeed>();
+    public DbSet<RegistrationFriendLink> RegistrationFriendLinks => Set<RegistrationFriendLink>();
     public DbSet<Memory> Memories => Set<Memory>();
     public DbSet<MediaItem> MediaItems => Set<MediaItem>();
+    public DbSet<AccommodationFeature> AccommodationFeatures => Set<AccommodationFeature>();
+    public DbSet<AccommodationFeatureAssignment> AccommodationFeatureAssignments => Set<AccommodationFeatureAssignment>();
+    public DbSet<ZoneFeatureAssignment> ZoneFeatureAssignments => Set<ZoneFeatureAssignment>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -48,6 +57,10 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     {
         // Apply all entity configurations from assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AbuviDbContext).Assembly);
+
+        // Soft-delete filter: exclude soft-deleted family members from all queries
+        modelBuilder.Entity<FamilyMember>()
+            .HasQueryFilter(m => m.DeletedAt == null);
     }
 
     private sealed class UtcDateTimeConverter()

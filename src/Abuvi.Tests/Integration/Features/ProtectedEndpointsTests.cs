@@ -356,10 +356,9 @@ public class ProtectedEndpointsTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task UpdateUser_WithValidToken_Returns200()
+    public async Task UpdateUser_AdminToken_CanUpdateAnyUser_Returns200()
     {
         // Arrange
-        var memberToken = await GetMemberTokenAsync();
         var adminToken = await GetAdminTokenAsync();
         var userId = await CreateTestUserAsync(adminToken);
 
@@ -369,7 +368,7 @@ public class ProtectedEndpointsTests : IClassFixture<WebApplicationFactory<Progr
             Phone: "+1234567890",
             IsActive: true
         );
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", memberToken);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
 
         // Act
         var response = await _client.PutAsJsonAsync($"/api/users/{userId}", request);
@@ -381,6 +380,29 @@ public class ProtectedEndpointsTests : IClassFixture<WebApplicationFactory<Progr
         result!.Success.Should().BeTrue();
         result.Data.Should().NotBeNull();
         result.Data!.FirstName.Should().Be("Updated");
+    }
+
+    [Fact]
+    public async Task UpdateUser_MemberToken_CannotUpdateOtherUser_Returns403()
+    {
+        // Arrange
+        var memberToken = await GetMemberTokenAsync();
+        var adminToken = await GetAdminTokenAsync();
+        var otherUserId = await CreateTestUserAsync(adminToken);
+
+        var request = new UpdateUserRequest(
+            FirstName: "Updated",
+            LastName: "Name",
+            Phone: null,
+            IsActive: true
+        );
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", memberToken);
+
+        // Act
+        var response = await _client.PutAsJsonAsync($"/api/users/{otherUserId}", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     #endregion

@@ -31,12 +31,21 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
             .HasMaxLength(2000).HasColumnName("special_needs");
         builder.Property(r => r.CampatesPreference)
             .HasMaxLength(500).HasColumnName("campates_preference");
+        builder.Property(r => r.AccommodationInternalNotes)
+            .HasMaxLength(4000).HasColumnName("accommodation_internal_notes");
         builder.Property(r => r.HasPet)
             .HasDefaultValue(false).HasColumnName("has_pet");
 
         builder.Property(r => r.AdminModifiedAt)
             .HasColumnName("admin_modified_at")
             .IsRequired(false);
+
+        builder.Property(r => r.DraftTargetStatus)
+            .HasConversion<string>().HasMaxLength(30).HasColumnName("draft_target_status")
+            .IsRequired(false);
+
+        builder.Property(r => r.HasPendingUserAcknowledgement)
+            .HasDefaultValue(false).HasColumnName("has_pending_user_acknowledgement");
 
         builder.Property(r => r.CreatedAt).IsRequired().HasColumnName("created_at")
             .HasDefaultValueSql("NOW()");

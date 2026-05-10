@@ -34,7 +34,6 @@ public class UserImporter(AbuviDbContext db)
                     FirstName = CsvHelper.Require(r, "firstName"),
                     LastName = CsvHelper.Require(r, "lastName"),
                     Phone = CsvHelper.Optional(r, "phone"),
-                    DocumentNumber = CsvHelper.Optional(r, "documentNumber"),
                     Role = Enum.Parse<UserRole>(
                         CsvHelper.Require(r, "role"), ignoreCase: true),
                     IsActive = true,

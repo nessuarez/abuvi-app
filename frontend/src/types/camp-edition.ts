@@ -1,6 +1,7 @@
 // Camp edition types matching backend DTOs
 
 import type { Camp, AccommodationCapacity, CampPlacesPhoto } from './camp'
+import type { AccommodationFeature } from './accommodation-feature'
 
 export interface CampEdition {
   id: string
@@ -152,10 +153,15 @@ export interface CampEditionAccommodation {
   accommodationType: AccommodationType
   description?: string
   capacity?: number
+  countByFamily: boolean
+  quantity: number
   isActive: boolean
   sortOrder: number
   currentPreferenceCount: number
   firstChoiceCount: number
+  zoneId?: string | null
+  zoneName?: string | null
+  features: AccommodationFeature[]
   createdAt: string
   updatedAt: string
 }
@@ -165,6 +171,9 @@ export interface CreateCampEditionAccommodationRequest {
   accommodationType: AccommodationType
   description?: string
   capacity?: number
+  countByFamily?: boolean
+  quantity?: number
+  zoneId?: string | null
   sortOrder?: number
 }
 
@@ -173,7 +182,10 @@ export interface UpdateCampEditionAccommodationRequest {
   accommodationType: AccommodationType
   description?: string
   capacity?: number
+  countByFamily: boolean
+  quantity: number
   isActive: boolean
+  zoneId?: string | null
   sortOrder: number
 }
 

@@ -41,6 +41,13 @@ public static class FamilyUnitsEndpoints
             .Produces(404)
             .Produces(422);
 
+        adminGroup.MapDelete("/{familyUnitId:guid}/members/{memberId:guid}/pii", AnonymiseFamilyMemberPii)
+            .WithName("AnonymiseFamilyMemberPii")
+            .WithSummary("GDPR right-to-erasure: anonymise all PII of a family member (Admin/Board only)")
+            .Produces(204)
+            .Produces(403)
+            .Produces(404);
+
         adminGroup.MapPatch("/{id:guid}/status", UpdateFamilyUnitStatus)
             .WithName("UpdateFamilyUnitStatus")
             .WithSummary("Toggle family unit active status (Admin/Board only)")
@@ -258,12 +265,14 @@ public static class FamilyUnitsEndpoints
     {
         var userId = user.GetUserId()
             ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
 
         try
         {
-            // Check authorization
             var isRepresentative = await service.IsRepresentativeAsync(id, userId, ct);
-            if (!isRepresentative)
+            var isAdminOrBoard = userRole == "Admin" || userRole == "Board";
+
+            if (!isRepresentative && !isAdminOrBoard)
             {
                 return TypedResults.Forbid();
             }
@@ -413,12 +422,14 @@ public static class FamilyUnitsEndpoints
     {
         var userId = user.GetUserId()
             ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
 
         try
         {
-            // Check authorization
             var isRepresentative = await service.IsRepresentativeAsync(familyUnitId, userId, ct);
-            if (!isRepresentative)
+            var isAdminOrBoard = userRole == "Admin" || userRole == "Board";
+
+            if (!isRepresentative && !isAdminOrBoard)
             {
                 return TypedResults.Forbid();
             }
@@ -538,6 +549,23 @@ public static class FamilyUnitsEndpoints
         {
             return TypedResults.Conflict(
                 ApiResponse<object>.Fail(ex.Message, "CANNOT_DELETE_MEMBER"));
+        }
+    }
+
+    private static async Task<IResult> AnonymiseFamilyMemberPii(
+        Guid familyUnitId,
+        Guid memberId,
+        FamilyUnitsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            await service.AnonymiseFamilyMemberAsync(familyUnitId, memberId, ct);
+            return TypedResults.NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
         }
     }
 

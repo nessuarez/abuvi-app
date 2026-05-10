@@ -1,7 +1,25 @@
 import type { AccommodationType } from './camp-edition'
 
 // Registration status and related enums
-export type RegistrationStatus = 'Pending' | 'Confirmed' | 'Cancelled' | 'Draft'
+export type RegistrationStatus =
+  | 'Pending'
+  | 'PartiallyPaid'
+  | 'FullyPaid'
+  | 'Confirmed'
+  | 'Draft'
+  | 'Cancelled'
+
+export type StatusChangeTrigger = 'Automatic' | 'AdminAction' | 'UserConfirmed'
+
+export interface RegistrationStatusHistoryEntry {
+  id: string
+  previousStatus: RegistrationStatus
+  newStatus: RegistrationStatus
+  changedAt: string
+  changedByUserName: string | null
+  trigger: StatusChangeTrigger
+  notes: string | null
+}
 export type AgeCategory = 'Baby' | 'Child' | 'Adult'
 export type PaymentMethod = 'Card' | 'Transfer' | 'Cash'
 export type PaymentStatus = 'Pending' | 'PendingReview' | 'Completed' | 'Failed' | 'Refunded'
@@ -100,6 +118,7 @@ export interface RegistrationListItem {
   amountPaid: number
   amountRemaining: number
   createdAt: string
+  hasPendingUserAcknowledgement: boolean
 }
 
 // Detail endpoint response (full, used by GET /api/registrations/:id)
@@ -118,6 +137,13 @@ export interface RegistrationResponse {
   specialNeeds: string | null
   campatesPreference: string | null
   hasPet: boolean
+  draftTargetStatus: RegistrationStatus | null
+  hasPendingUserAcknowledgement: boolean
+  statusHistory: RegistrationStatusHistoryEntry[]
+  // Admin/Board-only fields (absent for Member role)
+  accommodationInternalNotes?: string | null
+  accommodationNeeds?: AccommodationNeedResponse[]
+  friendLinks?: FriendLinkResponse[]
 }
 
 // Admin registration list types
@@ -285,4 +311,65 @@ export interface AdminRegistrationFilters {
   ageCategories?: AgeCategory[]
   sortBy?: 'createdAt' | 'familyName'
   sortDirection?: 'asc' | 'desc'
+}
+
+export interface ChangeRegistrationStatusRequest {
+  newStatus: RegistrationStatus
+  notes: string
+  notifyUser: boolean
+}
+
+export interface AdminUpdateRegistrationRequest {
+  members?: MemberAttendanceRequest[]
+  extras?: ExtraSelectionRequest[]
+  specialNeeds?: string | null
+  campatesPreference?: string | null
+  hasPet?: boolean
+  notifyUser: boolean
+  draftTargetStatus: RegistrationStatus | null
+}
+
+// === Accommodation Needs Tagging (Admin/Board) ===
+
+export interface AccommodationNeedResponse {
+  featureId: string
+  featureName: string
+  featureCategory: string
+  taggedByUserId: string | null
+  createdAt: string
+}
+
+export interface FriendLinkResponse {
+  linkedRegistrationId: string
+  linkedFamilyName: string
+  createdByUserId: string | null
+  createdAt: string
+}
+
+export interface UpdateAccommodationNeedsRequest {
+  featureIds: string[]
+}
+
+export interface UpdateAccommodationNotesRequest {
+  accommodationInternalNotes: string | null
+}
+
+export interface UpdateFriendLinksRequest {
+  linkedRegistrationIds: string[]
+}
+
+export interface AccommodationNeedsResponse {
+  registrationId: string
+  needs: AccommodationNeedResponse[]
+}
+
+export interface AccommodationNotesResponse {
+  registrationId: string
+  accommodationInternalNotes: string | null
+  updatedAt: string
+}
+
+export interface FriendLinksResponse {
+  registrationId: string
+  friendLinks: FriendLinkResponse[]
 }

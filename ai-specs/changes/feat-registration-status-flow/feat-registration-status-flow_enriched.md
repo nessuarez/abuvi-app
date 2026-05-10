@@ -1,26 +1,19 @@
-# Enhanced Registration Status Flow with Installment-Based Transitions
+# Registration Status Flow — Complete Lifecycle & Notifications
 
 ## Summary
 
-Currently, a camp registration stays in `Pending` status from the moment it is created until ALL payment installments are confirmed, at which point it jumps to `Confirmed`. This creates confusion for families who may have already paid their first installment but still see "Pending" for months.
+This feature redesigns the registration status lifecycle to give the board full control over status transitions, ensures families are notified at every meaningful change, and introduces a complete audit trail of all status transitions for timeline display.
 
-This feature introduces intermediate registration statuses tied to installment confirmation, along with transactional email notifications on each status transition.
+The key insight is that **status changes are a board/admin responsibility**, not automatic side-effects of payment confirmation. The only exception is the automatic transition to `FullyPaid` when all payment installments are confirmed.
 
-## Current State
+---
 
-### Registration Status Enum (`RegistrationsModels.cs:113`)
+## Current State (Baseline)
+
+### Status Enum (`RegistrationsModels.cs:113`)
 
 ```csharp
 public enum RegistrationStatus { Pending, Confirmed, Cancelled, Draft }
-```
-
-### Current Flow
-
-```
-[User creates registration] → Pending
-[Admin confirms ALL payments] → Confirmed
-[User/Admin cancels] → Cancelled
-[Admin edits registration] → Draft
 ```
 
 ### Current Payment Confirmation Logic (`PaymentsService.cs:159-195`)
@@ -33,20 +26,10 @@ if (allPayments.All(p => p.Status == PaymentStatus.Completed))
 }
 ```
 
-### Payment Installments Structure
+No email is sent on payment confirmation today. The only transactional emails that exist are:
 
-- **2 base installments** (always created, hardcoded split: P1 = ceil(total/2), P2 = total - P1)
-- **Optional P3** for extras (created by `SyncExtrasInstallmentAsync`)
-- **Manual payments** can add additional installments
-
-### Existing Email Infrastructure
-
-- Provider: **Resend** (`ResendEmailService.cs`)
-- Existing relevant methods:
-  - `SendCampRegistrationConfirmationAsync()` — sent on registration creation
-  - `SendCampRegistrationCancellationAsync()` — sent on cancellation
-  - `SendPaymentReceiptAsync()` — sent on payment (takes amount + reference)
-- Data model: `CampRegistrationEmailData` with full registration details
+- `SendCampRegistrationConfirmationAsync` — sent when registration is created
+- `SendCampRegistrationCancellationAsync` — sent when registration is cancelled
 
 ---
 
@@ -57,239 +40,433 @@ if (allPayments.All(p => p.Status == PaymentStatus.Completed))
 ```csharp
 public enum RegistrationStatus
 {
-    Pending,           // Registration created, no payments confirmed yet
-    PartiallyPaid,     // At least one installment confirmed, but not all
-    Confirmed,         // All installments confirmed (registration fully paid)
-    Cancelled,         // Registration cancelled
-    Draft              // Admin has edited the registration (under review)
+    Pending,        // Registration created, awaiting board validation
+    PartiallyPaid,  // Board has explicitly validated: P1 received + registration data correct
+    FullyPaid,      // All payments confirmed (automatic); board final review pending
+    Confirmed,      // Board gave explicit final approval; registration fully confirmed
+    Draft,          // Board is making changes; user must acknowledge
+    Cancelled       // Registration cancelled
 }
 ```
 
-**Design decision: `PartiallyPaid` instead of `InstallmentOnePaid` / `InstallmentTwoPaid`**
+**Design rationale — why `FullyPaid` instead of making `Confirmed` automatic:**
 
-Rationale:
-
-- The system supports 2, 3, or more installments (base + extras + manual). Hardcoding installment numbers in the enum is fragile.
-- The frontend can derive which installments are paid by inspecting the `payments` array (already returned in responses).
-- `PartiallyPaid` is semantically clear: "your registration is confirmed and we've received at least one payment."
-
-### 2. Updated Payment Confirmation Logic
-
-**File:** `PaymentsService.cs` — `ConfirmPaymentAsync` method
-
-```csharp
-// Replace current logic (lines 179-192) with:
-var allPayments = await paymentsRepo.GetByRegistrationIdAsync(
-    payment.RegistrationId, ct);
-
-var completedCount = allPayments.Count(p => p.Status == PaymentStatus.Completed);
-var totalCount = allPayments.Count;
-var registration = payment.Registration;
-
-if (completedCount == totalCount)
-{
-    // All installments paid → fully confirmed
-    registration.Status = RegistrationStatus.Confirmed;
-    await registrationsRepo.UpdateAsync(registration, ct);
-
-    // Send full confirmation email
-    await SendRegistrationConfirmedEmailAsync(registration, ct);
-}
-else if (completedCount > 0 && registration.Status == RegistrationStatus.Pending)
-{
-    // First payment confirmed → partially paid
-    registration.Status = RegistrationStatus.PartiallyPaid;
-    await registrationsRepo.UpdateAsync(registration, ct);
-
-    // Send installment confirmation email
-    await SendInstallmentConfirmedEmailAsync(
-        registration, payment.InstallmentNumber, completedCount, totalCount, ct);
-}
-else if (completedCount > 0)
-{
-    // Additional payment confirmed but not all → still partially paid, send email
-    await SendInstallmentConfirmedEmailAsync(
-        registration, payment.InstallmentNumber, completedCount, totalCount, ct);
-}
-```
-
-### 3. New Email Methods
-
-**File:** `IEmailService.cs` — Add two new methods:
-
-```csharp
-/// <summary>
-/// Sends an email when an installment payment is confirmed (not all paid yet)
-/// </summary>
-Task SendInstallmentConfirmedEmailAsync(
-    InstallmentConfirmedEmailData data,
-    CancellationToken ct);
-
-/// <summary>
-/// Sends an email when all installments are paid and registration is fully confirmed
-/// </summary>
-Task SendRegistrationFullyConfirmedEmailAsync(
-    RegistrationConfirmedEmailData data,
-    CancellationToken ct);
-```
-
-**New DTOs:**
-
-```csharp
-public record InstallmentConfirmedEmailData
-{
-    public required string ToEmail { get; init; }
-    public required string RecipientFirstName { get; init; }
-    public required string CampName { get; init; }
-    public required Guid RegistrationId { get; init; }
-    public required int InstallmentNumber { get; init; }
-    public required int TotalInstallments { get; init; }
-    public required int PaidInstallments { get; init; }
-    public required decimal InstallmentAmount { get; init; }
-    public required decimal TotalPaid { get; init; }
-    public required decimal TotalAmount { get; init; }
-    public string? AdminNotes { get; init; }
-}
-
-public record RegistrationConfirmedEmailData
-{
-    public required string ToEmail { get; init; }
-    public required string RecipientFirstName { get; init; }
-    public required string CampName { get; init; }
-    public required Guid RegistrationId { get; init; }
-    public required decimal TotalAmount { get; init; }
-    public required int TotalInstallments { get; init; }
-}
-```
-
-### 4. Email Implementation
-
-**File:** `ResendEmailService.cs` — Implement both new methods following existing patterns:
-
-- **Installment confirmed email**: Subject like "Pago {N} de {Total} confirmado - {CampName}". Body should include installment number, amount paid, remaining amount, and admin notes if any.
-- **Fully confirmed email**: Subject like "Inscripción confirmada - {CampName}". Body should confirm all payments received and registration is fully confirmed.
-- Both emails should BCC the board email (`junta.abuvi@gmail.com`).
-
-### 5. Frontend Changes
-
-#### 5.1. TypeScript types
-
-**File:** `frontend/src/types/registration.ts` (or equivalent)
-
-Add `'PartiallyPaid'` to the `RegistrationStatus` type union.
-
-#### 5.2. Status badge display
-
-**File:** Registration status badge/display component
-
-| Status | Badge Label (ES) | Detail Label (ES) | Color | Icon |
-|--------|------------------|-------------------|-------|------|
-| `Pending` | Pendiente | — | Yellow/Warning | Clock |
-| `PartiallyPaid` | Al corriente | "Plazo {N} de {Total} confirmado" | Blue/Info | CheckCircle |
-| `Confirmed` | Confirmada | "Todos los pagos completados" | Green/Success | CheckCircle |
-| `Cancelled` | Cancelada | — | Red/Danger | XCircle |
-| `Draft` | Borrador | — | Gray/Secondary | Edit |
-
-**Key UX requirement for `PartiallyPaid`:**
-
-The user-facing display must transmit confidence that everything is correct. The label should NOT say "Pago parcial" (which sounds incomplete/negative). Instead:
-
-- **Badge principal**: "Al corriente" (Up to date) — conveys that the family is in good standing
-- **Detalle debajo del badge o en tooltip**: "Plazo 1 de 2 confirmado" / "Plazo 2 de 3 confirmado" — derived dynamically from the `payments` array by counting how many have `status === 'Completed'` vs total payments
-- **En la vista de detalle de inscripción (user-facing)**: mostrar una mini-timeline o checklist visual:
-  ```
-  ✅ Plazo 1 — 150,00 € — Confirmado
-  ⏳ Plazo 2 — 150,00 € — Pendiente (vence 15/06/2026)
-  ```
-  This gives the family full visibility of where they stand without ambiguity.
-
-**Derivation logic** (frontend, from registration response):
-```typescript
-const completedPayments = registration.payments.filter(p => p.status === 'Completed').length;
-const totalPayments = registration.payments.length;
-const detailLabel = `Plazo ${completedPayments} de ${totalPayments} confirmado`;
-```
-
-#### 5.3. Progress bar (camp capacity)
-
-The progress bar counting registered people should count registrations with status `Pending`, `PartiallyPaid`, or `Confirmed` (excluding `Cancelled` and `Draft`). Verify current logic and adjust if needed.
-
-#### 5.4. Admin filters
-
-Update any admin filter dropdowns to include `PartiallyPaid` as a filterable status option.
-
-### 6. Database Migration
-
-A new EF Core migration is required to update the `RegistrationStatus` enum column. Since PostgreSQL stores enums as strings in this project, the migration should be straightforward (no data transformation needed — existing values remain valid).
-
-### 7. Existing Status Checks — Impact Analysis
-
-Review and update all places that check registration status:
-
-| Location | Current Check | Action Required |
-|----------|--------------|-----------------|
-| `RegistrationsService.CreateAsync` | Sets `Pending` | No change |
-| `RegistrationsService.CancelAsync` | Checks `!= Cancelled` | No change |
-| `RegistrationsService.AdminUpdateAsync` | Checks `!= Cancelled`, sets `Draft` | No change |
-| `PaymentsService.ConfirmPaymentAsync` | Sets `Confirmed` when all paid | **Update** (core change) |
-| Frontend capacity counter | Counts non-cancelled | **Verify** includes `PartiallyPaid` |
-| Frontend status filter | Lists known statuses | **Update** to include `PartiallyPaid` |
-| Frontend status badge | Maps status to color/label | **Update** to handle `PartiallyPaid` |
-| `RegistrationsEndpoints` authorization | Various checks | **Review** — `PartiallyPaid` should behave like `Confirmed` for access |
+The board may want to add last-minute changes (e.g., an extra) before camp starts, even after all payments are received. `FullyPaid` signals "we have the money, but we're not done yet." `Confirmed` is the board's explicit stamp of approval. `Confirmed` can still be reopened (→ `Draft`) at any point before the camp starts.
 
 ---
 
-## Out of Scope (Separate Feature)
+### 2. Complete Status Transition Map
 
-### User-Initiated Registration Edits with Admin Notification
+```
+[User creates registration] ──────────────────────────► Pending
+                                                             │
+[Board explicit approval]                                    │
+(payment received + data validated)                          ▼
+Pending ────────────────────────────────────────────► PartiallyPaid
+                                                             │
+[Last payment confirmed by admin] (automatic)                │
+PartiallyPaid ──────────────────────────────────────► FullyPaid
+                                                             │
+[Board explicit final confirmation]                          │
+FullyPaid ──────────────────────────────────────────► Confirmed
+                                                             │
+[Board edits registration] (any non-Cancelled status)        │
+Any ────────────────────────────────────────────────► Draft
+                                                             │
+[User confirms changes, or Board force-confirms]             │
+Draft ──────────────────────────────────────────────► [Board-chosen target status]
 
-The user mentioned wanting to be notified when a family modifies their registration. Currently:
+[User or Admin] ────────────────────────────────────► Cancelled (from any non-Cancelled status)
+```
 
-- Only admins can edit registrations (via `AdminUpdateAsync`)
-- Users cannot edit their own registrations after creation (except cancellation)
+**Intermediate payments (not the last one):**
+When P2 of 3 is confirmed, no status change occurs. Only a "pago recibido" email is sent. `FullyPaid` only triggers when the last payment makes `allPayments.All(Completed)` true.
 
-If user-editable registrations are desired, this would require:
+**Permission matrix:**
 
-1. New endpoint: `PUT /api/registrations/{id}` (family representative)
-2. Status transition: `PartiallyPaid` or `Confirmed` → `PendingReview` (new status)
-3. Email notification to the board when a family edits their registration
-4. Admin approval flow to move back to previous status
+| Transition | Who can trigger |
+|-----------|----------------|
+| Any → `Pending` | System (on creation) |
+| `Pending` → `PartiallyPaid` | Board / Admin |
+| `PartiallyPaid` → `FullyPaid` | **Automatic** (last payment confirmed) |
+| `FullyPaid` → `Confirmed` | Board / Admin |
+| Any → `Draft` | Board / Admin (when editing) |
+| `Draft` → [any] | User (confirm) or Board (force-confirm) |
+| Any → `Cancelled` | User (own registration) or Board / Admin |
 
-This is a separate, larger feature and should be tracked independently.
+---
+
+### 3. Email Notifications Per Status Transition
+
+Every status transition sends an automatic email to the family representative. Additionally, payment confirmation always sends a payment receipt email regardless of status changes.
+
+| Event | Email | Automatic? |
+|-------|-------|-----------|
+| Registration created (`Pending`) | Existing: "Inscripción registrada" | ✅ Always |
+| `Pending` → `PartiallyPaid` | New: "Inscripción al corriente — plazo 1 confirmado" | ✅ Always |
+| Payment confirmed (not last) | New: "Pago recibido — plazo N de M" | ✅ Always |
+| `PartiallyPaid` → `FullyPaid` (last payment) | New: "Todos los pagos recibidos" | ✅ Always |
+| `FullyPaid` → `Confirmed` | New: "Inscripción totalmente confirmada" | ✅ Always |
+| `Draft` sent to user | New: "Hay cambios en tu inscripción que revisar" | ✅ When board notifies (board chooses, with warning) |
+| `Draft` → [target] (user confirms) | New: "Has confirmado los cambios — inscripción [status]" | ✅ Always |
+| Any → `Cancelled` | Existing: "Inscripción cancelada" | ✅ Always |
+
+**Board edit notification (warning UX):**
+When a board/admin saves changes to a registration via the admin edit interface, the UI **must show a warning**: _"Hay cambios pendientes de notificar a la familia. ¿Deseas enviar una notificación ahora?"_ The board can send immediately or defer. This is not automatic because the board may want to batch edits before notifying.
+
+The backend `AdminUpdateAsync` endpoint accepts an optional `notifyUser: bool` flag. If `true`, the email is sent immediately. If `false`, no email is sent but the registration goes to `Draft` and the user will see the pending changes on next login.
+
+---
+
+### 4. Status History / Audit Trail
+
+Every status transition must be persisted for timeline display and audit purposes.
+
+**New entity: `RegistrationStatusHistory`**
+
+```csharp
+public class RegistrationStatusHistory
+{
+    public Guid Id { get; set; }
+    public Guid RegistrationId { get; set; }
+    public RegistrationStatus PreviousStatus { get; set; }
+    public RegistrationStatus NewStatus { get; set; }
+    public Guid? ChangedByUserId { get; set; }      // null for automatic transitions
+    public DateTime ChangedAt { get; set; }
+    public StatusChangeTrigger Trigger { get; set; }
+    public string? Notes { get; set; }              // optional reason / context
+
+    // Navigation
+    public Registration Registration { get; set; } = null!;
+    public User? ChangedByUser { get; set; }
+}
+
+public enum StatusChangeTrigger
+{
+    Automatic,       // Triggered by system (e.g., last payment confirmed)
+    AdminAction,     // Board/admin explicitly changed status
+    UserConfirmed    // User acknowledged Draft changes
+}
+```
+
+**EF Core table**: `registration_status_history`
+
+This history is returned in the registration detail response and used to render a frontend timeline:
+
+```
+✅ 2026-03-01  Inscripción creada — Pendiente
+💶 2026-03-15  Pago del plazo 1 recibido (150,00 €)
+✅ 2026-03-16  Junta confirmó inscripción — Al corriente
+✏️  2026-04-01  Junta realizó cambios — En revisión
+✅ 2026-04-02  Familia confirmó cambios — Al corriente
+💶 2026-04-20  Pago del plazo 2 recibido (150,00 €) — Todos los pagos recibidos
+✅ 2026-04-25  Junta confirmó inscripción final — Confirmada
+```
+
+---
+
+### 5. Registration Entity Changes
+
+Add two fields to `Registration`:
+
+```csharp
+// Target status to restore after Draft is resolved (set by board when editing)
+public RegistrationStatus? DraftTargetStatus { get; set; }
+
+// True if there are pending changes not yet acknowledged by the user
+public bool HasPendingUserAcknowledgement { get; set; } = false;
+```
+
+`DraftTargetStatus` defaults to the status that was active immediately before the `Draft` transition, but the board can override it when force-confirming or when the user confirms.
+
+---
+
+### 6. Backend API Changes
+
+#### 6.1. New endpoint: Manual Status Change
+
+```
+PATCH /api/registrations/{id}/status
+Authorization: Admin or Board role only
+```
+
+**Request:**
+
+```json
+{
+  "newStatus": "PartiallyPaid",
+  "notes": "Membresía y cuota 2026 validadas. P1 recibido.",
+  "notifyUser": true
+}
+```
+
+**Validation rules:**
+
+- Only `Admin` / `Board` roles allowed
+- `Cancelled` is blocked here — use the existing cancel endpoint
+- `Draft` is blocked here — happens automatically on edit
+- Valid manual transitions: `Pending→PartiallyPaid`, `FullyPaid→Confirmed`, `Any→Pending` (reopen), `Draft→[any]` (force-confirm only)
+- All transitions are logged to `RegistrationStatusHistory`
+
+**Response:** Updated `RegistrationResponse` (existing shape)
+
+#### 6.2. New endpoint: User confirms Draft
+
+```
+POST /api/registrations/{id}/confirm-changes
+Authorization: Authenticated (own registration) or Admin/Board (force)
+```
+
+**Request body:** empty (no params)
+
+**Behavior:**
+
+1. Validates registration is in `Draft` status
+2. Validates caller owns the registration OR is Admin/Board
+3. Transitions to `DraftTargetStatus` (or previous status if not set)
+4. Logs to `RegistrationStatusHistory` with `Trigger = UserConfirmed`
+5. Sends "changes confirmed" email to family
+6. Sets `HasPendingUserAcknowledgement = false`
+
+**Response:** Updated `RegistrationResponse`
+
+#### 6.3. Updated: `AdminUpdateAsync` — optional notify flag
+
+Add `notifyUser` parameter (defaults to `false` if omitted):
+
+```
+PUT /api/registrations/{id}/admin
+Authorization: Admin or Board
+```
+
+**Request body additions:**
+
+```json
+{
+  "...existing fields...",
+  "notifyUser": true,
+  "draftTargetStatus": "PartiallyPaid"
+}
+```
+
+**Behavior changes:**
+
+1. Status changes to `Draft` (existing)
+2. Stores `DraftTargetStatus` on the registration entity
+3. Sets `HasPendingUserAcknowledgement = true`
+4. If `notifyUser = true` → sends "hay cambios en tu inscripción" email to family immediately
+5. Logs transition to `RegistrationStatusHistory` with `Trigger = AdminAction`
+
+#### 6.4. Updated: `ConfirmPaymentAsync` — payment emails + auto `FullyPaid`
+
+Remove the current automatic `Confirmed` logic. Replace with:
+
+```csharp
+var completedCount = allPayments.Count(p => p.Status == PaymentStatus.Completed);
+var totalCount = allPayments.Count;
+
+if (completedCount == totalCount)
+{
+    // Last payment confirmed → auto-transition to FullyPaid
+    registration.Status = RegistrationStatus.FullyPaid;
+    await registrationsRepo.UpdateAsync(registration, ct);
+    await LogStatusHistoryAsync(registration, previousStatus, RegistrationStatus.FullyPaid,
+        changedByUserId: adminUserId, trigger: StatusChangeTrigger.Automatic, ct);
+
+    // Send "todos los pagos recibidos" email
+    await SendAllPaymentsReceivedEmailAsync(registration, allPayments, ct);
+}
+else
+{
+    // Intermediate payment — just send receipt, no status change
+    await SendPaymentReceivedEmailAsync(registration, payment, completedCount, totalCount, ct);
+}
+```
+
+**Important**: `ConfirmPaymentAsync` does **not** trigger `PartiallyPaid` — that is a board-only action via the new status endpoint.
+
+#### 6.5. New helper: `LogStatusHistoryAsync`
+
+Private helper shared across service methods. Inserts a `RegistrationStatusHistory` row. Must be called on every status transition, including cancellation (existing `CancelAsync`).
+
+#### 6.6. Updated: `RegistrationDetailResponse`
+
+Add `statusHistory` to the registration detail response:
+
+```json
+{
+  "id": "...",
+  "status": "PartiallyPaid",
+  "hasP endingUserAcknowledgement": false,
+  "statusHistory": [
+    {
+      "id": "...",
+      "previousStatus": "Pending",
+      "newStatus": "PartiallyPaid",
+      "changedAt": "2026-03-16T10:00:00Z",
+      "changedByUserName": "Junta Abuvi",
+      "trigger": "AdminAction",
+      "notes": "Membresía y cuota 2026 validadas."
+    }
+  ],
+  "...": "..."
+}
+```
+
+---
+
+### 7. Frontend Changes
+
+#### 7.1. Status badge display
+
+| Status | Badge (ES) | Color | Icon |
+|--------|-----------|-------|------|
+| `Pending` | Pendiente | Yellow/Warning | Clock |
+| `PartiallyPaid` | Al corriente | Blue/Info | CheckCircle |
+| `FullyPaid` | Pago completo | Teal/Success | CreditCard |
+| `Confirmed` | Confirmada | Green/Success | CheckCircle |
+| `Draft` | En revisión | Orange/Warning | Edit |
+| `Cancelled` | Cancelada | Red/Danger | XCircle |
+
+#### 7.2. Timeline component (user-facing registration detail)
+
+Display a vertical timeline using `statusHistory`. Each entry shows:
+
+- Icon (based on trigger + status)
+- Date + time
+- Human-readable description in Spanish
+- Who made the change (admin name or "Sistema" for automatic)
+- Notes (if present)
+
+#### 7.3. User: "Confirmar cambios" banner
+
+When `status === 'Draft'` and `hasPendingUserAcknowledgement === true`, show a prominent banner on the registration detail page:
+
+> _"La Junta ha realizado cambios en tu inscripción. Revisa los detalles y confirma que todo es correcto."_
+> **[Confirmar cambios]** button → calls `POST /api/registrations/{id}/confirm-changes`
+
+#### 7.4. Admin: Status change UI
+
+In the admin registration detail view:
+
+- Dropdown to change status manually (only shows valid target statuses)
+- Required "notes" field for all manual changes
+- Optional "Notificar a la familia" checkbox (default: checked)
+- Calls `PATCH /api/registrations/{id}/status`
+
+#### 7.5. Admin: Warning on edit
+
+When admin saves an edit to a registration (AdminUpdateAsync), the frontend shows:
+
+> ⚠️ _"Hay cambios en la inscripción pendientes de notificar a la familia."_
+> Toggle: **Notificar ahora** (default: on) / **Notificar más tarde**
+
+If "Notificar ahora" → `notifyUser: true` in the request body.
+
+#### 7.6. Admin filters
+
+Update status filter dropdown to include: `PartiallyPaid`, `FullyPaid`.
+
+#### 7.7. Capacity progress bar
+
+Count registrations with status `Pending`, `PartiallyPaid`, `FullyPaid`, or `Confirmed`. Exclude `Cancelled` and `Draft`.
+
+---
+
+### 8. Database Migrations
+
+Two migrations required:
+
+**Migration 1: `AddRegistrationStatusHistory`**
+
+- New table `registration_status_history`
+- Columns: `id uuid PK`, `registration_id uuid FK`, `previous_status varchar(30)`, `new_status varchar(30)`, `changed_by_user_id uuid FK nullable`, `changed_at timestamptz`, `trigger varchar(20)`, `notes text nullable`
+- Index on `registration_id`
+
+**Migration 2: `UpdateRegistrationForDraftFlow`**
+
+- Add `draft_target_status varchar(30) nullable` to `registrations`
+- Add `has_pending_user_acknowledgement bool NOT NULL DEFAULT false` to `registrations`
+- No data migration needed for existing rows (new columns are nullable / have defaults)
+
+---
+
+### 9. Existing Status Checks — Impact Analysis
+
+| Location | Current check | Action |
+|----------|--------------|--------|
+| `RegistrationsService.CreateAsync` | Sets `Pending` | No change |
+| `RegistrationsService.CancelAsync` | Checks `!= Cancelled` | Add history log |
+| `RegistrationsService.AdminUpdateAsync` | Sets `Draft` | Add `notifyUser`, `draftTargetStatus`, history log |
+| `RegistrationsService.DeleteAsync` | Blocks `Confirmed` | **Add `FullyPaid` to block list** |
+| `RegistrationsService.SyncExtrasInstallmentAsync` | Checks `== Pending` | **Review: may need to allow `FullyPaid` or `Draft`** |
+| `RegistrationsService.MapStatusEs` | Switch on status | **Add `PartiallyPaid`, `FullyPaid`** |
+| `PaymentsService.ConfirmPaymentAsync` | Auto `Confirmed` | **Replace with `FullyPaid` auto + email** |
+| Frontend capacity counter | Non-cancelled | **Verify includes `PartiallyPaid`, `FullyPaid`** |
+| Frontend status badge | Maps status | **Add `PartiallyPaid`, `FullyPaid`** |
+| Frontend admin filters | Status list | **Add new statuses** |
+
+---
+
+## Out of Scope (This Feature)
+
+- **Backfill notifications**: Existing P1-confirmed registrations will be transitioned manually by the board via the new status endpoint. No bulk notification backfill is included.
+- **User-initiated registration edits**: Users cannot edit registrations (only cancel). This is a separate future feature.
+- **Payment due date reminders**: Automated reminders before payment deadlines.
+- **Camp-start auto-confirmation**: Auto-confirming `FullyPaid` registrations when the camp start date passes.
 
 ---
 
 ## Acceptance Criteria
 
-1. When an admin confirms a payment installment and not all installments are paid, the registration status changes to `PartiallyPaid`
-2. When an admin confirms the last remaining payment installment, the registration status changes to `Confirmed`
-3. An email is sent to the family representative on each installment confirmation, including installment number, amount, and remaining balance
-4. An email is sent to the family representative when all installments are confirmed (full confirmation)
-5. The frontend displays `PartiallyPaid` with a blue/info badge and shows which installment was paid
-6. Admin filters include the new `PartiallyPaid` status
-7. The camp capacity progress bar correctly counts `PartiallyPaid` registrations
-8. All existing functionality (cancellation, admin edit, payment rejection) continues to work correctly
-9. Board BCC email is included in all transactional emails
+1. Adding `PartiallyPaid` and `FullyPaid` to the status enum does not break existing data
+2. Only board/admin roles can call `PATCH /api/registrations/{id}/status`
+3. Every status transition is logged to `registration_status_history`
+4. The registration detail response includes the full status history
+5. Confirming the last payment automatically transitions status to `FullyPaid` and sends a "todos los pagos recibidos" email
+6. Confirming any non-last payment sends a "pago recibido" email with no status change
+7. When board edits a registration (→ `Draft`), `draftTargetStatus` is stored and `hasPendingUserAcknowledgement` is set to `true`
+8. When `notifyUser = true` on admin edit, a "changes pending" email is sent immediately
+9. When user calls `confirm-changes`, registration transitions to `draftTargetStatus`, history is logged, and a confirmation email is sent
+10. Board can call `confirm-changes` (force) on behalf of the user
+11. `Confirmed` and `FullyPaid` registrations cannot be deleted (must cancel first)
+12. Frontend shows the "Confirmar cambios" banner when registration is in `Draft` with pending acknowledgement
+13. Frontend shows the status history timeline in registration detail
+14. Frontend warns board when saving admin edits about pending notification
+15. All transactional emails are sent in Spanish with BCC to `junta.abuvi@gmail.com`
+16. Cancellation email continues to send automatically (no change to existing behaviour)
+
+---
 
 ## Files to Modify
 
 ### Backend
 
-- `src/Abuvi.API/Features/Registrations/RegistrationsModels.cs` — Add `PartiallyPaid` to enum
-- `src/Abuvi.API/Features/Payments/PaymentsService.cs` — Update `ConfirmPaymentAsync` transition logic + email sending
-- `src/Abuvi.API/Common/Services/IEmailService.cs` — Add new email method signatures + DTOs
-- `src/Abuvi.API/Common/Services/ResendEmailService.cs` — Implement new email methods
-- New migration file for enum update
+- `Features/Registrations/RegistrationsModels.cs` — Add `PartiallyPaid`, `FullyPaid` to enum; new `RegistrationStatusHistory` entity + `StatusChangeTrigger` enum; add `DraftTargetStatus` and `HasPendingUserAcknowledgement` to `Registration`; update response DTOs to include `statusHistory` + `hasPendingUserAcknowledgement`
+- `Features/Registrations/RegistrationsService.cs` — Add `ConfirmChangesAsync` (user confirm draft); update `AdminUpdateAsync` with `notifyUser` + `draftTargetStatus`; add `LogStatusHistoryAsync` helper; update `MapStatusEs`; update `DeleteAsync` guard
+- `Features/Registrations/RegistrationsRepository.cs` — Add `AddStatusHistoryAsync`; add `GetStatusHistoryAsync`; update `GetByIdWithDetailsAsync` to include status history
+- `Features/Registrations/RegistrationsEndpoints.cs` — Add `PATCH /{id}/status` endpoint; add `POST /{id}/confirm-changes` endpoint; update admin edit endpoint signature
+- `Features/Payments/PaymentsService.cs` — Replace `ConfirmPaymentAsync` status logic; add `IEmailService` dependency; add payment email helpers
+- `Common/Services/IEmailService.cs` — Add new email method signatures + DTOs for payment received, all payments received, changes pending, changes confirmed
+- `Common/Services/ResendEmailService.cs` — Implement new email methods in Spanish
+- `Data/Configurations/RegistrationConfiguration.cs` — Add `DraftTargetStatus`, `HasPendingUserAcknowledgement` column mappings
+- New: `Data/Configurations/RegistrationStatusHistoryConfiguration.cs`
+- New EF Core migrations (×2)
 
 ### Frontend
 
-- Registration types file — Add `'PartiallyPaid'` to status type
-- Status badge component — Add display for new status
-- Admin registration list — Update filters
-- Camp capacity component — Verify counting logic
+- Registration types file — Add `'PartiallyPaid'`, `'FullyPaid'` to status type union; add `statusHistory` and `hasPendingUserAcknowledgement` to registration type
+- Status badge component — Add display for new statuses
+- Registration detail page — Add status timeline component; add "Confirmar cambios" banner; add payment history with statuses
+- Admin registration detail — Add status change dropdown UI; add force-confirm action
+- Admin registration edit form — Add "Notificar a la familia" toggle with warning
+- Admin registration list — Update status filter dropdown
+- Camp capacity component — Verify `PartiallyPaid` and `FullyPaid` counted
 
 ### Tests
 
-- Unit tests for `ConfirmPaymentAsync` with partial and full payment scenarios
-- Unit tests for new email methods
-- Frontend component tests for new status display
+- Unit tests for `ConfirmPaymentAsync`: partial payment email, last payment → `FullyPaid`, email failure non-blocking
+- Unit tests for new `ConfirmChangesAsync` service method
+- Unit tests for `PATCH /status` endpoint: role checks, valid transitions, invalid transitions
+- Unit tests for `LogStatusHistoryAsync`
+- Frontend component tests: timeline, banner visibility, status badge

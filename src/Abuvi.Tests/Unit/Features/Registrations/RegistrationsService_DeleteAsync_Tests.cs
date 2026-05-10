@@ -48,10 +48,13 @@ public class RegistrationsService_DeleteAsync_Tests
         membershipsRepo.HasPaidCurrentYearFeeForFamilyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
         var extrasDefinitionRepo = Substitute.For<ICampEditionExtrasRepository>();
+        var accommodationNeedsRepo = Substitute.For<IRegistrationAccommodationNeedsRepository>();
+        var friendLinksRepo = Substitute.For<IRegistrationFriendLinksRepository>();
+        var accommodationFeaturesRepo = Substitute.For<IAccommodationFeaturesRepository>();
         _sut = new RegistrationsService(
             _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo,
             _editionsRepo, _accommodationsRepo, extrasDefinitionRepo, _pricingService, _emailService,
-            _paymentsService, membershipsRepo, _logger);
+            _paymentsService, membershipsRepo, accommodationNeedsRepo, friendLinksRepo, accommodationFeaturesRepo, _logger);
     }
 
     // ── Successful Cases ─────────────────────────────────────────────────────

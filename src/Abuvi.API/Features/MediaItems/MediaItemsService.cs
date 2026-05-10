@@ -17,6 +17,7 @@ public class MediaItemsService(
         CreateMediaItemRequest request,
         CancellationToken ct)
     {
+        var isInternalMedia = request.AccommodationId.HasValue || request.ZoneId.HasValue;
         var mediaItem = new MediaItem
         {
             Id = Guid.NewGuid(),
@@ -30,8 +31,10 @@ public class MediaItemsService(
             Decade = MediaItemMappingExtensions.DeriveDecade(request.Year),
             MemoryId = request.MemoryId,
             CampLocationId = request.CampLocationId,
+            AccommodationId = request.AccommodationId,
+            ZoneId = request.ZoneId,
             Context = request.Context,
-            IsApproved = false,
+            IsApproved = isInternalMedia,
             IsPublished = false,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -59,9 +62,11 @@ public class MediaItemsService(
         bool? approved,
         string? context,
         MediaItemType? type,
+        Guid? accommodationId,
+        Guid? zoneId,
         CancellationToken ct)
     {
-        var items = await repository.GetListAsync(year, approved, context, type, ct);
+        var items = await repository.GetListAsync(year, approved, context, type, accommodationId, zoneId, ct);
         return items.Select(m => m.ToResponse()).ToList();
     }
 

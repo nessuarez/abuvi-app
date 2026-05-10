@@ -30,11 +30,6 @@ public class RegisterUserValidator : AbstractValidator<RegisterUserRequest>
             .NotEmpty().WithMessage("Los apellidos son obligatorios")
             .MaximumLength(100);
 
-        RuleFor(x => x.DocumentNumber)
-            .MaximumLength(50)
-            .Matches(@"^[A-Z0-9]+$").When(x => !string.IsNullOrEmpty(x.DocumentNumber))
-            .WithMessage("El número de documento solo debe contener letras mayúsculas y números");
-
         RuleFor(x => x.Phone)
             .Matches(@"^\+?[1-9]\d{1,14}$").When(x => !string.IsNullOrEmpty(x.Phone))
             .WithMessage("Formato de número de teléfono inválido (E.164)");

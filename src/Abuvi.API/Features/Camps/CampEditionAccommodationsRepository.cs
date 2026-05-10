@@ -8,6 +8,8 @@ public class CampEditionAccommodationsRepository(AbuviDbContext db) : ICampEditi
     public async Task<CampEditionAccommodation?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await db.CampEditionAccommodations
             .AsNoTracking()
+            .Include(e => e.Zone)
+            .Include(e => e.FeatureAssignments).ThenInclude(fa => fa.Feature)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
 
     public async Task<List<CampEditionAccommodation>> GetByCampEditionAsync(
@@ -17,6 +19,8 @@ public class CampEditionAccommodationsRepository(AbuviDbContext db) : ICampEditi
     {
         var query = db.CampEditionAccommodations
             .AsNoTracking()
+            .Include(e => e.Zone)
+            .Include(e => e.FeatureAssignments).ThenInclude(fa => fa.Feature)
             .Where(e => e.CampEditionId == campEditionId);
 
         if (activeOnly.HasValue)

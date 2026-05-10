@@ -25,6 +25,13 @@ public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExcep
             await context.Response.WriteAsJsonAsync(
                 ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
         }
+        catch (ValidationException ex)
+        {
+            logger.LogWarning(ex, "Validation error: {Message}", ex.Message);
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await context.Response.WriteAsJsonAsync(
+                ApiResponse<object>.Fail(ex.Message, "VALIDATION_ERROR"));
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Unhandled exception occurred");

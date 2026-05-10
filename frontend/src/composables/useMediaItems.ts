@@ -17,6 +17,8 @@ export function useMediaItems() {
     approved?: boolean
     context?: string
     type?: MediaItemType
+    accommodationId?: string
+    zoneId?: string
   }): Promise<void> => {
     loading.value = true
     error.value = null
@@ -26,6 +28,8 @@ export function useMediaItems() {
       if (params?.approved != null) query.set('approved', String(params.approved))
       if (params?.context) query.set('context', params.context)
       if (params?.type) query.set('type', params.type)
+      if (params?.accommodationId) query.set('accommodationId', params.accommodationId)
+      if (params?.zoneId) query.set('zoneId', params.zoneId)
 
       const qs = query.toString()
       const url = `/media-items${qs ? `?${qs}` : ''}`

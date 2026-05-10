@@ -163,6 +163,24 @@ builder.Services.AddScoped<CampEditionExtrasService>();
 builder.Services.AddScoped<ICampEditionAccommodationsRepository, CampEditionAccommodationsRepository>();
 builder.Services.AddScoped<CampEditionAccommodationsService>();
 
+// Accommodation Zones
+builder.Services.AddScoped<IAccommodationZonesRepository, AccommodationZonesRepository>();
+builder.Services.AddScoped<AccommodationZonesService>();
+
+// Accommodation Features
+builder.Services.AddScoped<IAccommodationFeaturesRepository, AccommodationFeaturesRepository>();
+builder.Services.AddScoped<AccommodationFeaturesService>();
+builder.Services.AddScoped<AccommodationFeatureAssignmentService>();
+
+// Accommodation Assignment Proposals
+builder.Services.AddScoped<IAccommodationAssignmentProposalsRepository, AccommodationAssignmentProposalsRepository>();
+builder.Services.AddScoped<AccommodationAssignmentProposalsService>();
+
+// Accommodation Assignments
+builder.Services.AddScoped<IAccommodationAssignmentsRepository, AccommodationAssignmentsRepository>();
+builder.Services.AddScoped<AccommodationAssignmentsService>();
+builder.Services.AddScoped<AccommodationAssignmentReportsService>();
+
 // Google Places API integration
 builder.Services.AddHttpClient<IGooglePlacesService, GooglePlacesService>();
 builder.Services.AddScoped<IGooglePlacesService, GooglePlacesService>();
@@ -184,6 +202,8 @@ builder.Services.AddScoped<MembershipsService>();
 builder.Services.AddScoped<IRegistrationsRepository, RegistrationsRepository>();
 builder.Services.AddScoped<IRegistrationExtrasRepository, RegistrationExtrasRepository>();
 builder.Services.AddScoped<IRegistrationAccommodationPreferencesRepository, RegistrationAccommodationPreferencesRepository>();
+builder.Services.AddScoped<IRegistrationAccommodationNeedsRepository, RegistrationAccommodationNeedsRepository>();
+builder.Services.AddScoped<IRegistrationFriendLinksRepository, RegistrationFriendLinksRepository>();
 builder.Services.AddScoped<RegistrationPricingService>();
 builder.Services.AddScoped<RegistrationsService>();
 
@@ -401,6 +421,7 @@ app.MapPaymentsEndpoints();
 app.MapBlobStorageEndpoints();
 app.MapMemoriesEndpoints();
 app.MapMediaItemsEndpoints();
+app.MapAccommodationFeaturesEndpoints();
 
 app.Run();
 

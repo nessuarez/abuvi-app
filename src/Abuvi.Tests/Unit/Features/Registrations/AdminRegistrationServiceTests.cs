@@ -49,10 +49,13 @@ public class AdminRegistrationServiceTests
         membershipsRepo.HasPaidCurrentYearFeeForFamilyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
         var extrasDefinitionRepo = Substitute.For<ICampEditionExtrasRepository>();
+        var accommodationNeedsRepo = Substitute.For<IRegistrationAccommodationNeedsRepository>();
+        var friendLinksRepo = Substitute.For<IRegistrationFriendLinksRepository>();
+        var accommodationFeaturesRepo = Substitute.For<IAccommodationFeaturesRepository>();
         _sut = new RegistrationsService(
             _repo, _extrasRepo, _accommodationPrefsRepo, _familyUnitsRepo,
             _editionsRepo, _accommodationsRepo, extrasDefinitionRepo, _pricingService, _emailService,
-            _paymentsService, membershipsRepo, _logger);
+            _paymentsService, membershipsRepo, accommodationNeedsRepo, friendLinksRepo, accommodationFeaturesRepo, _logger);
     }
 
     // ── GetAdminListAsync ─────────────────────────────────────────────────────
@@ -171,7 +174,7 @@ public class AdminRegistrationServiceTests
             Notes: "Updated notes", SpecialNeeds: null, CampatesPreference: null, HasPet: null);
 
         // Act
-        var result = await _sut.AdminUpdateAsync(RegistrationId, request, CancellationToken.None);
+        var result = await _sut.AdminUpdateAsync(RegistrationId, UserId, request, CancellationToken.None);
 
         // Assert
         await _repo.Received(1).UpdateAsync(
@@ -191,7 +194,7 @@ public class AdminRegistrationServiceTests
             Notes: "test", SpecialNeeds: null, CampatesPreference: null, HasPet: null);
 
         // Act
-        var act = () => _sut.AdminUpdateAsync(RegistrationId, request, CancellationToken.None);
+        var act = () => _sut.AdminUpdateAsync(RegistrationId, UserId, request, CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<BusinessRuleException>()
@@ -210,7 +213,7 @@ public class AdminRegistrationServiceTests
             Notes: "test", SpecialNeeds: null, CampatesPreference: null, HasPet: null);
 
         // Act
-        var act = () => _sut.AdminUpdateAsync(RegistrationId, request, CancellationToken.None);
+        var act = () => _sut.AdminUpdateAsync(RegistrationId, UserId, request, CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();
@@ -240,7 +243,7 @@ public class AdminRegistrationServiceTests
             Notes: "admin edit", SpecialNeeds: null, CampatesPreference: null, HasPet: null);
 
         // Act
-        var act = () => _sut.AdminUpdateAsync(RegistrationId, request, CancellationToken.None);
+        var act = () => _sut.AdminUpdateAsync(RegistrationId, UserId, request, CancellationToken.None);
 
         // Assert
         await act.Should().NotThrowAsync();

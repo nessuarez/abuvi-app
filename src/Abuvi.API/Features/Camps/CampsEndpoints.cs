@@ -509,6 +509,155 @@ public static class CampsEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
 
+        // ── Accommodation Zones (Board+ only) ───────────────────────────────────
+        var zonesGroup = app.MapGroup("/api/camps/editions/{campEditionId:guid}/accommodation-zones")
+            .WithTags("Accommodation Zones")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"));
+
+        zonesGroup.MapGet("/", GetZonesByEdition)
+            .WithName("GetAccommodationZonesByEdition")
+            .WithSummary("List all accommodation zones for a camp edition")
+            .Produces<ApiResponse<List<AccommodationZoneResponse>>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
+        zonesGroup.MapPost("/", CreateZone)
+            .WithName("CreateAccommodationZone")
+            .WithSummary("Create a new accommodation zone")
+            .AddEndpointFilter<ValidationFilter<CreateAccommodationZoneRequest>>()
+            .Produces<ApiResponse<AccommodationZoneResponse>>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound);
+
+        zonesGroup.MapPut("/{zoneId:guid}", UpdateZone)
+            .WithName("UpdateAccommodationZone")
+            .WithSummary("Update an accommodation zone")
+            .AddEndpointFilter<ValidationFilter<UpdateAccommodationZoneRequest>>()
+            .Produces<ApiResponse<AccommodationZoneResponse>>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound);
+
+        zonesGroup.MapDelete("/{zoneId:guid}", DeleteZone)
+            .WithName("DeleteAccommodationZone")
+            .WithSummary("Delete an accommodation zone (only if no active assignments)")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status422UnprocessableEntity);
+
+        zonesGroup.MapPatch("/{zoneId:guid}/accommodations", AttachAccommodationsToZone)
+            .WithName("AttachAccommodationsToZone")
+            .WithSummary("Replace which accommodations are attached to a zone")
+            .Produces<ApiResponse<AccommodationZoneResponse>>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        // ── Accommodation Assignment Proposals (Board+ only) ─────────────────────
+        var proposalsGroup = app.MapGroup(
+            "/api/camps/editions/{campEditionId:guid}/assignment-proposals")
+            .WithTags("Accommodation Assignment Proposals")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"));
+
+        proposalsGroup.MapGet("/", GetProposalsByEdition)
+            .WithName("GetAccommodationAssignmentProposals")
+            .WithSummary("List all assignment proposals for a camp edition")
+            .Produces<ApiResponse<List<AccommodationAssignmentProposalSummaryResponse>>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
+        proposalsGroup.MapPost("/", CreateProposal)
+            .WithName("CreateAccommodationAssignmentProposal")
+            .WithSummary("Create a new assignment proposal (optionally copying from another)")
+            .AddEndpointFilter<ValidationFilter<CreateAccommodationAssignmentProposalRequest>>()
+            .Produces<ApiResponse<AccommodationAssignmentProposalSummaryResponse>>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound);
+
+        proposalsGroup.MapPut("/{proposalId:guid}", UpdateProposal)
+            .WithName("UpdateAccommodationAssignmentProposal")
+            .WithSummary("Update name/notes of an assignment proposal")
+            .AddEndpointFilter<ValidationFilter<UpdateAccommodationAssignmentProposalRequest>>()
+            .Produces<ApiResponse<AccommodationAssignmentProposalSummaryResponse>>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound);
+
+        proposalsGroup.MapDelete("/{proposalId:guid}", DeleteProposal)
+            .WithName("DeleteAccommodationAssignmentProposal")
+            .WithSummary("Delete an assignment proposal")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status422UnprocessableEntity);
+
+        proposalsGroup.MapPost("/{proposalId:guid}/activate", ActivateProposal)
+            .WithName("ActivateAccommodationAssignmentProposal")
+            .WithSummary("Set this proposal as the active one (deactivates all others)")
+            .Produces<ApiResponse<AccommodationAssignmentProposalSummaryResponse>>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        // ── Accommodation Assignments (Board+ only) ──────────────────────────────
+        var assignmentsGroup = app.MapGroup(
+            "/api/camps/editions/{campEditionId:guid}/assignment-proposals/{proposalId:guid}/assignments")
+            .WithTags("Accommodation Assignments")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"));
+
+        assignmentsGroup.MapGet("/", GetAssignmentState)
+            .WithName("GetProposalAssignmentState")
+            .WithSummary("Get current assignment state (families, accommodations, assignments)")
+            .Produces<ApiResponse<ProposalAssignmentStateResponse>>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        assignmentsGroup.MapPut("/", BulkReplaceAssignments)
+            .WithName("BulkReplaceAssignments")
+            .WithSummary("Replace all assignments in a proposal atomically")
+            .Produces<ApiResponse<ProposalAssignmentStateResponse>>()
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status422UnprocessableEntity);
+
+        assignmentsGroup.MapPost("/{registrationId:guid}", AssignFamily)
+            .WithName("AssignFamilyToAccommodation")
+            .WithSummary("Assign or move a single family to an accommodation")
+            .Produces<ApiResponse<ProposalAssignmentStateResponse>>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        assignmentsGroup.MapDelete("/{registrationId:guid}", UnassignFamily)
+            .WithName("UnassignFamilyFromAccommodation")
+            .WithSummary("Remove a family's assignment from this proposal")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status404NotFound);
+
+        assignmentsGroup.MapPost("/auto-assign", AutoAssign)
+            .WithName("AutoAssignFamiliesToAccommodations")
+            .WithSummary("Run the greedy auto-assign algorithm and persist results")
+            .Produces<ApiResponse<ProposalAssignmentStateResponse>>()
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status422UnprocessableEntity);
+
+        // ── Assignment Reports (Board+ only) ─────────────────────────────────────
+        var reportsGroup = app.MapGroup(
+            "/api/camps/editions/{campEditionId:guid}/assignment-proposals/{proposalId:guid}/reports")
+            .WithTags("Accommodation Assignment Reports")
+            .WithOpenApi()
+            .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"));
+
+        reportsGroup.MapGet("/by-type", GetReportByType)
+            .WithName("GetAccommodationAssignmentReportByType")
+            .WithSummary("Assignment report grouped by accommodation type")
+            .Produces<ApiResponse<List<AssignmentReportGroupResponse>>>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        reportsGroup.MapGet("/by-zone", GetReportByZone)
+            .WithName("GetAccommodationAssignmentReportByZone")
+            .WithSummary("Assignment report grouped by zone")
+            .Produces<ApiResponse<List<AssignmentReportGroupResponse>>>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        reportsGroup.MapGet("/unassigned", GetUnassignedFamilies)
+            .WithName("GetUnassignedFamilies")
+            .WithSummary("List families not yet assigned in this proposal")
+            .Produces<ApiResponse<List<AssignmentFamilyResponse>>>()
+            .Produces(StatusCodes.Status404NotFound);
+
         return app;
     }
 
@@ -1268,5 +1417,356 @@ public static class CampsEndpoints
     {
         var logs = await service.GetAuditLogAsync(campId, ct);
         return Results.Ok(ApiResponse<List<CampAuditLogResponse>>.Ok(logs));
+    }
+
+    // ── Accommodation Zones handlers ──────────────────────────────────────────
+
+    private static async Task<IResult> GetZonesByEdition(
+        Guid campEditionId,
+        [FromServices] AccommodationZonesService service,
+        CancellationToken ct)
+    {
+        var zones = await service.GetByEditionAsync(campEditionId, ct);
+        return Results.Ok(ApiResponse<List<AccommodationZoneResponse>>.Ok(zones));
+    }
+
+    private static async Task<IResult> CreateZone(
+        Guid campEditionId,
+        CreateAccommodationZoneRequest request,
+        [FromServices] AccommodationZonesService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var zone = await service.CreateAsync(campEditionId, request, ct);
+            return Results.Created(
+                $"/api/camps/editions/{campEditionId}/accommodation-zones/{zone.Id}",
+                ApiResponse<AccommodationZoneResponse>.Ok(zone));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<AccommodationZoneResponse>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> UpdateZone(
+        Guid campEditionId,
+        Guid zoneId,
+        UpdateAccommodationZoneRequest request,
+        [FromServices] AccommodationZonesService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var zone = await service.UpdateAsync(zoneId, request, ct);
+            return Results.Ok(ApiResponse<AccommodationZoneResponse>.Ok(zone));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<AccommodationZoneResponse>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> DeleteZone(
+        Guid campEditionId,
+        Guid zoneId,
+        [FromServices] AccommodationZonesService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            await service.DeleteAsync(zoneId, ct);
+            return Results.NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return Results.UnprocessableEntity(ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
+        }
+    }
+
+    private static async Task<IResult> AttachAccommodationsToZone(
+        Guid campEditionId,
+        Guid zoneId,
+        AttachAccommodationsToZoneRequest request,
+        [FromServices] AccommodationZonesService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var zone = await service.AttachAccommodationsAsync(zoneId, request, ct);
+            return Results.Ok(ApiResponse<AccommodationZoneResponse>.Ok(zone));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<AccommodationZoneResponse>.NotFound(ex.Message));
+        }
+    }
+
+    // ── Accommodation Assignment Proposals handlers ───────────────────────────
+
+    private static async Task<IResult> GetProposalsByEdition(
+        Guid campEditionId,
+        [FromServices] AccommodationAssignmentProposalsService service,
+        CancellationToken ct)
+    {
+        var proposals = await service.GetByEditionAsync(campEditionId, ct);
+        return Results.Ok(ApiResponse<List<AccommodationAssignmentProposalSummaryResponse>>.Ok(proposals));
+    }
+
+    private static async Task<IResult> CreateProposal(
+        Guid campEditionId,
+        CreateAccommodationAssignmentProposalRequest request,
+        [FromServices] AccommodationAssignmentProposalsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+            return Results.Unauthorized();
+
+        try
+        {
+            var proposal = await service.CreateAsync(campEditionId, request, userId, ct);
+            return Results.Created(
+                $"/api/camps/editions/{campEditionId}/assignment-proposals/{proposal.Id}",
+                ApiResponse<AccommodationAssignmentProposalSummaryResponse>.Ok(proposal));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<AccommodationAssignmentProposalSummaryResponse>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> UpdateProposal(
+        Guid campEditionId,
+        Guid proposalId,
+        UpdateAccommodationAssignmentProposalRequest request,
+        [FromServices] AccommodationAssignmentProposalsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var proposal = await service.UpdateAsync(proposalId, request, ct);
+            return Results.Ok(ApiResponse<AccommodationAssignmentProposalSummaryResponse>.Ok(proposal));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<AccommodationAssignmentProposalSummaryResponse>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> DeleteProposal(
+        Guid campEditionId,
+        Guid proposalId,
+        [FromServices] AccommodationAssignmentProposalsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            await service.DeleteAsync(proposalId, ct);
+            return Results.NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return Results.UnprocessableEntity(ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
+        }
+    }
+
+    private static async Task<IResult> ActivateProposal(
+        Guid campEditionId,
+        Guid proposalId,
+        [FromServices] AccommodationAssignmentProposalsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var proposal = await service.ActivateAsync(proposalId, ct);
+            return Results.Ok(ApiResponse<AccommodationAssignmentProposalSummaryResponse>.Ok(proposal));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<AccommodationAssignmentProposalSummaryResponse>.NotFound(ex.Message));
+        }
+    }
+
+    // ── Accommodation Assignments handlers ────────────────────────────────────
+
+    private static async Task<IResult> GetAssignmentState(
+        Guid campEditionId,
+        Guid proposalId,
+        [FromServices] AccommodationAssignmentsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var state = await service.GetAssignmentStateAsync(campEditionId, proposalId, ct);
+            return Results.Ok(ApiResponse<ProposalAssignmentStateResponse>.Ok(state));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> BulkReplaceAssignments(
+        Guid campEditionId,
+        Guid proposalId,
+        BulkAssignRequest request,
+        [FromServices] AccommodationAssignmentsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+            return Results.Unauthorized();
+
+        try
+        {
+            var state = await service.BulkReplaceAsync(campEditionId, proposalId, request, userId, ct);
+            return Results.Ok(ApiResponse<ProposalAssignmentStateResponse>.Ok(state));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return Results.UnprocessableEntity(ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
+        }
+    }
+
+    private static async Task<IResult> AssignFamily(
+        Guid campEditionId,
+        Guid proposalId,
+        Guid registrationId,
+        SingleAssignRequest request,
+        [FromServices] AccommodationAssignmentsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+            return Results.Unauthorized();
+
+        try
+        {
+            var state = await service.AssignAsync(campEditionId, proposalId, registrationId, request, userId, ct);
+            return Results.Ok(ApiResponse<ProposalAssignmentStateResponse>.Ok(state));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> UnassignFamily(
+        Guid campEditionId,
+        Guid proposalId,
+        Guid registrationId,
+        [FromServices] AccommodationAssignmentsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+            return Results.Unauthorized();
+
+        try
+        {
+            await service.UnassignAsync(campEditionId, proposalId, registrationId, userId, ct);
+            return Results.NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> AutoAssign(
+        Guid campEditionId,
+        Guid proposalId,
+        AutoAssignRequest request,
+        [FromServices] AccommodationAssignmentsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+            return Results.Unauthorized();
+
+        try
+        {
+            var state = await service.AutoAssignAsync(campEditionId, proposalId, request, userId, ct);
+            return Results.Ok(ApiResponse<ProposalAssignmentStateResponse>.Ok(state));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return Results.UnprocessableEntity(ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
+        }
+    }
+
+    // ── Assignment Reports handlers ────────────────────────────────────────────
+
+    private static async Task<IResult> GetReportByType(
+        Guid campEditionId,
+        Guid proposalId,
+        [FromServices] AccommodationAssignmentReportsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var report = await service.GetByTypeAsync(campEditionId, proposalId, ct);
+            return Results.Ok(ApiResponse<List<AssignmentReportGroupResponse>>.Ok(report));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> GetReportByZone(
+        Guid campEditionId,
+        Guid proposalId,
+        [FromServices] AccommodationAssignmentReportsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var report = await service.GetByZoneAsync(campEditionId, proposalId, ct);
+            return Results.Ok(ApiResponse<List<AssignmentReportGroupResponse>>.Ok(report));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> GetUnassignedFamilies(
+        Guid campEditionId,
+        Guid proposalId,
+        [FromServices] AccommodationAssignmentReportsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var families = await service.GetUnassignedAsync(campEditionId, proposalId, ct);
+            return Results.Ok(ApiResponse<List<AssignmentFamilyResponse>>.Ok(families));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
     }
 }

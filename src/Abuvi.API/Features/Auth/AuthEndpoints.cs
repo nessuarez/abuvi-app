@@ -124,9 +124,8 @@ public static class AuthEndpoints
         }
         catch (BusinessRuleException ex)
         {
-            var errorCode = ex.Message.Contains("email") ? "EMAIL_EXISTS" : "DOCUMENT_EXISTS";
             return Results.Json(
-                ApiResponse<UserResponse>.Fail(ex.Message, errorCode),
+                ApiResponse<UserResponse>.Fail(ex.Message, "EMAIL_EXISTS"),
                 statusCode: 400
             );
         }

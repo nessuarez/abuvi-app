@@ -22,6 +22,9 @@ public class RegistrationsService(
     IEmailService emailService,
     Payments.IPaymentsService paymentsService,
     IMembershipsRepository membershipsRepo,
+    IRegistrationAccommodationNeedsRepository accommodationNeedsRepo,
+    IRegistrationFriendLinksRepository friendLinksRepo,
+    IAccommodationFeaturesRepository accommodationFeaturesRepo,
     ILogger<RegistrationsService> logger)
 {
     public async Task<RegistrationResponse> CreateAsync(
@@ -470,8 +473,12 @@ public class RegistrationsService(
             throw new BusinessRuleException("La inscripción ya ha sido cancelada");
 
         // 4. Cancel
+        var previousStatus = registration.Status;
         registration.Status = RegistrationStatus.Cancelled;
         await registrationsRepo.UpdateAsync(registration, ct);
+
+        await LogStatusHistoryAsync(registrationId, previousStatus, RegistrationStatus.Cancelled,
+            userId, StatusChangeTrigger.AdminAction, null, ct);
 
         logger.LogInformation(
             "Registration {RegistrationId} cancelled by user {UserId}", registrationId, userId);
@@ -604,7 +611,25 @@ public class RegistrationsService(
             .Where(p => p.Status == PaymentStatus.Completed)
             .Sum(p => p.Amount);
 
-        return registration.ToResponse(amountPaid);
+        if (!isAdminOrBoard)
+            return registration.ToResponse(amountPaid);
+
+        var needs = await accommodationNeedsRepo.GetByRegistrationIdAsync(registrationId, ct);
+        var friendLinks = await friendLinksRepo.GetByRegistrationIdAsync(registrationId, ct);
+
+        return registration.ToAdminResponse(
+            amountPaid,
+            needs.Select(n => new AccommodationNeedResponse(
+                n.AccommodationFeatureId,
+                n.AccommodationFeature.Name,
+                n.AccommodationFeature.ApplicabilityLevel.ToString(),
+                n.TaggedByUserId,
+                n.CreatedAt)).ToList(),
+            friendLinks.Select(l => new FriendLinkResponse(
+                l.LinkedRegistrationId,
+                l.LinkedRegistration.FamilyUnit.Name,
+                l.CreatedByUserId,
+                l.CreatedAt)).ToList());
     }
 
     public async Task<List<RegistrationListResponse>> GetByFamilyUnitAsync(Guid userId, CancellationToken ct)
@@ -744,7 +769,7 @@ public class RegistrationsService(
     }
 
     public async Task<RegistrationResponse> AdminUpdateAsync(
-        Guid registrationId, AdminEditRegistrationRequest request, CancellationToken ct)
+        Guid registrationId, Guid adminUserId, AdminEditRegistrationRequest request, CancellationToken ct)
     {
         var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
             ?? throw new NotFoundException("Inscripción", registrationId);
@@ -755,7 +780,8 @@ public class RegistrationsService(
         var edition = await campEditionsRepo.GetByIdAsync(registration.CampEditionId, ct)
             ?? throw new NotFoundException("Edición de Campamento", registration.CampEditionId);
 
-        // Capture old values before any mutation (needed for sync)
+        // Capture old values before any mutation (needed for sync and history)
+        var previousStatus = registration.Status;
         var oldBaseTotalAmount = registration.BaseTotalAmount;
 
         // Update members if provided
@@ -866,9 +892,18 @@ public class RegistrationsService(
 
         // Set status to Draft and record admin modification
         registration.Status = RegistrationStatus.Draft;
+        registration.DraftTargetStatus = request.DraftTargetStatus ?? previousStatus;
+        registration.HasPendingUserAcknowledgement = true;
         registration.AdminModifiedAt = DateTime.UtcNow;
 
         await registrationsRepo.UpdateAsync(registration, ct);
+
+        // Log status history only when actually transitioning into Draft
+        if (previousStatus != RegistrationStatus.Draft)
+        {
+            await LogStatusHistoryAsync(registrationId, previousStatus, RegistrationStatus.Draft,
+                adminUserId, StatusChangeTrigger.AdminAction, null, ct);
+        }
 
         // Sync payments after save
         if (request.Members != null)
@@ -889,6 +924,26 @@ public class RegistrationsService(
 
         logger.LogInformation("Registration {RegistrationId} edited by admin, status set to Draft", registrationId);
 
+        if (request.NotifyUser)
+        {
+            try
+            {
+                await emailService.SendDraftChangesNotificationAsync(new RegistrationStatusEmailData
+                {
+                    ToEmail = updated.RegisteredByUser.Email,
+                    RecipientFirstName = updated.RegisteredByUser.FirstName,
+                    CampName = updated.CampEdition.Camp.Name,
+                    RegistrationId = updated.Id
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Failed to send draft notification email for registration {RegistrationId}",
+                    registrationId);
+            }
+        }
+
         return updated.ToResponse(amountPaid);
     }
 
@@ -907,9 +962,10 @@ public class RegistrationsService(
         }
 
         // 3. Validate status
-        // Confirmed is always blocked; Cancelled is only blocked for representatives (admins can delete it)
-        if (registration.Status is RegistrationStatus.Confirmed)
-            throw new BusinessRuleException("Confirmed registrations cannot be deleted. Please cancel first.");
+        // Confirmed/FullyPaid always blocked; Cancelled is only blocked for representatives (admins can delete it)
+        if (registration.Status is RegistrationStatus.Confirmed or RegistrationStatus.FullyPaid)
+            throw new BusinessRuleException(
+                "Confirmed or fully-paid registrations cannot be deleted. Please cancel first.");
         if (registration.Status is RegistrationStatus.Cancelled && !isAdminOrBoard)
             throw new BusinessRuleException("Cancelled registrations cannot be deleted.");
 
@@ -1053,6 +1109,293 @@ public class RegistrationsService(
         return (Encoding.UTF8.GetBytes(csv.ToString()), fileName);
     }
 
+    public async Task<RegistrationResponse> ChangeStatusAsync(
+        Guid registrationId, Guid adminUserId, ChangeRegistrationStatusRequest request, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var previousStatus = registration.Status;
+
+        if (request.NewStatus == RegistrationStatus.Cancelled)
+            throw new BusinessRuleException(
+                "Use el endpoint de cancelación para cancelar una inscripción.");
+        if (request.NewStatus == RegistrationStatus.Draft)
+            throw new BusinessRuleException(
+                "El estado En revisión se asigna automáticamente al editar la inscripción.");
+        if (request.NewStatus == RegistrationStatus.FullyPaid)
+            throw new BusinessRuleException(
+                "El estado Pago completo se asigna automáticamente al confirmar todos los pagos.");
+
+        var validTransitions = new Dictionary<RegistrationStatus, HashSet<RegistrationStatus>>
+        {
+            [RegistrationStatus.Pending]       = [RegistrationStatus.PartiallyPaid, RegistrationStatus.Confirmed],
+            [RegistrationStatus.PartiallyPaid] = [RegistrationStatus.Pending, RegistrationStatus.Confirmed],
+            [RegistrationStatus.FullyPaid]     = [RegistrationStatus.Confirmed, RegistrationStatus.Pending],
+            [RegistrationStatus.Confirmed]     = [RegistrationStatus.Pending, RegistrationStatus.PartiallyPaid],
+            [RegistrationStatus.Draft]         = [RegistrationStatus.Pending, RegistrationStatus.PartiallyPaid,
+                                                  RegistrationStatus.FullyPaid, RegistrationStatus.Confirmed],
+            [RegistrationStatus.Cancelled]     = [],
+        };
+
+        if (!validTransitions.TryGetValue(previousStatus, out var allowed) || !allowed.Contains(request.NewStatus))
+            throw new BusinessRuleException(
+                $"La transición de {MapStatusEs(previousStatus)} a {MapStatusEs(request.NewStatus)} no está permitida.");
+
+        registration.Status = request.NewStatus;
+        if (previousStatus == RegistrationStatus.Draft)
+        {
+            registration.DraftTargetStatus = null;
+            registration.HasPendingUserAcknowledgement = false;
+        }
+
+        await registrationsRepo.UpdateAsync(registration, ct);
+
+        await LogStatusHistoryAsync(registrationId, previousStatus, request.NewStatus,
+            adminUserId, StatusChangeTrigger.AdminAction, request.Notes, ct);
+
+        logger.LogInformation(
+            "Registration {RegistrationId} status changed {Previous} → {New} by admin {AdminUserId}",
+            registrationId, previousStatus, request.NewStatus, adminUserId);
+
+        if (request.NotifyUser)
+        {
+            try
+            {
+                var emailData = new RegistrationStatusEmailData
+                {
+                    ToEmail = registration.RegisteredByUser.Email,
+                    RecipientFirstName = registration.RegisteredByUser.FirstName,
+                    CampName = registration.CampEdition.Camp.Name,
+                    RegistrationId = registration.Id
+                };
+
+                Task emailTask = request.NewStatus switch
+                {
+                    RegistrationStatus.PartiallyPaid =>
+                        emailService.SendRegistrationPartiallyPaidAsync(emailData, ct),
+                    RegistrationStatus.Confirmed =>
+                        emailService.SendRegistrationFinallyConfirmedAsync(emailData, ct),
+                    _ => Task.CompletedTask
+                };
+                await emailTask;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Failed to send status change notification email for registration {RegistrationId}",
+                    registrationId);
+            }
+        }
+
+        var updated = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var amountPaid = updated.Payments
+            .Where(p => p.Status == PaymentStatus.Completed)
+            .Sum(p => p.Amount);
+
+        return updated.ToResponse(amountPaid);
+    }
+
+    public async Task<RegistrationResponse> AdminUpdateMembersAsync(
+        Guid registrationId, Guid adminUserId, UpdateRegistrationMembersRequest request, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var edition = await campEditionsRepo.GetByIdAsync(registration.CampEditionId, ct)
+            ?? throw new NotFoundException("Edición de Campamento", registration.CampEditionId);
+
+        // Build new members with pricing
+        var newMembers = new List<RegistrationMember>();
+        foreach (var m in request.Members)
+        {
+            var member = await familyUnitsRepo.GetFamilyMemberByIdAsync(m.MemberId, ct)
+                ?? throw new NotFoundException("Miembro Familiar", m.MemberId);
+
+            if (member.FamilyUnitId != registration.FamilyUnitId)
+                throw new BusinessRuleException(
+                    $"El miembro {member.FirstName} {member.LastName} no pertenece a esta unidad familiar");
+
+            if (m.AttendancePeriod == AttendancePeriod.WeekendVisit)
+            {
+                var campStart = DateOnly.FromDateTime(edition.StartDate);
+                var campEnd = DateOnly.FromDateTime(edition.EndDate);
+                if (m.VisitStartDate < campStart || m.VisitEndDate > campEnd)
+                    throw new BusinessRuleException(
+                        "Las fechas de la visita deben estar dentro del periodo del campamento");
+            }
+
+            var age = pricingService.CalculateAge(member.DateOfBirth, edition.StartDate);
+            var category = await pricingService.GetAgeCategoryAsync(age, edition, ct);
+            var price = pricingService.GetPriceForCategory(category, m.AttendancePeriod, edition);
+
+            newMembers.Add(new RegistrationMember
+            {
+                Id = Guid.NewGuid(),
+                RegistrationId = registrationId,
+                FamilyMemberId = m.MemberId,
+                AgeAtCamp = age,
+                AgeCategory = category,
+                IndividualAmount = price,
+                AttendancePeriod = m.AttendancePeriod,
+                VisitStartDate = m.VisitStartDate,
+                VisitEndDate = m.VisitEndDate,
+                GuardianName = m.GuardianName,
+                GuardianDocumentNumber = m.GuardianDocumentNumber,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        // Require at least one adult
+        if (!newMembers.Any(m => m.AgeCategory == AgeCategory.Adult))
+            throw new BusinessRuleException("La inscripción debe tener al menos un adulto responsable");
+
+        var oldBaseTotalAmount = registration.BaseTotalAmount;
+        var newBaseTotalAmount = newMembers.Sum(m => m.IndividualAmount);
+
+        var completedBasePayments = registration.Payments
+            .Where(p => p.Status == PaymentStatus.Completed && !p.IsManual)
+            .Sum(p => p.Amount);
+
+        // Replace members
+        await registrationsRepo.DeleteMembersByRegistrationIdAsync(registrationId, ct);
+        await registrationsRepo.AddMembersAsync(newMembers, ct);
+
+        registration.BaseTotalAmount = newBaseTotalAmount;
+        registration.TotalAmount = newBaseTotalAmount + registration.ExtrasAmount;
+
+        // Generate refund if overpaid
+        if (completedBasePayments > newBaseTotalAmount)
+        {
+            var refundAmount = completedBasePayments - newBaseTotalAmount;
+            await paymentsService.GenerateRefundPaymentAsync(
+                registrationId, refundAmount, "Devolución por baja de participante", adminUserId, ct);
+            // TotalAmount adjustment happens inside GenerateRefundPaymentAsync; reload registration
+            registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+                ?? throw new NotFoundException("Inscripción", registrationId);
+            registration.BaseTotalAmount = newBaseTotalAmount;
+        }
+
+        // Sync P1/P2 installments
+        await paymentsService.SyncBaseInstallmentsAsync(
+            registrationId, newBaseTotalAmount, oldBaseTotalAmount, ct);
+
+        // Determine draft target status
+        var draftTargetStatus = completedBasePayments > 0
+            ? RegistrationStatus.PartiallyPaid
+            : RegistrationStatus.Pending;
+
+        registration.Status = RegistrationStatus.Draft;
+        registration.DraftTargetStatus = draftTargetStatus;
+        registration.HasPendingUserAcknowledgement = true;
+        registration.AdminModifiedAt = DateTime.UtcNow;
+        registration.UpdatedAt = DateTime.UtcNow;
+
+        await registrationsRepo.UpdateAsync(registration, ct);
+
+        await LogStatusHistoryAsync(registrationId, registration.Status, RegistrationStatus.Draft,
+            adminUserId, StatusChangeTrigger.AdminAction, "Admin member update", ct);
+
+        logger.LogInformation(
+            "Admin {AdminUserId} updated members for registration {RegistrationId}. New base total={NewTotal}, refund triggered={Refund}",
+            adminUserId, registrationId, newBaseTotalAmount, completedBasePayments > newBaseTotalAmount);
+
+        var updated = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var amountPaid = updated.Payments
+            .Where(p => p.Status == PaymentStatus.Completed)
+            .Sum(p => p.Amount);
+
+        return updated.ToResponse(amountPaid);
+    }
+
+    public async Task<RegistrationResponse> ConfirmChangesAsync(
+        Guid registrationId, Guid requestingUserId, bool isAdminOrBoard, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        if (registration.Status != RegistrationStatus.Draft)
+            throw new BusinessRuleException(
+                "La inscripción no está en estado de revisión pendiente.");
+
+        if (!isAdminOrBoard && registration.FamilyUnit.RepresentativeUserId != requestingUserId)
+            throw new UnauthorizedAccessException(
+                "No tienes permiso para confirmar los cambios de esta inscripción.");
+
+        var previousStatus = registration.Status;
+        var targetStatus = registration.DraftTargetStatus ?? RegistrationStatus.Pending;
+
+        registration.Status = targetStatus;
+        registration.DraftTargetStatus = null;
+        registration.HasPendingUserAcknowledgement = false;
+
+        await registrationsRepo.UpdateAsync(registration, ct);
+
+        var trigger = isAdminOrBoard
+            ? StatusChangeTrigger.AdminAction
+            : StatusChangeTrigger.UserConfirmed;
+        await LogStatusHistoryAsync(registrationId, previousStatus, targetStatus,
+            requestingUserId, trigger, null, ct);
+
+        logger.LogInformation(
+            "Registration {RegistrationId} Draft confirmed by {UserId} (isAdmin={IsAdmin}), → {Target}",
+            registrationId, requestingUserId, isAdminOrBoard, targetStatus);
+
+        try
+        {
+            await emailService.SendDraftChangesConfirmedAsync(new DraftChangesConfirmedEmailData
+            {
+                ToEmail = registration.RegisteredByUser.Email,
+                RecipientFirstName = registration.RegisteredByUser.FirstName,
+                CampName = registration.CampEdition.Camp.Name,
+                RegistrationId = registration.Id,
+                NewStatusEs = MapStatusEs(targetStatus)
+            }, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to send draft-confirmed email for registration {RegistrationId}",
+                registrationId);
+        }
+
+        var updated = await registrationsRepo.GetByIdWithDetailsAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var amountPaid = updated.Payments
+            .Where(p => p.Status == PaymentStatus.Completed)
+            .Sum(p => p.Amount);
+
+        return updated.ToResponse(amountPaid);
+    }
+
+    private async Task LogStatusHistoryAsync(
+        Guid registrationId,
+        RegistrationStatus previousStatus,
+        RegistrationStatus newStatus,
+        Guid? changedByUserId,
+        StatusChangeTrigger trigger,
+        string? notes,
+        CancellationToken ct)
+    {
+        var history = new RegistrationStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            RegistrationId = registrationId,
+            PreviousStatus = previousStatus,
+            NewStatus = newStatus,
+            ChangedByUserId = changedByUserId,
+            ChangedAt = DateTime.UtcNow,
+            Trigger = trigger,
+            Notes = notes
+        };
+        await registrationsRepo.AddStatusHistoryAsync(history, ct);
+    }
+
     private static string EscapeCsvValue(string value)
     {
         if (value.Length > 0 && "=+-@\t\r".Contains(value[0]))
@@ -1066,11 +1409,13 @@ public class RegistrationsService(
 
     private static string MapStatusEs(RegistrationStatus status) => status switch
     {
-        RegistrationStatus.Pending => "Pendiente",
-        RegistrationStatus.Confirmed => "Confirmada",
-        RegistrationStatus.Cancelled => "Cancelada",
-        RegistrationStatus.Draft => "Borrador",
-        _ => status.ToString()
+        RegistrationStatus.Pending       => "Pendiente",
+        RegistrationStatus.PartiallyPaid => "Al corriente",
+        RegistrationStatus.FullyPaid     => "Pago completo",
+        RegistrationStatus.Confirmed     => "Confirmada",
+        RegistrationStatus.Cancelled     => "Cancelada",
+        RegistrationStatus.Draft         => "En revisión",
+        _                                => status.ToString()
     };
 
     private static string MapAccommodationTypeEs(AccommodationType type) => type switch
@@ -1139,4 +1484,127 @@ public class RegistrationsService(
         AttendancePeriod.WeekendVisit => "Visita fin de semana",
         _ => period.ToString()
     };
+
+    // ── Accommodation Needs ──────────────────────────────────────────────────────
+
+    public async Task<AccommodationNeedsResponse> UpdateAccommodationNeedsAsync(
+        Guid registrationId, Guid taggedByUserId, UpdateAccommodationNeedsRequest request, CancellationToken ct)
+    {
+        _ = await registrationsRepo.GetByIdAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        if (request.FeatureIds.Count > 0)
+        {
+            var features = await accommodationFeaturesRepo.GetByIdsAsync(request.FeatureIds, ct);
+            if (features.Count != request.FeatureIds.Count)
+                throw new ValidationException(
+                    "Uno o más identificadores de característica no existen en el catálogo");
+        }
+
+        var needs = request.FeatureIds.Select(featureId => new RegistrationAccommodationNeed
+        {
+            Id = Guid.NewGuid(),
+            RegistrationId = registrationId,
+            AccommodationFeatureId = featureId,
+            TaggedByUserId = taggedByUserId
+        }).ToList();
+
+        await accommodationNeedsRepo.ReplaceAsync(registrationId, needs, ct);
+
+        var saved = await accommodationNeedsRepo.GetByRegistrationIdAsync(registrationId, ct);
+
+        return new AccommodationNeedsResponse(
+            registrationId,
+            saved.Select(n => new AccommodationNeedResponse(
+                n.AccommodationFeatureId,
+                n.AccommodationFeature.Name,
+                n.AccommodationFeature.ApplicabilityLevel.ToString(),
+                n.TaggedByUserId,
+                n.CreatedAt)).ToList());
+    }
+
+    public async Task<List<AccommodationNeedResponse>> GetAccommodationNeedsAsync(
+        Guid registrationId, CancellationToken ct)
+    {
+        _ = await registrationsRepo.GetByIdAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var needs = await accommodationNeedsRepo.GetByRegistrationIdAsync(registrationId, ct);
+
+        return needs.Select(n => new AccommodationNeedResponse(
+            n.AccommodationFeatureId,
+            n.AccommodationFeature.Name,
+            n.AccommodationFeature.ApplicabilityLevel.ToString(),
+            n.TaggedByUserId,
+            n.CreatedAt)).ToList();
+    }
+
+    // ── Accommodation Notes ──────────────────────────────────────────────────────
+
+    public async Task<AccommodationNotesResponse> UpdateAccommodationNotesAsync(
+        Guid registrationId, UpdateAccommodationNotesRequest request, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        registration.AccommodationInternalNotes = string.IsNullOrWhiteSpace(request.AccommodationInternalNotes)
+            ? null
+            : request.AccommodationInternalNotes;
+
+        await registrationsRepo.UpdateAsync(registration, ct);
+
+        return new AccommodationNotesResponse(
+            registrationId,
+            registration.AccommodationInternalNotes,
+            DateTime.UtcNow);
+    }
+
+    // ── Friend Links ─────────────────────────────────────────────────────────────
+
+    public async Task<FriendLinksResponse> UpdateFriendLinksAsync(
+        Guid registrationId, Guid createdByUserId, UpdateFriendLinksRequest request, CancellationToken ct)
+    {
+        var registration = await registrationsRepo.GetByIdAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        if (request.LinkedRegistrationIds.Contains(registrationId))
+            throw new BusinessRuleException("NO_SELF_LINK: No se puede crear un vínculo de una inscripción consigo misma");
+
+        foreach (var linkedId in request.LinkedRegistrationIds)
+        {
+            var linked = await registrationsRepo.GetByIdAsync(linkedId, ct)
+                ?? throw new NotFoundException("Inscripción vinculada", linkedId);
+
+            if (linked.CampEditionId != registration.CampEditionId)
+                throw new BusinessRuleException(
+                    "SAME_EDITION_REQUIRED: Todas las inscripciones vinculadas deben pertenecer a la misma edición de campamento");
+        }
+
+        await friendLinksRepo.ReplaceAsync(registrationId, request.LinkedRegistrationIds, createdByUserId, ct);
+
+        var saved = await friendLinksRepo.GetByRegistrationIdAsync(registrationId, ct);
+
+        return new FriendLinksResponse(
+            registrationId,
+            saved.Select(l => new FriendLinkResponse(
+                l.LinkedRegistrationId,
+                l.LinkedRegistration.FamilyUnit.Name,
+                l.CreatedByUserId,
+                l.CreatedAt)).ToList());
+    }
+
+    public async Task<List<FriendLinkResponse>> GetFriendLinksAsync(
+        Guid registrationId, CancellationToken ct)
+    {
+        _ = await registrationsRepo.GetByIdAsync(registrationId, ct)
+            ?? throw new NotFoundException("Inscripción", registrationId);
+
+        var links = await friendLinksRepo.GetByRegistrationIdAsync(registrationId, ct);
+
+        return links.Select(l => new FriendLinkResponse(
+            l.LinkedRegistrationId,
+            l.LinkedRegistration.FamilyUnit.Name,
+            l.CreatedByUserId,
+            l.CreatedAt)).ToList();
+    }
 }

@@ -94,6 +94,14 @@ public class MediaItemConfiguration : IEntityTypeConfiguration<MediaItem>
         builder.HasIndex(m => m.MemoryId)
             .HasDatabaseName("ix_media_items_memory_id");
 
+        builder.Property(m => m.AccommodationId)
+            .HasColumnName("accommodation_id")
+            .IsRequired(false);
+
+        builder.Property(m => m.ZoneId)
+            .HasColumnName("zone_id")
+            .IsRequired(false);
+
         // Relationships
         builder.HasOne(m => m.UploadedBy)
             .WithMany()
@@ -103,6 +111,11 @@ public class MediaItemConfiguration : IEntityTypeConfiguration<MediaItem>
         builder.HasOne(m => m.Memory)
             .WithMany(mem => mem.MediaItems)
             .HasForeignKey(m => m.MemoryId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(m => m.Accommodation)
+            .WithMany()
+            .HasForeignKey(m => m.AccommodationId)
             .OnDelete(DeleteBehavior.SetNull);
     }
 }

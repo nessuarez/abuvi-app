@@ -23,6 +23,8 @@ vi.mock('@/composables/usePayments', () => ({
     getAllPayments: mockGetAllPayments,
     updateManualPayment: mockUpdateManualPayment,
     deleteManualPayment: mockDeleteManualPayment,
+    adminEditPayment: vi.fn(),
+    confirmCombinedPayments: vi.fn(),
     loading: mockLoading,
     error: mockError,
   }),
@@ -94,10 +96,10 @@ describe('PaymentsAllList', () => {
     expect(callArgs).not.toHaveProperty('toDate')
   })
 
-  it('renders search input for family/representative filter', () => {
+  it('renders search icon field for family/representative filter', () => {
     const wrapper = mountComponent()
-    const input = wrapper.findComponent({ name: 'InputText' })
-    expect(input.exists()).toBe(true)
+    const iconField = wrapper.findComponent({ name: 'IconField' })
+    expect(iconField.exists()).toBe(true)
   })
 
   it('includes search in API call when searchQuery has a value', async () => {

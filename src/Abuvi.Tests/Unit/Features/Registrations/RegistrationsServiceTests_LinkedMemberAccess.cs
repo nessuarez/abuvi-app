@@ -47,10 +47,13 @@ public class RegistrationsServiceTests_LinkedMemberAccess
         var pricingService = new RegistrationPricingService(settingsRepo);
 
         var extrasDefinitionRepo = Substitute.For<ICampEditionExtrasRepository>();
+        var accommodationNeedsRepo = Substitute.For<IRegistrationAccommodationNeedsRepository>();
+        var friendLinksRepo = Substitute.For<IRegistrationFriendLinksRepository>();
+        var accommodationFeaturesRepo = Substitute.For<IAccommodationFeaturesRepository>();
         _sut = new RegistrationsService(
             _repo, extrasRepo, accommodationPrefsRepo, _familyUnitsRepo,
             _editionsRepo, accommodationsRepo, extrasDefinitionRepo, pricingService, emailService,
-            paymentsService, membershipsRepo, logger);
+            paymentsService, membershipsRepo, accommodationNeedsRepo, friendLinksRepo, accommodationFeaturesRepo, logger);
     }
 
     // ── GetByIdAsync — linked member access ─────────────────────────────────

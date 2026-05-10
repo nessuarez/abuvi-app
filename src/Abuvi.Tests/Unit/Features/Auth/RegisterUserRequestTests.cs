@@ -15,13 +15,11 @@ public class RegisterUserRequestTests
             "Password123!",
             "John",
             "Doe",
-            "12345678A",
             "+34612345678",
             true
         );
 
         request.Email.Should().Be("test@example.com");
-        request.DocumentNumber.Should().Be("12345678A");
         request.AcceptedTerms.Should().BeTrue();
     }
 }

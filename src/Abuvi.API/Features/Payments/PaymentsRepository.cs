@@ -16,6 +16,8 @@ public class PaymentsRepository(AbuviDbContext db) : IPaymentsRepository
                     .ThenInclude(ce => ce.Camp)
             .Include(p => p.Registration)
                 .ThenInclude(r => r.FamilyUnit)
+            .Include(p => p.Registration)
+                .ThenInclude(r => r.RegisteredByUser)
             .FirstOrDefaultAsync(p => p.Id == paymentId, ct);
 
     public async Task<List<Payment>> GetByRegistrationIdAsync(Guid registrationId, CancellationToken ct)

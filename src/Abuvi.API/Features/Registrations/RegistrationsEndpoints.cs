@@ -73,6 +73,12 @@ public static class RegistrationsEndpoints
             .Produces<ApiResponse<CancelRegistrationResponse>>()
             .Produces(403).Produces(404).Produces(422);
 
+        group.MapPost("/{id:guid}/confirm-changes", ConfirmRegistrationChanges)
+            .WithName("ConfirmRegistrationChanges")
+            .WithSummary("Confirm pending Draft changes (own registration or Admin/Board force-confirm)")
+            .Produces<ApiResponse<RegistrationResponse>>()
+            .Produces(401).Produces(403).Produces(404).Produces(422);
+
         group.MapDelete("/{id:guid}", DeleteRegistration)
             .WithName("DeleteRegistration")
             .WithSummary("Permanently delete a registration (representative within 24h or Admin/Board)")
@@ -123,6 +129,53 @@ public static class RegistrationsEndpoints
             .WithName("AdminEditRegistration")
             .WithSummary("Edit registration as Admin/Board (sets status to Draft)")
             .AddEndpointFilter<ValidationFilter<AdminEditRegistrationRequest>>()
+            .Produces<ApiResponse<RegistrationResponse>>()
+            .Produces(400).Produces(401).Produces(403).Produces(404).Produces(422);
+
+        adminEditGroup.MapPatch("/{id:guid}/status", ChangeRegistrationStatus)
+            .WithName("ChangeRegistrationStatus")
+            .WithSummary("Change registration status manually (Admin/Board only)")
+            .AddEndpointFilter<ValidationFilter<ChangeRegistrationStatusRequest>>()
+            .Produces<ApiResponse<RegistrationResponse>>()
+            .Produces(400).Produces(401).Produces(403).Produces(404).Produces(422);
+
+        adminEditGroup.MapPut("/{id:guid}/accommodation-needs", UpdateAccommodationNeeds)
+            .WithName("UpdateAccommodationNeeds")
+            .WithSummary("Replace structured accommodation needs for a registration (Admin/Board only)")
+            .AddEndpointFilter<ValidationFilter<UpdateAccommodationNeedsRequest>>()
+            .Produces<ApiResponse<AccommodationNeedsResponse>>()
+            .Produces(400).Produces(401).Produces(403).Produces(404);
+
+        adminEditGroup.MapGet("/{id:guid}/accommodation-needs", GetAccommodationNeeds)
+            .WithName("GetAccommodationNeeds")
+            .WithSummary("Get accommodation needs for a registration (Admin/Board only)")
+            .Produces<ApiResponse<List<AccommodationNeedResponse>>>()
+            .Produces(401).Produces(403).Produces(404);
+
+        adminEditGroup.MapPatch("/{id:guid}/accommodation-notes", UpdateAccommodationNotes)
+            .WithName("UpdateAccommodationNotes")
+            .WithSummary("Update internal accommodation notes for a registration (Admin/Board only)")
+            .AddEndpointFilter<ValidationFilter<UpdateAccommodationNotesRequest>>()
+            .Produces<ApiResponse<AccommodationNotesResponse>>()
+            .Produces(400).Produces(401).Produces(403).Produces(404);
+
+        adminEditGroup.MapPut("/{id:guid}/friend-links", UpdateFriendLinks)
+            .WithName("UpdateFriendLinks")
+            .WithSummary("Replace friend family links for a registration (Admin/Board only)")
+            .AddEndpointFilter<ValidationFilter<UpdateFriendLinksRequest>>()
+            .Produces<ApiResponse<FriendLinksResponse>>()
+            .Produces(400).Produces(401).Produces(403).Produces(404);
+
+        adminEditGroup.MapGet("/{id:guid}/friend-links", GetFriendLinks)
+            .WithName("GetFriendLinks")
+            .WithSummary("Get friend family links for a registration (Admin/Board only)")
+            .Produces<ApiResponse<List<FriendLinkResponse>>>()
+            .Produces(401).Produces(403).Produces(404);
+
+        adminEditGroup.MapPut("/{id:guid}/members/admin", AdminUpdateRegistrationMembers)
+            .WithName("AdminUpdateRegistrationMembers")
+            .WithSummary("Update registration members (admin — triggers refund if payments exist)")
+            .AddEndpointFilter<ValidationFilter<UpdateRegistrationMembersRequest>>()
             .Produces<ApiResponse<RegistrationResponse>>()
             .Produces(400).Produces(401).Produces(403).Produces(404).Produces(422);
 
@@ -492,11 +545,15 @@ public static class RegistrationsEndpoints
         Guid id,
         AdminEditRegistrationRequest request,
         RegistrationsService service,
+        ClaimsPrincipal user,
         CancellationToken ct)
     {
+        var adminUserId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+
         try
         {
-            var result = await service.AdminUpdateAsync(id, request, ct);
+            var result = await service.AdminUpdateAsync(id, adminUserId, request, ct);
             return TypedResults.Ok(ApiResponse<RegistrationResponse>.Ok(result));
         }
         catch (NotFoundException ex)
@@ -507,6 +564,184 @@ public static class RegistrationsEndpoints
         {
             return TypedResults.UnprocessableEntity(
                 ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
+        }
+    }
+
+    private static async Task<IResult> ChangeRegistrationStatus(
+        Guid id, ChangeRegistrationStatusRequest request,
+        RegistrationsService service, ClaimsPrincipal user, CancellationToken ct)
+    {
+        var adminUserId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+
+        try
+        {
+            var result = await service.ChangeStatusAsync(id, adminUserId, request, ct);
+            return TypedResults.Ok(ApiResponse<RegistrationResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.UnprocessableEntity(
+                ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
+        }
+    }
+
+    private static async Task<IResult> ConfirmRegistrationChanges(
+        Guid id, RegistrationsService service, ClaimsPrincipal user, CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        var userRole = user.GetUserRole();
+        var isAdminOrBoard = userRole is "Admin" or "Board";
+
+        try
+        {
+            var result = await service.ConfirmChangesAsync(id, userId, isAdminOrBoard, ct);
+            return TypedResults.Ok(ApiResponse<RegistrationResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.UnprocessableEntity(
+                ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+    }
+
+    private static async Task<IResult> UpdateAccommodationNeeds(
+        Guid id,
+        UpdateAccommodationNeedsRequest request,
+        RegistrationsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        try
+        {
+            var result = await service.UpdateAccommodationNeedsAsync(id, userId, request, ct);
+            return TypedResults.Ok(ApiResponse<AccommodationNeedsResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (ValidationException ex)
+        {
+            return TypedResults.BadRequest(ApiResponse<object>.Fail(ex.Message, "VALIDATION_ERROR"));
+        }
+    }
+
+    private static async Task<IResult> GetAccommodationNeeds(
+        Guid id,
+        RegistrationsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await service.GetAccommodationNeedsAsync(id, ct);
+            return TypedResults.Ok(ApiResponse<List<AccommodationNeedResponse>>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> UpdateAccommodationNotes(
+        Guid id,
+        UpdateAccommodationNotesRequest request,
+        RegistrationsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await service.UpdateAccommodationNotesAsync(id, request, ct);
+            return TypedResults.Ok(ApiResponse<AccommodationNotesResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> UpdateFriendLinks(
+        Guid id,
+        UpdateFriendLinksRequest request,
+        RegistrationsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+        try
+        {
+            var result = await service.UpdateFriendLinksAsync(id, userId, request, ct);
+            return TypedResults.Ok(ApiResponse<FriendLinksResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex) when (ex.Message.StartsWith("NO_SELF_LINK"))
+        {
+            return TypedResults.BadRequest(ApiResponse<object>.Fail(ex.Message, "NO_SELF_LINK"));
+        }
+        catch (BusinessRuleException ex) when (ex.Message.StartsWith("SAME_EDITION_REQUIRED"))
+        {
+            return TypedResults.BadRequest(ApiResponse<object>.Fail(ex.Message, "SAME_EDITION_REQUIRED"));
+        }
+    }
+
+    private static async Task<IResult> GetFriendLinks(
+        Guid id,
+        RegistrationsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await service.GetFriendLinksAsync(id, ct);
+            return TypedResults.Ok(ApiResponse<List<FriendLinkResponse>>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+    }
+
+    private static async Task<IResult> AdminUpdateRegistrationMembers(
+        Guid id,
+        UpdateRegistrationMembersRequest request,
+        RegistrationsService service,
+        ClaimsPrincipal user,
+        CancellationToken ct)
+    {
+        var userId = user.GetUserId()
+            ?? throw new UnauthorizedAccessException("Usuario no autenticado");
+
+        try
+        {
+            var result = await service.AdminUpdateMembersAsync(id, userId, request, ct);
+            return TypedResults.Ok(ApiResponse<RegistrationResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.UnprocessableEntity(
+                ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE"));
         }
     }
 }

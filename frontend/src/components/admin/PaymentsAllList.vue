@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { useToast } from 'primevue/usetoast'
 import DataTable from 'primevue/datatable'
@@ -16,8 +16,11 @@ import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
+import Tag from 'primevue/tag'
 import PaymentStatusBadge from '@/components/payments/PaymentStatusBadge.vue'
 import PaymentConceptLines from '@/components/payments/PaymentConceptLines.vue'
+import AdminEditPaymentDialog from '@/components/admin/AdminEditPaymentDialog.vue'
+import ConfirmCombinedPaymentsDialog from '@/components/admin/ConfirmCombinedPaymentsDialog.vue'
 import { usePayments } from '@/composables/usePayments'
 import { useCampEditions } from '@/composables/useCampEditions'
 import type { AdminPaymentResponse, PaymentFilterParams } from '@/types/payment'
@@ -25,7 +28,13 @@ import type { PaymentStatus } from '@/types/registration'
 import { formatDateLocal } from '@/utils/date'
 
 const toast = useToast()
-const { getAllPayments, updateManualPayment, deleteManualPayment, loading, error } = usePayments()
+const {
+  getAllPayments,
+  updateManualPayment,
+  deleteManualPayment,
+  loading,
+  error
+} = usePayments()
 const { allEditions, fetchAllEditions } = useCampEditions()
 
 const payments = ref<AdminPaymentResponse[]>([])
@@ -56,6 +65,14 @@ const saving = ref(false)
 const showDeleteDialog = ref(false)
 const deleteTarget = ref<AdminPaymentResponse | null>(null)
 const deleting = ref(false)
+
+// Admin edit payment dialog
+const showAdminEditDialog = ref(false)
+const adminEditTarget = ref<AdminPaymentResponse | null>(null)
+
+// Confirm combined payments dialog
+const showConfirmCombinedDialog = ref(false)
+const selectedPayments = ref<AdminPaymentResponse[]>([])
 
 const statusOptions = [
   { label: 'Todos', value: null },
@@ -176,6 +193,47 @@ const handleDelete = async () => {
   }
 }
 
+// Admin edit payment
+const openAdminEdit = (payment: AdminPaymentResponse) => {
+  adminEditTarget.value = payment
+  showAdminEditDialog.value = true
+}
+
+const handleAdminEditSaved = (updated: AdminPaymentResponse) => {
+  const idx = payments.value.findIndex((p) => p.id === updated.id)
+  if (idx !== -1) payments.value[idx] = updated
+  toast.add({ severity: 'success', summary: 'Pago actualizado', life: 3000 })
+}
+
+// Combined payments
+const canConfirmCombined = computed(() => {
+  if (selectedPayments.value.length < 2) return false
+  const first = selectedPayments.value[0]
+  return selectedPayments.value.every(
+    (p) =>
+      p.registrationId === first.registrationId &&
+      (p.status === 'Pending' || p.status === 'PendingReview') &&
+      !p.isManual
+  )
+})
+
+const confirmCombinedRegistrationId = computed(() =>
+  selectedPayments.value[0]?.registrationId ?? ''
+)
+
+const confirmCombinedFamilyName = computed(() =>
+  selectedPayments.value[0]?.familyUnitName ?? ''
+)
+
+const openConfirmCombined = () => {
+  showConfirmCombinedDialog.value = true
+}
+
+const handleCombinedConfirmed = async () => {
+  selectedPayments.value = []
+  await fetchPayments()
+}
+
 watch([selectedStatus, selectedEditionId, selectedInstallment, dateFrom, dateTo], () => {
   currentPage.value = 1
   fetchPayments()
@@ -283,21 +341,33 @@ onMounted(async () => {
       <ProgressSpinner />
     </div>
 
-    <DataTable
-      v-else
-      v-model:expanded-rows="expandedRows"
-      :value="payments"
-      :loading="loading"
-      lazy
-      paginator
-      :rows="pageSize"
-      :total-records="totalRecords"
-      :rows-per-page-options="[10, 20, 50]"
-      striped-rows
-      size="small"
-      data-key="id"
-      @page="onPageChange"
-    >
+    <template v-else>
+      <div v-if="canConfirmCombined" class="mb-3">
+        <Button
+          label="Confirmar pago combinado"
+          icon="pi pi-check-circle"
+          severity="success"
+          @click="openConfirmCombined"
+        />
+      </div>
+
+      <DataTable
+        v-model:selection="selectedPayments"
+        v-model:expanded-rows="expandedRows"
+        :value="payments"
+        :loading="loading"
+        lazy
+        paginator
+        :rows="pageSize"
+        :total-records="totalRecords"
+        :rows-per-page-options="[10, 20, 50]"
+        striped-rows
+        size="small"
+        data-key="id"
+        selection-mode="multiple"
+        @page="onPageChange"
+      >
+      <Column selection-mode="multiple" style="width: 3rem" />
       <Column expander style="width: 2rem" />
       <Column field="familyUnitName" header="Familia" />
       <Column field="campEditionName" header="Edicion" />
@@ -314,8 +384,17 @@ onMounted(async () => {
           </div>
         </template>
       </Column>
-      <Column field="amount" header="Importe" style="width: 7rem">
-        <template #body="{ data }">{{ formatCurrency(data.amount) }}</template>
+      <Column field="amount" header="Importe" style="width: 9rem">
+        <template #body="{ data }">
+          <span>{{ formatCurrency(data.amount) }}</span>
+          <Tag
+            v-if="data.conceptOverridden"
+            value="Ajustado"
+            severity="warn"
+            class="ml-1 text-xs"
+            v-tooltip="data.originalAmount != null ? `Importe original: ${formatCurrency(data.originalAmount)}` : 'Importe ajustado por administración'"
+          />
+        </template>
       </Column>
       <Column field="status" header="Estado" style="width: 8rem">
         <template #body="{ data }">
@@ -351,19 +430,21 @@ onMounted(async () => {
       <Column field="createdAt" header="Fecha" style="width: 7rem">
         <template #body="{ data }">{{ formatDate(data.createdAt) }}</template>
       </Column>
-      <Column header="" style="width: 5rem">
+      <Column header="" style="width: 7rem">
         <template #body="{ data }">
-          <div v-if="data.isManual && data.status === 'Pending'" class="flex gap-1">
+          <div class="flex gap-1">
             <Button
               icon="pi pi-pencil"
               text
               rounded
               size="small"
               severity="secondary"
-              aria-label="Editar pago manual"
-              @click="openEditDialog(data)"
+              aria-label="Editar pago"
+              v-tooltip="'Editar pago'"
+              @click="openAdminEdit(data)"
             />
             <Button
+              v-if="data.isManual && data.status === 'Pending'"
               icon="pi pi-trash"
               text
               rounded
@@ -387,11 +468,30 @@ onMounted(async () => {
           </p>
         </div>
       </template>
-    </DataTable>
+      </DataTable>
 
-    <Message v-if="error" severity="error" :closable="false" class="mt-4">
-      {{ error }}
-    </Message>
+      <Message v-if="error" severity="error" :closable="false" class="mt-4">
+        {{ error }}
+      </Message>
+    </template>
+
+    <!-- Admin edit payment dialog -->
+    <AdminEditPaymentDialog
+      v-if="adminEditTarget"
+      v-model:visible="showAdminEditDialog"
+      :payment="adminEditTarget"
+      @saved="handleAdminEditSaved"
+    />
+
+    <!-- Confirm combined payments dialog -->
+    <ConfirmCombinedPaymentsDialog
+      v-if="showConfirmCombinedDialog"
+      v-model:visible="showConfirmCombinedDialog"
+      :registration-id="confirmCombinedRegistrationId"
+      :family-unit-name="confirmCombinedFamilyName"
+      :payments="selectedPayments"
+      @confirmed="handleCombinedConfirmed"
+    />
 
     <!-- Edit manual payment dialog -->
     <Dialog

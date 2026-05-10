@@ -20,7 +20,8 @@ const mockRegistration: RegistrationListItem = {
   totalAmount: 450,
   amountPaid: 0,
   amountRemaining: 450,
-  createdAt: '2026-02-01T00:00:00Z'
+  createdAt: '2026-02-01T00:00:00Z',
+  hasPendingUserAcknowledgement: false
 }
 
 const mountComponent = (props: { registration: RegistrationListItem }) =>
@@ -65,5 +66,18 @@ describe('RegistrationCard', () => {
     const reg = { ...mockRegistration, campEdition: { ...mockRegistration.campEdition, location: null } }
     const wrapper = mountComponent({ registration: reg })
     expect(wrapper.find('.pi-map-marker').exists()).toBe(false)
+  })
+
+  it('should not show pending-ack badge when hasPendingUserAcknowledgement is false', () => {
+    const wrapper = mountComponent({ registration: mockRegistration })
+    expect(wrapper.find('[data-testid="pending-ack-badge"]').exists()).toBe(false)
+  })
+
+  it('should show pending-ack badge when hasPendingUserAcknowledgement is true', () => {
+    const reg = { ...mockRegistration, hasPendingUserAcknowledgement: true }
+    const wrapper = mountComponent({ registration: reg })
+    const badge = wrapper.find('[data-testid="pending-ack-badge"]')
+    expect(badge.exists()).toBe(true)
+    expect(badge.text()).toBe('Cambios pendientes')
   })
 })

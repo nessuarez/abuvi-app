@@ -85,3 +85,40 @@ public class UpdateManualPaymentValidator : AbstractValidator<UpdateManualPaymen
             .When(x => x.AdminNotes != null);
     }
 }
+
+public class AdminEditPaymentRequestValidator : AbstractValidator<AdminEditPaymentRequest>
+{
+    public AdminEditPaymentRequestValidator()
+    {
+        RuleFor(x => x.Amount)
+            .GreaterThan(0).WithMessage("El importe debe ser mayor que cero")
+            .When(x => x.Amount.HasValue);
+
+        RuleFor(x => x.ConceptDescription)
+            .MaximumLength(500).WithMessage("La descripción no puede superar los 500 caracteres")
+            .When(x => x.ConceptDescription is not null);
+
+        RuleFor(x => x.AdminNotes)
+            .MaximumLength(2000).WithMessage("Las notas no pueden superar los 2000 caracteres")
+            .When(x => x.AdminNotes is not null);
+
+        RuleFor(x => x)
+            .Must(x => x.Amount.HasValue || x.ConceptDescription is not null
+                       || x.DueDate.HasValue || x.AdminNotes is not null)
+            .WithMessage("Se debe proporcionar al menos un campo para actualizar");
+    }
+}
+
+public class ConfirmCombinedPaymentsRequestValidator : AbstractValidator<ConfirmCombinedPaymentsRequest>
+{
+    public ConfirmCombinedPaymentsRequestValidator()
+    {
+        RuleFor(x => x.PaymentIds)
+            .NotEmpty().WithMessage("Se debe proporcionar al menos un pago")
+            .Must(ids => ids.Distinct().Count() == ids.Count)
+            .WithMessage("No se pueden duplicar los IDs de pago");
+
+        RuleFor(x => x.TotalReceivedAmount)
+            .GreaterThan(0).WithMessage("El importe recibido debe ser mayor que cero");
+    }
+}

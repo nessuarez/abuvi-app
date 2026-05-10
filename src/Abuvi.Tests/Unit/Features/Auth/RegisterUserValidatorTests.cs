@@ -17,7 +17,6 @@ public class RegisterUserValidatorTests
             "Password123!",
             "John",
             "Doe",
-            "12345678A",
             "+34612345678",
             true
         );
@@ -40,7 +39,6 @@ public class RegisterUserValidatorTests
             "Password123!",
             "John",
             "Doe",
-            "12345678A",
             null,
             true
         );
@@ -68,7 +66,6 @@ public class RegisterUserValidatorTests
             password,
             "John",
             "Doe",
-            "12345678A",
             null,
             true
         );
@@ -91,7 +88,6 @@ public class RegisterUserValidatorTests
             "Password123!",
             firstName,
             "Doe",
-            "12345678A",
             null,
             true
         );
@@ -104,53 +100,6 @@ public class RegisterUserValidatorTests
         result.Errors.Should().Contain(e => e.PropertyName == "FirstName");
     }
 
-    [Theory]
-    [InlineData("abc")]
-    [InlineData("12345678a")]
-    public async Task Validate_WithInvalidDocumentNumber_ShouldFail(string documentNumber)
-    {
-        // Arrange
-        var request = new RegisterUserRequest(
-            "user@example.com",
-            "Password123!",
-            "John",
-            "Doe",
-            documentNumber,
-            null,
-            true
-        );
-
-        // Act
-        var result = await _validator.ValidateAsync(request);
-
-        // Assert
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == "DocumentNumber");
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    public async Task Validate_WithEmptyDocumentNumber_ShouldPass(string? documentNumber)
-    {
-        // Arrange - DocumentNumber is optional
-        var request = new RegisterUserRequest(
-            "user@example.com",
-            "Password123!",
-            "John",
-            "Doe",
-            documentNumber,
-            null,
-            true
-        );
-
-        // Act
-        var result = await _validator.ValidateAsync(request);
-
-        // Assert
-        result.IsValid.Should().BeTrue();
-    }
-
     [Fact]
     public async Task Validate_WithTermsNotAccepted_ShouldFail()
     {
@@ -160,7 +109,6 @@ public class RegisterUserValidatorTests
             "Password123!",
             "John",
             "Doe",
-            "12345678A",
             null,
             false // Terms not accepted
         );
@@ -188,7 +136,6 @@ public class RegisterUserValidatorTests
             "Password123!",
             "John",
             "Doe",
-            "12345678A",
             phone,
             true
         );

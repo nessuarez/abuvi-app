@@ -59,14 +59,11 @@ public class AuthServiceTests_Registration
             "Password123!",
             "John",
             "Doe",
-            "12345678A",
             "+34612345678",
             true
         );
 
         _repository.GetByEmailAsync(request.Email, Arg.Any<CancellationToken>())
-            .Returns((User?)null);
-        _repository.GetByDocumentNumberAsync(request.DocumentNumber!, Arg.Any<CancellationToken>())
             .Returns((User?)null);
         _passwordHasher.HashPassword(request.Password)
             .Returns("hashed_password");
@@ -85,7 +82,6 @@ public class AuthServiceTests_Registration
             Arg.Is<User>(u =>
                 u.Email == request.Email &&
                 u.FirstName == request.FirstName &&
-                u.DocumentNumber == request.DocumentNumber &&
                 u.EmailVerified == false &&
                 u.IsActive == false &&
                 u.EmailVerificationToken != null &&
@@ -111,7 +107,6 @@ public class AuthServiceTests_Registration
             "Password123!",
             "John",
             "Doe",
-            "12345678A",
             null,
             true
         );
@@ -123,7 +118,6 @@ public class AuthServiceTests_Registration
             PasswordHash = "hash",
             FirstName = "Existing",
             LastName = "User",
-            DocumentNumber = "99999999Z",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -153,7 +147,6 @@ public class AuthServiceTests_Registration
             PasswordHash = "hash",
             FirstName = "John",
             LastName = "Doe",
-            DocumentNumber = "12345678A",
             EmailVerified = false,
             IsActive = false,
             EmailVerificationToken = token,
@@ -199,7 +192,6 @@ public class AuthServiceTests_Registration
             PasswordHash = "hash",
             FirstName = "John",
             LastName = "Doe",
-            DocumentNumber = "12345678A",
             EmailVerified = false,
             EmailVerificationToken = token,
             EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(-1), // Expired

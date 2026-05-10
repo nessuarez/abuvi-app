@@ -301,15 +301,18 @@ public class FamilyUnitsService(
     }
 
     /// <summary>
-    /// Deletes a family member (cannot delete representative's own record).
-    /// When isAdminOrBoard is true, also checks for active registrations.
+    /// Deletes a family member.
+    /// Hard-deletes if the member has no registration or membership history.
+    /// Soft-deletes (sets DeletedAt) otherwise to preserve FK integrity.
+    /// Cannot delete the representative's own record.
+    /// Admin/Board callers are additionally blocked from deleting members with active registrations.
     /// </summary>
     public async Task DeleteFamilyMemberAsync(Guid id, bool isAdminOrBoard, CancellationToken ct)
     {
         var member = await repository.GetFamilyMemberByIdAsync(id, ct)
             ?? throw new NotFoundException("Miembro Familiar", id);
 
-        // Check if this is the representative's member record
+        // Cannot delete the representative's own member record
         var familyUnit = await repository.GetFamilyUnitByIdAsync(member.FamilyUnitId, ct);
         if (familyUnit != null && member.UserId.HasValue
             && familyUnit.RepresentativeUserId == member.UserId.Value)
@@ -318,7 +321,7 @@ public class FamilyUnitsService(
                 "No se puede eliminar al representante de la unidad familiar.");
         }
 
-        // Admin/Board: check for active registrations before deleting
+        // Admin/Board: block deletion when member has active (Pending/Confirmed) registrations
         if (isAdminOrBoard)
         {
             var hasActiveRegs = await repository.MemberHasActiveRegistrationsAsync(id, ct);
@@ -327,11 +330,44 @@ public class FamilyUnitsService(
                     "No se puede eliminar un miembro con inscripciones activas (Pendiente/Confirmada).");
         }
 
-        await repository.DeleteFamilyMemberAsync(id, ct);
+        // Soft-delete when any historical FK references exist; hard-delete otherwise
+        var hasRegistrations = await repository.MemberHasAnyRegistrationsAsync(id, ct);
+        var hasMembership = await repository.MemberHasMembershipAsync(id, ct);
+
+        if (hasRegistrations || hasMembership)
+        {
+            await repository.SoftDeleteFamilyMemberAsync(id, ct);
+            logger.LogInformation(
+                "Soft-deleted family member {MemberId} ({FirstName} {LastName}) from family unit {FamilyUnitId}",
+                id, member.FirstName, member.LastName, member.FamilyUnitId);
+        }
+        else
+        {
+            await repository.DeleteFamilyMemberAsync(id, ct);
+            logger.LogInformation(
+                "Hard-deleted family member {MemberId} ({FirstName} {LastName}) from family unit {FamilyUnitId}",
+                id, member.FirstName, member.LastName, member.FamilyUnitId);
+        }
+    }
+
+    /// <summary>
+    /// GDPR right-to-erasure: replaces all PII fields with sentinel values.
+    /// Works on both active and soft-deleted members. Admin/Board only.
+    /// </summary>
+    public async Task AnonymiseFamilyMemberAsync(
+        Guid familyUnitId, Guid memberId, CancellationToken ct)
+    {
+        var member = await repository.GetFamilyMemberByIdIgnoringFiltersAsync(memberId, ct)
+            ?? throw new NotFoundException("Miembro Familiar", memberId);
+
+        if (member.FamilyUnitId != familyUnitId)
+            throw new NotFoundException("Miembro Familiar", memberId);
+
+        await repository.AnonymiseFamilyMemberAsync(memberId, ct);
 
         logger.LogInformation(
-            "Deleted family member {MemberId} ({FirstName} {LastName}) from family unit {FamilyUnitId}",
-            id, member.FirstName, member.LastName, member.FamilyUnitId);
+            "Anonymised PII for family member {MemberId} in family unit {FamilyUnitId}",
+            memberId, familyUnitId);
     }
 
     #endregion

@@ -49,6 +49,22 @@ export interface AdminPaymentResponse extends PaymentResponse {
   campEditionName: string
   confirmedByUserName: string | null
   confirmedAt: string | null
+  conceptOverridden: boolean
+  originalAmount: number | null
+}
+
+export interface AdminEditPaymentRequest {
+  amount?: number | null
+  conceptDescription?: string | null
+  dueDate?: string | null
+  adminNotes?: string | null
+}
+
+export interface ConfirmCombinedPaymentsRequest {
+  paymentIds: string[]
+  totalReceivedAmount: number
+  applySurplusToNext?: boolean
+  adminNotes?: string | null
 }
 
 export interface PaymentSettings {
