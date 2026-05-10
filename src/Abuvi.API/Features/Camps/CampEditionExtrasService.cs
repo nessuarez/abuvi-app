@@ -41,9 +41,9 @@ public class CampEditionExtrasService(
         if (edition is null)
             throw new InvalidOperationException("La edición de campamento no fue encontrada");
 
-        if (edition.Status is CampEditionStatus.Completed or CampEditionStatus.Closed)
+        if (edition.Status is CampEditionStatus.Completed)
             throw new InvalidOperationException(
-                "No se pueden añadir extras a una edición cerrada o completada");
+                "No se pueden añadir extras a una edición completada");
 
         var extra = new CampEditionExtra
         {
