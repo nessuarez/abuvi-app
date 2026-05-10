@@ -130,6 +130,47 @@ public class CampEditionAccommodationsServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_WhenEditionIsCompleted_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var edition = MakeEdition();
+        edition.Status = CampEditionStatus.Completed;
+        _editionsRepository.GetByIdAsync(edition.Id, Arg.Any<CancellationToken>()).Returns(edition);
+
+        var request = new CreateCampEditionAccommodationRequest(
+            "Habitación", AccommodationType.Lodge, null, 1);
+
+        // Act
+        var act = () => _sut.CreateAsync(edition.Id, request, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*completada*");
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenEditionIsClosed_CreatesAccommodationSuccessfully()
+    {
+        // Arrange
+        var edition = MakeEdition();
+        edition.Status = CampEditionStatus.Closed;
+        _editionsRepository.GetByIdAsync(edition.Id, Arg.Any<CancellationToken>()).Returns(edition);
+        _repository.GetPreferenceCountAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(0);
+        _repository.GetFirstChoiceCountAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(0);
+
+        var request = new CreateCampEditionAccommodationRequest(
+            "Cabaña C1", AccommodationType.Lodge, null, 1);
+
+        // Act
+        var result = await _sut.CreateAsync(edition.Id, request, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Name.Should().Be("Cabaña C1");
+        await _repository.Received(1).AddAsync(Arg.Any<CampEditionAccommodation>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task UpdateAsync_UpdatesCountByFamily()
     {
         var id = Guid.NewGuid();

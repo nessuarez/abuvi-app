@@ -124,11 +124,11 @@ public class CampEditionExtrasServiceTests
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*cerrada o completada*");
+            .WithMessage("*completada*");
     }
 
     [Fact]
-    public async Task CreateAsync_WhenEditionIsClosed_ThrowsInvalidOperationException()
+    public async Task CreateAsync_WhenEditionIsClosed_CreatesExtraSuccessfully()
     {
         // Arrange
         var edition = MakeEdition(CampEditionStatus.Closed);
@@ -139,10 +139,12 @@ public class CampEditionExtrasServiceTests
             PricingType.PerPerson, PricingPeriod.OneTime, false, null);
 
         // Act
-        var act = () => _sut.CreateAsync(edition.Id, request);
+        var result = await _sut.CreateAsync(edition.Id, request);
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Should().NotBeNull();
+        result.Name.Should().Be("Name");
+        await _repository.Received(1).AddAsync(Arg.Any<CampEditionExtra>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
