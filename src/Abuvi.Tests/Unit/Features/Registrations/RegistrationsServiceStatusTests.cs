@@ -312,6 +312,35 @@ public class RegistrationsServiceStatusTests
     }
 
     [Fact]
+    public async Task ChangeStatusAsync_NotifyUser_Pending_SendsRevertedToPendingEmail()
+    {
+        var registration = BuildRegistration(RegistrationStatus.PartiallyPaid);
+        _repo.GetByIdWithDetailsAsync(RegistrationId, Arg.Any<CancellationToken>())
+            .Returns(registration, BuildRegistration(RegistrationStatus.Pending));
+
+        var request = new ChangeRegistrationStatusRequest(RegistrationStatus.Pending, "Cuota no validada", NotifyUser: true);
+        await _sut.ChangeStatusAsync(RegistrationId, AdminUserId, request, CancellationToken.None);
+
+        await _emailService.Received(1).SendRegistrationRevertedToPendingAsync(
+            Arg.Any<RegistrationStatusEmailData>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ChangeStatusAsync_NotifyUser_IncludesBoardNotesInEmailData()
+    {
+        var registration = BuildRegistration(RegistrationStatus.Pending);
+        _repo.GetByIdWithDetailsAsync(RegistrationId, Arg.Any<CancellationToken>())
+            .Returns(registration, BuildRegistration(RegistrationStatus.PartiallyPaid));
+
+        var request = new ChangeRegistrationStatusRequest(RegistrationStatus.PartiallyPaid, "Nota de junta", NotifyUser: true);
+        await _sut.ChangeStatusAsync(RegistrationId, AdminUserId, request, CancellationToken.None);
+
+        await _emailService.Received(1).SendRegistrationPartiallyPaidAsync(
+            Arg.Is<RegistrationStatusEmailData>(d => d.BoardNotes == "Nota de junta"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task ConfirmChangesAsync_EmailFailureIsNonBlocking()
     {
         var registration = BuildRegistration(RegistrationStatus.Draft,

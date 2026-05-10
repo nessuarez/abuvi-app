@@ -102,9 +102,14 @@ public interface IEmailService
         RegistrationStatusEmailData data,
         CancellationToken ct);
 
+    /// <summary>Sends "Inscripción devuelta a Pendiente" when board reverts registration to Pending</summary>
+    Task SendRegistrationRevertedToPendingAsync(
+        RegistrationStatusEmailData data,
+        CancellationToken ct);
+
     /// <summary>Sends "Hay cambios en tu inscripción" when board notifies user of Draft changes</summary>
     Task SendDraftChangesNotificationAsync(
-        RegistrationStatusEmailData data,
+        DraftChangesEmailData data,
         CancellationToken ct);
 
     /// <summary>Sends "Has confirmado los cambios" after user or board force-confirms Draft</summary>
@@ -182,6 +187,17 @@ public record RegistrationStatusEmailData
     public required string RecipientFirstName { get; init; }
     public required string CampName { get; init; }
     public required Guid RegistrationId { get; init; }
+    public string? BoardNotes { get; init; }
+}
+
+public record DraftChangesEmailData
+{
+    public required string ToEmail { get; init; }
+    public required string RecipientFirstName { get; init; }
+    public required string CampName { get; init; }
+    public required Guid RegistrationId { get; init; }
+    public string? BoardNotes { get; init; }
+    public IReadOnlyList<string>? ChangeSummary { get; init; }
 }
 
 public record PaymentReceivedEmailData

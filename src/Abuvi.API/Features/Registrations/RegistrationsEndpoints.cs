@@ -179,6 +179,12 @@ public static class RegistrationsEndpoints
             .Produces<ApiResponse<RegistrationResponse>>()
             .Produces(400).Produces(401).Produces(403).Produces(404).Produces(422);
 
+        adminEditGroup.MapPost("/{id:guid}/notify-draft", NotifyDraft)
+            .WithName("NotifyDraft")
+            .WithSummary("Send draft-changes email to the family (Admin/Board only)")
+            .Produces<ApiResponse<RegistrationResponse>>()
+            .Produces(400).Produces(401).Produces(403).Produces(404).Produces(422);
+
         return app;
     }
 
@@ -742,6 +748,28 @@ public static class RegistrationsEndpoints
         {
             return TypedResults.UnprocessableEntity(
                 ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE"));
+        }
+    }
+
+    private static async Task<IResult> NotifyDraft(
+        Guid id,
+        NotifyDraftRequest request,
+        RegistrationsService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await service.NotifyDraftAsync(id, request.BoardNotes, ct);
+            return TypedResults.Ok(ApiResponse<RegistrationResponse>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            return TypedResults.NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (BusinessRuleException ex)
+        {
+            return TypedResults.UnprocessableEntity(
+                ApiResponse<object>.Fail(ex.Message, "BUSINESS_RULE_VIOLATION"));
         }
     }
 }

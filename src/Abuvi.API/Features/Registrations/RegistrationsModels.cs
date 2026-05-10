@@ -26,6 +26,7 @@ public class Registration
     public DateTime? AdminModifiedAt { get; set; }
     public RegistrationStatus? DraftTargetStatus { get; set; }
     public bool HasPendingUserAcknowledgement { get; set; } = false;
+    public bool FamilyNotifiedOfDraft { get; set; } = false;
 
     public string? AccommodationInternalNotes { get; set; }
 
@@ -322,6 +323,7 @@ public record RegistrationResponse(
     bool IsAdminModified,
     RegistrationStatus? DraftTargetStatus,
     bool HasPendingUserAcknowledgement,
+    bool FamilyNotifiedOfDraft,
     List<StatusHistoryItemResponse> StatusHistory,
     string? AccommodationInternalNotes = null,
     List<AccommodationNeedResponse>? AccommodationNeeds = null,
@@ -482,6 +484,7 @@ public record ChangeRegistrationStatusRequest(
 public record UpdateAccommodationNeedsRequest(List<Guid> FeatureIds);
 public record UpdateAccommodationNotesRequest(string? AccommodationInternalNotes);
 public record UpdateFriendLinksRequest(List<Guid> LinkedRegistrationIds);
+public record NotifyDraftRequest(string? BoardNotes = null);
 
 /// <summary>
 /// Represents an (accommodation, preference position) filter pair.
@@ -542,6 +545,7 @@ public static class RegistrationMappingExtensions
         r.AdminModifiedAt != null && r.Status == RegistrationStatus.Draft,
         r.DraftTargetStatus,
         r.HasPendingUserAcknowledgement,
+        r.FamilyNotifiedOfDraft,
         r.StatusHistory
             .OrderBy(h => h.ChangedAt)
             .Select(h => new StatusHistoryItemResponse(
