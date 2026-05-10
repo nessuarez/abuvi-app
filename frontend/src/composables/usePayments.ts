@@ -266,6 +266,21 @@ export function usePayments() {
     }
   }
 
+  const adminRemoveProof = async (paymentId: string): Promise<boolean> => {
+    loading.value = true
+    error.value = null
+    try {
+      await api.delete(`/admin/payments/${paymentId}/proof`)
+      return true
+    } catch (err: unknown) {
+      error.value = extractError(err, 'Error al eliminar el justificante')
+      console.error('Failed to remove payment proof:', err)
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   const adminEditPayment = async (
     paymentId: string,
     request: AdminEditPaymentRequest
@@ -358,6 +373,7 @@ export function usePayments() {
     createManualPayment,
     updateManualPayment,
     deleteManualPayment,
+    adminRemoveProof,
     getPaymentSettings,
     updatePaymentSettings,
     adminEditPayment,
