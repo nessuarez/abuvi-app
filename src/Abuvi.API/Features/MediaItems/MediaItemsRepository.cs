@@ -8,6 +8,12 @@ public interface IMediaItemsRepository
     Task<MediaItem?> GetByIdAsync(Guid id, CancellationToken ct);
     Task<IReadOnlyList<MediaItem>> GetListAsync(int? year, bool? approved, string? context, MediaItemType? type, Guid? accommodationId, Guid? zoneId, CancellationToken ct);
     Task<IReadOnlyList<MediaItem>> GetByMemoryIdAsync(Guid memoryId, CancellationToken ct);
+    Task<IReadOnlyList<MediaItem>> GetByAccommodationIdAsync(Guid accommodationId, CancellationToken ct);
+    Task<IReadOnlyList<MediaItem>> GetByZoneIdAsync(Guid zoneId, CancellationToken ct);
+    Task<int> CountByAccommodationAsync(Guid accommodationId, CancellationToken ct);
+    Task<int> CountByZoneAsync(Guid zoneId, CancellationToken ct);
+    Task ClearPrimaryForAccommodationAsync(Guid accommodationId, CancellationToken ct);
+    Task ClearPrimaryForZoneAsync(Guid zoneId, CancellationToken ct);
     Task AddAsync(MediaItem mediaItem, CancellationToken ct);
     Task UpdateAsync(MediaItem mediaItem, CancellationToken ct);
     Task DeleteAsync(MediaItem mediaItem, CancellationToken ct);
@@ -70,6 +76,56 @@ public class MediaItemsRepository(AbuviDbContext db) : IMediaItemsRepository
             .Where(m => m.MemoryId == memoryId)
             .OrderByDescending(m => m.CreatedAt)
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<MediaItem>> GetByAccommodationIdAsync(Guid accommodationId, CancellationToken ct)
+    {
+        return await db.MediaItems
+            .AsNoTracking()
+            .Include(m => m.UploadedBy)
+            .Where(m => m.AccommodationId == accommodationId)
+            .OrderBy(m => m.DisplayOrder)
+            .ThenBy(m => m.IsPrimary ? 0 : 1)
+            .ThenByDescending(m => m.CreatedAt)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<MediaItem>> GetByZoneIdAsync(Guid zoneId, CancellationToken ct)
+    {
+        return await db.MediaItems
+            .AsNoTracking()
+            .Include(m => m.UploadedBy)
+            .Where(m => m.ZoneId == zoneId)
+            .OrderBy(m => m.DisplayOrder)
+            .ThenBy(m => m.IsPrimary ? 0 : 1)
+            .ThenByDescending(m => m.CreatedAt)
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> CountByAccommodationAsync(Guid accommodationId, CancellationToken ct)
+    {
+        return await db.MediaItems
+            .CountAsync(m => m.AccommodationId == accommodationId, ct);
+    }
+
+    public async Task<int> CountByZoneAsync(Guid zoneId, CancellationToken ct)
+    {
+        return await db.MediaItems
+            .CountAsync(m => m.ZoneId == zoneId, ct);
+    }
+
+    public async Task ClearPrimaryForAccommodationAsync(Guid accommodationId, CancellationToken ct)
+    {
+        await db.MediaItems
+            .Where(m => m.AccommodationId == accommodationId && m.IsPrimary)
+            .ExecuteUpdateAsync(s => s.SetProperty(m => m.IsPrimary, false), ct);
+    }
+
+    public async Task ClearPrimaryForZoneAsync(Guid zoneId, CancellationToken ct)
+    {
+        await db.MediaItems
+            .Where(m => m.ZoneId == zoneId && m.IsPrimary)
+            .ExecuteUpdateAsync(s => s.SetProperty(m => m.IsPrimary, false), ct);
     }
 
     public async Task AddAsync(MediaItem mediaItem, CancellationToken ct)

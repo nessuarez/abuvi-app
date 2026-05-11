@@ -353,6 +353,32 @@ public enum AccommodationType
     Motorhome    // Autocaravana
 }
 
+// ── Accommodation Type Media (global type defaults) ───────────────────────
+
+public class AccommodationTypeMedia
+{
+    public Guid Id { get; set; }
+    public AccommodationType AccommodationType { get; set; }
+    public string FileUrl { get; set; } = string.Empty;
+    public string? ThumbnailUrl { get; set; }
+    public string? Description { get; set; }
+    public int DisplayOrder { get; set; } = 0;
+    public bool IsPrimary { get; set; } = false;
+    public Guid UploadedByUserId { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+public record AccommodationTypeMediaResponse(
+    Guid Id,
+    string AccommodationType,
+    string FileUrl,
+    string? ThumbnailUrl,
+    string? Description,
+    int DisplayOrder,
+    bool IsPrimary,
+    DateTime CreatedAt);
+
 /// <summary>
 /// Accommodation option available for a camp edition.
 /// Families rank their preferences during registration (no pricing — preference only).
@@ -377,6 +403,7 @@ public class CampEditionAccommodation
     public CampEdition CampEdition { get; set; } = null!;
     public AccommodationZone? Zone { get; set; }
     public ICollection<AccommodationFeatureAssignment> FeatureAssignments { get; set; } = [];
+    public ICollection<MediaItems.MediaItem> MediaItems { get; set; } = [];
 }
 
 // ── Camp Edition Accommodations DTOs ────────────────────────────────────────
@@ -1093,7 +1120,9 @@ public record AssignmentAccommodationResponse(
     int SortOrder,
     IReadOnlyList<Guid> AvailableFeatures,
     int Quantity,
-    int? UnitIndex
+    int? UnitIndex,
+    string? PrimaryThumbnailUrl = null,
+    string? PrimaryFileUrl = null
 );
 
 public record ProposalAssignmentStateResponse(

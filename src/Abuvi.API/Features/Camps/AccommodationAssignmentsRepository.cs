@@ -50,6 +50,7 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
             .AsNoTracking()
             .Where(a => a.CampEditionId == campEditionId && a.IsActive)
             .Include(a => a.Zone)
+            .Include(a => a.MediaItems.Where(m => m.IsPrimary).Take(1))
             .OrderBy(a => a.SortOrder)
             .ThenBy(a => a.Name)
             .ToListAsync(ct);
@@ -91,21 +92,26 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
         }).ToList();
 
         var accommodationResponses = accommodations
-            .SelectMany(a => Enumerable.Range(0, a.Quantity).Select(unitIndex =>
-                new AssignmentAccommodationResponse(
-                    a.Id,
-                    a.Quantity > 1 ? $"{a.Name} #{unitIndex + 1}" : a.Name,
-                    a.AccommodationType,
-                    a.Capacity,
-                    a.CountByFamily,
-                    a.ZoneId,
-                    a.Zone?.Name,
-                    a.SortOrder,
-                    [],
-                    a.Quantity,
-                    a.Quantity > 1 ? unitIndex : (int?)null
-                )
-            ))
+            .SelectMany(a =>
+            {
+                var primaryMedia = a.MediaItems.FirstOrDefault(m => m.IsPrimary);
+                return Enumerable.Range(0, a.Quantity).Select(unitIndex =>
+                    new AssignmentAccommodationResponse(
+                        a.Id,
+                        a.Quantity > 1 ? $"{a.Name} #{unitIndex + 1}" : a.Name,
+                        a.AccommodationType,
+                        a.Capacity,
+                        a.CountByFamily,
+                        a.ZoneId,
+                        a.Zone?.Name,
+                        a.SortOrder,
+                        [],
+                        a.Quantity,
+                        a.Quantity > 1 ? unitIndex : (int?)null,
+                        primaryMedia?.ThumbnailUrl,
+                        primaryMedia?.FileUrl
+                    ));
+            })
             .OrderBy(s => s.SortOrder)
             .ThenBy(s => s.Name)
             .ToList();
