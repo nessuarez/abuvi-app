@@ -68,6 +68,16 @@ public class MediaItemConfiguration : IEntityTypeConfiguration<MediaItem>
             .HasMaxLength(50)
             .HasColumnName("context");
 
+        builder.Property(m => m.DisplayOrder)
+            .IsRequired()
+            .HasDefaultValue(0)
+            .HasColumnName("display_order");
+
+        builder.Property(m => m.IsPrimary)
+            .IsRequired()
+            .HasDefaultValue(false)
+            .HasColumnName("is_primary");
+
         builder.Property(m => m.CreatedAt)
             .IsRequired()
             .HasColumnName("created_at")
@@ -114,8 +124,15 @@ public class MediaItemConfiguration : IEntityTypeConfiguration<MediaItem>
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasOne(m => m.Accommodation)
-            .WithMany()
+            .WithMany(a => a.MediaItems)
             .HasForeignKey(m => m.AccommodationId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Indexes for primary media lookups
+        builder.HasIndex(m => new { m.AccommodationId, m.IsPrimary })
+            .HasDatabaseName("ix_media_items_accommodation_primary");
+
+        builder.HasIndex(m => new { m.ZoneId, m.IsPrimary })
+            .HasDatabaseName("ix_media_items_zone_primary");
     }
 }
