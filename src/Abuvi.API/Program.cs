@@ -220,6 +220,10 @@ builder.Services.AddMemories();
 // Media Items
 builder.Services.AddMediaItems();
 
+// Accommodation Type Media
+builder.Services.AddScoped<IAccommodationTypeMediaRepository, AccommodationTypeMediaRepository>();
+builder.Services.AddScoped<AccommodationTypeMediaService>();
+
 // Encryption Service
 builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
 
@@ -422,6 +426,7 @@ app.MapBlobStorageEndpoints();
 app.MapMemoriesEndpoints();
 app.MapMediaItemsEndpoints();
 app.MapAccommodationFeaturesEndpoints();
+app.MapAccommodationMediaEndpoints();
 
 app.Run();
 

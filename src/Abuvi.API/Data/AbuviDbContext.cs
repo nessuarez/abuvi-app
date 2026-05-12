@@ -45,6 +45,7 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     public DbSet<AccommodationFeature> AccommodationFeatures => Set<AccommodationFeature>();
     public DbSet<AccommodationFeatureAssignment> AccommodationFeatureAssignments => Set<AccommodationFeatureAssignment>();
     public DbSet<ZoneFeatureAssignment> ZoneFeatureAssignments => Set<ZoneFeatureAssignment>();
+    public DbSet<AccommodationTypeMedia> AccommodationTypeMedia => Set<AccommodationTypeMedia>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
