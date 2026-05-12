@@ -257,7 +257,24 @@ function handleAssign(accId: string, unitIndex: number | null) {
           {{ ACCOMMODATION_TYPE_LABELS[type as AccommodationTypeValue] }}
         </h3>
         <div v-for="[zoneName, accommodations] in byZone" :key="zoneName" class="mb-4">
-          <h4 class="mb-2 text-xs font-medium text-gray-400">{{ zoneName }}</h4>
+          <!-- Zone header with optional thumbnail -->
+          <div class="mb-2 flex items-center gap-2">
+            <template v-if="accommodations[0]?.zoneId">
+              <img
+                v-if="state.accommodations.find(a => a.zoneId === accommodations[0].zoneId)?.primaryThumbnailUrl"
+                :src="state.accommodations.find(a => a.zoneId === accommodations[0].zoneId)!.primaryThumbnailUrl!"
+                alt=""
+                class="h-6 w-6 flex-shrink-0 rounded object-cover shadow-sm"
+              />
+              <div
+                v-else
+                class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-gray-100 text-gray-400"
+              >
+                <i class="pi pi-image" style="font-size: 0.6rem" />
+              </div>
+            </template>
+            <h4 class="text-xs font-medium text-gray-400">{{ zoneName }}</h4>
+          </div>
           <div class="grid grid-cols-2 gap-2 lg:grid-cols-3 xl:grid-cols-4">
             <AccommodationSlotCard
               v-for="acc in accommodations"

@@ -14,9 +14,12 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import FeatureAssignmentDialog from './FeatureAssignmentDialog.vue'
 import CampEditionAccommodationDialog from './CampEditionAccommodationDialog.vue'
+import AccommodationMediaManager from './AccommodationMediaManager.vue'
+import AccommodationMediaGallery from './AccommodationMediaGallery.vue'
 import { useAccommodationZones } from '@/composables/useAccommodationZones'
 import { useAccommodationFeatureAssignment } from '@/composables/useAccommodationFeatureAssignment'
 import { useCampAccommodations } from '@/composables/useCampAccommodations'
+import { useAuthStore } from '@/stores/auth'
 import type { AccommodationZoneResponse, AccommodationTypeValue } from '@/types/accommodation-assignment'
 import { ACCOMMODATION_TYPE_LABELS } from '@/types/accommodation-assignment'
 import type { CampEditionAccommodation, AccommodationType } from '@/types/camp-edition'
@@ -33,6 +36,7 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const { isBoard } = useAuthStore()
 const campEditionIdRef = computed(() => props.campEditionId)
 const { zones, loading, error, loadZones, createZone, updateZone, deleteZone } =
   useAccommodationZones(campEditionIdRef)
@@ -427,6 +431,20 @@ onMounted(loadZones)
               </template>
             </Column>
           </DataTable>
+
+          <!-- Media section per zone -->
+          <div class="mt-4 border-t pt-3">
+            <AccommodationMediaManager
+              v-if="isBoard"
+              owner-type="zone"
+              :owner-id="zone.id"
+              :edition-id="campEditionId"
+            />
+            <AccommodationMediaGallery
+              v-else
+              :items="zone.mediaItems ?? []"
+            />
+          </div>
         </div>
       </template>
     </DataTable>

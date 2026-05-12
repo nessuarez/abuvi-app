@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import Dialog from 'primevue/dialog'
+import Divider from 'primevue/divider'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
@@ -9,7 +10,9 @@ import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import AccommodationMediaManager from './AccommodationMediaManager.vue'
 import { useCampAccommodations } from '@/composables/useCampAccommodations'
+import { useAuthStore } from '@/stores/auth'
 import type { CampEditionAccommodation, AccommodationType } from '@/types/camp-edition'
 
 const props = defineProps<{
@@ -26,6 +29,7 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const { isBoard } = useAuthStore()
 const { createAccommodation, updateAccommodation, loading, error } = useCampAccommodations(
   props.editionId
 )
@@ -263,6 +267,19 @@ const handleSave = async () => {
         <label class="text-sm text-gray-700">Activo</label>
       </div>
     </div>
+
+    <!-- Media section (edit mode only) -->
+    <template v-if="accommodation">
+      <Divider />
+      <div class="pb-2">
+        <AccommodationMediaManager
+          owner-type="accommodation"
+          :owner-id="accommodation.id"
+          :edition-id="editionId"
+          :readonly="!isBoard"
+        />
+      </div>
+    </template>
 
     <template #footer>
       <div class="flex justify-end gap-2">
