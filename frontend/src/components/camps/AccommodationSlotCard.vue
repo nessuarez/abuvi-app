@@ -92,10 +92,22 @@ const signalClass = computed(() => {
 
 <template>
   <div
-    class="rounded-lg border-2 p-3 transition-all"
+    class="relative rounded-lg border-2 p-3 transition-all"
     :class="[signalClass, selectedFamily ? 'cursor-pointer hover:shadow-sm' : '']"
     @click="selectedFamily && $emit('assign', accommodation.id, accommodation.unitIndex)"
   >
+    <!-- Primary thumbnail (top-right corner) -->
+    <div
+      v-if="accommodation.primaryThumbnailUrl"
+      class="absolute right-2 top-2 h-8 w-8 overflow-hidden rounded-md shadow-sm"
+    >
+      <img
+        :src="accommodation.primaryThumbnailUrl"
+        alt=""
+        class="h-full w-full object-cover"
+      />
+    </div>
+
     <div class="flex items-center justify-between">
       <span class="text-sm font-semibold text-gray-800">{{ accommodation.name }}</span>
       <span
