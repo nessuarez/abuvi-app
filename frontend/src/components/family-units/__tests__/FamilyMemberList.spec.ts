@@ -1,26 +1,9 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
 import Tooltip from 'primevue/tooltip'
 import FamilyMemberList from '../FamilyMemberList.vue'
 import { FamilyRelationship, type FamilyMemberResponse } from '@/types/family-unit'
-
-// jsdom does not have ResizeObserver or IntersectionObserver — mock them for PrimeVue DataTable
-beforeAll(() => {
-  global.ResizeObserver = class ResizeObserver {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  }
-  global.IntersectionObserver = class IntersectionObserver {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-    takeRecords() {
-      return []
-    }
-  } as unknown as typeof IntersectionObserver
-})
 
 const mockMember: FamilyMemberResponse = {
   id: 'member-1',
@@ -81,38 +64,57 @@ const globalConfig = {
   directives: { tooltip: Tooltip },
 }
 
+const openDrawerForMember = async (wrapper: ReturnType<typeof mount>, memberId: string) => {
+  const card = wrapper.find(`[data-testid="member-card-${memberId}"]`)
+  await card.trigger('click')
+  await wrapper.vm.$nextTick()
+}
+
+// Drawer content is teleported to <body> by PrimeVue — mount with attachTo and unmount after each test
 describe('FamilyMemberList — manageMembership', () => {
-  it('renders manageMembership button when canManageMemberships is true', () => {
-    const wrapper = mount(FamilyMemberList, {
-      props: { members: [mockMember], loading: false, canManageMemberships: true },
-      global: globalConfig,
-    })
-    expect(wrapper.find('[data-testid="manage-membership-btn-member-1"]').exists()).toBe(true)
+  let wrapper: ReturnType<typeof mount>
+  let div: HTMLDivElement
+
+  afterEach(() => {
+    wrapper.unmount()
+    if (div.parentNode) document.body.removeChild(div)
   })
 
-  it('does not render manageMembership button when canManageMemberships is false', () => {
-    const wrapper = mount(FamilyMemberList, {
-      props: { members: [mockMember], loading: false, canManageMemberships: false },
+  const mountAttached = (props: object) => {
+    div = document.createElement('div')
+    document.body.appendChild(div)
+    wrapper = mount(FamilyMemberList, {
+      props: { members: [mockMember], loading: false, ...props },
       global: globalConfig,
+      attachTo: div,
     })
-    expect(wrapper.find('[data-testid="manage-membership-btn-member-1"]').exists()).toBe(false)
+    return wrapper
+  }
+
+  it('renders manageMembership button in drawer when canManageMemberships is true', async () => {
+    const wrapper = mountAttached({ canManageMemberships: true })
+    await openDrawerForMember(wrapper, 'member-1')
+    expect(document.querySelector('[data-testid="manage-membership-btn-member-1"]')).not.toBeNull()
   })
 
-  it('does not render manageMembership button when canManageMemberships is omitted', () => {
-    const wrapper = mount(FamilyMemberList, {
-      props: { members: [mockMember], loading: false },
-      global: globalConfig,
-    })
-    expect(wrapper.find('[data-testid="manage-membership-btn-member-1"]').exists()).toBe(false)
+  it('does not render manageMembership button in drawer when canManageMemberships is false', async () => {
+    const wrapper = mountAttached({ canManageMemberships: false })
+    await openDrawerForMember(wrapper, 'member-1')
+    expect(document.querySelector('[data-testid="manage-membership-btn-member-1"]')).toBeNull()
+  })
+
+  it('does not render manageMembership button when canManageMemberships is omitted', async () => {
+    const wrapper = mountAttached({})
+    await openDrawerForMember(wrapper, 'member-1')
+    expect(document.querySelector('[data-testid="manage-membership-btn-member-1"]')).toBeNull()
   })
 
   it('emits manageMembership with the correct member when button is clicked', async () => {
-    const wrapper = mount(FamilyMemberList, {
-      props: { members: [mockMember], loading: false, canManageMemberships: true },
-      global: globalConfig,
-    })
-    const btn = wrapper.find('[data-testid="manage-membership-btn-member-1"]')
-    await btn.trigger('click')
+    const wrapper = mountAttached({ canManageMemberships: true })
+    await openDrawerForMember(wrapper, 'member-1')
+    const btn = document.querySelector('[data-testid="manage-membership-btn-member-1"]') as HTMLElement
+    btn.click()
+    await wrapper.vm.$nextTick()
     expect(wrapper.emitted('manageMembership')).toHaveLength(1)
     expect(wrapper.emitted('manageMembership')![0][0]).toMatchObject({
       id: 'member-1',
@@ -123,7 +125,7 @@ describe('FamilyMemberList — manageMembership', () => {
 })
 
 describe('FamilyMemberList — data completeness warnings', () => {
-  it('shows warning icon for adult member missing DNI and email', () => {
+  it('shows warning icon on card for adult member missing DNI and email', () => {
     const wrapper = mount(FamilyMemberList, {
       props: { members: [mockMember], loading: false },
       global: globalConfig,

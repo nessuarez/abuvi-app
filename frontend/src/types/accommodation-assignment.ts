@@ -23,6 +23,8 @@ export interface AccommodationZoneResponse {
   accommodationIds: string[]
   features: AccommodationFeature[]
   mediaItems: MediaItem[]
+  primaryThumbnailUrl?: string | null
+  primaryFileUrl?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -90,6 +92,8 @@ export interface AssignmentAccommodationResponse {
   availableFeatures: string[]
   quantity: number
   unitIndex: number | null
+  primaryThumbnailUrl?: string | null
+  primaryFileUrl?: string | null
 }
 
 export interface AssignmentEntry {

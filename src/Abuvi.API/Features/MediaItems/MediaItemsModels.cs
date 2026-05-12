@@ -31,6 +31,8 @@ public class MediaItem
     public bool IsPublished { get; set; }
     public bool IsApproved { get; set; }
     public string? Context { get; set; }
+    public int DisplayOrder { get; set; } = 0;
+    public bool IsPrimary { get; set; } = false;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
@@ -56,6 +58,13 @@ public record CreateMediaItemRequest(
     Guid? AccommodationId = null,
     Guid? ZoneId = null);
 
+// Accommodation/Zone media — two-step upload (blob already uploaded)
+public record AddAccommodationMediaRequest(
+    string FileUrl,
+    string? ThumbnailUrl,
+    string? Description,
+    int DisplayOrder = 0);
+
 // Response DTOs
 public record MediaItemResponse(
     Guid Id,
@@ -74,6 +83,8 @@ public record MediaItemResponse(
     string? Context,
     bool IsPublished,
     bool IsApproved,
+    int DisplayOrder,
+    bool IsPrimary,
     DateTime CreatedAt);
 
 // Mapping extensions
@@ -97,6 +108,8 @@ public static class MediaItemMappingExtensions
             item.Context,
             item.IsPublished,
             item.IsApproved,
+            item.DisplayOrder,
+            item.IsPrimary,
             item.CreatedAt);
 
     public static string? DeriveDecade(int? year) => year switch

@@ -61,7 +61,12 @@
       "Bash(git log:*)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(Get-ChildItem \"src/Abuvi.API/Data/Migrations\")",
+      "Bash(Sort-Object LastWriteTime)",
+      "Bash(Select-Object -Last 3)",
+      "Bash(Format-Table Name, LastWriteTime)",
+      "PowerShell(gh pr create*)"
     ]
   },
   "enableAllProjectMcpServers": true,
