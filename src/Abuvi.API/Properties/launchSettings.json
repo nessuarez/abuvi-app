@@ -1,6 +1,15 @@
 {
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
+    "E2E": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5080",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "E2E"
+      }
+    },
     "http": {
       "commandName": "Project",
       "dotnetRunMessages": true,
