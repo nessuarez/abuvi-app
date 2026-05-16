@@ -129,7 +129,7 @@ public class AccommodationQuantityTests
     {
         var validator = new UpdateCampEditionAccommodationRequestValidator();
         var request = new UpdateCampEditionAccommodationRequest(
-            "Test", AccommodationType.Lodge, null, null, false, 0, true, null, 0);
+            "Test", AccommodationType.Lodge, null, null, false, 0, true, true, null, 0);
         var result = validator.Validate(request);
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "Quantity");

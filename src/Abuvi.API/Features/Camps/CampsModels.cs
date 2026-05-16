@@ -395,6 +395,7 @@ public class CampEditionAccommodation
     public bool CountByFamily { get; set; } = false;
     public int Quantity { get; set; } = 1;
     public bool IsActive { get; set; } = true;
+    public bool IsAssignable { get; set; } = true;
     public int SortOrder { get; set; } = 0;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -418,6 +419,7 @@ public record CampEditionAccommodationResponse(
     bool CountByFamily,
     int Quantity,
     bool IsActive,
+    bool IsAssignable,
     int SortOrder,
     int CurrentPreferenceCount,
     int FirstChoiceCount,
@@ -447,6 +449,7 @@ public record UpdateCampEditionAccommodationRequest(
     bool CountByFamily,
     int Quantity,
     bool IsActive,
+    bool IsAssignable,
     Guid? ZoneId,
     int SortOrder
 );
@@ -1122,7 +1125,9 @@ public record AssignmentAccommodationResponse(
     int Quantity,
     int? UnitIndex,
     string? PrimaryThumbnailUrl = null,
-    string? PrimaryFileUrl = null
+    string? PrimaryFileUrl = null,
+    string? ZonePrimaryThumbnailUrl = null,
+    string? ZonePrimaryFileUrl = null
 );
 
 public record ProposalAssignmentStateResponse(
