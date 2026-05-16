@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useCampEditionsStore } from '@/stores/camp-editions'
 import Container from '@/components/ui/Container.vue'
 import UserMenu from './UserMenu.vue'
 import Button from 'primevue/button'
@@ -9,6 +10,15 @@ import Button from 'primevue/button'
 const auth = useAuthStore()
 const router = useRouter()
 const mobileMenuOpen = ref(false)
+
+const campEditionsStore = useCampEditionsStore()
+const currentEditionId = computed(() => campEditionsStore.currentCampEdition?.id ?? null)
+
+onMounted(() => {
+  if (auth.isBoard) {
+    campEditionsStore.fetchCurrentCampEdition()
+  }
+})
 
 const navigationLinks = [
   { label: 'Inicio', path: '/home', icon: 'pi pi-home' },
@@ -23,6 +33,10 @@ const isActive = (path: string): boolean => {
 
 const isAdminActive = (): boolean => {
   return router.currentRoute.value.path.startsWith('/admin')
+}
+
+const isEditionActive = (): boolean => {
+  return router.currentRoute.value.path.startsWith('/camps/editions')
 }
 
 const toggleMobileMenu = () => {
@@ -65,6 +79,23 @@ const toggleMobileMenu = () => {
             "
           >
             {{ link.label }}
+          </router-link>
+
+          <!-- Current edition shortcut (Board/Admin only) -->
+          <router-link
+            v-if="auth.isBoard && currentEditionId"
+            :to="{ name: 'camp-edition-detail', params: { id: currentEditionId } }"
+            data-testid="nav-current-edition"
+            class="rounded-md px-4 py-2 text-sm font-medium transition-colors"
+            :class="
+              isEditionActive()
+                ? 'bg-red-50 text-red-700'
+                : 'border border-red-600 text-red-600 hover:bg-red-50'
+            "
+            :aria-current="isEditionActive() ? 'page' : undefined"
+          >
+            <i class="pi pi-calendar mr-1" />
+            Edición Actual
           </router-link>
 
           <!-- Admin link (visible to Board and Admin users) -->
@@ -118,6 +149,24 @@ const toggleMobileMenu = () => {
           >
             <i :class="link.icon" />
             {{ link.label }}
+          </router-link>
+
+          <!-- Current edition shortcut (mobile, Board/Admin only) -->
+          <router-link
+            v-if="auth.isBoard && currentEditionId"
+            :to="{ name: 'camp-edition-detail', params: { id: currentEditionId } }"
+            data-testid="nav-current-edition-mobile"
+            class="flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium transition-colors"
+            :class="
+              isEditionActive()
+                ? 'bg-red-50 text-red-700'
+                : 'border border-red-600 text-red-600 hover:bg-red-50'
+            "
+            :aria-current="isEditionActive() ? 'page' : undefined"
+            @click="mobileMenuOpen = false"
+          >
+            <i class="pi pi-calendar" />
+            Edición Actual
           </router-link>
 
           <!-- Admin link (mobile, visible to Board and Admin users) -->
