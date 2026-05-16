@@ -2,7 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
+import { ref } from 'vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const mockFetchCurrentCampEdition = vi.fn().mockResolvedValue(undefined)
+const mockCurrentCampEdition = ref<{ id: string } | null>(null)
+
+vi.mock('@/stores/camp-editions', () => ({
+  useCampEditionsStore: () => ({
+    currentCampEdition: mockCurrentCampEdition.value,
+    fetchCurrentCampEdition: mockFetchCurrentCampEdition,
+  }),
+}))
 
 vi.mock('primevue/button', () => ({
   default: {
@@ -35,13 +47,20 @@ const router = createRouter({
     { path: '/camp', component: { template: '<div />' } },
     { path: '/anniversary', component: { template: '<div />' } },
     { path: '/profile', component: { template: '<div />' } },
-    { path: '/admin', component: { template: '<div />' } }
+    { path: '/admin', component: { template: '<div />' } },
+    { path: '/camps/editions/:id', name: 'camp-edition-detail', component: { template: '<div />' } }
   ]
 })
 
-const mountComponent = () => {
+const mountComponent = (boardUser = false) => {
   const pinia = createPinia()
   setActivePinia(pinia)
+
+  if (boardUser) {
+    const auth = useAuthStore()
+    auth.user = { role: 'Board', firstName: 'Test', lastName: 'User', email: 'board@test.com', id: '1' }
+    auth.token = 'mock-token'
+  }
 
   return mount(AppHeader, {
     global: {
@@ -52,6 +71,8 @@ const mountComponent = () => {
 
 describe('AppHeader', () => {
   beforeEach(async () => {
+    mockCurrentCampEdition.value = null
+    mockFetchCurrentCampEdition.mockClear()
     await router.push('/home')
     await router.isReady()
   })
@@ -151,6 +172,22 @@ describe('AppHeader', () => {
       await mobileLinks[0].trigger('click')
 
       expect(wrapper.find('nav.border-t').exists()).toBe(false)
+    })
+  })
+
+  describe('Edición Actual link', () => {
+    it('should not render when user is not Board', () => {
+      mockCurrentCampEdition.value = { id: 'edition-abc' }
+      const wrapper = mountComponent(false)
+
+      expect(wrapper.find('[data-testid="nav-current-edition"]').exists()).toBe(false)
+    })
+
+    it('should not render when no current edition exists', () => {
+      mockCurrentCampEdition.value = null
+      const wrapper = mountComponent(true)
+
+      expect(wrapper.find('[data-testid="nav-current-edition"]').exists()).toBe(false)
     })
   })
 })

@@ -14,7 +14,7 @@ const drawerVisible = ref(false)
       <div class="mb-6 flex items-center justify-between">
         <h1 class="text-3xl font-bold text-gray-900">Panel de Administración</h1>
         <!-- Mobile menu toggle -->
-        <Button icon="pi pi-bars" text rounded class="md:hidden" data-testid="admin-menu-toggle"
+        <Button icon="pi pi-bars" text rounded data-testid="admin-menu-toggle"
           @click="drawerVisible = true" />
       </div>
 
