@@ -181,10 +181,32 @@ public class CampEditionAccommodationsServiceTests
 
         var request = new UpdateCampEditionAccommodationRequest(
             "Habitación 101", AccommodationType.Lodge, null, 4,
-            CountByFamily: true, Quantity: 1, IsActive: true, ZoneId: null, SortOrder: 0);
+            CountByFamily: true, Quantity: 1, IsActive: true, IsAssignable: true, ZoneId: null, SortOrder: 0);
 
         var result = await _sut.UpdateAsync(id, request, CancellationToken.None);
 
         result.CountByFamily.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ToResponse_IncludesIsAssignable_WhenTrue()
+    {
+        var acc = MakeAccommodation();
+        acc.IsAssignable = true;
+
+        var response = acc.ToResponse(0, 0);
+
+        response.IsAssignable.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ToResponse_IncludesIsAssignable_WhenFalse()
+    {
+        var acc = MakeAccommodation();
+        acc.IsAssignable = false;
+
+        var response = acc.ToResponse(0, 0);
+
+        response.IsAssignable.Should().BeFalse();
     }
 }

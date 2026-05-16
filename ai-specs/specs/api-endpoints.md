@@ -2427,6 +2427,7 @@ Create a new accommodation option for a camp edition.
     "description": "Refugio con capacidad para 20 personas",
     "capacity": 20,
     "isActive": true,
+    "isAssignable": true,
     "sortOrder": 0,
     "currentPreferenceCount": 0,
     "firstChoiceCount": 0,
@@ -2467,6 +2468,7 @@ List accommodation options for a camp edition.
       "description": "...",
       "capacity": 20,
       "isActive": true,
+      "isAssignable": true,
       "sortOrder": 0,
       "currentPreferenceCount": 5,
       "firstChoiceCount": 3,
@@ -2504,6 +2506,7 @@ Update an accommodation option.
   "description": "Refugio ampliado con capacidad para 25 personas",
   "capacity": 25,
   "isActive": true,
+  "isAssignable": true,
   "sortOrder": 0
 }
 ```
@@ -2811,7 +2814,11 @@ Load the full assignment state for a proposal: all families (including unassigne
         "zoneId": "...",
         "zoneName": "Zona Refugios Norte",
         "sortOrder": 0,
-        "availableFeatures": ["..."]
+        "availableFeatures": ["..."],
+        "primaryThumbnailUrl": "https://...",
+        "primaryFileUrl": "https://...",
+        "zonePrimaryThumbnailUrl": "https://...",
+        "zonePrimaryFileUrl": "https://..."
       }
     ],
     "assignments": [

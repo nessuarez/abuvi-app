@@ -58,6 +58,11 @@ public class CampEditionAccommodationConfiguration : IEntityTypeConfiguration<Ca
             .HasDefaultValue(true)
             .HasColumnName("is_active");
 
+        builder.Property(e => e.IsAssignable)
+            .IsRequired()
+            .HasDefaultValue(true)
+            .HasColumnName("is_assignable");
+
         builder.Property(e => e.SortOrder)
             .IsRequired()
             .HasDefaultValue(0)

@@ -83,6 +83,7 @@ public class CampEditionAccommodationsService(
         accommodation.CountByFamily = request.CountByFamily;
         accommodation.Quantity = request.Quantity;
         accommodation.IsActive = request.IsActive;
+        accommodation.IsAssignable = request.IsAssignable;
         accommodation.ZoneId = request.ZoneId;
         accommodation.SortOrder = request.SortOrder;
         accommodation.UpdatedAt = DateTime.UtcNow;
@@ -156,6 +157,7 @@ internal static class CampEditionAccommodationExtensions
             a.CountByFamily,
             a.Quantity,
             a.IsActive,
+            a.IsAssignable,
             a.SortOrder,
             currentPreferenceCount,
             firstChoiceCount,

@@ -48,8 +48,9 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
 
         var accommodations = await db.CampEditionAccommodations
             .AsNoTracking()
-            .Where(a => a.CampEditionId == campEditionId && a.IsActive)
+            .Where(a => a.CampEditionId == campEditionId && a.IsActive && a.IsAssignable)
             .Include(a => a.Zone)
+                .ThenInclude(z => z!.MediaItems.Where(m => m.IsPrimary).Take(1))
             .Include(a => a.MediaItems.Where(m => m.IsPrimary).Take(1))
             .OrderBy(a => a.SortOrder)
             .ThenBy(a => a.Name)
@@ -95,6 +96,7 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
             .SelectMany(a =>
             {
                 var primaryMedia = a.MediaItems.FirstOrDefault(m => m.IsPrimary);
+                var zonePrimaryMedia = a.Zone?.MediaItems.FirstOrDefault(m => m.IsPrimary);
                 return Enumerable.Range(0, a.Quantity).Select(unitIndex =>
                     new AssignmentAccommodationResponse(
                         a.Id,
@@ -109,7 +111,9 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
                         a.Quantity,
                         a.Quantity > 1 ? unitIndex : (int?)null,
                         primaryMedia?.ThumbnailUrl,
-                        primaryMedia?.FileUrl
+                        primaryMedia?.FileUrl,
+                        zonePrimaryMedia?.ThumbnailUrl,
+                        zonePrimaryMedia?.FileUrl
                     ));
             })
             .OrderBy(s => s.SortOrder)
