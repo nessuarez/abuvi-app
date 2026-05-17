@@ -17,7 +17,7 @@ public class AccommodationAssignmentsServiceTests
     private static readonly Guid UserId = Guid.NewGuid();
 
     private static readonly ProposalAssignmentStateResponse EmptyState = new(
-        ProposalId, [], [], []);
+        ProposalId, [], [], [], [], []);
 
     public AccommodationAssignmentsServiceTests()
     {
