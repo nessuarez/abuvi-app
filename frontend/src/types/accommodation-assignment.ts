@@ -71,6 +71,17 @@ export interface AccommodationPreferenceItem {
   preferenceOrder: number
 }
 
+export interface AccommodationTypeLookupItem {
+  id: string
+  type: AccommodationTypeValue
+}
+
+export interface AccommodationFeatureSummary {
+  id: string
+  name: string
+  icon: string
+}
+
 export interface AssignmentFamilyResponse {
   registrationId: string
   familyUnitId: string
@@ -79,6 +90,7 @@ export interface AssignmentFamilyResponse {
   memberCount: number
   adultCount: number
   childCount: number
+  babyCount: number
   hasPet: boolean
   specialNeeds: string | null
   campatesPreference: string | null
@@ -118,6 +130,8 @@ export interface ProposalAssignmentStateResponse {
   families: AssignmentFamilyResponse[]
   accommodations: AssignmentAccommodationResponse[]
   assignments: AssignmentEntry[]
+  accommodationTypeLookup: AccommodationTypeLookupItem[]
+  allFeatures: AccommodationFeatureSummary[]
 }
 
 export interface AssignmentReportFamilyRow {

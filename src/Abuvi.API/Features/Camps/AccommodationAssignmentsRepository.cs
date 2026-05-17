@@ -61,7 +61,7 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
         var allActiveAccommodations = await db.CampEditionAccommodations
             .AsNoTracking()
             .Where(a => a.CampEditionId == campEditionId && a.IsActive)
-            .Select(a => new AccommodationTypeLookupItem(a.Id, a.AccommodationType.ToString()))
+            .Select(a => new AccommodationTypeLookupItem(a.Id, a.AccommodationType))
             .ToListAsync(ct);
 
         var assignments = await db.AccommodationAssignments
