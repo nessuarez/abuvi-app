@@ -20,7 +20,7 @@ public class AutoAssignServiceTests
             .ToList();
         return new AssignmentFamilyResponse(
             regId, familyUnitId ?? Guid.NewGuid(), "Familia Test", "Rep Test",
-            memberCount, memberCount, 0, false, null, null, prefs,
+            memberCount, memberCount, 0, 0, false, null, null, prefs,
             false,
             requiredFeatures?.ToList() ?? [],
             friendlyFamilyUnitIds?.ToList() ?? []);
@@ -41,7 +41,7 @@ public class AutoAssignServiceTests
         IEnumerable<AssignmentAccommodationResponse> accommodations,
         IEnumerable<AssignmentEntry>? assignments = null)
         => new(Guid.NewGuid(), families.ToList(), accommodations.ToList(),
-            assignments?.ToList() ?? []);
+            assignments?.ToList() ?? [], [], []);
 
     [Fact]
     public void Compute_WithNoFamilies_ReturnsEmptyList()
