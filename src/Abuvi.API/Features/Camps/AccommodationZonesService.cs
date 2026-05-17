@@ -15,6 +15,20 @@ public class AccommodationZonesService(
         return zones.Select(ToResponse).ToList();
     }
 
+    public async Task<AccommodationZoneResponse> GetByIdAsync(
+        Guid campEditionId,
+        Guid zoneId,
+        CancellationToken ct = default)
+    {
+        var zone = await zonesRepository.GetByIdAsync(zoneId, ct)
+            ?? throw new NotFoundException("AccommodationZone", zoneId);
+
+        if (zone.CampEditionId != campEditionId)
+            throw new NotFoundException("AccommodationZone", zoneId);
+
+        return ToResponse(zone);
+    }
+
     public async Task<AccommodationZoneResponse> CreateAsync(
         Guid campEditionId,
         CreateAccommodationZoneRequest request,
