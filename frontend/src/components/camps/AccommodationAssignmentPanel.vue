@@ -72,13 +72,13 @@ const availableTypes = computed((): AccommodationTypeValue[] =>
 const accommodationTypeMap = computed((): Map<string, AccommodationTypeValue> => {
   const map = new Map<string, AccommodationTypeValue>()
   props.state.accommodations.forEach((a) => map.set(a.id, a.type))
-  props.state.accommodationTypeLookup.forEach((item) => map.set(item.id, item.type))
+  ;(props.state.accommodationTypeLookup ?? []).forEach((item) => map.set(item.id, item.type))
   return map
 })
 
 const availableFeatures = computed((): AccommodationFeatureSummary[] => {
   const presentIds = new Set(props.state.accommodations.flatMap((a) => a.availableFeatures))
-  return props.state.allFeatures.filter((f) => presentIds.has(f.id))
+  return (props.state.allFeatures ?? []).filter((f) => presentIds.has(f.id))
 })
 
 watch(() => props.state.proposalId, () => {
