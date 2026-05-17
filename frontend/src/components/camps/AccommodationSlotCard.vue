@@ -48,12 +48,7 @@ const missingFeatures = computed(() => {
   )
 })
 
-const displayThumbnail = computed(
-  () => props.accommodation.primaryThumbnailUrl ?? props.accommodation.zonePrimaryThumbnailUrl ?? null
-)
-const thumbnailIsZoneFallback = computed(
-  () => !props.accommodation.primaryThumbnailUrl && !!props.accommodation.zonePrimaryThumbnailUrl
-)
+const displayThumbnail = computed(() => props.accommodation.primaryThumbnailUrl ?? null)
 
 const hasFriendlyFamilyHere = computed(() => {
   if (!props.selectedFamily || (props.selectedFamily.friendlyFamilyUnitIds ?? []).length === 0) return false
@@ -103,11 +98,10 @@ const signalClass = computed(() => {
     :class="[signalClass, selectedFamily ? 'cursor-pointer hover:shadow-sm' : '']"
     @click="selectedFamily && $emit('assign', accommodation.id, accommodation.unitIndex)"
   >
-    <!-- Thumbnail: accommodation photo or zone fallback -->
+    <!-- Thumbnail: accommodation own photo only -->
     <div
       v-if="displayThumbnail"
-      class="absolute right-2 top-2 overflow-hidden rounded-md shadow-sm"
-      :class="thumbnailIsZoneFallback ? 'h-7 w-7 opacity-60' : 'h-8 w-8'"
+      class="absolute right-2 top-2 h-8 w-8 overflow-hidden rounded-md shadow-sm"
     >
       <img
         :src="displayThumbnail"
@@ -115,12 +109,6 @@ const signalClass = computed(() => {
         class="h-full w-full object-cover"
         @error="($event.target as HTMLImageElement).style.display = 'none'"
       />
-      <span
-        v-if="thumbnailIsZoneFallback"
-        class="absolute bottom-0 left-0 w-full bg-black/40 text-center text-[7px] text-white"
-      >
-        zona
-      </span>
     </div>
 
     <div class="flex items-center justify-between">
@@ -141,7 +129,7 @@ const signalClass = computed(() => {
     </div>
 
     <ProgressBar
-      v-if="accommodation.capacity"
+      v-if="accommodation.capacity && occupiedUnits > 0"
       :value="capacityPercent"
       class="mt-1"
       style="height: 6px"
