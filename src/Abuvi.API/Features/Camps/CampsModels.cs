@@ -1095,6 +1095,10 @@ public record AutoAssignRequest(bool OverwriteExisting = false);
 
 public record AccommodationPreferenceItem(Guid AccommodationId, int PreferenceOrder);
 
+public record AccommodationTypeLookupItem(Guid Id, AccommodationType Type);
+
+public record AccommodationFeatureSummary(Guid Id, string Name, string Icon);
+
 public record AssignmentFamilyResponse(
     Guid RegistrationId,
     Guid FamilyUnitId,
@@ -1103,6 +1107,7 @@ public record AssignmentFamilyResponse(
     int MemberCount,
     int AdultCount,
     int ChildCount,
+    int BabyCount,
     bool HasPet,
     string? SpecialNeeds,
     string? CampatesPreference,
@@ -1134,7 +1139,9 @@ public record ProposalAssignmentStateResponse(
     Guid ProposalId,
     IReadOnlyList<AssignmentFamilyResponse> Families,
     IReadOnlyList<AssignmentAccommodationResponse> Accommodations,
-    IReadOnlyList<AssignmentEntry> Assignments
+    IReadOnlyList<AssignmentEntry> Assignments,
+    IReadOnlyList<AccommodationTypeLookupItem> AccommodationTypeLookup,
+    IReadOnlyList<AccommodationFeatureSummary> AllFeatures
 );
 
 public record AssignmentReportFamilyRow(

@@ -52,8 +52,16 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
             .Include(a => a.Zone)
                 .ThenInclude(z => z!.MediaItems.Where(m => m.IsPrimary).Take(1))
             .Include(a => a.MediaItems.Where(m => m.IsPrimary).Take(1))
+            .Include(a => a.FeatureAssignments)
+                .ThenInclude(fa => fa.Feature)
             .OrderBy(a => a.SortOrder)
             .ThenBy(a => a.Name)
+            .ToListAsync(ct);
+
+        var allActiveAccommodations = await db.CampEditionAccommodations
+            .AsNoTracking()
+            .Where(a => a.CampEditionId == campEditionId && a.IsActive)
+            .Select(a => new AccommodationTypeLookupItem(a.Id, a.AccommodationType))
             .ToListAsync(ct);
 
         var assignments = await db.AccommodationAssignments
@@ -78,7 +86,8 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
                 repName,
                 r.Members.Count,
                 adultCount,
-                childCount + babyCount,
+                childCount,
+                babyCount,
                 r.HasPet,
                 r.SpecialNeeds,
                 r.CampatesPreference,
@@ -97,6 +106,7 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
             {
                 var primaryMedia = a.MediaItems.FirstOrDefault(m => m.IsPrimary);
                 var zonePrimaryMedia = a.Zone?.MediaItems.FirstOrDefault(m => m.IsPrimary);
+                var featureIds = a.FeatureAssignments.Select(fa => fa.FeatureId).ToList();
                 return Enumerable.Range(0, a.Quantity).Select(unitIndex =>
                     new AssignmentAccommodationResponse(
                         a.Id,
@@ -107,7 +117,7 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
                         a.ZoneId,
                         a.Zone?.Name,
                         a.SortOrder,
-                        [],
+                        featureIds,
                         a.Quantity,
                         a.Quantity > 1 ? unitIndex : (int?)null,
                         primaryMedia?.ThumbnailUrl,
@@ -120,11 +130,23 @@ public class AccommodationAssignmentsRepository(AbuviDbContext db) : IAccommodat
             .ThenBy(s => s.Name)
             .ToList();
 
+        var allFeatures = accommodations
+            .SelectMany(a => a.FeatureAssignments.Select(fa => fa.Feature))
+            .DistinctBy(f => f.Id)
+            .Select(f => new AccommodationFeatureSummary(f.Id, f.Name, f.Icon))
+            .ToList();
+
         var assignmentEntries = assignments
             .Select(a => new AssignmentEntry(a.RegistrationId, a.AccommodationId, a.UnitIndex))
             .ToList();
 
-        return new ProposalAssignmentStateResponse(proposalId, families, accommodationResponses, assignmentEntries);
+        return new ProposalAssignmentStateResponse(
+            proposalId,
+            families,
+            accommodationResponses,
+            assignmentEntries,
+            allActiveAccommodations,
+            allFeatures);
     }
 
     public async Task AssignAsync(

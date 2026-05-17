@@ -522,6 +522,14 @@ public static class CampsEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
 
+        zonesGroup.MapGet("/{zoneId:guid}", GetZoneById)
+            .WithName("GetAccommodationZoneById")
+            .WithSummary("Get a single accommodation zone by ID (includes media items)")
+            .Produces<ApiResponse<AccommodationZoneResponse>>()
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
         zonesGroup.MapPost("/", CreateZone)
             .WithName("CreateAccommodationZone")
             .WithSummary("Create a new accommodation zone")
@@ -1428,6 +1436,23 @@ public static class CampsEndpoints
     {
         var zones = await service.GetByEditionAsync(campEditionId, ct);
         return Results.Ok(ApiResponse<List<AccommodationZoneResponse>>.Ok(zones));
+    }
+
+    private static async Task<IResult> GetZoneById(
+        Guid campEditionId,
+        Guid zoneId,
+        [FromServices] AccommodationZonesService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var zone = await service.GetByIdAsync(campEditionId, zoneId, ct);
+            return Results.Ok(ApiResponse<AccommodationZoneResponse>.Ok(zone));
+        }
+        catch (NotFoundException ex)
+        {
+            return Results.NotFound(ApiResponse<AccommodationZoneResponse>.NotFound(ex.Message));
+        }
     }
 
     private static async Task<IResult> CreateZone(

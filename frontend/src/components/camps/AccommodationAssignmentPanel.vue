@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
@@ -15,7 +15,8 @@ import type {
   ProposalAssignmentStateResponse,
   AssignmentFamilyResponse,
   AssignmentAccommodationResponse,
-  AccommodationTypeValue
+  AccommodationTypeValue,
+  AccommodationFeatureSummary
 } from '@/types/accommodation-assignment'
 import { ACCOMMODATION_TYPE_LABELS, ACCOMMODATION_TYPE_ICONS } from '@/types/accommodation-assignment'
 import type { MediaItem } from '@/types/media-item'
@@ -37,6 +38,7 @@ const emit = defineEmits<{
 const searchQuery = ref('')
 const filterSpecialNeeds = ref(false)
 const activeTypeFilter = ref<AccommodationTypeValue | null>(null)
+const activeFeatureFilter = ref<string | null>(null)
 const filterZone = ref<string | null>(null)
 const filterOnlyAvailable = ref(false)
 
@@ -70,7 +72,18 @@ const availableTypes = computed((): AccommodationTypeValue[] =>
 const accommodationTypeMap = computed((): Map<string, AccommodationTypeValue> => {
   const map = new Map<string, AccommodationTypeValue>()
   props.state.accommodations.forEach((a) => map.set(a.id, a.type))
+  ;(props.state.accommodationTypeLookup ?? []).forEach((item) => map.set(item.id, item.type))
   return map
+})
+
+const availableFeatures = computed((): AccommodationFeatureSummary[] => {
+  const presentIds = new Set(props.state.accommodations.flatMap((a) => a.availableFeatures))
+  return (props.state.allFeatures ?? []).filter((f) => presentIds.has(f.id))
+})
+
+watch(() => props.state.proposalId, () => {
+  activeFeatureFilter.value = null
+  activeTypeFilter.value = null
 })
 
 const sortedFamilies = computed((): AssignmentFamilyResponse[] =>
@@ -174,6 +187,7 @@ const groupedAccommodations = computed((): Map<string, Map<string, AssignmentAcc
 
   for (const acc of sorted) {
     if (activeTypeFilter.value && acc.type !== activeTypeFilter.value) continue
+    if (activeFeatureFilter.value && !acc.availableFeatures.includes(activeFeatureFilter.value)) continue
     if (filterZone.value && acc.zoneName !== filterZone.value) continue
     if (filterOnlyAvailable.value) {
       const families = assignedFamiliesFor(acc)
@@ -246,10 +260,48 @@ function handleAssign(accId: string, unitIndex: number | null) {
     <div class="overflow-y-auto p-4">
       <div
         v-if="selectedFamily"
-        class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700"
+        class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm"
       >
-        <span class="font-medium">{{ selectedFamily.familyName }}</span> seleccionada —
-        haz clic en un alojamiento para asignarla
+        <!-- Header row -->
+        <div class="flex items-center justify-between">
+          <span class="font-semibold text-blue-800">{{ selectedFamily.familyName }}</span>
+          <span class="text-xs text-blue-500">Haz clic en un alojamiento para asignar</span>
+        </div>
+
+        <!-- Member composition -->
+        <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-blue-700">
+          <span v-if="selectedFamily.adultCount > 0">
+            <i class="pi pi-user mr-0.5" />
+            {{ selectedFamily.adultCount }}
+            {{ selectedFamily.adultCount === 1 ? 'adulto' : 'adultos' }}
+          </span>
+          <span v-if="selectedFamily.childCount > 0">
+            <i class="pi pi-star mr-0.5" />
+            {{ selectedFamily.childCount }}
+            {{ selectedFamily.childCount === 1 ? 'niño' : 'niños' }}
+          </span>
+          <span v-if="(selectedFamily.babyCount ?? 0) > 0">
+            <i class="pi pi-heart mr-0.5" />
+            {{ selectedFamily.babyCount }}
+            {{ selectedFamily.babyCount === 1 ? 'bebé' : 'bebés' }}
+          </span>
+          <span v-if="selectedFamily.hasPet" class="font-medium text-amber-600">
+            <i class="pi pi-heart-fill mr-0.5" />Mascota
+          </span>
+        </div>
+
+        <!-- Special needs -->
+        <div
+          v-if="selectedFamily.specialNeeds"
+          class="mt-1.5 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800"
+        >
+          <i class="pi pi-exclamation-triangle mr-1 text-amber-500" />{{ selectedFamily.specialNeeds }}
+        </div>
+
+        <!-- Campates preference -->
+        <p v-if="selectedFamily.campatesPreference" class="mt-1 text-xs italic text-blue-500">
+          "{{ selectedFamily.campatesPreference }}"
+        </p>
       </div>
 
       <!-- Accommodation filter bar -->
@@ -276,6 +328,32 @@ function handleAssign(accId: string, unitIndex: number | null) {
           >
             <i :class="ACCOMMODATION_TYPE_ICONS[type]" />
             {{ ACCOMMODATION_TYPE_LABELS[type] }}
+          </button>
+        </div>
+
+        <!-- Feature filter chips -->
+        <div v-if="availableFeatures.length" class="flex flex-wrap gap-1">
+          <button
+            class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors"
+            :class="activeFeatureFilter === null
+              ? 'border-indigo-500 bg-indigo-500 text-white'
+              : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'"
+            @click="activeFeatureFilter = null"
+          >
+            <i class="pi pi-tag text-[10px]" />
+            Todas las características
+          </button>
+          <button
+            v-for="feat in availableFeatures"
+            :key="feat.id"
+            class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors"
+            :class="activeFeatureFilter === feat.id
+              ? 'border-indigo-500 bg-indigo-500 text-white'
+              : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'"
+            @click="activeFeatureFilter = activeFeatureFilter === feat.id ? null : feat.id"
+          >
+            <i :class="[feat.icon, 'text-[10px]']" />
+            {{ feat.name }}
           </button>
         </div>
 

@@ -30,6 +30,7 @@ const makeFamily = (overrides: Partial<AssignmentFamilyResponse> = {}): Assignme
   memberCount: 4,
   adultCount: 2,
   childCount: 2,
+  babyCount: 0,
   hasPet: false,
   specialNeeds: null,
   campatesPreference: null,
