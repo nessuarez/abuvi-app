@@ -1,15 +1,27 @@
 <script setup lang="ts">
-import type { AssignmentFamilyResponse } from '@/types/accommodation-assignment'
+import type { AssignmentFamilyResponse, AccommodationTypeValue } from '@/types/accommodation-assignment'
+import { ACCOMMODATION_TYPE_LABELS, ACCOMMODATION_TYPE_ICONS } from '@/types/accommodation-assignment'
 
-defineProps<{
+const props = defineProps<{
   family: AssignmentFamilyResponse
   assignedAccommodationName: string | null
   isSelected: boolean
+  accommodationTypeMap: Map<string, AccommodationTypeValue>
 }>()
 
 defineEmits<{
   (e: 'select', registrationId: string): void
 }>()
+
+function prefTypeLabel(accommodationId: string): string {
+  const type = props.accommodationTypeMap.get(accommodationId)
+  return type ? ACCOMMODATION_TYPE_LABELS[type] : '?'
+}
+
+function prefTypeIcon(accommodationId: string): string {
+  const type = props.accommodationTypeMap.get(accommodationId)
+  return type ? ACCOMMODATION_TYPE_ICONS[type] : 'pi pi-question'
+}
 </script>
 
 <template>
@@ -24,8 +36,11 @@ defineEmits<{
   >
     <div class="flex items-center justify-between">
       <span class="text-sm font-medium text-gray-900">{{ family.familyName }}</span>
-      <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-        {{ family.memberCount }} pers.
+      <span
+        class="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary-500 text-xs font-bold text-white"
+        v-tooltip.top="`${family.memberCount} personas`"
+      >
+        {{ family.memberCount }}
       </span>
     </div>
 
@@ -34,8 +49,9 @@ defineEmits<{
     <div class="mt-1 flex flex-wrap items-center gap-1">
       <i
         v-if="family.hasPet"
-        class="pi pi-tag text-xs text-amber-500"
-        title="Tiene mascota"
+        class="pi pi-heart text-xs text-amber-500"
+        v-tooltip.top="'Viaja con mascota'"
+        aria-label="Viaja con mascota"
       />
       <i
         v-if="family.specialNeeds"
@@ -45,8 +61,12 @@ defineEmits<{
       <span
         v-for="pref in family.accommodationPreferences"
         :key="pref.preferenceOrder"
-        class="text-xs text-gray-400"
-      >{{ pref.preferenceOrder }}ª</span>
+        class="inline-flex items-center gap-0.5 rounded-full border border-gray-200 bg-gray-50 px-1.5 py-0.5"
+      >
+        <span class="text-[10px] font-medium text-gray-500">{{ pref.preferenceOrder }}º</span>
+        <i :class="[prefTypeIcon(pref.accommodationId), 'text-[9px] text-gray-400']" />
+        <span class="text-[10px] text-gray-400">{{ prefTypeLabel(pref.accommodationId) }}</span>
+      </span>
     </div>
 
     <p

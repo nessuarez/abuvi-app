@@ -175,6 +175,41 @@ export function useCampAccommodations(editionId: string) {
     }
   }
 
+  const toggleIsAssignable = async (acc: CampEditionAccommodation): Promise<boolean> => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.put<ApiResponse<CampEditionAccommodation>>(
+        `/camps/editions/accommodations/${acc.id}`,
+        {
+          name: acc.name,
+          accommodationType: acc.accommodationType,
+          description: acc.description ?? null,
+          capacity: acc.capacity ?? null,
+          countByFamily: acc.countByFamily,
+          quantity: acc.quantity,
+          isActive: acc.isActive,
+          isAssignable: !acc.isAssignable,
+          zoneId: acc.zoneId ?? null,
+          sortOrder: acc.sortOrder,
+        }
+      )
+      if (response.data.success && response.data.data) {
+        const idx = accommodations.value.findIndex((a) => a.id === acc.id)
+        if (idx !== -1) accommodations.value[idx] = response.data.data
+        return true
+      }
+      return false
+    } catch (err: unknown) {
+      error.value =
+        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
+          ?.message ?? 'Error al actualizar alojamiento'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     accommodations,
     loading,
@@ -185,6 +220,7 @@ export function useCampAccommodations(editionId: string) {
     updateAccommodation,
     deleteAccommodation,
     activateAccommodation,
-    deactivateAccommodation
+    deactivateAccommodation,
+    toggleIsAssignable
   }
 }

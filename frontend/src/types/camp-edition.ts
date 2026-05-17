@@ -156,6 +156,7 @@ export interface CampEditionAccommodation {
   countByFamily: boolean
   quantity: number
   isActive: boolean
+  isAssignable: boolean
   sortOrder: number
   currentPreferenceCount: number
   firstChoiceCount: number
@@ -185,6 +186,7 @@ export interface UpdateCampEditionAccommodationRequest {
   countByFamily: boolean
   quantity: number
   isActive: boolean
+  isAssignable: boolean
   zoneId?: string | null
   sortOrder: number
 }

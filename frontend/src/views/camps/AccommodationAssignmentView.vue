@@ -139,6 +139,7 @@ onMounted(async () => {
             :assignments-map="assignmentsMap"
             :selected-registration-id="selectedRegistrationId"
             :saving="saving"
+            :camp-edition-id="campEditionId"
             @select-family="selectedRegistrationId = $event"
             @assign="handleAssign"
             @unassign="unassignFamily"
