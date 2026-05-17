@@ -11,6 +11,14 @@ export const ACCOMMODATION_TYPE_LABELS: Record<AccommodationTypeValue, string> =
   Tent: 'Tienda'
 }
 
+export const ACCOMMODATION_TYPE_ICONS: Record<AccommodationTypeValue, string> = {
+  Lodge: 'pi pi-building',
+  Bungalow: 'pi pi-home',
+  Motorhome: 'pi pi-car',
+  Caravan: 'pi pi-truck',
+  Tent: 'pi pi-sun'
+}
+
 export interface AccommodationZoneResponse {
   id: string
   campEditionId: string
@@ -94,6 +102,9 @@ export interface AssignmentAccommodationResponse {
   unitIndex: number | null
   primaryThumbnailUrl?: string | null
   primaryFileUrl?: string | null
+  zonePrimaryThumbnailUrl?: string | null
+  zonePrimaryFileUrl?: string | null
+  isAssignable?: boolean
 }
 
 export interface AssignmentEntry {

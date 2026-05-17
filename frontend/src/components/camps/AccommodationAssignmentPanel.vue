@@ -5,21 +5,27 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
+import Dialog from 'primevue/dialog'
+import Galleria from 'primevue/galleria'
+import ProgressSpinner from 'primevue/progressspinner'
 import FamilyAssignmentCard from './FamilyAssignmentCard.vue'
 import AccommodationSlotCard from './AccommodationSlotCard.vue'
+import { api } from '@/utils/api'
 import type {
   ProposalAssignmentStateResponse,
   AssignmentFamilyResponse,
   AssignmentAccommodationResponse,
   AccommodationTypeValue
 } from '@/types/accommodation-assignment'
-import { ACCOMMODATION_TYPE_LABELS } from '@/types/accommodation-assignment'
+import { ACCOMMODATION_TYPE_LABELS, ACCOMMODATION_TYPE_ICONS } from '@/types/accommodation-assignment'
+import type { MediaItem } from '@/types/media-item'
 
 const props = defineProps<{
   state: ProposalAssignmentStateResponse
   assignmentsMap: Map<string, { accommodationId: string; unitIndex: number | null }>
   selectedRegistrationId: string | null
   saving: boolean
+  campEditionId: string
 }>()
 
 const emit = defineEmits<{
@@ -30,9 +36,42 @@ const emit = defineEmits<{
 
 const searchQuery = ref('')
 const filterSpecialNeeds = ref(false)
-const filterType = ref<string | null>(null)
+const activeTypeFilter = ref<AccommodationTypeValue | null>(null)
 const filterZone = ref<string | null>(null)
 const filterOnlyAvailable = ref(false)
+
+// Zone gallery modal
+const zoneGalleryVisible = ref(false)
+const zoneGalleryTitle = ref('')
+const zoneGalleryImages = ref<MediaItem[]>([])
+const zoneGalleryLoading = ref(false)
+
+async function openZoneGallery(zoneId: string, zoneName: string): Promise<void> {
+  zoneGalleryTitle.value = zoneName
+  zoneGalleryVisible.value = true
+  zoneGalleryLoading.value = true
+  zoneGalleryImages.value = []
+  try {
+    const res = await api.get(
+      `/camps/editions/${props.campEditionId}/accommodation-zones/${zoneId}`
+    )
+    zoneGalleryImages.value = res.data.data?.mediaItems ?? []
+  } catch {
+    // silently fail — gallery shows empty state
+  } finally {
+    zoneGalleryLoading.value = false
+  }
+}
+
+const availableTypes = computed((): AccommodationTypeValue[] =>
+  [...new Set(props.state.accommodations.map((a) => a.type))] as AccommodationTypeValue[]
+)
+
+const accommodationTypeMap = computed((): Map<string, AccommodationTypeValue> => {
+  const map = new Map<string, AccommodationTypeValue>()
+  props.state.accommodations.forEach((a) => map.set(a.id, a.type))
+  return map
+})
 
 const sortedFamilies = computed((): AssignmentFamilyResponse[] =>
   [...props.state.families].sort((a, b) => {
@@ -120,11 +159,6 @@ function assignedFamiliesFor(acc: AssignmentAccommodationResponse): AssignmentFa
   })
 }
 
-const availableTypeOptions = computed(() => {
-  const types = [...new Set(props.state.accommodations.map((a) => a.type))]
-  return types.map((t) => ({ label: ACCOMMODATION_TYPE_LABELS[t as AccommodationTypeValue], value: t }))
-})
-
 const availableZoneOptions = computed(() => {
   const zones = [
     ...new Set(
@@ -134,13 +168,12 @@ const availableZoneOptions = computed(() => {
   return zones.map((z) => ({ label: z, value: z }))
 })
 
-// Group: type → zone → accommodations (with filters applied)
 const groupedAccommodations = computed((): Map<string, Map<string, AssignmentAccommodationResponse[]>> => {
   const byType = new Map<string, Map<string, AssignmentAccommodationResponse[]>>()
   const sorted = [...props.state.accommodations].sort((a, b) => a.sortOrder - b.sortOrder)
 
   for (const acc of sorted) {
-    if (filterType.value && acc.type !== filterType.value) continue
+    if (activeTypeFilter.value && acc.type !== activeTypeFilter.value) continue
     if (filterZone.value && acc.zoneName !== filterZone.value) continue
     if (filterOnlyAvailable.value) {
       const families = assignedFamiliesFor(acc)
@@ -197,6 +230,7 @@ function handleAssign(accId: string, unitIndex: number | null) {
           :family="family"
           :assigned-accommodation-name="assignedAccommodationName(family.registrationId)"
           :is-selected="family.registrationId === selectedRegistrationId"
+          :accommodation-type-map="accommodationTypeMap"
           @select="$emit('selectFamily', $event)"
         />
         <p
@@ -219,32 +253,50 @@ function handleAssign(accId: string, unitIndex: number | null) {
       </div>
 
       <!-- Accommodation filter bar -->
-      <div class="mb-4 flex flex-wrap items-center gap-2">
-        <Select
-          v-model="filterType"
-          :options="availableTypeOptions"
-          option-label="label"
-          option-value="value"
-          placeholder="Todos los tipos"
-          show-clear
-          class="w-44"
-          size="small"
-        />
-        <Select
-          v-model="filterZone"
-          :options="availableZoneOptions"
-          option-label="label"
-          option-value="value"
-          placeholder="Todas las zonas"
-          show-clear
-          class="w-44"
-          size="small"
-        />
-        <div class="flex items-center gap-1.5">
-          <ToggleSwitch v-model="filterOnlyAvailable" input-id="filter-available" size="small" />
-          <label for="filter-available" class="cursor-pointer text-xs text-gray-600">
-            Solo disponibles
-          </label>
+      <div class="mb-4 space-y-2">
+        <!-- Type filter chips -->
+        <div class="flex flex-wrap gap-1.5">
+          <button
+            class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors"
+            :class="activeTypeFilter === null
+              ? 'border-primary-500 bg-primary-500 text-white'
+              : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'"
+            @click="activeTypeFilter = null"
+          >
+            Todos
+          </button>
+          <button
+            v-for="type in availableTypes"
+            :key="type"
+            class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors"
+            :class="activeTypeFilter === type
+              ? 'border-primary-500 bg-primary-500 text-white'
+              : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'"
+            @click="activeTypeFilter = activeTypeFilter === type ? null : type"
+          >
+            <i :class="ACCOMMODATION_TYPE_ICONS[type]" />
+            {{ ACCOMMODATION_TYPE_LABELS[type] }}
+          </button>
+        </div>
+
+        <!-- Zone + availability filters -->
+        <div class="flex flex-wrap items-center gap-2">
+          <Select
+            v-model="filterZone"
+            :options="availableZoneOptions"
+            option-label="label"
+            option-value="value"
+            placeholder="Todas las zonas"
+            show-clear
+            class="w-44"
+            size="small"
+          />
+          <div class="flex items-center gap-1.5">
+            <ToggleSwitch v-model="filterOnlyAvailable" input-id="filter-available" size="small" />
+            <label for="filter-available" class="cursor-pointer text-xs text-gray-600">
+              Solo disponibles
+            </label>
+          </div>
         </div>
       </div>
 
@@ -257,25 +309,34 @@ function handleAssign(accId: string, unitIndex: number | null) {
           {{ ACCOMMODATION_TYPE_LABELS[type as AccommodationTypeValue] }}
         </h3>
         <div v-for="[zoneName, accommodations] in byZone" :key="zoneName" class="mb-4">
-          <!-- Zone header with optional thumbnail -->
+          <!-- Zone header -->
           <div class="mb-2 flex items-center gap-2">
             <template v-if="accommodations[0]?.zoneId">
               <img
-                v-if="state.accommodations.find(a => a.zoneId === accommodations[0].zoneId)?.primaryThumbnailUrl"
-                :src="state.accommodations.find(a => a.zoneId === accommodations[0].zoneId)!.primaryThumbnailUrl!"
+                v-if="accommodations[0]?.zonePrimaryThumbnailUrl"
+                :src="accommodations[0].zonePrimaryThumbnailUrl"
                 alt=""
-                class="h-6 w-6 flex-shrink-0 rounded object-cover shadow-sm"
+                class="h-7 w-10 cursor-pointer flex-shrink-0 rounded object-cover shadow-sm hover:opacity-80"
+                @click="openZoneGallery(accommodations[0].zoneId!, zoneName)"
               />
               <div
                 v-else
-                class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-gray-100 text-gray-400"
+                class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded bg-gray-100 text-gray-400"
               >
                 <i class="pi pi-image" style="font-size: 0.6rem" />
               </div>
             </template>
             <h4 class="text-xs font-medium text-gray-400">{{ zoneName }}</h4>
+            <button
+              v-if="accommodations[0]?.zoneId"
+              class="ml-auto flex items-center gap-1 text-[10px] text-gray-400 hover:text-primary-500"
+              @click="openZoneGallery(accommodations[0].zoneId!, zoneName)"
+            >
+              <i class="pi pi-images text-[10px]" />
+              ver fotos
+            </button>
           </div>
-          <div class="grid grid-cols-2 gap-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div class="grid grid-cols-3 gap-1.5 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
             <AccommodationSlotCard
               v-for="acc in accommodations"
               :key="`${acc.id}-${acc.unitIndex ?? 'null'}`"
@@ -298,4 +359,43 @@ function handleAssign(accId: string, unitIndex: number | null) {
       </p>
     </div>
   </div>
+
+  <!-- Zone gallery modal -->
+  <Dialog
+    v-model:visible="zoneGalleryVisible"
+    :header="zoneGalleryTitle"
+    modal
+    class="w-[90vw] max-w-2xl"
+  >
+    <div v-if="zoneGalleryLoading" class="flex justify-center py-8">
+      <ProgressSpinner />
+    </div>
+    <Galleria
+      v-else-if="zoneGalleryImages.length"
+      :value="zoneGalleryImages"
+      :num-visible="4"
+      :show-thumbnails="true"
+      :show-indicators="true"
+      class="w-full"
+    >
+      <template #item="{ item }: { item: MediaItem }">
+        <img
+          :src="item.fileUrl"
+          :alt="item.title"
+          class="max-h-96 w-full rounded object-contain"
+          @error="($event.target as HTMLImageElement).style.display = 'none'"
+        />
+      </template>
+      <template #thumbnail="{ item }: { item: MediaItem }">
+        <img
+          :src="item.thumbnailUrl ?? item.fileUrl"
+          class="h-12 w-16 rounded object-cover"
+          @error="($event.target as HTMLImageElement).style.display = 'none'"
+        />
+      </template>
+    </Galleria>
+    <p v-else class="py-6 text-center text-sm text-gray-400">
+      Esta zona no tiene fotografías.
+    </p>
+  </Dialog>
 </template>
