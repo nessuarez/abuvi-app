@@ -1095,7 +1095,7 @@ public record AutoAssignRequest(bool OverwriteExisting = false);
 
 public record AccommodationPreferenceItem(Guid AccommodationId, int PreferenceOrder);
 
-public record AccommodationTypeLookupItem(Guid Id, string Type);
+public record AccommodationTypeLookupItem(Guid Id, AccommodationType Type);
 
 public record AccommodationFeatureSummary(Guid Id, string Name, string Icon);
 
