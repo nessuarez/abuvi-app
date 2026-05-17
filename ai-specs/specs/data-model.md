@@ -570,6 +570,7 @@ An accommodation option available for a specific camp edition (lodge, caravan, t
 - `description`: Optional description (max 1000 characters)
 - `capacity`: Maximum capacity in persons/units (optional, integer > 0 when set; informational only)
 - `isActive`: Whether the option is available for selection (required, default: true)
+- `isAssignable`: Whether the option can be used as an assignment target on the board (required, default: true). Set to false for type-level or placeholder entries that should not appear in the assignment panel.
 - `sortOrder`: Display order (required, integer >= 0, default: 0)
 - `zoneId`: Optional assignment zone for this accommodation (nullable FK -> AccommodationZone, SET NULL on delete)
 - `createdAt`: Record creation timestamp (required, auto-generated)

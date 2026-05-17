@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
+import ToggleSwitch from 'primevue/toggleswitch'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import Dialog from 'primevue/dialog'
@@ -27,6 +28,7 @@ const {
   deleteAccommodation,
   activateAccommodation,
   deactivateAccommodation,
+  toggleIsAssignable,
 } = useCampAccommodations(props.editionId)
 const {
   saving: featureSaving,
@@ -76,6 +78,13 @@ const handleDelete = async () => {
     toast.add({ severity: 'error', summary: 'Error', detail: error.value, life: 5000 })
   }
   deleteTarget.value = null
+}
+
+const handleToggleIsAssignable = async (acc: CampEditionAccommodation) => {
+  const success = await toggleIsAssignable(acc)
+  if (!success) {
+    toast.add({ severity: 'error', summary: 'Error', detail: error.value, life: 5000 })
+  }
 }
 
 const handleToggleActive = async (acc: CampEditionAccommodation) => {
@@ -145,13 +154,13 @@ onMounted(() => fetchAccommodations())
         <div class="flex-1">
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium text-gray-900">{{ acc.name }}</span>
-            <Tag
+            <span
               v-if="acc.quantity > 1"
-              :value="`×${acc.quantity}`"
-              severity="secondary"
-              class="text-xs"
-              title="Número de unidades"
-            />
+              class="inline-flex items-center rounded bg-primary-100 px-1.5 py-0.5 text-xs font-semibold text-primary-700"
+              title="Número de unidades de este tipo"
+            >
+              {{ acc.quantity }}×
+            </span>
             <Tag
               :value="ACCOMMODATION_TYPE_LABELS[acc.accommodationType]"
               severity="info"
@@ -185,6 +194,14 @@ onMounted(() => fetchAccommodations())
           </div>
         </div>
         <div class="flex items-center gap-1">
+          <div class="flex items-center gap-1 pr-2" title="Visible en tablero de asignación">
+            <ToggleSwitch
+              :model-value="acc.isAssignable"
+              size="small"
+              @change="handleToggleIsAssignable(acc)"
+            />
+            <span class="text-xs text-gray-400">Asignable</span>
+          </div>
           <Button
             icon="pi pi-star"
             severity="secondary"

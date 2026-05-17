@@ -46,10 +46,36 @@ Cypress.Commands.add('verifyButtonWithIcon', (buttonSelector: string, iconClass:
     .and('be.visible')
 })
 
+Cypress.Commands.add('login', (role: 'admin' | 'board' | 'member' = 'member') => {
+  const credentials = {
+    admin:  { email: Cypress.env('ADMIN_EMAIL'),  password: Cypress.env('ADMIN_PASSWORD') },
+    board:  { email: Cypress.env('BOARD_EMAIL'),  password: Cypress.env('BOARD_PASSWORD') },
+    member: { email: Cypress.env('MEMBER_EMAIL'), password: Cypress.env('MEMBER_PASSWORD') },
+  }
+  const { email, password } = credentials[role]
+  cy.request({
+    method: 'POST',
+    url: `${Cypress.env('API_URL')}/auth/login`,
+    body: { email, password },
+  }).then((response) => {
+    const { token, user } = response.body.data
+    localStorage.setItem('abuvi_auth_token', token)
+    localStorage.setItem('abuvi_user', JSON.stringify(user))
+  })
+})
+
 // Declare custom commands for TypeScript
 declare global {
   namespace Cypress {
     interface Chainable {
+      /**
+       * Authenticates programmatically via the E2E API. Sets both auth localStorage keys.
+       * Requires cypress.env.json with credentials and API_URL.
+       * @param role - 'admin' | 'board' | 'member' (default: 'member')
+       * @example cy.login('admin')
+       */
+      login(role?: 'admin' | 'board' | 'member'): Chainable<void>
+
       /**
        * Verifies that the PrimeIcons stylesheet is loaded
        * @example cy.verifyPrimeIconsLoaded()

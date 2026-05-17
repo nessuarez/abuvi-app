@@ -1,7 +1,7 @@
 {
 	"name": "frontend",
 	"private": true,
-	"version": "1.12.0",
+	"version": "1.13.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
@@ -12,6 +12,7 @@
 		"test:run": "vitest run",
 		"cypress": "cypress open",
 		"cypress:run": "cypress run",
+		"e2e:seed": "dotnet run --project ../src/Abuvi.Setup run-all --connection \"Host=localhost;Port=5432;Database=abuvi_e2e;Username=abuvi_user;Password=dev_password\"",
 		"lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts",
 		"format": "prettier --write src/"
 	},

@@ -48,6 +48,13 @@ const missingFeatures = computed(() => {
   )
 })
 
+const displayThumbnail = computed(
+  () => props.accommodation.primaryThumbnailUrl ?? props.accommodation.zonePrimaryThumbnailUrl ?? null
+)
+const thumbnailIsZoneFallback = computed(
+  () => !props.accommodation.primaryThumbnailUrl && !!props.accommodation.zonePrimaryThumbnailUrl
+)
+
 const hasFriendlyFamilyHere = computed(() => {
   if (!props.selectedFamily || (props.selectedFamily.friendlyFamilyUnitIds ?? []).length === 0) return false
   return props.assignedFamilies.some((f) =>
@@ -92,24 +99,32 @@ const signalClass = computed(() => {
 
 <template>
   <div
-    class="relative rounded-lg border-2 p-3 transition-all"
+    class="relative rounded-lg border-2 p-2 transition-all"
     :class="[signalClass, selectedFamily ? 'cursor-pointer hover:shadow-sm' : '']"
     @click="selectedFamily && $emit('assign', accommodation.id, accommodation.unitIndex)"
   >
-    <!-- Primary thumbnail (top-right corner) -->
+    <!-- Thumbnail: accommodation photo or zone fallback -->
     <div
-      v-if="accommodation.primaryThumbnailUrl"
-      class="absolute right-2 top-2 h-8 w-8 overflow-hidden rounded-md shadow-sm"
+      v-if="displayThumbnail"
+      class="absolute right-2 top-2 overflow-hidden rounded-md shadow-sm"
+      :class="thumbnailIsZoneFallback ? 'h-7 w-7 opacity-60' : 'h-8 w-8'"
     >
       <img
-        :src="accommodation.primaryThumbnailUrl"
+        :src="displayThumbnail"
         alt=""
         class="h-full w-full object-cover"
+        @error="($event.target as HTMLImageElement).style.display = 'none'"
       />
+      <span
+        v-if="thumbnailIsZoneFallback"
+        class="absolute bottom-0 left-0 w-full bg-black/40 text-center text-[7px] text-white"
+      >
+        zona
+      </span>
     </div>
 
     <div class="flex items-center justify-between">
-      <span class="text-sm font-semibold text-gray-800">{{ accommodation.name }}</span>
+      <span class="text-xs font-semibold text-gray-800">{{ accommodation.name }}</span>
       <span
         class="text-xs"
         :class="isOverCapacity ? 'font-bold text-red-600' : canFitSelectedFamily ? 'text-gray-500' : 'font-medium text-red-500'"

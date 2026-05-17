@@ -5,6 +5,9 @@ export default defineConfig({
 		projectId: "2oziu4",
 		baseUrl: "http://localhost:5173",
 		specPattern: "cypress/e2e/**/*.cy.{js,jsx,ts,tsx}",
-		supportFile: "cypress/support/e2e.ts"
+		supportFile: "cypress/support/e2e.ts",
+		env: {
+			API_URL: "http://localhost:5080/api",
+		},
 	}
 });

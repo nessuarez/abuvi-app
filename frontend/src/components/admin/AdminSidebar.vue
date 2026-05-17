@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useCampEditionsStore } from '@/stores/camp-editions'
 
 interface AdminMenuItem {
   label: string
@@ -9,6 +10,7 @@ interface AdminMenuItem {
   to: string
   testId: string
   visible: boolean
+  activePrefix?: string
 }
 
 interface AdminMenuGroup {
@@ -18,54 +20,77 @@ interface AdminMenuGroup {
 
 const route = useRoute()
 const auth = useAuthStore()
+const campEditionsStore = useCampEditionsStore()
+
+onMounted(() => {
+  campEditionsStore.fetchCurrentCampEdition()
+})
+
+const currentEditionId = computed(() => campEditionsStore.currentCampEdition?.id ?? null)
 
 const menuGroups = computed<AdminMenuGroup[]>(() => [
   {
     label: 'Gestión',
     items: [
+      {
+        label: 'Campamento Actual',
+        icon: 'pi pi-calendar',
+        to: currentEditionId.value ? `/camps/editions/${currentEditionId.value}` : '',
+        testId: 'sidebar-current-edition',
+        visible: !!currentEditionId.value,
+        activePrefix: currentEditionId.value ? `/camps/editions/${currentEditionId.value}` : undefined,
+      },
+      {
+        label: 'Asignación de Habitaciones',
+        icon: 'pi pi-th-large',
+        to: currentEditionId.value ? `/camps/editions/${currentEditionId.value}/assignment` : '',
+        testId: 'sidebar-room-assignment',
+        visible: auth.isBoard && !!currentEditionId.value,
+      },
       { label: 'Campamentos', icon: 'pi pi-map', to: '/admin/camps', testId: 'sidebar-camps', visible: true },
       { label: 'Inscripciones', icon: 'pi pi-list-check', to: '/admin/registrations', testId: 'sidebar-registrations', visible: true },
-      { label: 'Unidades Familiares', icon: 'pi pi-users', to: '/admin/family-units', testId: 'sidebar-family-units', visible: true }
-    ]
+    ],
   },
   {
     label: 'Personas',
     items: [
-      { label: 'Usuarios', icon: 'pi pi-user-edit', to: '/admin/users', testId: 'sidebar-users', visible: true }
-    ]
+      { label: 'Usuarios', icon: 'pi pi-user-edit', to: '/admin/users', testId: 'sidebar-users', visible: true },
+      { label: 'Unidades Familiares', icon: 'pi pi-users', to: '/admin/family-units', testId: 'sidebar-family-units', visible: true },
+    ],
   },
   {
     label: 'Contenido',
     items: [
-      { label: 'Revisión de medios', icon: 'pi pi-images', to: '/admin/media-review', testId: 'sidebar-media-review', visible: auth.isBoard }
-    ]
+      { label: 'Revisión de medios', icon: 'pi pi-images', to: '/admin/media-review', testId: 'sidebar-media-review', visible: auth.isBoard },
+    ],
   },
   {
     label: 'Finanzas',
     items: [
-      { label: 'Pagos', icon: 'pi pi-credit-card', to: '/admin/payments', testId: 'sidebar-payments', visible: auth.isBoard }
-    ]
+      { label: 'Pagos', icon: 'pi pi-credit-card', to: '/admin/payments', testId: 'sidebar-payments', visible: auth.isBoard },
+    ],
   },
   {
     label: 'Sistema',
     items: [
       { label: 'Almacenamiento', icon: 'pi pi-database', to: '/admin/storage', testId: 'sidebar-storage', visible: auth.isAdmin },
-      { label: 'Configuración', icon: 'pi pi-cog', to: '/admin/settings', testId: 'sidebar-settings', visible: auth.isBoard }
-    ]
-  }
+      { label: 'Configuración', icon: 'pi pi-cog', to: '/admin/settings', testId: 'sidebar-settings', visible: auth.isBoard },
+    ],
+  },
 ])
 
 const visibleGroups = computed(() =>
   menuGroups.value
     .map(group => ({
       ...group,
-      items: group.items.filter(item => item.visible)
+      items: group.items.filter(item => item.visible),
     }))
     .filter(group => group.items.length > 0)
 )
 
-const isActive = (path: string): boolean => {
-  return route.path === path
+const isActive = (item: AdminMenuItem): boolean => {
+  if (item.activePrefix) return route.path.startsWith(item.activePrefix)
+  return route.path === item.to
 }
 </script>
 
@@ -81,10 +106,10 @@ const isActive = (path: string): boolean => {
             <router-link
               :to="item.to"
               :data-testid="item.testId"
-              :aria-current="isActive(item.to) ? 'page' : undefined"
+              :aria-current="isActive(item) ? 'page' : undefined"
               class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
               :class="
-                isActive(item.to)
+                isActive(item)
                   ? 'border-l-4 border-red-600 bg-red-50 text-red-700'
                   : 'border-l-4 border-transparent text-gray-700 hover:bg-gray-100 hover:text-gray-900'
               "

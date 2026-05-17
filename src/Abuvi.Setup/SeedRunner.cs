@@ -101,9 +101,16 @@ public class SeedRunner(AbuviDbContext db, SafetyGuard guard, bool dryRun = fals
             }
 
             if (dryRun)
+            {
                 PrintDryRunSummary(results);
+                Log.Information("Dry-run: skipping registration seeder");
+            }
             else
+            {
+                var registrationSeeder = new RegistrationSeeder(db);
+                await registrationSeeder.SeedAsync();
                 Log.Information("Setup complete");
+            }
         }
         finally
         {
