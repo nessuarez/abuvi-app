@@ -47,12 +47,12 @@ function prefTypeIcon(accommodationId: string): string {
     <p class="mt-0.5 text-xs text-gray-500">{{ family.representativeName }}</p>
 
     <div class="mt-1 flex flex-wrap items-center gap-1">
-      <i
+      <span
         v-if="family.hasPet"
-        class="pi pi-heart text-xs text-amber-500"
-        v-tooltip.top="'Viaja con mascota'"
-        aria-label="Viaja con mascota"
-      />
+        class="rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700"
+      >
+        Con mascotas
+      </span>
       <i
         v-if="family.specialNeeds"
         class="pi pi-exclamation-circle text-xs text-red-400"
