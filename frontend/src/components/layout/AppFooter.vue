@@ -117,6 +117,11 @@ const contactInfo = {
           </div>
           <span class="hidden sm:inline text-gray-400">•</span>
           <div class="flex items-center gap-2">
+            <i class="pi pi-clock text-gray-600"></i>
+            <a href="https://wakatime.com/badge/github/nessuarez/abuvi-app"><img src="https://wakatime.com/badge/github/nessuarez/abuvi-app.svg" alt="wakatime"></a>          
+          </div>
+          <span class="hidden sm:inline text-gray-400">•</span>
+          <div class="flex items-center gap-2">
             <i class="pi pi-file text-gray-600"></i>
             <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener noreferrer"
               class="text-sm text-gray-600 hover:text-primary-600 underline"
