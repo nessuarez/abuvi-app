@@ -41,6 +41,21 @@ const activeTypeFilter = ref<AccommodationTypeValue | null>(null)
 const activeFeatureFilter = ref<string | null>(null)
 const filterZone = ref<string | null>(null)
 const filterOnlyAvailable = ref(false)
+const filterCapacityMin = ref<number | null>(null)
+const filterCapacityMax = ref<number | null>(null)
+
+const CAPACITY_OPTIONS = [
+  { label: '1', value: 1 },
+  { label: '2', value: 2 },
+  { label: '3', value: 3 },
+  { label: '4', value: 4 },
+  { label: '5', value: 5 },
+  { label: '6', value: 6 },
+  { label: '7', value: 7 },
+  { label: '8', value: 8 },
+  { label: '9', value: 9 },
+  { label: '10+', value: 10 },
+]
 
 // Zone gallery modal
 const zoneGalleryVisible = ref(false)
@@ -79,6 +94,12 @@ const accommodationTypeMap = computed((): Map<string, AccommodationTypeValue> =>
 const availableFeatures = computed((): AccommodationFeatureSummary[] => {
   const presentIds = new Set(props.state.accommodations.flatMap((a) => a.availableFeatures))
   return (props.state.allFeatures ?? []).filter((f) => presentIds.has(f.id))
+})
+
+const featureMap = computed((): Map<string, string> => {
+  const map = new Map<string, string>()
+  ;(props.state.allFeatures ?? []).forEach((f) => map.set(f.id, f.name))
+  return map
 })
 
 watch(() => props.state.proposalId, () => {
@@ -196,6 +217,14 @@ const groupedAccommodations = computed((): Map<string, Map<string, AssignmentAcc
         : families.reduce((sum, f) => sum + f.memberCount, 0)
       if (acc.capacity !== null && used >= acc.capacity) continue
     }
+    if (filterCapacityMin.value !== null) {
+      const cap = acc.capacity ?? Infinity
+      if (cap < filterCapacityMin.value) continue
+    }
+    if (filterCapacityMax.value !== null && filterCapacityMax.value < 10) {
+      const cap = acc.capacity ?? Infinity
+      if (cap > filterCapacityMax.value) continue
+    }
 
     if (!byType.has(acc.type)) byType.set(acc.type, new Map())
     const byZone = byType.get(acc.type)!
@@ -286,7 +315,7 @@ function handleAssign(accId: string, unitIndex: number | null) {
             {{ selectedFamily.babyCount === 1 ? 'bebé' : 'bebés' }}
           </span>
           <span v-if="selectedFamily.hasPet" class="font-medium text-amber-600">
-            <i class="pi pi-heart-fill mr-0.5" />Mascota
+            Con mascotas
           </span>
         </div>
 
@@ -357,7 +386,7 @@ function handleAssign(accId: string, unitIndex: number | null) {
           </button>
         </div>
 
-        <!-- Zone + availability filters -->
+        <!-- Zone + availability + capacity filters -->
         <div class="flex flex-wrap items-center gap-2">
           <Select
             v-model="filterZone"
@@ -374,6 +403,30 @@ function handleAssign(accId: string, unitIndex: number | null) {
             <label for="filter-available" class="cursor-pointer text-xs text-gray-600">
               Solo disponibles
             </label>
+          </div>
+          <div class="flex items-center gap-1 text-xs text-gray-600">
+            <span>Cap.</span>
+            <Select
+              v-model="filterCapacityMin"
+              :options="CAPACITY_OPTIONS"
+              option-label="label"
+              option-value="value"
+              placeholder="Mín"
+              show-clear
+              class="w-20"
+              size="small"
+            />
+            <span>–</span>
+            <Select
+              v-model="filterCapacityMax"
+              :options="CAPACITY_OPTIONS"
+              option-label="label"
+              option-value="value"
+              placeholder="Máx"
+              show-clear
+              class="w-20"
+              size="small"
+            />
           </div>
         </div>
       </div>
@@ -422,6 +475,7 @@ function handleAssign(accId: string, unitIndex: number | null) {
               :assigned-families="assignedFamiliesFor(acc)"
               :selected-family="selectedFamily"
               :has-friendly-family-in-zone="friendlyFamilyInZoneMap.get(slotKey(acc)) ?? false"
+              :feature-map="featureMap"
               @assign="(accId, unitIndex) => handleAssign(accId, unitIndex)"
               @unassign="$emit('unassign', $event)"
             />
