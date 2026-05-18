@@ -11,6 +11,7 @@ const props = defineProps<{
   assignedFamilies: AssignmentFamilyResponse[]
   selectedFamily: AssignmentFamilyResponse | null
   hasFriendlyFamilyInZone: boolean
+  featureMap: Map<string, string>
 }>()
 
 defineEmits<{
@@ -47,6 +48,10 @@ const missingFeatures = computed(() => {
     (feat) => !(props.accommodation.availableFeatures ?? []).includes(feat)
   )
 })
+
+const missingFeatureNames = computed(() =>
+  missingFeatures.value.map((id) => props.featureMap.get(id) ?? id)
+)
 
 const displayThumbnail = computed(() => props.accommodation.primaryThumbnailUrl ?? null)
 
@@ -119,10 +124,10 @@ const signalClass = computed(() => {
       >
         <template v-if="!selectedFamily || canFitSelectedFamily || isOverCapacity">
           {{ occupiedUnits }} / {{ accommodation.capacity ?? '∞' }}
-          {{ accommodation.countByFamily ? 'fam.' : 'pers.' }}
+          {{ accommodation.countByFamily ? 'f.' : 'p.' }}
         </template>
         <template v-else>
-          Necesitan {{ accommodation.countByFamily ? '1 plaza' : `${selectedFamily.memberCount} pers.` }},
+          Necesitan {{ accommodation.countByFamily ? '1' : selectedFamily.memberCount }} p.,
           quedan {{ Math.max(0, (accommodation.capacity ?? 0) - occupiedUnits) }}
         </template>
       </span>
@@ -167,9 +172,9 @@ const signalClass = computed(() => {
       <span
         v-if="missingFeatures.length > 0"
         class="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700"
-        :title="`Faltan: ${missingFeatures.join(', ')}`"
+        :title="`Faltan: ${missingFeatureNames.join(', ')}`"
       >
-        Preferencia no cubierta: {{ missingFeatures.join(', ') }}
+        Preferencia no cubierta: {{ missingFeatureNames.join(', ') }}
       </span>
     </div>
 
