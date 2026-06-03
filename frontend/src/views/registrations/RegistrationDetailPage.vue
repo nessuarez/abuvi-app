@@ -157,6 +157,15 @@ const canUserEdit = computed(() => {
   return !installments.value.some((p) => p.proofFileUrl != null)
 })
 
+const canUserEditExtras = computed(() => {
+  if (!registration.value) return false
+  const status = registration.value.status
+  if (status !== 'Pending' && status !== 'Draft') return false
+  if (!isRepresentative.value) return false
+  const p3 = installments.value.find((p) => p.installmentNumber === 3)
+  return !p3 || (p3.status !== 'PendingReview' && p3.status !== 'Completed')
+})
+
 const canAdminEdit = computed(
   () => isAdminOrBoard.value && registration.value?.status !== 'Cancelled'
 )
@@ -826,8 +835,9 @@ onMounted(async () => {
         <div class="mb-6">
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-base font-semibold text-gray-900">Desglose de precio</h2>
-            <div v-if="canEdit || canAdminEdit" class="flex gap-2">
+            <div v-if="canEdit || canUserEditExtras || canAdminEdit" class="flex gap-2">
               <Button
+                v-if="canEdit || canAdminEdit"
                 label="Editar participantes"
                 icon="pi pi-pencil"
                 size="small"
@@ -838,6 +848,7 @@ onMounted(async () => {
                 @click="startEditingMembers"
               />
               <Button
+                v-if="canUserEditExtras || canAdminEdit"
                 label="Editar extras"
                 icon="pi pi-pencil"
                 size="small"
