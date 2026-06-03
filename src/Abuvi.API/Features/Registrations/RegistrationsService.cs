@@ -358,9 +358,16 @@ public class RegistrationsService(
         if (registration.Status != RegistrationStatus.Pending && registration.Status != RegistrationStatus.Draft)
             throw new BusinessRuleException("Solo se pueden modificar inscripciones en estado Pendiente o Borrador");
 
-        // 3b. Guard: block if any payment has a proof uploaded
-        if (registration.Payments?.Any(p => p.ProofFileUrl != null) == true)
-            throw new BusinessRuleException("No se pueden modificar los extras porque ya hay un justificante de pago subido.");
+        // 3b. Guard: block if P3 has been submitted or confirmed
+        var p3Payment = registration.Payments?.FirstOrDefault(p => p.InstallmentNumber == 3);
+        if (p3Payment?.Status is PaymentStatus.PendingReview or PaymentStatus.Completed)
+            throw new BusinessRuleException("No se pueden modificar los extras porque el justificante de extras ya está en revisión o confirmado.");
+
+        // 3c. Guard: block if the extras payment deadline has passed
+        var extrasDeadline = registration.CampEdition.ExtrasPaymentDeadline
+            ?? registration.CampEdition.StartDate;
+        if (DateTime.UtcNow > extrasDeadline)
+            throw new BusinessRuleException("No se pueden añadir extras porque ha pasado el plazo de inscripción de extras.");
 
         // 4. Calculate duration
         var campDurationDays = (registration.CampEdition.EndDate - registration.CampEdition.StartDate).Days;
