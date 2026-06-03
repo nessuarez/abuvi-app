@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { ref, nextTick } from 'vue'
 import RegistrationDetailPage from '../registrations/RegistrationDetailPage.vue'
-import type { RegistrationResponse } from '@/types/registration'
+import type { RegistrationResponse, PaymentStatus } from '@/types/registration'
+import type { PaymentResponse } from '@/types/payment'
 
 // ── Auth mock ─────────────────────────────────────────────────────────────────
 const authMock = vi.hoisted(() => ({
@@ -13,6 +14,9 @@ const authMock = vi.hoisted(() => ({
 }))
 
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => authMock }))
+
+// ── Payments mock ─────────────────────────────────────────────────────────────
+const paymentsReturnMock = vi.hoisted(() => vi.fn().mockResolvedValue([]))
 
 // ── Router mock ───────────────────────────────────────────────────────────────
 const routerPushMock = vi.fn()
@@ -46,7 +50,7 @@ vi.mock('@/composables/useRegistrations', () => ({
 
 vi.mock('@/composables/usePayments', () => ({
   usePayments: () => ({
-    getRegistrationPayments: vi.fn().mockResolvedValue([]),
+    getRegistrationPayments: paymentsReturnMock,
     getPaymentSettings: vi.fn().mockResolvedValue(null),
   }),
 }))
@@ -127,6 +131,32 @@ const mountPage = () =>
     },
   })
 
+// ── Payment fixture helper ────────────────────────────────────────────────────
+const makePayment = (
+  installmentNumber: number,
+  status: PaymentStatus,
+  proofFileUrl: string | null = null,
+): PaymentResponse => ({
+  id: `pay-${installmentNumber}`,
+  registrationId: 'reg-1',
+  installmentNumber,
+  amount: 200,
+  dueDate: null,
+  method: 'Transfer',
+  status,
+  transferConcept: null,
+  proofFileUrl,
+  proofFileName: null,
+  proofUploadedAt: null,
+  adminNotes: null,
+  createdAt: '2026-01-01T00:00:00Z',
+  isActionable: false,
+  isManual: false,
+  conceptLines: null,
+  extraConceptLines: null,
+  manualConceptLine: null,
+})
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 describe('RegistrationDetailPage — back navigation', () => {
   beforeEach(() => {
@@ -173,5 +203,68 @@ describe('RegistrationDetailPage — back navigation', () => {
     await nextTick()
 
     expect(wrapper.find('[aria-label="Volver a inscripciones"]').exists()).toBe(true)
+  })
+})
+
+describe('RegistrationDetailPage — extras edit button visibility', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    routeQueryMock.value = {}
+    registrationMock.value = makeRegistration()
+    paymentsReturnMock.mockResolvedValue([])
+  })
+
+  it('shows both edit buttons when no payments exist', async () => {
+    paymentsReturnMock.mockResolvedValue([])
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="edit-members-btn"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="edit-extras-btn"]').exists()).toBe(true)
+  })
+
+  it('hides edit-members but shows edit-extras when P1 has a proof', async () => {
+    paymentsReturnMock.mockResolvedValue([makePayment(1, 'PendingReview', 'https://blob/p1.pdf')])
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="edit-members-btn"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="edit-extras-btn"]').exists()).toBe(true)
+  })
+
+  it('hides edit-members but shows edit-extras when P2 has a proof', async () => {
+    paymentsReturnMock.mockResolvedValue([
+      makePayment(1, 'Completed', 'https://blob/p1.pdf'),
+      makePayment(2, 'PendingReview', 'https://blob/p2.pdf'),
+    ])
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="edit-members-btn"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="edit-extras-btn"]').exists()).toBe(true)
+  })
+
+  it('hides edit-extras when P3 is PendingReview', async () => {
+    paymentsReturnMock.mockResolvedValue([
+      makePayment(1, 'Completed', 'https://blob/p1.pdf'),
+      makePayment(2, 'Completed', 'https://blob/p2.pdf'),
+      makePayment(3, 'PendingReview', 'https://blob/p3.pdf'),
+    ])
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="edit-extras-btn"]').exists()).toBe(false)
+  })
+
+  it('hides edit-extras when P3 is Completed', async () => {
+    paymentsReturnMock.mockResolvedValue([
+      makePayment(1, 'Completed', 'https://blob/p1.pdf'),
+      makePayment(2, 'Completed', 'https://blob/p2.pdf'),
+      makePayment(3, 'Completed', 'https://blob/p3.pdf'),
+    ])
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="edit-extras-btn"]').exists()).toBe(false)
   })
 })
