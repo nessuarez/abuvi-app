@@ -396,6 +396,130 @@ public class RegistrationsServiceTests
             .WithMessage("*Pendiente*");
     }
 
+    [Fact]
+    public async Task SetExtrasAsync_WhenP1HasProof_AllowsExtrasModification()
+    {
+        var registrationId = Guid.NewGuid();
+        var extraId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var extra = CreateCampEditionExtra(extraId, CampEditionId, price: 50m);
+
+        var existing = CreateRegistrationWithFamilyUnit(registrationId, familyUnit, edition);
+        existing.Status = RegistrationStatus.Pending;
+        existing.Payments = [CreatePayment(1, PaymentStatus.PendingReview, "https://blob/p1.pdf")];
+
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
+        _editionsRepo.GetExtraByIdAsync(extraId, Arg.Any<CancellationToken>()).Returns(extra);
+        _extrasRepo.DeleteByRegistrationIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _extrasRepo.AddRangeAsync(Arg.Any<IEnumerable<RegistrationExtra>>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _repo.UpdateAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+
+        var request = new UpdateRegistrationExtrasRequest([new ExtraSelectionRequest(extraId, 1)]);
+
+        await ((Func<Task>)(async () => await _sut.SetExtrasAsync(registrationId, UserId, request, CancellationToken.None)))
+            .Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task SetExtrasAsync_WhenP2HasProof_AllowsExtrasModification()
+    {
+        var registrationId = Guid.NewGuid();
+        var extraId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var extra = CreateCampEditionExtra(extraId, CampEditionId, price: 50m);
+
+        var existing = CreateRegistrationWithFamilyUnit(registrationId, familyUnit, edition);
+        existing.Status = RegistrationStatus.Pending;
+        existing.Payments =
+        [
+            CreatePayment(1, PaymentStatus.Completed, "https://blob/p1.pdf"),
+            CreatePayment(2, PaymentStatus.PendingReview, "https://blob/p2.pdf")
+        ];
+
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
+        _editionsRepo.GetExtraByIdAsync(extraId, Arg.Any<CancellationToken>()).Returns(extra);
+        _extrasRepo.DeleteByRegistrationIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _extrasRepo.AddRangeAsync(Arg.Any<IEnumerable<RegistrationExtra>>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _repo.UpdateAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+
+        var request = new UpdateRegistrationExtrasRequest([new ExtraSelectionRequest(extraId, 1)]);
+
+        await ((Func<Task>)(async () => await _sut.SetExtrasAsync(registrationId, UserId, request, CancellationToken.None)))
+            .Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task SetExtrasAsync_WhenP3IsPendingReview_ThrowsBusinessRuleException()
+    {
+        var registrationId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+
+        var existing = CreateRegistrationWithFamilyUnit(registrationId, familyUnit, edition);
+        existing.Status = RegistrationStatus.Pending;
+        existing.Payments =
+        [
+            CreatePayment(1, PaymentStatus.Completed, "https://blob/p1.pdf"),
+            CreatePayment(2, PaymentStatus.Completed, "https://blob/p2.pdf"),
+            CreatePayment(3, PaymentStatus.PendingReview, "https://blob/p3.pdf")
+        ];
+
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
+
+        var request = new UpdateRegistrationExtrasRequest([new ExtraSelectionRequest(Guid.NewGuid(), 1)]);
+
+        await ((Func<Task>)(async () => await _sut.SetExtrasAsync(registrationId, UserId, request, CancellationToken.None)))
+            .Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage("*revisión*");
+    }
+
+    [Fact]
+    public async Task SetExtrasAsync_WhenP3IsCompleted_ThrowsBusinessRuleException()
+    {
+        var registrationId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+
+        var existing = CreateRegistrationWithFamilyUnit(registrationId, familyUnit, edition);
+        existing.Status = RegistrationStatus.Pending;
+        existing.Payments =
+        [
+            CreatePayment(1, PaymentStatus.Completed, "https://blob/p1.pdf"),
+            CreatePayment(2, PaymentStatus.Completed, "https://blob/p2.pdf"),
+            CreatePayment(3, PaymentStatus.Completed, "https://blob/p3.pdf")
+        ];
+
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
+
+        var request = new UpdateRegistrationExtrasRequest([new ExtraSelectionRequest(Guid.NewGuid(), 1)]);
+
+        await ((Func<Task>)(async () => await _sut.SetExtrasAsync(registrationId, UserId, request, CancellationToken.None)))
+            .Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage("*revisión*");
+    }
+
+    [Fact]
+    public async Task SetExtrasAsync_WhenPastExtrasPaymentDeadline_ThrowsBusinessRuleException()
+    {
+        var registrationId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        edition.ExtrasPaymentDeadline = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        var existing = CreateRegistrationWithFamilyUnit(registrationId, familyUnit, edition);
+        existing.Status = RegistrationStatus.Pending;
+
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
+
+        var request = new UpdateRegistrationExtrasRequest([new ExtraSelectionRequest(Guid.NewGuid(), 1)]);
+
+        await ((Func<Task>)(async () => await _sut.SetExtrasAsync(registrationId, UserId, request, CancellationToken.None)))
+            .Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage("*plazo*");
+    }
+
     // ── CancelAsync ───────────────────────────────────────────────────────────
 
     [Fact]
@@ -492,9 +616,9 @@ public class RegistrationsServiceTests
     {
         Id = CampEditionId,
         CampId = Guid.NewGuid(),
-        Year = 2025,
-        StartDate = new DateTime(2025, 7, 1, 0, 0, 0, DateTimeKind.Utc),
-        EndDate = new DateTime(2025, 7, 14, 0, 0, 0, DateTimeKind.Utc),
+        Year = 2030,
+        StartDate = new DateTime(2030, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+        EndDate = new DateTime(2030, 7, 14, 0, 0, 0, DateTimeKind.Utc),
         PricePerAdult = 500m,
         PricePerChild = 300m,
         PricePerBaby = 100m,
@@ -598,6 +722,19 @@ public class RegistrationsServiceTests
             IsActive = true,
             MaxQuantity = maxQuantity
         };
+
+    private static Payment CreatePayment(int installmentNumber, PaymentStatus status, string? proofFileUrl = null) => new()
+    {
+        Id = Guid.NewGuid(),
+        RegistrationId = Guid.NewGuid(),
+        InstallmentNumber = installmentNumber,
+        Amount = 100m,
+        Status = status,
+        ProofFileUrl = proofFileUrl,
+        Method = PaymentMethod.Transfer,
+        CreatedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow
+    };
 
     private void SetupGlobalAgeRanges()
     {
