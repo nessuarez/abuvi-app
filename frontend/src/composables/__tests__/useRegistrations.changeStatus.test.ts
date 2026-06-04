@@ -168,7 +168,7 @@ describe('useRegistrations - adminUpdateRegistration', () => {
     expect(result).toEqual(mockRegistration)
     expect(registration.value).toEqual(mockRegistration)
     expect(error.value).toBeNull()
-    expect(api.put).toHaveBeenCalledWith('/registrations/reg-1/admin', adminRequest)
+    expect(api.put).toHaveBeenCalledWith('/registrations/reg-1/admin-edit', adminRequest)
   })
 
   it('should pass notifyUser: false when not notifying', async () => {

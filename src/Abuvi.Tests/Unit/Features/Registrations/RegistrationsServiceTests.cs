@@ -377,7 +377,7 @@ public class RegistrationsServiceTests
     }
 
     [Fact]
-    public async Task SetExtrasAsync_WhenRegistrationNotPending_ThrowsBusinessRuleException()
+    public async Task SetExtrasAsync_WhenRegistrationConfirmed_ThrowsBusinessRuleException()
     {
         var registrationId = Guid.NewGuid();
         var familyUnit = CreateFamilyUnit(UserId);
@@ -393,7 +393,61 @@ public class RegistrationsServiceTests
             await _sut.SetExtrasAsync(registrationId, UserId, request, CancellationToken.None);
 
         await act.Should().ThrowAsync<BusinessRuleException>()
-            .WithMessage("*Pendiente*");
+            .WithMessage("*activos*");
+    }
+
+    [Fact]
+    public async Task SetExtrasAsync_WhenRegistrationPartiallyPaid_AllowsExtrasModification()
+    {
+        var registrationId = Guid.NewGuid();
+        var extraId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var extra = CreateCampEditionExtra(extraId, CampEditionId, price: 50m);
+
+        var existing = CreateRegistrationWithFamilyUnit(registrationId, familyUnit, edition);
+        existing.Status = RegistrationStatus.PartiallyPaid;
+        existing.Payments = [CreatePayment(1, PaymentStatus.Completed, "https://blob/p1.pdf")];
+
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
+        _editionsRepo.GetExtraByIdAsync(extraId, Arg.Any<CancellationToken>()).Returns(extra);
+        _extrasRepo.DeleteByRegistrationIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _extrasRepo.AddRangeAsync(Arg.Any<IEnumerable<RegistrationExtra>>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _repo.UpdateAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+
+        var request = new UpdateRegistrationExtrasRequest([new ExtraSelectionRequest(extraId, 1)]);
+
+        await ((Func<Task>)(async () => await _sut.SetExtrasAsync(registrationId, UserId, request, CancellationToken.None)))
+            .Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task SetExtrasAsync_WhenRegistrationFullyPaid_AllowsExtrasModification()
+    {
+        var registrationId = Guid.NewGuid();
+        var extraId = Guid.NewGuid();
+        var familyUnit = CreateFamilyUnit(UserId);
+        var edition = CreateOpenEdition();
+        var extra = CreateCampEditionExtra(extraId, CampEditionId, price: 50m);
+
+        var existing = CreateRegistrationWithFamilyUnit(registrationId, familyUnit, edition);
+        existing.Status = RegistrationStatus.FullyPaid;
+        existing.Payments =
+        [
+            CreatePayment(1, PaymentStatus.Completed, "https://blob/p1.pdf"),
+            CreatePayment(2, PaymentStatus.Completed, "https://blob/p2.pdf")
+        ];
+
+        _repo.GetByIdWithDetailsAsync(registrationId, Arg.Any<CancellationToken>()).Returns(existing);
+        _editionsRepo.GetExtraByIdAsync(extraId, Arg.Any<CancellationToken>()).Returns(extra);
+        _extrasRepo.DeleteByRegistrationIdAsync(registrationId, Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _extrasRepo.AddRangeAsync(Arg.Any<IEnumerable<RegistrationExtra>>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _repo.UpdateAsync(Arg.Any<Registration>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+
+        var request = new UpdateRegistrationExtrasRequest([new ExtraSelectionRequest(extraId, 1)]);
+
+        await ((Func<Task>)(async () => await _sut.SetExtrasAsync(registrationId, UserId, request, CancellationToken.None)))
+            .Should().NotThrowAsync();
     }
 
     [Fact]
