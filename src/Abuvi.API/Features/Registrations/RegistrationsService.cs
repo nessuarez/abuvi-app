@@ -354,9 +354,10 @@ public class RegistrationsService(
         if (registration.FamilyUnit.RepresentativeUserId != userId)
             throw new BusinessRuleException("No tienes permiso para modificar esta inscripción");
 
-        // 3. Verify status (Pending or Draft are both editable for the representative)
-        if (registration.Status != RegistrationStatus.Pending && registration.Status != RegistrationStatus.Draft)
-            throw new BusinessRuleException("Solo se pueden modificar inscripciones en estado Pendiente o Borrador");
+        // 3. Verify status — extras editable in all active payment-progression states
+        if (registration.Status is not (RegistrationStatus.Pending or RegistrationStatus.Draft
+            or RegistrationStatus.PartiallyPaid or RegistrationStatus.FullyPaid))
+            throw new BusinessRuleException("Solo se pueden modificar extras en inscripciones con pagos activos.");
 
         // 3b. Guard: block if P3 has been submitted or confirmed
         var p3Payment = registration.Payments?.FirstOrDefault(p => p.InstallmentNumber == 3);
