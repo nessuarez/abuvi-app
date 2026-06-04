@@ -363,7 +363,7 @@ export function useRegistrations() {
     error.value = null
     try {
       const response = await api.put<ApiResponse<RegistrationResponse>>(
-        `/registrations/${id}/admin`,
+        `/registrations/${id}/admin-edit`,
         request
       )
       if (response.data.success && response.data.data) {

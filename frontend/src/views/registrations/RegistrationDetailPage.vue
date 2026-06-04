@@ -160,7 +160,13 @@ const canUserEdit = computed(() => {
 const canUserEditExtras = computed(() => {
   if (!registration.value) return false
   const status = registration.value.status
-  if (status !== 'Pending' && status !== 'Draft') return false
+  if (
+    status !== 'Pending' &&
+    status !== 'Draft' &&
+    status !== 'PartiallyPaid' &&
+    status !== 'FullyPaid'
+  )
+    return false
   if (!isRepresentative.value) return false
   const p3 = installments.value.find((p) => p.installmentNumber === 3)
   return !p3 || (p3.status !== 'PendingReview' && p3.status !== 'Completed')
