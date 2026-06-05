@@ -28,6 +28,7 @@ import PaymentInstallmentCard from '@/components/payments/PaymentInstallmentCard
 import ManualPaymentDialog from '@/components/admin/ManualPaymentDialog.vue'
 import RegistrationAccommodationNeeds from '@/components/admin/registration-accommodation-needs/RegistrationAccommodationNeeds.vue'
 import RegistrationFriendLinks from '@/components/admin/registration-accommodation-needs/RegistrationFriendLinks.vue'
+import { AGE_CATEGORY_LABELS, ATTENDANCE_PERIOD_LABELS } from '@/utils/registration'
 import { useRegistrations } from '@/composables/useRegistrations'
 import { usePayments } from '@/composables/usePayments'
 import { useFamilyUnits } from '@/composables/useFamilyUnits'
@@ -747,6 +748,150 @@ onMounted(async () => {
                 <p class="text-sm text-gray-600">{{ registration.notes }}</p>
               </div>
 
+              <!-- Participantes y extras -->
+              <div class="mb-6">
+                <div class="mb-3 flex items-center justify-between">
+                  <h2 class="text-base font-semibold text-gray-900">Participantes y extras</h2>
+                  <div v-if="canEdit || canUserEditExtras || canAdminEdit" class="flex gap-2">
+                    <Button
+                      v-if="canEdit || canAdminEdit"
+                      label="Editar participantes"
+                      icon="pi pi-pencil"
+                      size="small"
+                      severity="secondary"
+                      outlined
+                      :loading="loadingEditData && !isEditingMembers"
+                      data-testid="edit-members-btn"
+                      @click="startEditingMembers"
+                    />
+                    <Button
+                      v-if="canUserEditExtras || canAdminEdit"
+                      label="Editar extras"
+                      icon="pi pi-pencil"
+                      size="small"
+                      severity="secondary"
+                      outlined
+                      :loading="loadingEditData && !isEditingExtras"
+                      data-testid="edit-extras-btn"
+                      @click="startEditingExtras"
+                    />
+                  </div>
+                </div>
+
+                <!-- Read-only participant list -->
+                <ul v-if="!isEditingMembers" class="mb-2 space-y-1.5 text-sm text-gray-800" data-testid="members-list">
+                  <li
+                    v-for="m in registration.pricing.members"
+                    :key="m.familyMemberId"
+                    class="flex items-baseline gap-2"
+                    :data-testid="`member-row-${m.familyMemberId}`"
+                  >
+                    <span class="font-medium text-gray-900">{{ m.fullName }}</span>
+                    <span class="text-xs text-gray-500">
+                      {{ AGE_CATEGORY_LABELS[m.ageCategory] }}
+                      <template v-if="m.attendancePeriod && m.attendancePeriod !== 'Complete'">
+                        · {{ ATTENDANCE_PERIOD_LABELS[m.attendancePeriod] }}
+                      </template>
+                      <template v-if="m.guardianName">
+                        · Tutor/a: {{ m.guardianName }}
+                      </template>
+                    </span>
+                  </li>
+                </ul>
+
+                <!-- Read-only extras list -->
+                <template v-if="!isEditingExtras">
+                  <div
+                    v-if="registration.pricing.extras.filter(e => e.quantity > 0).length > 0"
+                    class="mt-2"
+                    data-testid="extras-list"
+                  >
+                    <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Extras</p>
+                    <ul class="space-y-0.5 text-sm text-gray-800">
+                      <li
+                        v-for="e in registration.pricing.extras.filter(x => x.quantity > 0)"
+                        :key="e.campEditionExtraId"
+                        :data-testid="`extra-row-${e.campEditionExtraId}`"
+                      >
+                        {{ e.name }}
+                        <span class="text-gray-500">× {{ e.quantity }}</span>
+                        <span v-if="e.userInput" class="ml-1 text-xs text-gray-400 italic">— {{ e.userInput }}</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <p v-else class="mt-2 text-sm text-gray-400 italic" data-testid="extras-empty">
+                    Sin extras seleccionados.
+                  </p>
+                </template>
+
+                <!-- Edit members form -->
+                <div v-if="isEditingMembers" class="mb-4 rounded-lg border border-blue-200 bg-blue-50/30 p-4">
+                  <h3 class="mb-3 text-sm font-semibold text-gray-900">Editar participantes</h3>
+                  <RegistrationMemberSelector
+                    v-if="campEditionData"
+                    v-model="memberSelections"
+                    :members="familyMembersData"
+                    :edition="campEditionData"
+                  />
+                  <template v-if="isAdminOrBoard">
+                    <div class="mt-3 rounded-md border border-orange-100 bg-orange-50 p-3">
+                      <div class="mb-2 flex items-center gap-2">
+                        <ToggleSwitch v-model="notifyFamilyOnAdminSave" input-id="notify-admin-members" />
+                        <label for="notify-admin-members" class="cursor-pointer text-sm text-orange-800">
+                          Notificar a la familia
+                        </label>
+                      </div>
+                      <p class="mb-3 text-xs text-orange-700">
+                        Al guardar, la inscripción pasará a estado "En revisión" hasta que la familia confirme los cambios.
+                      </p>
+                      <div class="flex gap-2">
+                        <Button label="Guardar (admin)" icon="pi pi-check" :loading="savingMembers"
+                                severity="warning" @click="handleAdminSaveMembers" />
+                        <Button label="Cancelar" severity="secondary" text :disabled="savingMembers"
+                                @click="isEditingMembers = false" />
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="mt-4 flex gap-2">
+                      <Button label="Guardar" icon="pi pi-check" :loading="savingMembers" @click="handleSaveMembers" />
+                      <Button label="Cancelar" severity="secondary" text :disabled="savingMembers" @click="isEditingMembers = false" />
+                    </div>
+                  </template>
+                </div>
+
+                <!-- Edit extras form -->
+                <div v-if="isEditingExtras" class="mb-4 rounded-lg border border-blue-200 bg-blue-50/30 p-4">
+                  <h3 class="mb-3 text-sm font-semibold text-gray-900">Editar extras</h3>
+                  <RegistrationExtrasSelector v-model="extrasSelections" :extras="campExtrasData" />
+                  <template v-if="isAdminOrBoard">
+                    <div class="mt-3 rounded-md border border-orange-100 bg-orange-50 p-3">
+                      <div class="mb-2 flex items-center gap-2">
+                        <ToggleSwitch v-model="notifyFamilyOnAdminSave" input-id="notify-admin-extras" />
+                        <label for="notify-admin-extras" class="cursor-pointer text-sm text-orange-800">
+                          Notificar a la familia
+                        </label>
+                      </div>
+                      <p class="mb-3 text-xs text-orange-700">
+                        Al guardar, la inscripción pasará a estado "En revisión" hasta que la familia confirme los cambios.
+                      </p>
+                      <div class="flex gap-2">
+                        <Button label="Guardar (admin)" icon="pi pi-check" :loading="savingExtras"
+                                severity="warning" @click="handleAdminSaveExtras" />
+                        <Button label="Cancelar" severity="secondary" text :disabled="savingExtras"
+                                @click="isEditingExtras = false" />
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="mt-4 flex gap-2">
+                      <Button label="Guardar" icon="pi pi-check" :loading="savingExtras" @click="handleSaveExtras" />
+                      <Button label="Cancelar" severity="secondary" text :disabled="savingExtras" @click="isEditingExtras = false" />
+                    </div>
+                  </template>
+                </div>
+              </div>
+
               <!-- Información adicional -->
               <div class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <div class="mb-3 flex items-center justify-between">
@@ -841,104 +986,6 @@ onMounted(async () => {
                     </span>
                   </li>
                 </ol>
-              </div>
-
-              <!-- Participantes y extras -->
-              <div class="mb-6">
-                <div class="mb-3 flex items-center justify-between">
-                  <h2 class="text-base font-semibold text-gray-900">Participantes y extras</h2>
-                  <div v-if="canEdit || canUserEditExtras || canAdminEdit" class="flex gap-2">
-                    <Button
-                      v-if="canEdit || canAdminEdit"
-                      label="Editar participantes"
-                      icon="pi pi-pencil"
-                      size="small"
-                      severity="secondary"
-                      outlined
-                      :loading="loadingEditData && !isEditingMembers"
-                      data-testid="edit-members-btn"
-                      @click="startEditingMembers"
-                    />
-                    <Button
-                      v-if="canUserEditExtras || canAdminEdit"
-                      label="Editar extras"
-                      icon="pi pi-pencil"
-                      size="small"
-                      severity="secondary"
-                      outlined
-                      :loading="loadingEditData && !isEditingExtras"
-                      data-testid="edit-extras-btn"
-                      @click="startEditingExtras"
-                    />
-                  </div>
-                </div>
-
-                <!-- Edit members form -->
-                <div v-if="isEditingMembers" class="mb-4 rounded-lg border border-blue-200 bg-blue-50/30 p-4">
-                  <h3 class="mb-3 text-sm font-semibold text-gray-900">Editar participantes</h3>
-                  <RegistrationMemberSelector
-                    v-if="campEditionData"
-                    v-model="memberSelections"
-                    :members="familyMembersData"
-                    :edition="campEditionData"
-                  />
-                  <template v-if="isAdminOrBoard">
-                    <div class="mt-3 rounded-md border border-orange-100 bg-orange-50 p-3">
-                      <div class="mb-2 flex items-center gap-2">
-                        <ToggleSwitch v-model="notifyFamilyOnAdminSave" input-id="notify-admin-members" />
-                        <label for="notify-admin-members" class="cursor-pointer text-sm text-orange-800">
-                          Notificar a la familia
-                        </label>
-                      </div>
-                      <p class="mb-3 text-xs text-orange-700">
-                        Al guardar, la inscripción pasará a estado "En revisión" hasta que la familia confirme los cambios.
-                      </p>
-                      <div class="flex gap-2">
-                        <Button label="Guardar (admin)" icon="pi pi-check" :loading="savingMembers"
-                                severity="warning" @click="handleAdminSaveMembers" />
-                        <Button label="Cancelar" severity="secondary" text :disabled="savingMembers"
-                                @click="isEditingMembers = false" />
-                      </div>
-                    </div>
-                  </template>
-                  <template v-else>
-                    <div class="mt-4 flex gap-2">
-                      <Button label="Guardar" icon="pi pi-check" :loading="savingMembers" @click="handleSaveMembers" />
-                      <Button label="Cancelar" severity="secondary" text :disabled="savingMembers" @click="isEditingMembers = false" />
-                    </div>
-                  </template>
-                </div>
-
-                <!-- Edit extras form -->
-                <div v-if="isEditingExtras" class="mb-4 rounded-lg border border-blue-200 bg-blue-50/30 p-4">
-                  <h3 class="mb-3 text-sm font-semibold text-gray-900">Editar extras</h3>
-                  <RegistrationExtrasSelector v-model="extrasSelections" :extras="campExtrasData" />
-                  <template v-if="isAdminOrBoard">
-                    <div class="mt-3 rounded-md border border-orange-100 bg-orange-50 p-3">
-                      <div class="mb-2 flex items-center gap-2">
-                        <ToggleSwitch v-model="notifyFamilyOnAdminSave" input-id="notify-admin-extras" />
-                        <label for="notify-admin-extras" class="cursor-pointer text-sm text-orange-800">
-                          Notificar a la familia
-                        </label>
-                      </div>
-                      <p class="mb-3 text-xs text-orange-700">
-                        Al guardar, la inscripción pasará a estado "En revisión" hasta que la familia confirme los cambios.
-                      </p>
-                      <div class="flex gap-2">
-                        <Button label="Guardar (admin)" icon="pi pi-check" :loading="savingExtras"
-                                severity="warning" @click="handleAdminSaveExtras" />
-                        <Button label="Cancelar" severity="secondary" text :disabled="savingExtras"
-                                @click="isEditingExtras = false" />
-                      </div>
-                    </div>
-                  </template>
-                  <template v-else>
-                    <div class="mt-4 flex gap-2">
-                      <Button label="Guardar" icon="pi pi-check" :loading="savingExtras" @click="handleSaveExtras" />
-                      <Button label="Cancelar" severity="secondary" text :disabled="savingExtras" @click="isEditingExtras = false" />
-                    </div>
-                  </template>
-                </div>
               </div>
 
               <!-- Accommodation needs tagging (Admin/Board only) -->

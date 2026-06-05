@@ -1,5 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { formatAttendancePeriods } from '@/utils/registration'
+import { AGE_CATEGORY_LABELS, formatAttendancePeriods } from '@/utils/registration'
+
+describe('AGE_CATEGORY_LABELS', () => {
+  it('should label Baby correctly', () => {
+    expect(AGE_CATEGORY_LABELS['Baby']).toBe('Bebé')
+  })
+
+  it('should label Child correctly', () => {
+    expect(AGE_CATEGORY_LABELS['Child']).toBe('Niño/Niña')
+  })
+
+  it('should label Adult correctly', () => {
+    expect(AGE_CATEGORY_LABELS['Adult']).toBe('Adulto/Adulta')
+  })
+})
 
 describe('formatAttendancePeriods', () => {
   it('should return T for Complete', () => {

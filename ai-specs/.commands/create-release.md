@@ -6,6 +6,17 @@
 
 ## Process
 
+### 0. Sync local repository
+
+Before doing anything else, fetch the latest state from the remote so all comparisons are accurate:
+
+```bash
+git fetch --tags
+git fetch origin dev main
+git checkout dev
+git pull origin dev
+```
+
 ### 1. Determine new version
 
 - Read `frontend/package.json` to get the current version.
@@ -37,7 +48,14 @@
 <Summary of what was tested>
 ```
 
-- Analyze `git log main..dev` to generate an accurate summary of all changes.
+- To get the accurate list of changes, use the **last tag** as reference (not `main`):
+
+  ```bash
+  LAST_TAG=$(git describe --tags --abbrev=0 origin/dev^)
+  git log $LAST_TAG..origin/dev --oneline
+  ```
+
+  This avoids including changes from previous releases when `main` hasn't been merged recently.
 - Add a label `vX.Y.Z` to the PR (create the label if it doesn't exist, color `#0E8A16`).
 
 ### 4. Create GitHub Release (draft)
