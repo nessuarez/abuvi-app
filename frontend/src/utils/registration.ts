@@ -1,5 +1,11 @@
-import type { AttendancePeriod } from '@/types/registration'
+import type { AgeCategory, AttendancePeriod } from '@/types/registration'
 import { parseDateSafe } from '@/utils/date'
+
+export const AGE_CATEGORY_LABELS: Record<AgeCategory, string> = {
+  Baby: 'Bebé',
+  Child: 'Niño/Niña',
+  Adult: 'Adulto/Adulta'
+}
 
 export const ATTENDANCE_PERIOD_LABELS: Record<AttendancePeriod, string> = {
   Complete: 'Campamento completo',

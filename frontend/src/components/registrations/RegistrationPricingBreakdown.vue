@@ -1,17 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { PricingBreakdown, AgeCategory } from '@/types/registration'
-import { ATTENDANCE_PERIOD_LABELS } from '@/utils/registration'
+import type { PricingBreakdown } from '@/types/registration'
+import { AGE_CATEGORY_LABELS, ATTENDANCE_PERIOD_LABELS } from '@/utils/registration'
 
 const props = defineProps<{
   pricing: PricingBreakdown
 }>()
-
-const AGE_CATEGORY_LABELS: Record<AgeCategory, string> = {
-  Baby: 'Bebé',
-  Child: 'Niño/Niña',
-  Adult: 'Adulto/Adulta'
-}
 
 const showPeriodColumn = computed(() =>
   props.pricing.members.some((m) => m.attendancePeriod && m.attendancePeriod !== 'Complete')
