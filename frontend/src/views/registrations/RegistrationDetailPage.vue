@@ -9,6 +9,11 @@ import Dialog from 'primevue/dialog'
 import Textarea from 'primevue/textarea'
 import Checkbox from 'primevue/checkbox'
 import ToggleSwitch from 'primevue/toggleswitch'
+import Tabs from 'primevue/tabs'
+import TabList from 'primevue/tablist'
+import Tab from 'primevue/tab'
+import TabPanels from 'primevue/tabpanels'
+import TabPanel from 'primevue/tabpanel'
 import Container from '@/components/ui/Container.vue'
 import RegistrationStatusBadge from '@/components/registrations/RegistrationStatusBadge.vue'
 import RegistrationPricingBreakdown from '@/components/registrations/RegistrationPricingBreakdown.vue'
@@ -82,6 +87,8 @@ const {
 const { getRegistrationPayments, getPaymentSettings } = usePayments()
 const { getFamilyMembers } = useFamilyUnits()
 const { getEditionById } = useCampEditions()
+
+const activeTab = ref<string>('datos')
 
 const showCancelDialog = ref(false)
 const cancelling = ref(false)
@@ -713,303 +720,332 @@ onMounted(async () => {
           @changed="handleStatusChanged"
         />
 
-        <!-- Notes -->
-        <div v-if="registration.notes" class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
-          <h2 class="mb-1 text-sm font-semibold text-gray-700">Notas</h2>
-          <p class="text-sm text-gray-600">{{ registration.notes }}</p>
-        </div>
+        <!-- Tabs -->
+        <Tabs v-model:value="activeTab" class="mt-6">
+          <TabList>
+            <Tab value="datos">
+              <i class="pi pi-users mr-2" />Datos de la Inscripción
+            </Tab>
+            <Tab value="precio">
+              <i class="pi pi-calculator mr-2" />Desglose del precio
+            </Tab>
+            <Tab value="pagos">
+              <i class="pi pi-credit-card mr-2" />Pagos
+            </Tab>
+            <Tab value="historial">
+              <i class="pi pi-history mr-2" />Historial
+            </Tab>
+          </TabList>
 
-        <!-- Preference fields -->
-        <div class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
-          <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-gray-700">Información adicional</h2>
-            <Button
-              v-if="(canEdit || canAdminEdit) && !isEditingInfo"
-              icon="pi pi-pencil"
-              label="Editar"
-              size="small"
-              severity="secondary"
-              outlined
-              @click="startEditingInfo"
-            />
-          </div>
+          <TabPanels>
 
-          <!-- Edit form -->
-          <template v-if="isEditingInfo">
-            <div class="space-y-4">
-              <div>
-                <label class="mb-1 block text-sm font-medium text-gray-700">Necesidades especiales</label>
-                <Textarea v-model="editSpecialNeeds" :rows="3" :maxlength="2000"
-                  placeholder="Dietas especiales, necesidades de movilidad, etc." class="w-full" />
+            <!-- TAB 1: Datos de la Inscripción -->
+            <TabPanel value="datos" class="pt-4">
+              <!-- Notes -->
+              <div v-if="registration.notes" class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <h2 class="mb-1 text-sm font-semibold text-gray-700">Notas</h2>
+                <p class="text-sm text-gray-600">{{ registration.notes }}</p>
               </div>
-              <div>
-                <label class="mb-1 block text-sm font-medium text-gray-700">¿Con quién quieres compartir habitación?</label>
-                <Textarea v-model="editCampatesPreference" :rows="2" :maxlength="500"
-                  placeholder="Indica con quién te gustaría compartir habitación..." class="w-full" />
-              </div>
-              <div class="flex items-center gap-2">
-                <Checkbox v-model="editHasPet" :binary="true" input-id="edit-has-pet" />
-                <label for="edit-has-pet" class="cursor-pointer text-sm text-gray-700">¿Viene con mascota?</label>
-              </div>
-            </div>
-            <template v-if="isAdminOrBoard">
-              <div class="mt-3 rounded-md border border-orange-100 bg-orange-50 p-3">
-                <div class="mb-2 flex items-center gap-2">
-                  <ToggleSwitch v-model="notifyFamilyOnAdminSave" input-id="notify-admin-info" />
-                  <label for="notify-admin-info" class="cursor-pointer text-sm text-orange-800">
-                    Notificar a la familia
-                  </label>
+
+              <!-- Información adicional -->
+              <div class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div class="mb-3 flex items-center justify-between">
+                  <h2 class="text-sm font-semibold text-gray-700">Información adicional</h2>
+                  <Button
+                    v-if="(canEdit || canAdminEdit) && !isEditingInfo"
+                    icon="pi pi-pencil"
+                    label="Editar"
+                    size="small"
+                    severity="secondary"
+                    outlined
+                    @click="startEditingInfo"
+                  />
                 </div>
-                <p class="mb-3 text-xs text-orange-700">
-                  Al guardar, la inscripción pasará a estado "En revisión" hasta que la familia confirme los cambios.
-                </p>
-                <div class="flex gap-2">
-                  <Button label="Guardar (admin)" icon="pi pi-check" :loading="savingInfo"
-                          severity="warning" @click="handleAdminSaveInfo" />
-                  <Button label="Cancelar" severity="secondary" text :disabled="savingInfo"
-                          @click="isEditingInfo = false" />
+
+                <!-- Edit form -->
+                <template v-if="isEditingInfo">
+                  <div class="space-y-4">
+                    <div>
+                      <label class="mb-1 block text-sm font-medium text-gray-700">Necesidades especiales</label>
+                      <Textarea v-model="editSpecialNeeds" :rows="3" :maxlength="2000"
+                        placeholder="Dietas especiales, necesidades de movilidad, etc." class="w-full" />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-sm font-medium text-gray-700">¿Con quién quieres compartir habitación?</label>
+                      <Textarea v-model="editCampatesPreference" :rows="2" :maxlength="500"
+                        placeholder="Indica con quién te gustaría compartir habitación..." class="w-full" />
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <Checkbox v-model="editHasPet" :binary="true" input-id="edit-has-pet" />
+                      <label for="edit-has-pet" class="cursor-pointer text-sm text-gray-700">¿Viene con mascota?</label>
+                    </div>
+                  </div>
+                  <template v-if="isAdminOrBoard">
+                    <div class="mt-3 rounded-md border border-orange-100 bg-orange-50 p-3">
+                      <div class="mb-2 flex items-center gap-2">
+                        <ToggleSwitch v-model="notifyFamilyOnAdminSave" input-id="notify-admin-info" />
+                        <label for="notify-admin-info" class="cursor-pointer text-sm text-orange-800">
+                          Notificar a la familia
+                        </label>
+                      </div>
+                      <p class="mb-3 text-xs text-orange-700">
+                        Al guardar, la inscripción pasará a estado "En revisión" hasta que la familia confirme los cambios.
+                      </p>
+                      <div class="flex gap-2">
+                        <Button label="Guardar (admin)" icon="pi pi-check" :loading="savingInfo"
+                                severity="warning" @click="handleAdminSaveInfo" />
+                        <Button label="Cancelar" severity="secondary" text :disabled="savingInfo"
+                                @click="isEditingInfo = false" />
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="mt-4 flex gap-2">
+                      <Button label="Guardar" icon="pi pi-check" :loading="savingInfo" @click="handleSaveInfo" />
+                      <Button label="Cancelar" severity="secondary" text :disabled="savingInfo" @click="isEditingInfo = false" />
+                    </div>
+                  </template>
+                </template>
+
+                <!-- Read view -->
+                <template v-else>
+                  <p
+                    v-if="!registration.specialNeeds && !registration.campatesPreference && !registration.hasPet"
+                    class="text-sm text-gray-400 italic"
+                  >Sin información adicional registrada.</p>
+                  <dl v-else class="space-y-2 text-sm">
+                    <div v-if="registration.specialNeeds" class="flex flex-col gap-0.5">
+                      <dt class="font-medium text-gray-600">Necesidades especiales</dt>
+                      <dd class="whitespace-pre-line text-gray-800">{{ registration.specialNeeds }}</dd>
+                    </div>
+                    <div v-if="registration.campatesPreference" class="flex flex-col gap-0.5">
+                      <dt class="font-medium text-gray-600">Preferencia de habitación</dt>
+                      <dd class="text-gray-800">{{ registration.campatesPreference }}</dd>
+                    </div>
+                    <div v-if="registration.hasPet" class="flex flex-col gap-0.5">
+                      <dt class="font-medium text-gray-600">Mascota</dt>
+                      <dd class="text-gray-800">Sí, asiste con mascota</dd>
+                    </div>
+                  </dl>
+                </template>
+              </div>
+
+              <!-- Accommodation preferences -->
+              <div v-if="accommodationPrefs.length > 0" class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <h2 class="mb-2 text-sm font-semibold text-gray-700">Preferencias de alojamiento</h2>
+                <ol class="list-inside list-decimal space-y-1 text-sm text-gray-800">
+                  <li v-for="pref in accommodationPrefs" :key="pref.campEditionAccommodationId">
+                    {{ pref.accommodationName }}
+                    <span class="text-xs text-gray-500">
+                      · {{ ACCOMMODATION_TYPE_LABELS[pref.accommodationType] }}
+                    </span>
+                  </li>
+                </ol>
+              </div>
+
+              <!-- Participantes y extras -->
+              <div class="mb-6">
+                <div class="mb-3 flex items-center justify-between">
+                  <h2 class="text-base font-semibold text-gray-900">Participantes y extras</h2>
+                  <div v-if="canEdit || canUserEditExtras || canAdminEdit" class="flex gap-2">
+                    <Button
+                      v-if="canEdit || canAdminEdit"
+                      label="Editar participantes"
+                      icon="pi pi-pencil"
+                      size="small"
+                      severity="secondary"
+                      outlined
+                      :loading="loadingEditData && !isEditingMembers"
+                      data-testid="edit-members-btn"
+                      @click="startEditingMembers"
+                    />
+                    <Button
+                      v-if="canUserEditExtras || canAdminEdit"
+                      label="Editar extras"
+                      icon="pi pi-pencil"
+                      size="small"
+                      severity="secondary"
+                      outlined
+                      :loading="loadingEditData && !isEditingExtras"
+                      data-testid="edit-extras-btn"
+                      @click="startEditingExtras"
+                    />
+                  </div>
+                </div>
+
+                <!-- Edit members form -->
+                <div v-if="isEditingMembers" class="mb-4 rounded-lg border border-blue-200 bg-blue-50/30 p-4">
+                  <h3 class="mb-3 text-sm font-semibold text-gray-900">Editar participantes</h3>
+                  <RegistrationMemberSelector
+                    v-if="campEditionData"
+                    v-model="memberSelections"
+                    :members="familyMembersData"
+                    :edition="campEditionData"
+                  />
+                  <template v-if="isAdminOrBoard">
+                    <div class="mt-3 rounded-md border border-orange-100 bg-orange-50 p-3">
+                      <div class="mb-2 flex items-center gap-2">
+                        <ToggleSwitch v-model="notifyFamilyOnAdminSave" input-id="notify-admin-members" />
+                        <label for="notify-admin-members" class="cursor-pointer text-sm text-orange-800">
+                          Notificar a la familia
+                        </label>
+                      </div>
+                      <p class="mb-3 text-xs text-orange-700">
+                        Al guardar, la inscripción pasará a estado "En revisión" hasta que la familia confirme los cambios.
+                      </p>
+                      <div class="flex gap-2">
+                        <Button label="Guardar (admin)" icon="pi pi-check" :loading="savingMembers"
+                                severity="warning" @click="handleAdminSaveMembers" />
+                        <Button label="Cancelar" severity="secondary" text :disabled="savingMembers"
+                                @click="isEditingMembers = false" />
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="mt-4 flex gap-2">
+                      <Button label="Guardar" icon="pi pi-check" :loading="savingMembers" @click="handleSaveMembers" />
+                      <Button label="Cancelar" severity="secondary" text :disabled="savingMembers" @click="isEditingMembers = false" />
+                    </div>
+                  </template>
+                </div>
+
+                <!-- Edit extras form -->
+                <div v-if="isEditingExtras" class="mb-4 rounded-lg border border-blue-200 bg-blue-50/30 p-4">
+                  <h3 class="mb-3 text-sm font-semibold text-gray-900">Editar extras</h3>
+                  <RegistrationExtrasSelector v-model="extrasSelections" :extras="campExtrasData" />
+                  <template v-if="isAdminOrBoard">
+                    <div class="mt-3 rounded-md border border-orange-100 bg-orange-50 p-3">
+                      <div class="mb-2 flex items-center gap-2">
+                        <ToggleSwitch v-model="notifyFamilyOnAdminSave" input-id="notify-admin-extras" />
+                        <label for="notify-admin-extras" class="cursor-pointer text-sm text-orange-800">
+                          Notificar a la familia
+                        </label>
+                      </div>
+                      <p class="mb-3 text-xs text-orange-700">
+                        Al guardar, la inscripción pasará a estado "En revisión" hasta que la familia confirme los cambios.
+                      </p>
+                      <div class="flex gap-2">
+                        <Button label="Guardar (admin)" icon="pi pi-check" :loading="savingExtras"
+                                severity="warning" @click="handleAdminSaveExtras" />
+                        <Button label="Cancelar" severity="secondary" text :disabled="savingExtras"
+                                @click="isEditingExtras = false" />
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="mt-4 flex gap-2">
+                      <Button label="Guardar" icon="pi pi-check" :loading="savingExtras" @click="handleSaveExtras" />
+                      <Button label="Cancelar" severity="secondary" text :disabled="savingExtras" @click="isEditingExtras = false" />
+                    </div>
+                  </template>
                 </div>
               </div>
-            </template>
-            <template v-else>
-              <div class="mt-4 flex gap-2">
-                <Button label="Guardar" icon="pi pi-check" :loading="savingInfo" @click="handleSaveInfo" />
-                <Button label="Cancelar" severity="secondary" text :disabled="savingInfo" @click="isEditingInfo = false" />
+
+              <!-- Accommodation needs tagging (Admin/Board only) -->
+              <template v-if="isAdminOrBoard">
+                <RegistrationAccommodationNeeds
+                  :registration-id="registrationId"
+                  :initial-needs="localAccommodationNeeds"
+                  :initial-notes="registration.accommodationInternalNotes ?? null"
+                  :special-needs="registration.specialNeeds"
+                  :campates-preference="registration.campatesPreference"
+                  class="mb-6"
+                  data-testid="accommodation-needs-section"
+                  @updated="localAccommodationNeeds = $event"
+                />
+                <RegistrationFriendLinks
+                  :registration-id="registrationId"
+                  :camp-edition-id="registration.campEdition.id"
+                  :initial-friend-links="localFriendLinks"
+                  class="mb-6"
+                  data-testid="friend-links-section"
+                  @updated="localFriendLinks = $event"
+                />
+              </template>
+            </TabPanel>
+
+            <!-- TAB 2: Desglose del precio -->
+            <TabPanel value="precio" class="pt-4">
+              <RegistrationPricingBreakdown :pricing="registration.pricing" />
+              <div class="mt-3 flex justify-between rounded-lg bg-gray-50 px-4 py-3 text-sm">
+                <span class="text-gray-600">Pagado</span>
+                <span class="font-medium text-green-700">{{ formatCurrency(registration.amountPaid) }}</span>
               </div>
-            </template>
-          </template>
-
-          <!-- Read view -->
-          <template v-else>
-            <p
-              v-if="!registration.specialNeeds && !registration.campatesPreference && !registration.hasPet"
-              class="text-sm text-gray-400 italic"
-            >Sin información adicional registrada.</p>
-            <dl v-else class="space-y-2 text-sm">
-              <div v-if="registration.specialNeeds" class="flex flex-col gap-0.5">
-                <dt class="font-medium text-gray-600">Necesidades especiales</dt>
-                <dd class="whitespace-pre-line text-gray-800">{{ registration.specialNeeds }}</dd>
+              <div class="mt-1 flex justify-between rounded-lg bg-gray-50 px-4 py-3 text-sm">
+                <span class="text-gray-600">Pendiente de pago</span>
+                <span
+                  class="font-medium"
+                  :class="registration.amountRemaining > 0 ? 'text-red-600' : 'text-gray-600'"
+                >
+                  {{ formatCurrency(registration.amountRemaining) }}
+                </span>
               </div>
-              <div v-if="registration.campatesPreference" class="flex flex-col gap-0.5">
-                <dt class="font-medium text-gray-600">Preferencia de habitación</dt>
-                <dd class="text-gray-800">{{ registration.campatesPreference }}</dd>
+            </TabPanel>
+
+            <!-- TAB 3: Pagos -->
+            <TabPanel value="pagos" class="pt-4">
+              <div class="mb-3 flex justify-end">
+                <Button
+                  v-if="isAdminOrBoard"
+                  label="Añadir pago manual"
+                  icon="pi pi-plus"
+                  size="small"
+                  severity="secondary"
+                  outlined
+                  @click="showManualPaymentDialog = true"
+                />
               </div>
-              <div v-if="registration.hasPet" class="flex flex-col gap-0.5">
-                <dt class="font-medium text-gray-600">Mascota</dt>
-                <dd class="text-gray-800">Sí, asiste con mascota</dd>
+
+              <!-- Bank transfer instructions (collapsible) -->
+              <div v-if="paymentSettingsData" class="mb-4">
+                <BankTransferInstructions
+                  :iban="paymentSettingsData.iban"
+                  :bank-name="paymentSettingsData.bankName"
+                  :account-holder="paymentSettingsData.accountHolder"
+                  collapsible
+                />
               </div>
-            </dl>
-          </template>
-        </div>
 
-        <!-- Accommodation preferences -->
-        <div v-if="accommodationPrefs.length > 0" class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
-          <h2 class="mb-2 text-sm font-semibold text-gray-700">Preferencias de alojamiento</h2>
-          <ol class="list-inside list-decimal space-y-1 text-sm text-gray-800">
-            <li v-for="pref in accommodationPrefs" :key="pref.campEditionAccommodationId">
-              {{ pref.accommodationName }}
-              <span class="text-xs text-gray-500">
-                · {{ ACCOMMODATION_TYPE_LABELS[pref.accommodationType] }}
-              </span>
-            </li>
-          </ol>
-        </div>
-
-        <!-- Accommodation needs tagging (Admin/Board only) -->
-        <template v-if="isAdminOrBoard">
-          <RegistrationAccommodationNeeds
-            :registration-id="registrationId"
-            :initial-needs="localAccommodationNeeds"
-            :initial-notes="registration.accommodationInternalNotes ?? null"
-            :special-needs="registration.specialNeeds"
-            :campates-preference="registration.campatesPreference"
-            class="mb-6"
-            data-testid="accommodation-needs-section"
-            @updated="localAccommodationNeeds = $event"
-          />
-          <RegistrationFriendLinks
-            :registration-id="registrationId"
-            :camp-edition-id="registration.campEdition.id"
-            :initial-friend-links="localFriendLinks"
-            class="mb-6"
-            data-testid="friend-links-section"
-            @updated="localFriendLinks = $event"
-          />
-        </template>
-
-        <!-- Pricing breakdown -->
-        <div class="mb-6">
-          <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-base font-semibold text-gray-900">Desglose de precio</h2>
-            <div v-if="canEdit || canUserEditExtras || canAdminEdit" class="flex gap-2">
-              <Button
-                v-if="canEdit || canAdminEdit"
-                label="Editar participantes"
-                icon="pi pi-pencil"
-                size="small"
-                severity="secondary"
-                outlined
-                :loading="loadingEditData && !isEditingMembers"
-                data-testid="edit-members-btn"
-                @click="startEditingMembers"
-              />
-              <Button
-                v-if="canUserEditExtras || canAdminEdit"
-                label="Editar extras"
-                icon="pi pi-pencil"
-                size="small"
-                severity="secondary"
-                outlined
-                :loading="loadingEditData && !isEditingExtras"
-                data-testid="edit-extras-btn"
-                @click="startEditingExtras"
-              />
-            </div>
-          </div>
-
-          <!-- Edit members form -->
-          <div v-if="isEditingMembers" class="mb-4 rounded-lg border border-blue-200 bg-blue-50/30 p-4">
-            <h3 class="mb-3 text-sm font-semibold text-gray-900">Editar participantes</h3>
-            <RegistrationMemberSelector
-              v-if="campEditionData"
-              v-model="memberSelections"
-              :members="familyMembersData"
-              :edition="campEditionData"
-            />
-            <template v-if="isAdminOrBoard">
-              <div class="mt-3 rounded-md border border-orange-100 bg-orange-50 p-3">
-                <div class="mb-2 flex items-center gap-2">
-                  <ToggleSwitch v-model="notifyFamilyOnAdminSave" input-id="notify-admin-members" />
-                  <label for="notify-admin-members" class="cursor-pointer text-sm text-orange-800">
-                    Notificar a la familia
-                  </label>
-                </div>
-                <p class="mb-3 text-xs text-orange-700">
-                  Al guardar, la inscripción pasará a estado "En revisión" hasta que la familia confirme los cambios.
-                </p>
-                <div class="flex gap-2">
-                  <Button label="Guardar (admin)" icon="pi pi-check" :loading="savingMembers"
-                          severity="warning" @click="handleAdminSaveMembers" />
-                  <Button label="Cancelar" severity="secondary" text :disabled="savingMembers"
-                          @click="isEditingMembers = false" />
+              <!-- Installment cards -->
+              <div v-if="sortedInstallments.length > 0" class="space-y-4">
+                <div v-for="payment in sortedInstallments" :key="payment.id">
+                  <p
+                    v-if="payment.installmentNumber === 3 || payment.isManual"
+                    class="mb-1 text-xs font-medium text-purple-600"
+                  >
+                    {{ installmentLabel(payment) }}
+                  </p>
+                  <PaymentInstallmentCard
+                    :payment="payment"
+                    @updated="handleInstallmentUpdated"
+                  />
                 </div>
               </div>
-            </template>
-            <template v-else>
-              <div class="mt-4 flex gap-2">
-                <Button label="Guardar" icon="pi pi-check" :loading="savingMembers" @click="handleSaveMembers" />
-                <Button label="Cancelar" severity="secondary" text :disabled="savingMembers" @click="isEditingMembers = false" />
-              </div>
-            </template>
-          </div>
 
-          <!-- Edit extras form -->
-          <div v-if="isEditingExtras" class="mb-4 rounded-lg border border-blue-200 bg-blue-50/30 p-4">
-            <h3 class="mb-3 text-sm font-semibold text-gray-900">Editar extras</h3>
-            <RegistrationExtrasSelector v-model="extrasSelections" :extras="campExtrasData" />
-            <template v-if="isAdminOrBoard">
-              <div class="mt-3 rounded-md border border-orange-100 bg-orange-50 p-3">
-                <div class="mb-2 flex items-center gap-2">
-                  <ToggleSwitch v-model="notifyFamilyOnAdminSave" input-id="notify-admin-extras" />
-                  <label for="notify-admin-extras" class="cursor-pointer text-sm text-orange-800">
-                    Notificar a la familia
-                  </label>
-                </div>
-                <p class="mb-3 text-xs text-orange-700">
-                  Al guardar, la inscripción pasará a estado "En revisión" hasta que la familia confirme los cambios.
-                </p>
-                <div class="flex gap-2">
-                  <Button label="Guardar (admin)" icon="pi pi-check" :loading="savingExtras"
-                          severity="warning" @click="handleAdminSaveExtras" />
-                  <Button label="Cancelar" severity="secondary" text :disabled="savingExtras"
-                          @click="isEditingExtras = false" />
-                </div>
-              </div>
-            </template>
-            <template v-else>
-              <div class="mt-4 flex gap-2">
-                <Button label="Guardar" icon="pi pi-check" :loading="savingExtras" @click="handleSaveExtras" />
-                <Button label="Cancelar" severity="secondary" text :disabled="savingExtras" @click="isEditingExtras = false" />
-              </div>
-            </template>
-          </div>
-
-          <RegistrationPricingBreakdown :pricing="registration.pricing" />
-        </div>
-
-        <!-- Payments -->
-        <div class="mb-6">
-          <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-base font-semibold text-gray-900">Pagos</h2>
-            <Button
-              v-if="isAdminOrBoard"
-              label="Añadir pago manual"
-              icon="pi pi-plus"
-              size="small"
-              severity="secondary"
-              outlined
-              @click="showManualPaymentDialog = true"
-            />
-          </div>
-
-          <!-- Bank transfer instructions (collapsible) -->
-          <div v-if="paymentSettingsData" class="mb-4">
-            <BankTransferInstructions
-              :iban="paymentSettingsData.iban"
-              :bank-name="paymentSettingsData.bankName"
-              :account-holder="paymentSettingsData.accountHolder"
-              collapsible
-            />
-          </div>
-
-          <!-- Installment cards -->
-          <div v-if="sortedInstallments.length > 0" class="space-y-4">
-            <div v-for="payment in sortedInstallments" :key="payment.id">
-              <p
-                v-if="payment.installmentNumber === 3 || payment.isManual"
-                class="mb-1 text-xs font-medium"
-                :class="payment.isManual ? 'text-purple-600' : 'text-purple-600'"
+              <div
+                v-else
+                class="rounded-lg border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-400"
               >
-                {{ installmentLabel(payment) }}
-              </p>
-              <PaymentInstallmentCard
-                :payment="payment"
-                @updated="handleInstallmentUpdated"
+                Sin pagos registrados
+              </div>
+            </TabPanel>
+
+            <!-- TAB 4: Historial de cambios -->
+            <TabPanel value="historial" class="pt-4">
+              <RegistrationStatusTimeline
+                v-if="registration.statusHistory?.length"
+                :history="registration.statusHistory"
               />
-            </div>
-          </div>
+              <p v-else class="text-sm text-gray-400 italic">
+                Sin historial de cambios registrado.
+              </p>
+            </TabPanel>
 
-          <div
-            v-else
-            class="rounded-lg border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-400"
-          >
-            Sin pagos registrados
-          </div>
-
-          <div class="mt-3 flex justify-between rounded-lg bg-gray-50 px-4 py-3 text-sm">
-            <span class="text-gray-600">Pagado</span>
-            <span class="font-medium text-green-700">{{ formatCurrency(registration.amountPaid) }}</span>
-          </div>
-          <div class="mt-1 flex justify-between rounded-lg bg-gray-50 px-4 py-3 text-sm">
-            <span class="text-gray-600">Pendiente de pago</span>
-            <span
-              class="font-medium"
-              :class="registration.amountRemaining > 0 ? 'text-red-600' : 'text-gray-600'"
-            >
-              {{ formatCurrency(registration.amountRemaining) }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Status history timeline (spec §7.2) -->
-        <RegistrationStatusTimeline
-          v-if="registration.statusHistory?.length"
-          :history="registration.statusHistory"
-          class="mt-8 mb-6"
-        />
+          </TabPanels>
+        </Tabs>
 
         <!-- Actions -->
-        <div v-if="(isRepresentative && canCancel) || canDelete" class="flex justify-end gap-2">
+        <div v-if="(isRepresentative && canCancel) || canDelete" class="mt-6 flex justify-end gap-2">
           <Button
             v-if="isRepresentative && canCancel"
             label="Cancelar inscripción"
