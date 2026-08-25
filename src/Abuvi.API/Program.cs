@@ -157,6 +157,7 @@ builder.Services.AddScoped<IAssociationSettingsRepository, AssociationSettingsRe
 builder.Services.AddScoped<AssociationSettingsService>();
 builder.Services.AddScoped<ICampEditionsRepository, CampEditionsRepository>();
 builder.Services.AddScoped<CampEditionsService>();
+builder.Services.AddScoped<CampHistoryService>();
 builder.Services.AddScoped<CampPhotosService>();
 builder.Services.AddScoped<ICampEditionExtrasRepository, CampEditionExtrasRepository>();
 builder.Services.AddScoped<CampEditionExtrasService>();

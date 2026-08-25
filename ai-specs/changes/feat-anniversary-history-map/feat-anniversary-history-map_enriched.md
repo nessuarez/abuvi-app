@@ -89,7 +89,7 @@ Esto **no es un requisito secundario: manda sobre las decisiones de diseño**. A
 
 ## 5. Endpoints
 
-### Nuevo — Fase 2
+### Fase 2 ✅ HECHO
 
 ```
 GET /api/camps/history
@@ -127,7 +127,11 @@ Sin fotos, el mapa es una lista de sitios. Con ellas, es un archivo. Por eso el 
 
 **Anclaje por año, y funciona porque hay exactamente una edición por año** (50 ediciones, 1976–2025, sin huecos ni repeticiones). Se filtra por `MediaItem.Year`, `Context = "anniversary-50"`, `IsApproved` e `IsPublished`.
 
-**Cuidado con el N+1.** Debe resolverse con una única consulta agrupada, no con 50 subconsultas. Es el riesgo de rendimiento principal de esta fase.
+**Sólo cuenta fotografías** (`Type = Photo`). Un año que sólo tenga audio o vídeo saldrá con `photoCount: 0`, lo cual es literalmente cierto pero puede despistar cuando se active la captura de audio del campamento: la interfaz diría *"no conservamos nada"* de un año del que sí hay una grabación. Si al llegar la Fase MVP eso resulta molesto, la salida limpia es añadir un contador aparte para audio, no ensanchar `photoCount` — el nombre dejaría de decir la verdad y las vistas previas no pueden mostrar un audio.
+
+**`thumbnailUrl` nunca viene vacío**: si el elemento no tiene miniatura generada, se devuelve la imagen completa. Peor para el ancho de banda, mejor que un hueco.
+
+**Cuidado con el N+1 — resuelto.** El agregado se hace con dos consultas de coste fijo: una de recuento agrupado por año y otra de vistas previas con `LATERAL`, limitada a 3 por año. Con las de ediciones son **3 consultas en total, independientemente de cuántas ediciones haya** — hay un test que lo comprueba interceptando los comandos que EF envía a PostgreSQL, y verifica que el número no cambia entre 3 y 15 ediciones.
 
 **No se devuelve una URL de galería.** El enlace lo construye el frontend a partir del año (`/anniversary/galeria?anio=2003`). Que la API devuelva rutas de la interfaz la acopla al enrutado del cliente y obliga a tocar el backend cada vez que cambie una ruta.
 
@@ -192,16 +196,26 @@ Campaña de correo, enlaces reenviables, cuentas sin identificar, rol `Contribut
 ---
 
 
-### Fase 2 — Endpoint de histórico
+### Fase 2 — Endpoint de histórico ✅ HECHO
 
-**Ficheros:** `Features/Camps/CampsEndpoints.cs`, `CampEditionsService.cs`, `CampsModels.cs`.
+**Ficheros:** `Features/Camps/CampHistoryService.cs` (nuevo), `CampsEndpoints.cs`, `CampsModels.cs`,
+`Features/MediaItems/MediaItemsRepository.cs`, `MediaItemsModels.cs`, `Program.cs`.
 
-- [ ] DTO `CampHistoryResponse`, con `photoCount` y `previewPhotos`.
-- [ ] Método de servicio que consulte ediciones `Completed` con `Include(Camp)`, ordene por año y calcule ambos contadores.
-- [ ] Agregado de recuerdos por año en **una sola consulta**, sin N+1.
-- [ ] Endpoint en grupo con autorización de socio.
-- [ ] Tests unitarios: orden por año, cálculo de `editionNumber`, `photoCount` correcto, máximo de 3 vistas previas.
-- [ ] Tests de integración: 401 sin token, 200 con socio, 50 filas; un año sin recuerdos devuelve `photoCount: 0` y lista vacía, nunca `null`.
+- [x] DTOs `CampHistoryResponse` y `CampHistoryPhotoResponse`, con `photoCount` y `previewPhotos`.
+- [x] Servicio que consulta ediciones `Completed` con `Include(Camp)`, ordena por año y calcula ambos contadores.
+- [x] Agregado de recuerdos por año en consultas de coste fijo, sin N+1.
+- [x] Endpoint en `campCurrentGroup`, con autorización de socio.
+- [x] 13 tests unitarios: orden por año, `editionNumber` por sede, `photoCount`, vistas previas y su tope.
+- [x] 9 tests de integración: 401 sin token, 200 con socio, sólo `Completed`, recuento correcto y un año sin recuerdos que devuelve `photoCount: 0` y lista vacía, nunca `null`.
+- [x] 2 tests de recuento de consultas SQL que impiden la reaparición del N+1.
+
+#### Servicio propio en vez de ampliar `CampEditionsService`
+
+La spec preveía meterlo en `CampEditionsService`. Se ha creado **`CampHistoryService`** en su lugar, por dos motivos: es la única lectura de campamentos que cruza a `MediaItems`, y no conviene que todo el ciclo de vida de las ediciones —propuesta, promoción, cierre— pase a depender de un repositorio de medios que no usa para nada. Como efecto secundario, ningún test existente de `CampEditionsService` ha tenido que tocarse.
+
+#### Comprobado contra los datos reales
+
+50 filas, 1976–2025, ordenadas, 31 sedes únicas, las 50 con coordenadas; Espinosa de los Monteros 2015 sale como 4.ª de 4. Sin token, 401.
 
 ### Fase 3 — Visualización
 
@@ -512,11 +526,11 @@ El flag es `--connection=<cadena>` **con signo igual**; con espacio se ignora en
 ### Del resto de la feature
 
 
-- [ ] `GET /api/camps/history` devuelve 50 filas ordenadas por año; 401 sin token.
-- [ ] `editionNumber` correcto: Espinosa de los Monteros 2015 es la 4.ª.
-- [ ] Cada edición devuelve su `photoCount` y hasta 3 vistas previas en la misma llamada.
-- [ ] Un año sin recuerdos devuelve `photoCount: 0` y lista vacía, y la interfaz muestra la llamada a la acción.
-- [ ] El endpoint no dispara una consulta por edición (verificado con registro de SQL o contador de consultas).
+- [x] `GET /api/camps/history` devuelve 50 filas ordenadas por año; 401 sin token.
+- [x] `editionNumber` correcto: Espinosa de los Monteros 2015 es la 4.ª.
+- [x] Cada edición devuelve su `photoCount` y hasta 3 vistas previas en la misma llamada.
+- [x] Un año sin recuerdos devuelve `photoCount: 0` y lista vacía. *(La llamada a la acción en la interfaz es Fase 3.)*
+- [x] El endpoint no dispara una consulta por edición: 3 comandos SQL, verificado con un interceptor.
 - [ ] Los históricos **no** aparecen en `GET /api/camps/editions/active` ni en `/current`.
 - [ ] En `/anniversary`, seleccionar un año o un pin sincroniza mapa, lista, cronología y galería.
 - [ ] La lista lateral muestra cada sede con todos sus años, y los años son pulsables.

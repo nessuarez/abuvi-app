@@ -123,3 +123,21 @@ public static class MediaItemMappingExtensions
         _ => null
     };
 }
+
+/// <summary>
+/// The few fields a caller needs to show a photo without fetching the whole item.
+/// </summary>
+public record MediaItemPreview(
+    Guid Id,
+    string? ThumbnailUrl,
+    string FileUrl,
+    string Title);
+
+/// <summary>
+/// How many published photos exist for a year, plus a handful to show.
+/// Years with no photos are simply absent from the rollup.
+/// </summary>
+public record MediaItemYearSummary(
+    int Year,
+    int PhotoCount,
+    IReadOnlyList<MediaItemPreview> Previews);

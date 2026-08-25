@@ -808,6 +808,39 @@ public record CurrentCampEditionResponse(
 );
 
 /// <summary>
+/// A published anniversary photo, trimmed down to what a map popup needs.
+/// ThumbnailUrl falls back to the full image when no thumbnail was generated,
+/// so the caller always has something it can render.
+/// </summary>
+public record CampHistoryPhotoResponse(
+    Guid Id,
+    string ThumbnailUrl,
+    string Title
+);
+
+/// <summary>
+/// One completed camp edition as shown on the 50th anniversary history map.
+/// EditionNumber counts how many times the association had camped at that venue
+/// up to and including this year; TotalEditionsAtVenue is the venue's full tally.
+/// PhotoCount is what makes an empty year meaningful: it separates "nothing survives
+/// from 1987" from "not loaded yet", and turns the gap into a call to action.
+/// No gallery URL is returned on purpose — the caller builds it from Year, which
+/// keeps the API free of client routing.
+/// </summary>
+public record CampHistoryResponse(
+    int Year,
+    Guid CampId,
+    string CampName,
+    string? Location,
+    decimal? Latitude,
+    decimal? Longitude,
+    int EditionNumber,
+    int TotalEditionsAtVenue,
+    int PhotoCount,
+    IReadOnlyList<CampHistoryPhotoResponse> PreviewPhotos
+);
+
+/// <summary>
 /// Request to update a camp edition
 /// </summary>
 public record UpdateCampEditionRequest(

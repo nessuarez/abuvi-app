@@ -183,6 +183,14 @@ public static class CampsEndpoints
             .Produces(404)
             .Produces(401);
 
+        // GET /api/camps/history - Completed editions for the anniversary map (Member+)
+        // NOTE: "history" is a literal segment and does not clash with /{id:guid}.
+        campCurrentGroup.MapGet("/history", GetCampHistory)
+            .WithName("GetCampHistory")
+            .WithSummary("Get every completed camp edition, ordered by year, for the anniversary history map")
+            .Produces<ApiResponse<List<CampHistoryResponse>>>()
+            .Produces(401);
+
         // GET /api/camps/editions/active - Get active (Open) edition (Member+)
         // NOTE: Must be registered before /{id:guid} to avoid "active" being treated as a GUID
         editionsMemberGroup.MapGet("/active", GetActiveEdition)
@@ -985,6 +993,17 @@ public static class CampsEndpoints
     /// <summary>
     /// Get the currently active (Open) camp edition for the given year
     /// </summary>
+    /// <summary>
+    /// Returns the 50-year camp history for the anniversary map (Member+).
+    /// </summary>
+    private static async Task<IResult> GetCampHistory(
+        [FromServices] CampHistoryService service,
+        CancellationToken cancellationToken = default)
+    {
+        var history = await service.GetHistoryAsync(cancellationToken);
+        return Results.Ok(ApiResponse<List<CampHistoryResponse>>.Ok(history));
+    }
+
     private static async Task<IResult> GetActiveEdition(
         [FromServices] CampEditionsService service,
         [FromQuery] int? year = null,
