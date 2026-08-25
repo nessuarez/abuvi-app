@@ -154,6 +154,18 @@ Auto-assign sequential member numbers and family numbers, add filtering by membe
 
 ---
 
+### feat-photo-albums-social
+
+**[feat]** · [folder](./feat-photo-albums-social) · **In progress**
+
+Camp edition albums, cross-cutting themes, provenance, comments, collaborative dating and "yo estuve en este campamento". Turns the community into the engine of the photo archive: uploading without knowing the edition is a first-class flow, and the unplaced pile is what collaborative dating works on.
+
+Task 1 (data model) merged in #286. Task 2 (API, ~35 endpoints + 83 unit tests) in progress on `feature/feat-photo-albums-social-backend-api`. Task 3 (bulk importer) and Task 4 (frontend) not started.
+
+- Backend: [x] | Frontend: [ ]
+
+---
+
 ### feat-registration-activities
 
 **[feat]** · [folder](./feat-registration-activities) · **Spec only**
