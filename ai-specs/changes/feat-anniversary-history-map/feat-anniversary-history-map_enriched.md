@@ -14,6 +14,8 @@ La sección `/anniversary` tiene construido el flujo de **entrada** de contenido
 
 El problema de fondo no era de interfaz. El listado histórico de año y lugar —el único dato completo que tiene la asociación— **no estaba en base de datos**. Sin ese esqueleto no se pueden ubicar las fotos, ni anclar el relato histórico, ni construir una cronología real: la que había en el código mostraba hitos inventados (`AnniversaryTimeline.vue`, comentado en la página).
 
+> **Material disponible.** Ya existen fotografías suficientes para documentar buena parte de los 50 campamentos. Eso cambia el tono de la entrega: la demo no será un esqueleto casi vacío, sino un archivo con contenido real desde el primer día — y sube la prioridad del importador masivo descrito en `feat-photo-albums-social`.
+
 **Objetivo de negocio:** presentar el concepto a la comunidad con una demo navegable sobre datos reales, aunque la mayoría de nodos estén vacíos. Los huecos son la llamada a la acción, no un defecto. En paralelo, habilitar la captura de audio para grabar anécdotas durante el campamento en curso, que es una ventana que no se repite este año.
 
 ---
@@ -106,11 +108,32 @@ GET /api/camps/history
   "latitude": 43.077348,
   "longitude": -3.552172,
   "editionNumber": 4,          // veces acampadas allí hasta ese año, incluida
-  "totalEditionsAtVenue": 4    // total histórico en esa sede
+  "totalEditionsAtVenue": 4,   // total histórico en esa sede
+  "photoCount": 37,            // recuerdos aprobados y publicados de ese año
+  "previewPhotos": [           // hasta 3, para dar vida al mapa sin otra llamada
+    { "id": "…", "thumbnailUrl": "…", "title": "Llegada al campamento" }
+  ]
 }
 ```
 
 `editionNumber` y `totalEditionsAtVenue` se calculan en el servicio; son lo que permite al mapa contar *"aquí volvimos 4 veces"*.
+
+#### Fotos en la respuesta
+
+Sin fotos, el mapa es una lista de sitios. Con ellas, es un archivo. Por eso el endpoint devuelve **cuántos recuerdos hay** y **hasta tres miniaturas** por edición.
+
+- **`photoCount` es lo que da sentido al recorrido.** Es lo que permite decir *"de 1987 en Los Palancares no conservamos nada"* y convertir el hueco en llamada a la acción. Sin el contador no hay forma de distinguir un año vacío de uno que aún no se ha cargado.
+- **`previewPhotos` evita una segunda llamada** al recorrer el mapa. Sólo `id`, `thumbnailUrl` y `title`: 50 filas × 3 miniaturas es una carga trivial si no se manda la imagen completa.
+
+**Anclaje por año, y funciona porque hay exactamente una edición por año** (50 ediciones, 1976–2025, sin huecos ni repeticiones). Se filtra por `MediaItem.Year`, `Context = "anniversary-50"`, `IsApproved` e `IsPublished`.
+
+**Cuidado con el N+1.** Debe resolverse con una única consulta agrupada, no con 50 subconsultas. Es el riesgo de rendimiento principal de esta fase.
+
+**No se devuelve una URL de galería.** El enlace lo construye el frontend a partir del año (`/anniversary/galeria?anio=2003`). Que la API devuelva rutas de la interfaz la acopla al enrutado del cliente y obliga a tocar el backend cada vez que cambie una ruta.
+
+**Frontera con `feat-photo-albums-social`:** esta feature aporta el **contador y la vista previa** por edición. El álbum completo, los comentarios y la identificación de personas viven en la otra. El punto de unión es `MediaItem.Year`.
+
+> **Consecuencia a tener presente.** Mostrar fotos en el mapa es **publicarlas** a todos los socios. Sigue siendo el escenario de menor riesgo —acceso autenticado, y la galería ya hace justo esto hoy—, pero hace más urgente el mecanismo de retirada descrito en la Fase 3.7. Recomendación: entra en cuanto la primera foto sea visible en el mapa, no después.
 
 ### Existentes que se aprovechan
 
@@ -173,11 +196,12 @@ Campaña de correo, enlaces reenviables, cuentas sin identificar, rol `Contribut
 
 **Ficheros:** `Features/Camps/CampsEndpoints.cs`, `CampEditionsService.cs`, `CampsModels.cs`.
 
-- [ ] DTO `CampHistoryResponse`.
+- [ ] DTO `CampHistoryResponse`, con `photoCount` y `previewPhotos`.
 - [ ] Método de servicio que consulte ediciones `Completed` con `Include(Camp)`, ordene por año y calcule ambos contadores.
+- [ ] Agregado de recuerdos por año en **una sola consulta**, sin N+1.
 - [ ] Endpoint en grupo con autorización de socio.
-- [ ] Tests unitarios: orden por año, cálculo de `editionNumber`.
-- [ ] Tests de integración: 401 sin token, 200 con socio, 50 filas.
+- [ ] Tests unitarios: orden por año, cálculo de `editionNumber`, `photoCount` correcto, máximo de 3 vistas previas.
+- [ ] Tests de integración: 401 sin token, 200 con socio, 50 filas; un año sin recuerdos devuelve `photoCount: 0` y lista vacía, nunca `null`.
 
 ### Fase 3 — Visualización
 
@@ -490,6 +514,9 @@ El flag es `--connection=<cadena>` **con signo igual**; con espacio se ignora en
 
 - [ ] `GET /api/camps/history` devuelve 50 filas ordenadas por año; 401 sin token.
 - [ ] `editionNumber` correcto: Espinosa de los Monteros 2015 es la 4.ª.
+- [ ] Cada edición devuelve su `photoCount` y hasta 3 vistas previas en la misma llamada.
+- [ ] Un año sin recuerdos devuelve `photoCount: 0` y lista vacía, y la interfaz muestra la llamada a la acción.
+- [ ] El endpoint no dispara una consulta por edición (verificado con registro de SQL o contador de consultas).
 - [ ] Los históricos **no** aparecen en `GET /api/camps/editions/active` ni en `/current`.
 - [ ] En `/anniversary`, seleccionar un año o un pin sincroniza mapa, lista, cronología y galería.
 - [ ] La lista lateral muestra cada sede con todos sus años, y los años son pulsables.
