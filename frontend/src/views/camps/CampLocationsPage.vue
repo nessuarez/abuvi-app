@@ -17,6 +17,8 @@ import CampLocationCard from '@/components/camps/CampLocationCard.vue'
 import CampLocationForm from '@/components/camps/CampLocationForm.vue'
 import CampLocationMap from '@/components/camps/CampLocationMap.vue'
 import CampCsvImportDialog from '@/components/camps/CampCsvImportDialog.vue'
+import Tag from 'primevue/tag'
+import { getLocationPrecision, PRECISION_ORDER } from '@/utils/locationPrecision'
 import { useCamps } from '@/composables/useCamps'
 import { useAuthStore } from '@/stores/auth'
 import type { Camp, CreateCampRequest } from '@/types/camp'
@@ -33,6 +35,18 @@ const showImportDialog = ref(false)
 const searchQuery = ref('')
 const selectedStatus = ref<boolean | null>(null)
 const viewMode = ref<'table' | 'cards' | 'map'>('table')
+const onlyImpreciseLocations = ref(false)
+
+const precisionOf = (camp: Camp) =>
+  getLocationPrecision(camp.placeTypes, camp.latitude, camp.longitude)
+
+/** Least precise first: that is the order in which they need reviewing. */
+const byPrecision = (a: Camp, b: Camp) =>
+  PRECISION_ORDER[precisionOf(a).level] - PRECISION_ORDER[precisionOf(b).level]
+
+const impreciseCount = computed(
+  () => camps.value.filter((c) => !precisionOf(c).isPrecise).length
+)
 
 const statusOptions = [
   { label: 'Todos', value: null },
@@ -56,6 +70,12 @@ const filteredCamps = computed(() => {
   // Filter by status
   if (selectedStatus.value !== null) {
     result = result.filter((camp) => camp.isActive === selectedStatus.value)
+  }
+
+  // Reviewing locations: keep only the ones still pointing at a town or nowhere,
+  // worst first so the work has an obvious starting point.
+  if (onlyImpreciseLocations.value) {
+    result = result.filter((camp) => !precisionOf(camp).isPrecise).sort(byPrecision)
   }
 
   return result
@@ -129,6 +149,11 @@ const handleViewDetails = (camp: Camp) => {
   router.push({ name: 'camp-location-detail', params: { id: camp.id } })
 }
 
+/** Same destination as editing, but named for the task: fixing the coordinates. */
+const handleRefineLocation = (camp: Camp) => {
+  router.push({ name: 'camp-location-detail', params: { id: camp.id } })
+}
+
 const handleViewEditions = (campId: string) => {
   router.push({ name: 'camp-editions', query: { campId } })
 }
@@ -164,6 +189,28 @@ const handleSubmitCreate = async (data: CreateCampRequest) => {
     <div class="mb-6">
       <h1 class="mb-2 text-3xl font-bold text-gray-900">Ubicaciones de Campamento</h1>
       <p class="text-gray-600">Gestiona las ubicaciones de campamento reutilizables</p>
+    </div>
+
+    <!-- Location review banner -->
+    <div
+      v-if="impreciseCount > 0"
+      class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3"
+    >
+      <p class="text-sm text-amber-900">
+        <i class="pi pi-map-marker mr-1" />
+        <strong>{{ impreciseCount }}</strong>
+        {{ impreciseCount === 1 ? 'ubicación apunta' : 'ubicaciones apuntan' }}
+        al municipio o están sin situar, no al campamento exacto.
+      </p>
+      <Button
+        size="small"
+        :severity="onlyImpreciseLocations ? 'warn' : 'secondary'"
+        :outlined="!onlyImpreciseLocations"
+        :icon="onlyImpreciseLocations ? 'pi pi-times' : 'pi pi-filter'"
+        :label="onlyImpreciseLocations ? 'Ver todas' : 'Revisar sólo estas'"
+        data-testid="toggle-imprecise-filter"
+        @click="onlyImpreciseLocations = !onlyImpreciseLocations"
+      />
     </div>
 
     <!-- Toolbar -->
@@ -247,6 +294,30 @@ const handleSubmitCreate = async (data: CreateCampRequest) => {
             <span v-if="data.editionCount !== undefined" class="text-sm">
               {{ data.editionCount }} {{ data.editionCount === 1 ? 'edición' : 'ediciones' }}
             </span>
+          </template>
+        </Column>
+
+        <Column header="Precisión">
+          <template #body="{ data }">
+            <div class="flex items-center gap-2">
+              <Tag
+                :value="precisionOf(data).label"
+                :severity="precisionOf(data).severity"
+                class="text-xs"
+              />
+              <Button
+                v-if="!precisionOf(data).isPrecise"
+                v-tooltip.top="'Afinar la ubicación en el mapa'"
+                icon="pi pi-map-marker"
+                text
+                rounded
+                size="small"
+                severity="warn"
+                aria-label="Afinar ubicación"
+                data-testid="refine-location-btn"
+                @click="handleRefineLocation(data)"
+              />
+            </div>
           </template>
         </Column>
 

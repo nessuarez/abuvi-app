@@ -579,6 +579,8 @@ public record CampResponse(
     decimal? GoogleRating,
     int? GoogleRatingCount,
     string? BusinessStatus,
+    // Google place types, so a list view can tell an exact campsite from a whole town
+    string? PlaceTypes,
     decimal PricePerAdult,
     decimal PricePerChild,
     decimal PricePerBaby,

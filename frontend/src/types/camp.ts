@@ -48,6 +48,7 @@ export interface Camp {
 	googleMapsUrl: string | null;
 	googleRating: number | null;
 	googleRatingCount: number | null;
+	placeTypes: string | null;
 	businessStatus: string | null;
 	pricePerAdult: number;
 	pricePerChild: number;
