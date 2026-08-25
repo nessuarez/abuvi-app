@@ -12,7 +12,13 @@ using Abuvi.API.Features.Memberships;
 using Abuvi.API.Features.Registrations;
 using Abuvi.API.Features.Payments;
 using Abuvi.API.Features.Memories;
+using Abuvi.API.Common.Extensions;
+using Abuvi.API.Features.MediaComments;
+using Abuvi.API.Features.MediaDating;
 using Abuvi.API.Features.MediaItems;
+using Abuvi.API.Features.MediaSources;
+using Abuvi.API.Features.MediaThemes;
+using System.Threading.RateLimiting;
 using Abuvi.API.Features.BlobStorage;
 using Abuvi.API.Common.Services;
 using FluentValidation;
@@ -221,6 +227,32 @@ builder.Services.AddMemories();
 // Media Items
 builder.Services.AddMediaItems();
 
+// Camp edition albums, themes, provenance and collective memory
+builder.Services.AddMediaSources();
+builder.Services.AddMediaThemes();
+builder.Services.AddMediaComments();
+builder.Services.AddMediaDating();
+builder.Services.AddScoped<AlbumsService>();
+builder.Services.AddScoped<ICampEditionAttendanceRepository, CampEditionAttendanceRepository>();
+builder.Services.AddScoped<CampEditionAttendanceService>();
+
+// Rate limiting — currently used only by the media comment endpoint, which is the one
+// place an authenticated member can create unbounded content.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy(MediaCommentsEndpoints.CommentsRateLimitPolicy, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            // Partition by user, so one chatty member cannot exhaust everyone's budget.
+            partitionKey: httpContext.User.GetUserId()?.ToString() ?? "anonymous",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+});
+
 // Accommodation Type Media
 builder.Services.AddScoped<IAccommodationTypeMediaRepository, AccommodationTypeMediaRepository>();
 builder.Services.AddScoped<AccommodationTypeMediaService>();
@@ -387,6 +419,11 @@ app.UseHttpsRedirection();
 app.UseAuthentication(); // Must come before UseAuthorization
 app.UseAuthorization();
 
+// Must come AFTER authentication: the partition key reads httpContext.User, which is
+// empty until authentication has run. Placed earlier, every member silently shares the
+// single "anonymous" bucket.
+app.UseRateLimiter();
+
 // Health check endpoint (anonymous access — no auth required for monitoring tools)
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
@@ -426,6 +463,12 @@ app.MapPaymentsEndpoints();
 app.MapBlobStorageEndpoints();
 app.MapMemoriesEndpoints();
 app.MapMediaItemsEndpoints();
+app.MapAlbumsEndpoints();
+app.MapMediaSourcesEndpoints();
+app.MapMediaThemesEndpoints();
+app.MapMediaCommentsEndpoints();
+app.MapMediaDatingEndpoints();
+app.MapCampEditionAttendanceEndpoints();
 app.MapAccommodationFeaturesEndpoints();
 app.MapAccommodationMediaEndpoints();
 

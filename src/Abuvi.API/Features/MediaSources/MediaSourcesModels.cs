@@ -47,3 +47,84 @@ public class MediaSource
     public User? ContributorUser { get; set; }
     public User RegisteredBy { get; set; } = null!;
 }
+
+// ──────────────────────────────────────────────────────
+// Request DTOs
+// ──────────────────────────────────────────────────────
+
+public record CreateMediaSourceRequest(
+    string ContributorName,
+    Guid? ContributorUserId,
+    string? ContributorContact,
+    string? Notes,
+    DateTime? ReceivedAt);
+
+public record UpdateMediaSourceRequest(
+    string ContributorName,
+    Guid? ContributorUserId,
+    string? ContributorContact,
+    string? Notes,
+    DateTime? ReceivedAt);
+
+public record MergeMediaSourceRequest(Guid TargetId);
+
+// ──────────────────────────────────────────────────────
+// Response DTOs
+// ──────────────────────────────────────────────────────
+
+public record MediaSourceResponse(
+    Guid Id,
+    string ContributorName,
+    Guid? ContributorUserId,
+    // Null unless the caller is Admin/Board — stripped in the mapper below.
+    string? ContributorContact,
+    string? Notes,
+    DateTime? ReceivedAt,
+    Guid RegisteredByUserId,
+    string RegisteredByName,
+    int ItemCount,
+    int UndatedItemCount,
+    int? FirstYear,
+    int? LastYear,
+    DateTime CreatedAt);
+
+/// <summary>Aggregates for one source, computed in a single grouped query.</summary>
+public record MediaSourceStats(
+    int ItemCount,
+    int UndatedItemCount,
+    int? FirstYear,
+    int? LastYear)
+{
+    public static readonly MediaSourceStats Empty = new(0, 0, null, null);
+}
+
+// ──────────────────────────────────────────────────────
+// Mapping
+// ──────────────────────────────────────────────────────
+
+public static class MediaSourceMappingExtensions
+{
+    public static MediaSourceResponse ToResponse(
+        this MediaSource source,
+        MediaSourceStats stats,
+        bool isAdminOrBoard) =>
+        new(
+            source.Id,
+            source.ContributorName,
+            source.ContributorUserId,
+            // Contact details belong to people who may not be members and never agreed to
+            // be listed to the association. Stripped server-side — the frontend is not a
+            // security boundary.
+            isAdminOrBoard ? source.ContributorContact : null,
+            source.Notes,
+            source.ReceivedAt,
+            source.RegisteredByUserId,
+            source.RegisteredBy is null
+                ? "Unknown"
+                : $"{source.RegisteredBy.FirstName} {source.RegisteredBy.LastName}",
+            stats.ItemCount,
+            stats.UndatedItemCount,
+            stats.FirstYear,
+            stats.LastYear,
+            source.CreatedAt);
+}

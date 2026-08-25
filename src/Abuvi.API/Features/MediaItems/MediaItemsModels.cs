@@ -98,7 +98,32 @@ public record CreateMediaItemRequest(
     Guid? CampLocationId,
     string? Context,
     Guid? AccommodationId = null,
-    Guid? ZoneId = null);
+    Guid? ZoneId = null,
+    /// <summary>
+    /// Null means "I don't know which edition" — a VALID submission, not an error.
+    /// The item lands in the unplaced pile and becomes eligible for collaborative dating,
+    /// which is precisely what feeds the archive.
+    /// </summary>
+    Guid? CampEditionId = null,
+    IReadOnlyList<Guid>? ThemeIds = null,
+    /// <summary>An existing contributor, when uploading a further batch from the same person.</summary>
+    Guid? MediaSourceId = null,
+    /// <summary>Creates a contributor inline. Mutually exclusive with MediaSourceId.</summary>
+    NewMediaSourceRequest? NewSource = null,
+    /// <summary>Original folder path. Browsers only supply this for directory uploads.</summary>
+    string? SourcePath = null);
+
+/// <summary>Inline contributor creation during upload, for a first-time donor.</summary>
+public record NewMediaSourceRequest(
+    string ContributorName,
+    Guid? ContributorUserId,
+    string? ContributorContact,
+    string? Notes,
+    DateTime? ReceivedAt);
+
+public record SetMediaItemEditionRequest(Guid? CampEditionId);
+
+public record SetMediaItemSourceRequest(Guid? MediaSourceId);
 
 // Accommodation/Zone media — two-step upload (blob already uploaded)
 public record AddAccommodationMediaRequest(
@@ -129,6 +154,77 @@ public record MediaItemResponse(
     bool IsPrimary,
     DateTime CreatedAt);
 
+// ──────────────────────────────────────────────────────
+// Album DTOs
+//
+// An "album" is a QUERY over MediaItem filtered by CampEditionId — not an entity.
+// (data-model.md documents PhotoAlbum/Photo entities that were never implemented;
+// building them would fork the media model in two.)
+// ──────────────────────────────────────────────────────
+
+public record MediaThemeRef(Guid Id, string Name, string Slug);
+
+public record AlbumSummaryResponse(
+    Guid CampEditionId,
+    int Year,
+    Guid CampId,
+    string CampName,
+    string? CampLocality,
+    decimal? Latitude,
+    decimal? Longitude,
+    int PhotoCount,
+    int VideoCount,
+    int AudioCount,
+    int DocumentCount,
+    int MemoryCount,
+    string? CoverThumbnailUrl,
+    bool ViewerAttended);
+
+/// <summary>
+/// A media item as it appears in an album, theme page or unplaced pile. Carries the
+/// placement, provenance and theme context that MediaItemResponse does not.
+/// </summary>
+public record AlbumMediaItemResponse(
+    Guid Id,
+    Guid UploadedByUserId,
+    string UploadedByName,
+    string FileUrl,
+    string? ThumbnailUrl,
+    string Type,
+    string Title,
+    string? Description,
+    int? Year,
+    string? Decade,
+    Guid? CampEditionId,
+    string YearSource,
+    int CommentCount,
+    Guid? MediaSourceId,
+    string? MediaSourceName,
+    /// <summary>Trimmed for members, full for Admin/Board — see MediaSourcesService.TrimSourcePath.</summary>
+    string? SourcePathDisplay,
+    IReadOnlyList<MediaThemeRef> Themes,
+    bool IsApproved,
+    bool IsPublished,
+    int DisplayOrder,
+    bool IsPrimary,
+    DateTime CreatedAt);
+
+public record AlbumDetailResponse(
+    AlbumSummaryResponse Edition,
+    IReadOnlyList<AlbumMediaItemResponse> Items,
+    int TotalCount,
+    int Page,
+    int PageSize);
+
+public record UnplacedMediaResponse(
+    IReadOnlyList<AlbumMediaItemResponse> Items,
+    int TotalCount,
+    int Page,
+    int PageSize);
+
+/// <summary>Per-edition, per-type counts from one grouped query.</summary>
+public record AlbumCountRow(Guid CampEditionId, MediaItemType Type, int Count);
+
 // Mapping extensions
 public static class MediaItemMappingExtensions
 {
@@ -150,6 +246,41 @@ public static class MediaItemMappingExtensions
             item.Context,
             item.IsPublished,
             item.IsApproved,
+            item.DisplayOrder,
+            item.IsPrimary,
+            item.CreatedAt);
+
+    /// <summary>
+    /// Maps for album, theme and unplaced views. <paramref name="sourcePathDisplay"/> must
+    /// already be trimmed by the caller according to the viewer's role — this mapper does
+    /// not know who is asking.
+    /// </summary>
+    public static AlbumMediaItemResponse ToAlbumResponse(
+        this MediaItem item,
+        string? sourcePathDisplay,
+        IReadOnlyList<MediaThemeRef>? themes = null) =>
+        new(
+            item.Id,
+            item.UploadedByUserId,
+            item.UploadedBy is null
+                ? "Unknown"
+                : $"{item.UploadedBy.FirstName} {item.UploadedBy.LastName}",
+            item.FileUrl,
+            item.ThumbnailUrl,
+            item.Type.ToString(),
+            item.Title,
+            item.Description,
+            item.Year,
+            item.Decade,
+            item.CampEditionId,
+            item.YearSource.ToString(),
+            item.CommentCount,
+            item.MediaSourceId,
+            item.MediaSource?.ContributorName,
+            sourcePathDisplay,
+            themes ?? [],
+            item.IsApproved,
+            item.IsPublished,
             item.DisplayOrder,
             item.IsPrimary,
             item.CreatedAt);

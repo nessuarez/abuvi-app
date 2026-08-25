@@ -6,6 +6,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
+using Abuvi.API.Features.Camps;
 
 namespace Abuvi.Tests.Unit.Features.Memories;
 
@@ -14,6 +15,7 @@ public class MemoriesServiceTests
     private readonly IMemoriesRepository _repository;
     private readonly IMediaItemsRepository _mediaItemsRepository;
     private readonly ILogger<MemoriesService> _logger;
+    private readonly ICampEditionsRepository _campEditionsRepository;
     private readonly MemoriesService _service;
 
     public MemoriesServiceTests()
@@ -21,7 +23,9 @@ public class MemoriesServiceTests
         _repository = Substitute.For<IMemoriesRepository>();
         _mediaItemsRepository = Substitute.For<IMediaItemsRepository>();
         _logger = Substitute.For<ILogger<MemoriesService>>();
-        _service = new MemoriesService(_repository, _mediaItemsRepository, _logger);
+        _campEditionsRepository = Substitute.For<ICampEditionsRepository>();
+        _service = new MemoriesService(
+            _repository, _mediaItemsRepository, _campEditionsRepository, _logger);
     }
 
     [Fact]
@@ -113,15 +117,15 @@ public class MemoriesServiceTests
     public async Task GetListAsync_WithApprovedTrue_DelegatesToRepository()
     {
         // Arrange
-        _repository.GetListAsync(null, true, Arg.Any<CancellationToken>())
+        _repository.GetListAsync(null, true, null, false, Arg.Any<CancellationToken>())
             .Returns(new List<Memory>());
 
         // Act
-        var result = await _service.GetListAsync(null, true, CancellationToken.None);
+        var result = await _service.GetListAsync(null, true, null, false, CancellationToken.None);
 
         // Assert
         result.Should().BeEmpty();
-        await _repository.Received(1).GetListAsync(null, true, Arg.Any<CancellationToken>());
+        await _repository.Received(1).GetListAsync(null, true, null, false, Arg.Any<CancellationToken>());
     }
 
     [Fact]
