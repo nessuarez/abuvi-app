@@ -12,6 +12,7 @@ import { useGooglePlaces, type PlaceAutocomplete } from '@/composables/useGoogle
 import { useAuthStore } from '@/stores/auth'
 import AccommodationCapacityForm from '@/components/camps/AccommodationCapacityForm.vue'
 import CampAbuviTrackingForm from '@/components/camps/CampAbuviTrackingForm.vue'
+import CampLocationPicker from '@/components/camps/CampLocationPicker.vue'
 import type { Camp, CreateCampRequest, UpdateCampRequest, AccommodationCapacity } from '@/types/camp'
 
 interface Props {
@@ -171,6 +172,18 @@ const handlePlaceSelected = async (event: { value: PlaceAutocomplete }) => {
     autoFilledFromPlaces.value = true
     searchQuery.value = details.name
   }
+}
+
+// Dragging the marker or clicking the map overrides whatever Places suggested,
+// so the "auto-filled" hint no longer applies.
+const onPickerLatitude = (value: number) => {
+  formData.latitude = value
+  autoFilledFromPlaces.value = false
+}
+
+const onPickerLongitude = (value: number) => {
+  formData.longitude = value
+  autoFilledFromPlaces.value = false
 }
 
 // Clear autocomplete and allow manual entry
@@ -370,6 +383,18 @@ watch(
           v-model="formData.location"
           class="w-full"
           placeholder="Dirección del campamento..."
+        />
+      </div>
+
+      <!-- Precise placement: drag the marker or click the map -->
+      <div>
+        <label class="mb-1 block text-sm font-medium text-gray-700">Ubicación exacta</label>
+        <CampLocationPicker
+          :latitude="formData.latitude ?? null"
+          :longitude="formData.longitude ?? null"
+          :name="formData.name"
+          @update:latitude="onPickerLatitude"
+          @update:longitude="onPickerLongitude"
         />
       </div>
 

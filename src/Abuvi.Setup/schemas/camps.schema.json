@@ -41,11 +41,43 @@
       "required": true,
       "format": "^\\d+(\\.\\d{1,2})?$",
       "notes": "Same rules as pricePerAdult."
+    },
+    {
+      "name": "latitude",
+      "type": "decimal",
+      "required": false,
+      "notes": "Optional. decimal.Parse(InvariantCulture), dot separator. WGS84. Populated by the 'geocode' command."
+    },
+    {
+      "name": "longitude",
+      "type": "decimal",
+      "required": false,
+      "notes": "Optional. Same rules as latitude. May be negative."
+    },
+    {
+      "name": "googlePlaceId",
+      "type": "string",
+      "required": false,
+      "notes": "Optional. Google Places place_id, kept so a coordinate can be traced back to its source."
+    },
+    {
+      "name": "formattedAddress",
+      "type": "string",
+      "required": false,
+      "notes": "Optional. Human-readable address returned by Google Places."
+    },
+    {
+      "name": "googleTypes",
+      "type": "string",
+      "required": false,
+      "notes": "Optional. Space-separated Google place types, stored in Camp.PlaceTypes. Used to tell an exact campsite from a whole municipality."
     }
   ],
   "constraints": {
-    "uniqueColumns": ["name"],
+    "uniqueColumns": [
+      "name"
+    ],
     "dependsOn": [],
-    "notes": "Name uniqueness checked case-insensitively. Prices must be >= 0 (DB CHECK constraint)."
+    "notes": "Name uniqueness checked case-insensitively. Prices must be >= 0 (DB CHECK constraint). Columns not listed here (e.g. id, isActive, createdAt, updatedAt) are ignored by the importer."
   }
 }

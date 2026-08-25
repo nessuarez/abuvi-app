@@ -308,6 +308,7 @@ public class CampsService
         GoogleRating: camp.GoogleRating,
         GoogleRatingCount: camp.GoogleRatingCount,
         BusinessStatus: camp.BusinessStatus,
+        PlaceTypes: camp.PlaceTypes,
         PricePerAdult: camp.PricePerAdult,
         PricePerChild: camp.PricePerChild,
         PricePerBaby: camp.PricePerBaby,
