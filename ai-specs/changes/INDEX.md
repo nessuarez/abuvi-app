@@ -116,7 +116,7 @@ Allow hard deletion of camp registrations within 24 hours of creation (represent
 
 **[feat]** · [folder](./feat-family-iban-direct-debit) · **Spec only**
 
-Store a per-family IBAN (encrypted at rest) for direct debits, notify the board by email on every change, and warn families that an outdated IBAN makes them liable for the returned-receipt surcharge. Blocked on a Junta decision about formal SEPA mandate fields.
+Store a per-family IBAN (encrypted at rest) plus the account holder's identity and address for direct debits, notify the board by email on every change, and warn families that an outdated IBAN makes them liable for the returned-receipt surcharge. The SEPA mandate stays on paper — no RUM, sequence types or digital signature.
 
 - Backend: [ ] | Frontend: [ ]
 
