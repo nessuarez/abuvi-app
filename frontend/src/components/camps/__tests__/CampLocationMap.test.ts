@@ -275,6 +275,26 @@ describe('CampLocationMap', () => {
       expect(classes).not.toContain('h-[500px]')
     })
 
+    it('recalculates its size when the viewport changes, and stops once unmounted', async () => {
+      const wrapper = mount(CampLocationMap, {
+        props: { locations: [{ latitude: 40.0, longitude: -3.0, name: 'Camp A' }] },
+      })
+      await nextTick()
+      await nextTick()
+      // Earlier tests leave their components mounted, so count the delta this one adds
+      // rather than the absolute number of calls.
+      mockInvalidateSize.mockClear()
+      window.dispatchEvent(new Event('resize'))
+      const whileMounted = mockInvalidateSize.mock.calls.length
+
+      wrapper.unmount()
+      mockInvalidateSize.mockClear()
+      window.dispatchEvent(new Event('resize'))
+      const afterUnmount = mockInvalidateSize.mock.calls.length
+
+      expect(whileMounted - afterUnmount).toBe(1)
+    })
+
     it('recalculates its size after mount so a grid-sized container is not grey', async () => {
       mount(CampLocationMap, {
         props: { locations: [{ latitude: 40.0, longitude: -3.0, name: 'Camp A' }] },

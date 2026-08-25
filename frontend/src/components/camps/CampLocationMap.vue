@@ -150,15 +150,21 @@ const initializeMap = () => {
   updateMarkers()
 }
 
+// Leaflet caches the container size, so a viewport change leaves the map clipped until it
+// is told to measure again. Rotating a phone or resizing a projector window hits this.
+const handleResize = () => map?.invalidateSize()
+
 onMounted(async () => {
   initializeMap()
   // The container is often sized by its grid/flex parent after mount; without this the
   // tiles render grey in a side-by-side layout.
   await nextTick()
   map?.invalidateSize()
+  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
   if (map) {
     map.remove()
     map = null
