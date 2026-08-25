@@ -217,10 +217,25 @@ La spec preveía meterlo en `CampEditionsService`. Se ha creado **`CampHistorySe
 
 50 filas, 1976–2025, ordenadas, 31 sedes únicas, las 50 con coordenadas; Espinosa de los Monteros 2015 sale como 4.ª de 4. Sin token, 401.
 
-### Fase 3 — Visualización
+### Fase 3 — Visualización ✅ HECHO
 
-**Ficheros:** `composables/useCampHistory.ts`, `components/anniversary/AnniversaryJourney.vue`,
-`AnniversaryVenueList.vue`, `AnniversaryTimeline.vue`, `AnniversaryGallery.vue`, `AnniversaryPage.vue`.
+**Ficheros:** `types/camp-history.ts` (nuevo), `composables/useCampHistory.ts` (nuevo),
+`components/anniversary/AnniversaryJourney.vue` (nuevo), `AnniversaryVenueList.vue` (nuevo),
+`AnniversaryYearStrip.vue` (nuevo), `AnniversaryGallery.vue`, `AnniversaryTimeline.vue`,
+`AnniversaryPage.vue`, `components/camps/CampLocationMap.vue`, `types/camp.ts`.
+
+- [x] Composable `useCampHistory` con la agrupación por sede y los índices por año.
+- [x] Contenedor `AnniversaryJourney` dueño del año seleccionado.
+- [x] Mapa (60 %) y lista desplazable (40 %) sincronizados en ambos sentidos.
+- [x] Años pulsables en la fila de la lista y en el popup del pin.
+- [x] Pin escalado y numerado según el número de ediciones de la sede.
+- [x] Banda de 50 años con marca de si ese año conserva recuerdos.
+- [x] Estado vacío convertido en llamada a la acción, con el año y la sede reales.
+- [x] Vistas previas mostradas sin una segunda llamada.
+- [x] Galería filtrada por el año seleccionado, con vuelta a "todos los años".
+- [x] Modo presentación con parada en cualquier interacción manual y limpieza al desmontar.
+- [x] 13 tests del composable, 13 del contenedor, 7 de la lista, 6 de la banda de años,
+      5 de la galería y 11 nuevos del mapa (15 en total en ese fichero).
 
 #### 3.1 Disposición: mapa y lista lado a lado
 
@@ -248,9 +263,20 @@ Espinosa de los Monteros · Burgos
 - Los años son **pulsables**: seleccionan esa edición y filtran la galería.
 - El tamaño del pin escala con el número de ediciones, de modo que las sedes repetidas destacan solas. Eso cuenta visualmente algo que la lista no cuenta: dónde volvió ABUVI una y otra vez.
 
-#### 3.3 Cronología
+#### 3.3 Cronología — desviación deliberada
 
-Refactorizar `AnniversaryTimeline.vue` para recibir los hitos por `props` en vez del array hardcodeado, resaltar el año seleccionado y emitir al hacer clic. Descomentar su sección en `AnniversaryPage.vue`.
+`AnniversaryTimeline.vue` **sí** se ha refactorizado a `props`, con resaltado del año seleccionado y emisión al pulsar. Pero **su sección sigue comentada**, y la navegación por años la hace un componente nuevo, `AnniversaryYearStrip.vue`. Dos motivos:
+
+1. **Los hitos que tenía hardcodeados estaban inventados y alguno era falso.** Decía «2020: campamento virtual» cuando los datos importados registran una edición real en Los Palancares ese año. En una presentación de 50 aniversario, una historia inventada es peor que ninguna. Queda fuera hasta que alguien que conozca la historia escriba hitos verificados.
+2. **50 nodos no caben en un `Timeline` de PrimeVue.** Su variante horizontal usa tarjetas de `w-32` dentro de un `min-w-[900px]`: cincuenta serían unos 6.400 px de scroll con título y descripción cada una. Inservible como control de navegación. La banda de años hace ese trabajo con un chip por año y un punto que indica si ese año conserva algo — que además enseña de un vistazo dónde está vacío el archivo, que es justo el argumento.
+
+El timeline narrativo y la banda de navegación son dos componentes porque son dos trabajos distintos.
+
+#### 3.5 `CampLocationMap` no se podía reutilizar tal cual
+
+La spec daba por hecho que su interfaz encajaba. La auditoría encontró cuatro huecos: `selectedId` estaba **declarado pero nunca leído**, `selectLocation` emitía el **nombre** en vez de un id, los marcadores eran el pin por defecto sin escalado, los popups se construían como **string HTML** —así que nada dentro podía ser pulsable— y la altura estaba fija en `h-[500px]`.
+
+Ninguna de las cuatro páginas que lo usan enlaza `:selected-id` ni `@select-location`, así que se ha **extendido con props opcionales** cuyos valores por defecto reproducen el render anterior, sin bifurcar. De paso, el popup pasa a construirse como nodo DOM con `textContent`: antes concatenaba el nombre de la sede en una plantilla HTML, que era una vía de inyección abierta en las cuatro páginas.
 
 #### 3.4 Estado vacío y modo presentación
 

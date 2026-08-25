@@ -46,8 +46,9 @@ const stubs = {
   Skeleton: true,
 }
 
-function mountGallery() {
+function mountGallery(props: { year?: number | null } = {}) {
   return mount(AnniversaryGallery, {
+    props,
     global: {
       plugins: [PrimeVue],
       stubs,
@@ -110,5 +111,47 @@ describe('AnniversaryGallery', () => {
     const wrapper = mountGallery()
     expect(wrapper.text()).toContain('No se pudo cargar la galería')
     expect(wrapper.text()).toContain('Something went wrong')
+  })
+
+  describe('year filtering', () => {
+    it('forwards the selected year to the API', () => {
+      mountGallery({ year: 2003 })
+      expect(mockFetchMediaItems).toHaveBeenCalledWith({
+        approved: true,
+        context: 'anniversary-50',
+        year: 2003,
+      })
+    })
+
+    it('refetches when the selected year changes', async () => {
+      const wrapper = mountGallery({ year: 2003 })
+      mockFetchMediaItems.mockClear()
+
+      await wrapper.setProps({ year: 1987 })
+
+      expect(mockFetchMediaItems).toHaveBeenCalledWith({
+        approved: true,
+        context: 'anniversary-50',
+        year: 1987,
+      })
+    })
+
+    it('names the year in the heading and offers a way back to all years', async () => {
+      const wrapper = mountGallery({ year: 2003 })
+
+      expect(wrapper.text()).toContain('Recuerdos de 2003')
+      await wrapper.get('button').trigger('click')
+      expect(wrapper.emitted('clearYear')).toHaveLength(1)
+    })
+
+    it('says what is missing from that year rather than showing the generic empty state', () => {
+      const wrapper = mountGallery({ year: 1987 })
+      expect(wrapper.text()).toContain('De 1987 no conservamos nada todavía.')
+    })
+
+    it('keeps the generic heading when no year is selected', () => {
+      const wrapper = mountGallery()
+      expect(wrapper.text()).toContain('Galería de recuerdos')
+    })
   })
 })

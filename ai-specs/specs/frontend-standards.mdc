@@ -1373,38 +1373,61 @@ const goBack = () => {
 
 ### Maps Integration
 
-Use Leaflet.js for the interactive historical camp locations map:
+`CampLocationMap.vue` is the shared Leaflet map. It is used read-only in several pages (camp detail,
+camp locations list, edition details) and interactively by the anniversary journey. Extend it through
+optional props; never fork it.
+
+**Contract:**
+
+```typescript
+interface Props {
+  locations: CampLocation[]
+  /** Centres the map on that marker and opens its popup. */
+  selectedId?: string
+  /** Tailwind height class for the container. Defaults to 'h-[500px]'. */
+  heightClass?: string
+}
+
+const emit = defineEmits<{
+  /** The marker's `id`, or its `name` when no id was given. */
+  selectLocation: [id: string]
+  /** A year chip inside the popup was clicked. */
+  selectYear: [year: number]
+}>()
+```
+
+`CampLocation` (in `types/camp.ts`) carries the optional fields that drive the extras: `id` (stable
+identifier; falls back to `name`), `editionYears` (rendered as clickable chips in the popup) and
+`editionCount` (scales the marker, and prints the count when greater than one).
+
+**Rules when touching this component:**
+
+- **Every new prop and field stays optional, with a default that reproduces the current rendering.**
+  Several pages depend on it; the regression gate is that the existing test cases keep passing.
+- **Popup content is built as a DOM node, not an HTML string.** Chips need real click handlers, and
+  venue names come from the database — set text via `textContent`, never `innerHTML`.
+- **Call `map.invalidateSize()` after mount (`await nextTick()`).** When the container is sized by a
+  grid or flex parent after mount, Leaflet renders grey tiles without it. This is the single most
+  common bug in side-by-side layouts.
+- **Selection is driven from outside.** The component reacts to `selectedId`; it does not hold
+  selection state of its own.
+- A Leaflet map is not keyboard-operable. When it is the primary way to navigate data, pair it with
+  a list that is (see `AnniversaryVenueList.vue`) — that list is the accessible path, not decoration.
 
 ```vue
-<script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import L from 'leaflet'
-import type { CampLocation } from '@/types/camp'
-
-const props = defineProps<{ locations: CampLocation[] }>()
-const mapContainer = ref<HTMLElement | null>(null)
-
-onMounted(() => {
-  if (!mapContainer.value) return
-
-  const map = L.map(mapContainer.value).setView([40.4168, -3.7038], 6)
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
-  }).addTo(map)
-
-  props.locations.forEach((location) => {
-    L.marker([location.latitude, location.longitude])
-      .addTo(map)
-      .bindPopup(`<strong>${location.name}</strong><br>${location.year}`)
-  })
-})
-</script>
-
-<template>
-  <div ref="mapContainer" class="h-96 w-full rounded-lg" />
-</template>
+<CampLocationMap
+  :locations="mapLocations"
+  :selected-id="selectedCampId ?? undefined"
+  height-class="h-[55vh] lg:h-[600px]"
+  @select-location="selectVenue"
+  @select-year="selectYear"
+/>
 ```
+
+**Testing.** Mock `leaflet` and `leaflet/dist/leaflet.css`. The mock's map object must expose
+`fitBounds`, `panTo`, `invalidateSize` and `remove`; its markers must expose `bindPopup`, `on`,
+`remove`, `openPopup`, `getElement` and `getLatLng`. See
+`components/camps/__tests__/CampLocationMap.test.ts`.
 
 ## Testing Standards
 

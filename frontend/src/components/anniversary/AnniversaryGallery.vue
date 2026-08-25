@@ -1,8 +1,18 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useMediaItems } from '@/composables/useMediaItems'
 import Image from 'primevue/image'
 import Skeleton from 'primevue/skeleton'
+
+interface Props {
+  /** When set, the gallery shows only that year's memories. */
+  year?: number | null
+}
+
+const props = withDefaults(defineProps<Props>(), { year: null })
+const emit = defineEmits<{
+  clearYear: []
+}>()
 
 const { mediaItems, loading, error, fetchMediaItems } = useMediaItems()
 
@@ -10,18 +20,35 @@ const scrollToUpload = () => {
   document.getElementById('subir-recuerdo')?.scrollIntoView({ behavior: 'smooth' })
 }
 
-onMounted(() => {
-  fetchMediaItems({ approved: true, context: 'anniversary-50' })
-})
+const load = () => {
+  fetchMediaItems({ approved: true, context: 'anniversary-50', year: props.year ?? undefined })
+}
+
+onMounted(load)
+watch(() => props.year, load)
 </script>
 
 <template>
   <section aria-label="Galería de recuerdos" class="mx-auto max-w-7xl px-6">
     <div class="mb-12 text-center">
-      <h2 class="mb-4 text-3xl font-bold text-amber-900 md:text-4xl">Galería de recuerdos</h2>
+      <h2 class="mb-4 text-3xl font-bold text-amber-900 md:text-4xl">
+        {{ year === null ? 'Galería de recuerdos' : `Recuerdos de ${year}` }}
+      </h2>
       <p class="mx-auto max-w-2xl text-gray-600">
-        Un viaje visual a través de cincuenta años de campamentos y aventuras.
+        {{
+          year === null
+            ? 'Un viaje visual a través de cincuenta años de campamentos y aventuras.'
+            : 'Lo que se conserva de esta edición.'
+        }}
       </p>
+      <button
+        v-if="year !== null"
+        type="button"
+        class="mt-4 text-sm font-medium text-amber-700 hover:underline"
+        @click="emit('clearYear')"
+      >
+        Ver todos los años
+      </button>
     </div>
 
     <!-- Loading state -->
@@ -45,7 +72,13 @@ onMounted(() => {
     <!-- Empty state -->
     <div v-else-if="mediaItems.length === 0" class="py-12 text-center">
       <i class="pi pi-images mb-4 text-4xl text-amber-300" />
-      <p class="text-lg text-gray-500">Aún no hay recuerdos con aprobación.</p>
+      <p class="text-lg text-gray-500">
+        {{
+          year === null
+            ? 'Aún no hay recuerdos con aprobación.'
+            : `De ${year} no conservamos nada todavía.`
+        }}
+      </p>
       <p class="mt-2 text-sm text-gray-400">¡Sé el primero en compartir!</p>
     </div>
 
