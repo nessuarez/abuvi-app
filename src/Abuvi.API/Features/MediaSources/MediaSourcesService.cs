@@ -1,5 +1,4 @@
 using Abuvi.API.Common.Exceptions;
-using Abuvi.API.Data;
 using Abuvi.API.Features.MediaItems;
 using Abuvi.API.Features.Users;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +8,6 @@ namespace Abuvi.API.Features.MediaSources;
 public class MediaSourcesService(
     IMediaSourcesRepository repository,
     IUsersRepository usersRepository,
-    AbuviDbContext db,
     ILogger<MediaSourcesService> logger)
 {
     /// <summary>
@@ -166,17 +164,12 @@ public class MediaSourcesService(
         if (sourceId == targetId)
             throw new ValidationException("No se puede fusionar un aportante consigo mismo");
 
-        var source = await repository.GetByIdAsync(sourceId, ct)
+        _ = await repository.GetByIdAsync(sourceId, ct)
             ?? throw new NotFoundException("aportante", sourceId);
         _ = await repository.GetByIdAsync(targetId, ct)
             ?? throw new NotFoundException("aportante", targetId);
 
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
-
-        var moved = await repository.RepointItemsAsync(sourceId, targetId, ct);
-        await repository.DeleteAsync(source, ct);
-
-        await tx.CommitAsync(ct);
+        var moved = await repository.MergeAsync(sourceId, targetId, ct);
 
         logger.LogInformation(
             "Merged MediaSource {SourceId} into {TargetId}, {MovedCount} item(s) repointed",

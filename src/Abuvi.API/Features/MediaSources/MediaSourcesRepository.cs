@@ -22,8 +22,12 @@ public interface IMediaSourcesRepository
     Task AddAsync(MediaSource source, CancellationToken ct);
     Task UpdateAsync(MediaSource source, CancellationToken ct);
 
-    /// <summary>Repoints every item from one source to another. Returns rows moved.</summary>
-    Task<int> RepointItemsAsync(Guid fromSourceId, Guid toSourceId, CancellationToken ct);
+    /// <summary>
+    /// Folds one source into another: repoints every item, then deletes the emptied source.
+    /// Both steps in one transaction — repointing 800 items and then failing to delete
+    /// would leave the catalogue worse than before. Returns rows moved.
+    /// </summary>
+    Task<int> MergeAsync(Guid fromSourceId, Guid toSourceId, CancellationToken ct);
 
     Task DeleteAsync(MediaSource source, CancellationToken ct);
 }
@@ -104,11 +108,22 @@ public class MediaSourcesRepository(AbuviDbContext db) : IMediaSourcesRepository
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<int> RepointItemsAsync(Guid fromSourceId, Guid toSourceId, CancellationToken ct)
+    public async Task<int> MergeAsync(Guid fromSourceId, Guid toSourceId, CancellationToken ct)
+    {
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
         // ExecuteUpdateAsync so an 800-photo donation does not load into memory to be merged.
-        => await db.MediaItems
+        var moved = await db.MediaItems
             .Where(m => m.MediaSourceId == fromSourceId)
             .ExecuteUpdateAsync(s => s.SetProperty(m => m.MediaSourceId, toSourceId), ct);
+
+        await db.MediaSources
+            .Where(s => s.Id == fromSourceId)
+            .ExecuteDeleteAsync(ct);
+
+        await tx.CommitAsync(ct);
+        return moved;
+    }
 
     public async Task DeleteAsync(MediaSource source, CancellationToken ct)
     {

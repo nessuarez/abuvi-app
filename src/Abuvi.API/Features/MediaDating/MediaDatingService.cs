@@ -1,5 +1,4 @@
 using Abuvi.API.Common.Exceptions;
-using Abuvi.API.Data;
 using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.MediaItems;
 using Abuvi.API.Features.MediaSources;
@@ -18,7 +17,7 @@ public class MediaDatingService(
     IMediaItemsRepository mediaItemsRepository,
     IMediaThemesRepository themesRepository,
     ICampEditionsRepository campEditionsRepository,
-    AbuviDbContext db,
+    IMediaSourcesRepository mediaSourcesRepository,
     ILogger<MediaDatingService> logger)
 {
     /// <summary>A year needs at least this many proposals before it can win.</summary>
@@ -301,7 +300,7 @@ public class MediaDatingService(
                 ? null
                 : new SourceHintResponse(null, null, null, [], pathDisplay);
 
-        var source = await db.MediaSources.FindAsync([sourceId], ct);
+        var source = await mediaSourcesRepository.GetByIdAsync(sourceId, ct);
         var years = (await repository.GetYearsForSourceAsync(sourceId, ct))
             .Where(y => y != item.Year)
             .ToList();
