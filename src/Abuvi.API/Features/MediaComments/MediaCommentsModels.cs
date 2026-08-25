@@ -68,3 +68,88 @@ public class MediaCommentReport
     public MediaComment MediaComment { get; set; } = null!;
     public User ReportedBy { get; set; } = null!;
 }
+
+// ──────────────────────────────────────────────────────
+// Request DTOs
+// ──────────────────────────────────────────────────────
+
+public record CreateMediaCommentRequest(string Body);
+
+public record UpdateMediaCommentRequest(string Body);
+
+public record ReportMediaCommentRequest(MediaCommentReportReason Reason, string? Notes);
+
+public record ReviewReportRequest(MediaCommentReportStatus Status);
+
+// ──────────────────────────────────────────────────────
+// Response DTOs
+// ──────────────────────────────────────────────────────
+
+public record MediaCommentResponse(
+    Guid Id,
+    Guid MediaItemId,
+    Guid AuthorUserId,
+    string AuthorName,
+    string Body,
+    /// <summary>Viewer is the author AND still inside the edit window.</summary>
+    bool CanEdit,
+    /// <summary>That, or the viewer is Admin/Board.</summary>
+    bool CanDelete,
+    bool ViewerReported,
+    DateTime CreatedAt,
+    DateTime UpdatedAt);
+
+public record MediaCommentReportResponse(
+    Guid Id,
+    Guid MediaCommentId,
+    string CommentBody,
+    Guid MediaItemId,
+    Guid ReportedByUserId,
+    string ReportedByName,
+    string Reason,
+    string? Notes,
+    string Status,
+    DateTime CreatedAt,
+    DateTime? ReviewedAt);
+
+// ──────────────────────────────────────────────────────
+// Mapping
+// ──────────────────────────────────────────────────────
+
+public static class MediaCommentMappingExtensions
+{
+    public static MediaCommentResponse ToResponse(
+        this MediaComment comment,
+        bool canEdit,
+        bool canDelete,
+        bool viewerReported) =>
+        new(
+            comment.Id,
+            comment.MediaItemId,
+            comment.AuthorUserId,
+            comment.Author is null
+                ? "Unknown"
+                : $"{comment.Author.FirstName} {comment.Author.LastName}",
+            comment.Body,
+            canEdit,
+            canDelete,
+            viewerReported,
+            comment.CreatedAt,
+            comment.UpdatedAt);
+
+    public static MediaCommentReportResponse ToResponse(this MediaCommentReport report) =>
+        new(
+            report.Id,
+            report.MediaCommentId,
+            report.MediaComment?.Body ?? string.Empty,
+            report.MediaComment?.MediaItemId ?? Guid.Empty,
+            report.ReportedByUserId,
+            report.ReportedBy is null
+                ? "Unknown"
+                : $"{report.ReportedBy.FirstName} {report.ReportedBy.LastName}",
+            report.Reason.ToString(),
+            report.Notes,
+            report.Status.ToString(),
+            report.CreatedAt,
+            report.ReviewedAt);
+}

@@ -45,6 +45,20 @@ public class CampEditionsRepository : ICampEditionsRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<CampEdition>> GetByYearAsync(
+        int year,
+        CancellationToken cancellationToken = default)
+    {
+        // Archived editions are excluded: an archived edition should not silently capture
+        // newly uploaded media. Status is NOT filtered — historical editions are Completed.
+        return await _context.CampEditions
+            .AsNoTracking()
+            .Include(e => e.Camp)
+            .Where(e => e.Year == year && !e.IsArchived)
+            .OrderBy(e => e.StartDate)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<CampEdition> CreateAsync(CampEdition edition, CancellationToken cancellationToken = default)
     {
         edition.CreatedAt = DateTime.UtcNow;

@@ -1230,3 +1230,33 @@ public class CampEditionAttendance
     public User User { get; set; } = null!;
     public FamilyMember? FamilyMember { get; set; }
 }
+
+/// <summary>Body of POST /api/camp-editions/{id}/attendance. Null member = the caller.</summary>
+public record DeclareAttendanceRequest(Guid? FamilyMemberId);
+
+public record AttendanceEntryResponse(
+    Guid CampEditionId,
+    Guid UserId,
+    string UserName,
+    Guid? FamilyMemberId,
+    string? FamilyMemberName,
+    /// <summary>"Declared" or "Registration" — derived entries cannot be withdrawn.</summary>
+    string Source);
+
+public record CampTimelineEntryResponse(
+    Guid CampEditionId,
+    int Year,
+    string CampName,
+    decimal? Latitude,
+    decimal? Longitude,
+    bool Attended,
+    string AttendanceSource,
+    int MediaCount);
+
+/// <summary>
+/// Every edition, attended or not, so the frontend can paint "tus campamentos" over the
+/// full map without a second call.
+/// </summary>
+public record CampTimelineResponse(
+    int TotalEditionsAttended,
+    IReadOnlyList<CampTimelineEntryResponse> Entries);

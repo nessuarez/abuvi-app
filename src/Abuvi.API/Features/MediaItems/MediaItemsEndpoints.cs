@@ -74,9 +74,15 @@ public static class MediaItemsEndpoints
         [FromQuery] Guid? accommodationId,
         [FromQuery] Guid? zoneId,
         MediaItemsService service,
-        CancellationToken ct)
+        CancellationToken ct,
+        [FromQuery] Guid? campEditionId = null,
+        [FromQuery] bool unplacedOnly = false,
+        [FromQuery] Guid? themeId = null)
     {
-        var items = await service.GetListAsync(year, approved, context, type, accommodationId, zoneId, ct);
+        var items = await service.GetListAsync(
+            year, approved, context, type, accommodationId, zoneId,
+            campEditionId, unplacedOnly, themeId, ct);
+
         return Results.Ok(ApiResponse<IReadOnlyList<MediaItemResponse>>.Ok(items));
     }
 

@@ -5,6 +5,8 @@ using Abuvi.API.Features.MediaItems;
 using FluentAssertions;
 using NSubstitute;
 using Xunit;
+using Abuvi.API.Features.MediaThemes;
+using Abuvi.API.Features.MediaSources;
 
 namespace Abuvi.Tests.Unit.Features.Camps;
 
@@ -21,7 +23,12 @@ public class AccommodationMediaServiceTests
         var blobOpts = Microsoft.Extensions.Options.Options.Create(
             new BlobStorageOptions { PublicBaseUrl = "https://storage.example.com" });
         var logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<MediaItemsService>>();
-        return new MediaItemsService(repo, blob, blobOpts, logger);
+        return new MediaItemsService(
+            repo,
+            Substitute.For<ICampEditionsRepository>(),
+            Substitute.For<IMediaSourcesRepository>(),
+            Substitute.For<IMediaThemesRepository>(),
+            blob, blobOpts, logger);
     }
 
     private static AddAccommodationMediaRequest MediaRequest(
@@ -203,7 +210,12 @@ public class AccommodationMediaServiceTests
         var blobOpts = Microsoft.Extensions.Options.Options.Create(
             new BlobStorageOptions { PublicBaseUrl = "https://storage.example.com" });
         var logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<MediaItemsService>>();
-        var sut = new MediaItemsService(repo, blob, blobOpts, logger);
+        var sut = new MediaItemsService(
+            repo,
+            Substitute.For<ICampEditionsRepository>(),
+            Substitute.For<IMediaSourcesRepository>(),
+            Substitute.For<IMediaThemesRepository>(),
+            blob, blobOpts, logger);
 
         var zoneId = Guid.NewGuid();
         var item = CreateMediaItem(zoneId: zoneId);

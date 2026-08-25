@@ -63,9 +63,11 @@ public static class MemoriesEndpoints
         [FromQuery] int? year,
         [FromQuery] bool? approved,
         MemoriesService service,
-        CancellationToken ct)
+        CancellationToken ct,
+        [FromQuery] Guid? campEditionId = null,
+        [FromQuery] bool unplacedOnly = false)
     {
-        var memories = await service.GetListAsync(year, approved, ct);
+        var memories = await service.GetListAsync(year, approved, campEditionId, unplacedOnly, ct);
         return Results.Ok(ApiResponse<IReadOnlyList<MemoryResponse>>.Ok(memories));
     }
 
