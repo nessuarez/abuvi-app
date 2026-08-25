@@ -1,4 +1,5 @@
 using Abuvi.API.Features.MediaItems;
+using Abuvi.API.Features.MediaSources;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -127,6 +128,53 @@ public class MediaItemConfiguration : IEntityTypeConfiguration<MediaItem>
             .WithMany(a => a.MediaItems)
             .HasForeignKey(m => m.AccommodationId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // ── Camp edition album anchor, provenance and dating ──
+
+        builder.Property(m => m.CampEditionId)
+            .HasColumnName("camp_edition_id");
+
+        builder.Property(m => m.YearSource)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(MediaItemYearSource.Unknown)
+            .HasColumnName("year_source");
+
+        builder.Property(m => m.CommentCount)
+            .IsRequired()
+            .HasDefaultValue(0)
+            .HasColumnName("comment_count");
+
+        builder.Property(m => m.MediaSourceId)
+            .HasColumnName("media_source_id");
+
+        builder.Property(m => m.SourcePath)
+            .HasMaxLength(1024)
+            .HasColumnName("source_path");
+
+        builder.HasOne(m => m.CampEdition)
+            .WithMany()
+            .HasForeignKey(m => m.CampEditionId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(m => m.MediaSource)
+            .WithMany()
+            .HasForeignKey(m => m.MediaSourceId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasIndex(m => m.CampEditionId)
+            .HasDatabaseName("ix_media_items_camp_edition_id");
+
+        // Album grid query: edition + approval state
+        builder.HasIndex(m => new { m.CampEditionId, m.IsApproved, m.IsPublished })
+            .HasDatabaseName("ix_media_items_edition_approved_published");
+
+        builder.HasIndex(m => m.MediaSourceId)
+            .HasDatabaseName("ix_media_items_media_source_id");
+
+        // Note: the partial index for the unplaced pile (WHERE camp_edition_id IS NULL)
+        // is declared as raw SQL in the migration — EF cannot express it here.
 
         // Indexes for primary media lookups
         builder.HasIndex(m => new { m.AccommodationId, m.IsPrimary })

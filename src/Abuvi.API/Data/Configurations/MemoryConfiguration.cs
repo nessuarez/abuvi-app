@@ -32,6 +32,9 @@ public class MemoryConfiguration : IEntityTypeConfiguration<Memory>
         builder.Property(m => m.CampLocationId)
             .HasColumnName("camp_location_id");
 
+        builder.Property(m => m.CampEditionId)
+            .HasColumnName("camp_edition_id");
+
         builder.Property(m => m.IsPublished)
             .IsRequired()
             .HasDefaultValue(false)
@@ -62,10 +65,18 @@ public class MemoryConfiguration : IEntityTypeConfiguration<Memory>
         builder.HasIndex(m => new { m.IsApproved, m.IsPublished })
             .HasDatabaseName("ix_memories_approved_published");
 
+        builder.HasIndex(m => m.CampEditionId)
+            .HasDatabaseName("ix_memories_camp_edition_id");
+
         // Relationships
         builder.HasOne(m => m.Author)
             .WithMany()
             .HasForeignKey(m => m.AuthorUserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(m => m.CampEdition)
+            .WithMany()
+            .HasForeignKey(m => m.CampEditionId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

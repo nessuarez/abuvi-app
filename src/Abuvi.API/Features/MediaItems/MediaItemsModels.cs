@@ -1,4 +1,6 @@
 using Abuvi.API.Features.Camps;
+using Abuvi.API.Features.MediaSources;
+using Abuvi.API.Features.MediaThemes;
 using Abuvi.API.Features.Memories;
 using Abuvi.API.Features.Users;
 
@@ -11,6 +13,20 @@ public enum MediaItemType
     Interview,
     Document,
     Audio
+}
+
+/// <summary>
+/// How a media item's year was established. Admin always wins and is never
+/// overwritten by community consensus.
+/// </summary>
+public enum MediaItemYearSource
+{
+    Unknown,    // no year yet — eligible for collaborative dating
+    Exif,       // EXIF DateTimeOriginal
+    FolderName, // resolved from the import folder name
+    Uploader,   // typed into the web upload form
+    Community,  // set by collaborative dating consensus
+    Admin       // set manually by Admin/Board
 }
 
 public class MediaItem
@@ -33,6 +49,29 @@ public class MediaItem
     public string? Context { get; set; }
     public int DisplayOrder { get; set; } = 0;
     public bool IsPrimary { get; set; } = false;
+
+    /// <summary>
+    /// The camp edition this item belongs to. Null means "we do not know which edition yet" —
+    /// always a temporary state, always resolvable by collaborative dating. All ABUVI media
+    /// belongs to some camp; there is deliberately no "not camp related" state.
+    /// </summary>
+    public Guid? CampEditionId { get; set; }
+
+    public MediaItemYearSource YearSource { get; set; } = MediaItemYearSource.Unknown;
+
+    /// <summary>Denormalised counter so album grids never join comments.</summary>
+    public int CommentCount { get; set; }
+
+    /// <summary>Who provided the material. Null means the uploader is also the provider.</summary>
+    public Guid? MediaSourceId { get; set; }
+
+    /// <summary>
+    /// Original folder path the file came from, relative to the import root. A dating clue:
+    /// a human may recognise "Verano con los Martínez" where the resolver sees nothing.
+    /// Members only ever see the trailing segments — see MediaSourcesService.TrimSourcePath.
+    /// </summary>
+    public string? SourcePath { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
@@ -41,6 +80,9 @@ public class MediaItem
     public Memory? Memory { get; set; }
     public CampEditionAccommodation? Accommodation { get; set; }
     public AccommodationZone? Zone { get; set; }
+    public CampEdition? CampEdition { get; set; }
+    public MediaSource? MediaSource { get; set; }
+    public List<MediaItemTheme> Themes { get; set; } = [];
     // TODO: Add CampLocation navigation when CampLocation entity is created
 }
 
@@ -123,3 +165,21 @@ public static class MediaItemMappingExtensions
         _ => null
     };
 }
+
+/// <summary>
+/// The few fields a caller needs to show a photo without fetching the whole item.
+/// </summary>
+public record MediaItemPreview(
+    Guid Id,
+    string? ThumbnailUrl,
+    string FileUrl,
+    string Title);
+
+/// <summary>
+/// How many published photos exist for a year, plus a handful to show.
+/// Years with no photos are simply absent from the rollup.
+/// </summary>
+public record MediaItemYearSummary(
+    int Year,
+    int PhotoCount,
+    IReadOnlyList<MediaItemPreview> Previews);

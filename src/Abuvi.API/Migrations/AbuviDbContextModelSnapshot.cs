@@ -17,7 +17,7 @@ namespace Abuvi.API.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.16")
+                .HasAnnotation("ProductVersion", "9.0.19")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -963,6 +963,45 @@ namespace Abuvi.API.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Abuvi.API.Features.Camps.CampEditionAttendance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CampEditionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("camp_edition_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("FamilyMemberId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_member_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FamilyMemberId");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_camp_edition_attendances_user_id");
+
+                    b.HasIndex("CampEditionId", "UserId", "FamilyMemberId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_camp_edition_attendances_edition_user_member");
+
+                    b.ToTable("camp_edition_attendances", (string)null);
+                });
+
             modelBuilder.Entity("Abuvi.API.Features.Camps.CampEditionExtra", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1415,6 +1454,176 @@ namespace Abuvi.API.Migrations
                     b.ToTable("Guests");
                 });
 
+            modelBuilder.Entity("Abuvi.API.Features.MediaComments.MediaComment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AuthorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_user_id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by_user_id");
+
+                    b.Property<Guid>("MediaItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("media_item_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorUserId")
+                        .HasDatabaseName("ix_media_comments_author_user_id");
+
+                    b.HasIndex("MediaItemId", "CreatedAt")
+                        .HasDatabaseName("ix_media_comments_item_created");
+
+                    b.ToTable("media_comments", (string)null);
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.MediaComments.MediaCommentReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("MediaCommentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("media_comment_id");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid>("ReportedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reported_by_user_id");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by_user_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Pending")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReportedByUserId");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_media_comment_reports_status");
+
+                    b.HasIndex("MediaCommentId", "ReportedByUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_media_comment_reports_comment_reporter");
+
+                    b.ToTable("media_comment_reports", (string)null);
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.MediaDating.MediaItemYearProposal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("MediaItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("media_item_id");
+
+                    b.Property<Guid>("ProposedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("proposed_by_user_id");
+
+                    b.Property<Guid?>("ProposedCampEditionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("proposed_camp_edition_id");
+
+                    b.Property<int>("ProposedYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("proposed_year");
+
+                    b.Property<string>("Rationale")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("rationale");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MediaItemId")
+                        .HasDatabaseName("ix_media_item_year_proposals_item_id");
+
+                    b.HasIndex("ProposedByUserId");
+
+                    b.HasIndex("ProposedCampEditionId");
+
+                    b.HasIndex("MediaItemId", "ProposedByUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_media_item_year_proposals_item_user");
+
+                    b.ToTable("media_item_year_proposals", (string)null);
+                });
+
             modelBuilder.Entity("Abuvi.API.Features.MediaItems.MediaItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1426,9 +1635,19 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("accommodation_id");
 
+                    b.Property<Guid?>("CampEditionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("camp_edition_id");
+
                     b.Property<Guid?>("CampLocationId")
                         .HasColumnType("uuid")
                         .HasColumnName("camp_location_id");
+
+                    b.Property<int>("CommentCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("comment_count");
 
                     b.Property<string>("Context")
                         .HasMaxLength(50)
@@ -1481,9 +1700,18 @@ namespace Abuvi.API.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_published");
 
+                    b.Property<Guid?>("MediaSourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("media_source_id");
+
                     b.Property<Guid?>("MemoryId")
                         .HasColumnType("uuid")
                         .HasColumnName("memory_id");
+
+                    b.Property<string>("SourcePath")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("source_path");
 
                     b.Property<string>("ThumbnailUrl")
                         .HasMaxLength(2048)
@@ -1516,14 +1744,28 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("year");
 
+                    b.Property<string>("YearSource")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Unknown")
+                        .HasColumnName("year_source");
+
                     b.Property<Guid?>("ZoneId")
                         .HasColumnType("uuid")
                         .HasColumnName("zone_id");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CampEditionId")
+                        .HasDatabaseName("ix_media_items_camp_edition_id");
+
                     b.HasIndex("Context")
                         .HasDatabaseName("ix_media_items_context");
+
+                    b.HasIndex("MediaSourceId")
+                        .HasDatabaseName("ix_media_items_media_source_id");
 
                     b.HasIndex("MemoryId")
                         .HasDatabaseName("ix_media_items_memory_id");
@@ -1543,7 +1785,151 @@ namespace Abuvi.API.Migrations
                     b.HasIndex("ZoneId", "IsPrimary")
                         .HasDatabaseName("ix_media_items_zone_primary");
 
+                    b.HasIndex("CampEditionId", "IsApproved", "IsPublished")
+                        .HasDatabaseName("ix_media_items_edition_approved_published");
+
                     b.ToTable("media_items", (string)null);
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.MediaSources.MediaSource", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContributorContact")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("contributor_contact");
+
+                    b.Property<string>("ContributorName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("contributor_name");
+
+                    b.Property<Guid?>("ContributorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("contributor_user_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<DateTime?>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("received_at");
+
+                    b.Property<Guid>("RegisteredByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registered_by_user_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContributorName")
+                        .HasDatabaseName("ix_media_sources_contributor_name");
+
+                    b.HasIndex("ContributorUserId")
+                        .HasDatabaseName("ix_media_sources_contributor_user_id");
+
+                    b.HasIndex("RegisteredByUserId");
+
+                    b.ToTable("media_sources", (string)null);
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.MediaThemes.MediaItemTheme", b =>
+                {
+                    b.Property<Guid>("MediaItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("media_item_id");
+
+                    b.Property<Guid>("MediaThemeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("media_theme_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("TaggedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tagged_by_user_id");
+
+                    b.HasKey("MediaItemId", "MediaThemeId");
+
+                    b.HasIndex("MediaThemeId")
+                        .HasDatabaseName("ix_media_item_themes_theme_id");
+
+                    b.HasIndex("TaggedByUserId");
+
+                    b.ToTable("media_item_themes", (string)null);
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.MediaThemes.MediaTheme", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("slug");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique()
+                        .HasDatabaseName("ux_media_themes_slug");
+
+                    b.ToTable("media_themes", (string)null);
                 });
 
             modelBuilder.Entity("Abuvi.API.Features.Memberships.Membership", b =>
@@ -1641,6 +2027,10 @@ namespace Abuvi.API.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("author_user_id");
 
+                    b.Property<Guid?>("CampEditionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("camp_edition_id");
+
                     b.Property<Guid?>("CampLocationId")
                         .HasColumnType("uuid")
                         .HasColumnName("camp_location_id");
@@ -1688,6 +2078,9 @@ namespace Abuvi.API.Migrations
 
                     b.HasIndex("AuthorUserId")
                         .HasDatabaseName("ix_memories_author_user_id");
+
+                    b.HasIndex("CampEditionId")
+                        .HasDatabaseName("ix_memories_camp_edition_id");
 
                     b.HasIndex("Year")
                         .HasDatabaseName("ix_memories_year");
@@ -2518,6 +2911,32 @@ namespace Abuvi.API.Migrations
                     b.Navigation("Zone");
                 });
 
+            modelBuilder.Entity("Abuvi.API.Features.Camps.CampEditionAttendance", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Camps.CampEdition", "CampEdition")
+                        .WithMany()
+                        .HasForeignKey("CampEditionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Abuvi.API.Features.FamilyUnits.FamilyMember", "FamilyMember")
+                        .WithMany()
+                        .HasForeignKey("FamilyMemberId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Abuvi.API.Features.Users.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CampEdition");
+
+                    b.Navigation("FamilyMember");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Abuvi.API.Features.Camps.CampEditionExtra", b =>
                 {
                     b.HasOne("Abuvi.API.Features.Camps.CampEdition", "CampEdition")
@@ -2604,11 +3023,85 @@ namespace Abuvi.API.Migrations
                     b.Navigation("FamilyUnit");
                 });
 
+            modelBuilder.Entity("Abuvi.API.Features.MediaComments.MediaComment", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Users.User", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Abuvi.API.Features.MediaItems.MediaItem", "MediaItem")
+                        .WithMany()
+                        .HasForeignKey("MediaItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Author");
+
+                    b.Navigation("MediaItem");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.MediaComments.MediaCommentReport", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.MediaComments.MediaComment", "MediaComment")
+                        .WithMany()
+                        .HasForeignKey("MediaCommentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Abuvi.API.Features.Users.User", "ReportedBy")
+                        .WithMany()
+                        .HasForeignKey("ReportedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MediaComment");
+
+                    b.Navigation("ReportedBy");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.MediaDating.MediaItemYearProposal", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.MediaItems.MediaItem", "MediaItem")
+                        .WithMany()
+                        .HasForeignKey("MediaItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Abuvi.API.Features.Users.User", "ProposedBy")
+                        .WithMany()
+                        .HasForeignKey("ProposedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Abuvi.API.Features.Camps.CampEdition", "ProposedCampEdition")
+                        .WithMany()
+                        .HasForeignKey("ProposedCampEditionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("MediaItem");
+
+                    b.Navigation("ProposedBy");
+
+                    b.Navigation("ProposedCampEdition");
+                });
+
             modelBuilder.Entity("Abuvi.API.Features.MediaItems.MediaItem", b =>
                 {
                     b.HasOne("Abuvi.API.Features.Camps.CampEditionAccommodation", "Accommodation")
                         .WithMany("MediaItems")
                         .HasForeignKey("AccommodationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Abuvi.API.Features.Camps.CampEdition", "CampEdition")
+                        .WithMany()
+                        .HasForeignKey("CampEditionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Abuvi.API.Features.MediaSources.MediaSource", "MediaSource")
+                        .WithMany()
+                        .HasForeignKey("MediaSourceId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Abuvi.API.Features.Memories.Memory", "Memory")
@@ -2629,11 +3122,60 @@ namespace Abuvi.API.Migrations
 
                     b.Navigation("Accommodation");
 
+                    b.Navigation("CampEdition");
+
+                    b.Navigation("MediaSource");
+
                     b.Navigation("Memory");
 
                     b.Navigation("UploadedBy");
 
                     b.Navigation("Zone");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.MediaSources.MediaSource", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.Users.User", "ContributorUser")
+                        .WithMany()
+                        .HasForeignKey("ContributorUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Abuvi.API.Features.Users.User", "RegisteredBy")
+                        .WithMany()
+                        .HasForeignKey("RegisteredByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ContributorUser");
+
+                    b.Navigation("RegisteredBy");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.MediaThemes.MediaItemTheme", b =>
+                {
+                    b.HasOne("Abuvi.API.Features.MediaItems.MediaItem", "MediaItem")
+                        .WithMany("Themes")
+                        .HasForeignKey("MediaItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Abuvi.API.Features.MediaThemes.MediaTheme", "MediaTheme")
+                        .WithMany("Items")
+                        .HasForeignKey("MediaThemeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Abuvi.API.Features.Users.User", "TaggedBy")
+                        .WithMany()
+                        .HasForeignKey("TaggedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MediaItem");
+
+                    b.Navigation("MediaTheme");
+
+                    b.Navigation("TaggedBy");
                 });
 
             modelBuilder.Entity("Abuvi.API.Features.Memberships.Membership", b =>
@@ -2666,7 +3208,14 @@ namespace Abuvi.API.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Abuvi.API.Features.Camps.CampEdition", "CampEdition")
+                        .WithMany()
+                        .HasForeignKey("CampEditionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Author");
+
+                    b.Navigation("CampEdition");
                 });
 
             modelBuilder.Entity("Abuvi.API.Features.Registrations.Payment", b =>
@@ -2879,6 +3428,16 @@ namespace Abuvi.API.Migrations
                     b.Navigation("FeatureAssignments");
 
                     b.Navigation("MediaItems");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.MediaItems.MediaItem", b =>
+                {
+                    b.Navigation("Themes");
+                });
+
+            modelBuilder.Entity("Abuvi.API.Features.MediaThemes.MediaTheme", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("Abuvi.API.Features.Memberships.Membership", b =>

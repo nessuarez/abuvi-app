@@ -4,7 +4,11 @@ using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.Guests;
 using Abuvi.API.Features.Memberships;
 using Abuvi.API.Features.Memories;
+using Abuvi.API.Features.MediaComments;
+using Abuvi.API.Features.MediaDating;
 using Abuvi.API.Features.MediaItems;
+using Abuvi.API.Features.MediaSources;
+using Abuvi.API.Features.MediaThemes;
 using Abuvi.API.Features.Registrations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -46,6 +50,15 @@ public class AbuviDbContext(DbContextOptions<AbuviDbContext> options) : DbContex
     public DbSet<AccommodationFeatureAssignment> AccommodationFeatureAssignments => Set<AccommodationFeatureAssignment>();
     public DbSet<ZoneFeatureAssignment> ZoneFeatureAssignments => Set<ZoneFeatureAssignment>();
     public DbSet<AccommodationTypeMedia> AccommodationTypeMedia => Set<AccommodationTypeMedia>();
+
+    // Camp edition albums, themes, provenance and collective memory
+    public DbSet<MediaSource> MediaSources => Set<MediaSource>();
+    public DbSet<MediaTheme> MediaThemes => Set<MediaTheme>();
+    public DbSet<MediaItemTheme> MediaItemThemes => Set<MediaItemTheme>();
+    public DbSet<MediaComment> MediaComments => Set<MediaComment>();
+    public DbSet<MediaCommentReport> MediaCommentReports => Set<MediaCommentReport>();
+    public DbSet<MediaItemYearProposal> MediaItemYearProposals => Set<MediaItemYearProposal>();
+    public DbSet<CampEditionAttendance> CampEditionAttendances => Set<CampEditionAttendance>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

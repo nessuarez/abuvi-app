@@ -1234,6 +1234,66 @@ Returns the best available camp edition for the current user. Uses status-priori
 
 ---
 
+### GET /api/camps/history
+
+Returns every completed camp edition, ordered by year, for the 50th anniversary history map.
+Not paginated: the whole history is a single small payload (50 rows for 1976-2025), which is what
+allows the client to group it by venue without a second request.
+
+**Authorization**: Admin, Board, or Member
+
+**No query parameters.**
+
+Each row carries two counters computed in the service: `editionNumber` is how many times the
+association had camped at that venue up to and including that year, and `totalEditionsAtVenue` is
+the venue's full tally. `photoCount` counts approved and published photos anchored to that year via
+`MediaItem.Year` with `Context = "anniversary-50"`; a value of `0` means nothing survives from that
+year, which is meaningful data and not an error. `previewPhotos` carries at most three items so a
+map popup needs no extra call, and `thumbnailUrl` falls back to the full image when no thumbnail was
+generated, so it is never empty.
+
+No gallery URL is returned on purpose: the client builds it from `year`, keeping the API free of
+client routing.
+
+> **Note**: `photoCount` counts `MediaItemType.Photo` only. A year holding only audio reads as `0`.
+> That is correct today and will need a separate audio counter once camp audio capture is live.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "year": 2015,
+      "campId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "campName": "Espinosa de los Monteros",
+      "location": "Burgos",
+      "latitude": 43.077348,
+      "longitude": -3.552172,
+      "editionNumber": 4,
+      "totalEditionsAtVenue": 4,
+      "photoCount": 37,
+      "previewPhotos": [
+        {
+          "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+          "thumbnailUrl": "https://blob.example.com/thumbs/arrival.webp",
+          "title": "Llegada al campamento"
+        }
+      ]
+    }
+  ],
+  "error": null
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User role is not Member or above
+
+---
+
 ### GET /api/camps
 
 Returns all camp locations (lightweight, no photos).

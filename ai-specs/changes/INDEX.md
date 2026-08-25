@@ -22,6 +22,16 @@ Add structured concept descriptions to payments showing what each installment co
 
 ---
 
+### feat-anniversary-history-map
+
+**[feat]** · [folder](./feat-anniversary-history-map) · **In progress**
+
+Load the 50 years of ABUVI camps (31 venues, 50 editions 1976–2025) with verified geocoding, add a member-level history endpoint, and build the linked map + timeline view on the 50th anniversary page. Includes an admin workbench to refine camp coordinates from the web.
+
+- Backend: [ ] | Frontend: [ ]
+
+---
+
 ### feat-admin-edit-profiles
 
 **[feat]** · [folder](./feat-admin-edit-profiles) · **Planned**
@@ -109,6 +119,16 @@ Backend tooling for database setup and seeding — no enriched spec available ye
 Allow hard deletion of camp registrations within 24 hours of creation (representative) or anytime (admin) to enable correcting mistakes, with time-window and payment guards to prevent unintended deletions.
 
 - Backend: [x] | Frontend: [x]
+
+---
+
+### feat-family-iban-direct-debit
+
+**[feat]** · [folder](./feat-family-iban-direct-debit) · **Spec only**
+
+Store a per-family IBAN (encrypted at rest) for direct debits, notify the board by email on every change, and warn families that an outdated IBAN makes them liable for the returned-receipt surcharge.
+
+- Backend: [ ] | Frontend: [ ]
 
 ---
 

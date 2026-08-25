@@ -1,3 +1,4 @@
+using Abuvi.API.Features.Camps;
 using Abuvi.API.Features.MediaItems;
 using Abuvi.API.Features.Users;
 
@@ -13,12 +14,20 @@ public class Memory
     public Guid? CampLocationId { get; set; } // TODO: Add FK relationship when CampLocation entity is created
     public bool IsPublished { get; set; }
     public bool IsApproved { get; set; }
+
+    /// <summary>
+    /// The camp edition this story belongs to. Same semantics as MediaItem.CampEditionId:
+    /// null means the edition is unknown, never that it is unrelated to a camp.
+    /// </summary>
+    public Guid? CampEditionId { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
     // Navigation
     public User Author { get; set; } = null!;
     public List<MediaItem> MediaItems { get; set; } = [];
+    public CampEdition? CampEdition { get; set; }
     // TODO: Add CampLocation navigation when CampLocation entity is created
 }
 
@@ -27,7 +36,8 @@ public record CreateMemoryRequest(
     string Title,
     string Content,
     int? Year,
-    Guid? CampLocationId);
+    Guid? CampLocationId,
+    Guid? CampEditionId = null);
 
 // Response DTOs
 public record MemoryResponse(
@@ -38,6 +48,7 @@ public record MemoryResponse(
     string Content,
     int? Year,
     Guid? CampLocationId,
+    Guid? CampEditionId,
     bool IsPublished,
     bool IsApproved,
     DateTime CreatedAt,
@@ -56,6 +67,7 @@ public static class MemoryMappingExtensions
             memory.Content,
             memory.Year,
             memory.CampLocationId,
+            memory.CampEditionId,
             memory.IsPublished,
             memory.IsApproved,
             memory.CreatedAt,
