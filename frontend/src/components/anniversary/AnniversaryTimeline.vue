@@ -1,56 +1,22 @@
 <script setup lang="ts">
 import Timeline from 'primevue/timeline'
 
-interface Milestone {
+/** A hand-picked moment in the association's history. Verified text only — see AnniversaryPage. */
+interface AnniversaryMilestone {
   year: number
   title: string
   description: string
 }
 
-const milestones: Milestone[] = [
-  {
-    year: 1976,
-    title: 'Primer campamento en Miraflores de la Sierra',
-    description:
-      'ABUVI celebra su primer campamento en las sierras de Madrid, dando inicio a una tradición familiar única.',
-  },
-  {
-    year: 1982,
-    title: 'Primera edición con más de 50 familias',
-    description:
-      'La comunidad crece y el campamento supera por primera vez las 50 familias participantes.',
-  },
-  {
-    year: 1990,
-    title: 'Fundación de la Junta Directiva formal',
-    description:
-      'Se constituye oficialmente la Junta Directiva de ABUVI, consolidando su estructura organizativa.',
-  },
-  {
-    year: 2000,
-    title: '25º Aniversario: campamento de verano histórico',
-    description:
-      'Un verano histórico para celebrar el cuarto de siglo de ABUVI con actividades y ediciones especiales.',
-  },
-  {
-    year: 2010,
-    title: 'Primer campamento de invierno',
-    description:
-      'ABUVI amplía su calendario con el primer campamento invernal, descubriendo aventuras en la nieve.',
-  },
-  {
-    year: 2020,
-    title: 'Pandemia: campamento virtual',
-    description:
-      'La comunidad demuestra su resiliencia y creatividad celebrando el campamento en formato digital.',
-  },
-  {
-    year: 2026,
-    title: '50º Aniversario: celebración especial',
-    description:
-      '¡Medio siglo de aventuras, amistad y naturaleza! Hoy celebramos este hito histórico contigo.',
-  },
-]
+interface Props {
+  milestones: AnniversaryMilestone[]
+  selectedYear?: number | null
+}
+
+defineProps<Props>()
+const emit = defineEmits<{
+  selectYear: [year: number]
+}>()
 </script>
 
 <template>
@@ -65,12 +31,17 @@ const milestones: Milestone[] = [
     <!-- Mobile: vertical timeline -->
     <div class="md:hidden">
       <Timeline :value="milestones" layout="vertical" align="alternate">
-        <template #marker>
-          <div
+        <template #marker="{ item }">
+          <button
+            type="button"
             class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500 shadow-md"
+            :class="item.year === selectedYear ? 'ring-2 ring-amber-700 ring-offset-2' : ''"
+            :aria-label="`Ir a ${item.year}`"
+            :aria-current="item.year === selectedYear ? 'true' : undefined"
+            @click="emit('selectYear', item.year)"
           >
             <i class="pi pi-star-fill text-white text-sm" />
-          </div>
+          </button>
         </template>
         <template #content="{ item }">
           <article class="mb-6 rounded-xl bg-white p-4 shadow-sm">
@@ -86,12 +57,17 @@ const milestones: Milestone[] = [
     <div class="hidden overflow-x-auto md:block">
       <div class="min-w-[900px] pb-4">
         <Timeline :value="milestones" layout="horizontal" align="top">
-          <template #marker>
-            <div
+          <template #marker="{ item }">
+            <button
+              type="button"
               class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500 shadow-md"
+              :class="item.year === selectedYear ? 'ring-2 ring-amber-700 ring-offset-2' : ''"
+              :aria-label="`Ir a ${item.year}`"
+              :aria-current="item.year === selectedYear ? 'true' : undefined"
+              @click="emit('selectYear', item.year)"
             >
               <i class="pi pi-star-fill text-white text-sm" />
-            </div>
+            </button>
           </template>
           <template #content="{ item }">
             <article class="w-32 rounded-xl bg-white p-3 shadow-sm text-center">
