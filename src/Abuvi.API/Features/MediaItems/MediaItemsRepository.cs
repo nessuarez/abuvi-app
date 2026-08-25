@@ -10,6 +10,15 @@ public interface IMediaItemsRepository
     Task<IReadOnlyList<MediaItem>> GetByMemoryIdAsync(Guid memoryId, CancellationToken ct);
     Task<IReadOnlyList<MediaItem>> GetByAccommodationIdAsync(Guid accommodationId, CancellationToken ct);
     Task<IReadOnlyList<MediaItem>> GetByZoneIdAsync(Guid zoneId, CancellationToken ct);
+    /// <summary>
+    /// Rolls up published photos of a context by year: one count per year plus up to
+    /// <paramref name="previewsPerYear"/> items to show. Fixed cost regardless of how
+    /// many years are involved — callers must never query year by year.
+    /// </summary>
+    Task<IReadOnlyList<MediaItemYearSummary>> GetYearSummariesAsync(
+        string context,
+        int previewsPerYear,
+        CancellationToken ct);
     Task<int> CountByAccommodationAsync(Guid accommodationId, CancellationToken ct);
     Task<int> CountByZoneAsync(Guid zoneId, CancellationToken ct);
     Task ClearPrimaryForAccommodationAsync(Guid accommodationId, CancellationToken ct);
@@ -100,6 +109,70 @@ public class MediaItemsRepository(AbuviDbContext db) : IMediaItemsRepository
             .ThenBy(m => m.IsPrimary ? 0 : 1)
             .ThenByDescending(m => m.CreatedAt)
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<MediaItemYearSummary>> GetYearSummariesAsync(
+        string context,
+        int previewsPerYear,
+        CancellationToken ct)
+    {
+        var published = db.MediaItems
+            .AsNoTracking()
+            .Where(m => m.Context == context
+                     && m.Type == MediaItemType.Photo
+                     && m.IsApproved
+                     && m.IsPublished
+                     && m.Year != null);
+
+        // One aggregate for the counts...
+        var counts = await published
+            .GroupBy(m => m.Year!.Value)
+            .Select(g => new { Year = g.Key, PhotoCount = g.Count() })
+            .ToListAsync(ct);
+
+        // ...and one lateral join for the previews, capped per year. Two queries in
+        // total, whether the archive spans one year or fifty.
+        var previews = await published
+            .Select(m => m.Year!.Value)
+            .Distinct()
+            .SelectMany(year => published
+                .Where(m => m.Year == year)
+                .OrderByDescending(m => m.IsPrimary)
+                .ThenBy(m => m.DisplayOrder)
+                .ThenByDescending(m => m.CreatedAt)
+                .Take(previewsPerYear))
+            .Select(m => new
+            {
+                Year = m.Year!.Value,
+                m.Id,
+                m.ThumbnailUrl,
+                m.FileUrl,
+                m.Title,
+                m.IsPrimary,
+                m.DisplayOrder,
+                m.CreatedAt
+            })
+            .ToListAsync(ct);
+
+        // The lateral join caps the rows but says nothing about the order they come
+        // back in, so re-apply it here.
+        var previewsByYear = previews
+            .GroupBy(p => p.Year)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<MediaItemPreview>)g
+                    .OrderByDescending(p => p.IsPrimary)
+                    .ThenBy(p => p.DisplayOrder)
+                    .ThenByDescending(p => p.CreatedAt)
+                    .Select(p => new MediaItemPreview(p.Id, p.ThumbnailUrl, p.FileUrl, p.Title))
+                    .ToList());
+
+        return counts
+            .Select(c => new MediaItemYearSummary(
+                c.Year,
+                c.PhotoCount,
+                previewsByYear.TryGetValue(c.Year, out var p) ? p : []))
+            .ToList();
     }
 
     public async Task<int> CountByAccommodationAsync(Guid accommodationId, CancellationToken ct)
