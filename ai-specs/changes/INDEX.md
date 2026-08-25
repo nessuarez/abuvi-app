@@ -26,9 +26,11 @@ Add structured concept descriptions to payments showing what each installment co
 
 **[feat]** · [folder](./feat-anniversary-history-map) · **In progress**
 
-Load the 50 years of ABUVI camps (31 venues, 50 editions 1976–2025) with verified geocoding, add a member-level history endpoint, and build the linked map + timeline view on the 50th anniversary page. Includes an admin workbench to refine camp coordinates from the web.
+Load the 50 years of ABUVI camps (31 venues, 50 editions 1976–2025) with verified geocoding, add a member-level history endpoint, and build the linked map + venue list view on the 50th anniversary page. Includes an admin workbench to refine camp coordinates from the web.
 
-- Backend: [ ] | Frontend: [ ]
+Phases 0–3 are merged into `dev` (data import, geocoding, coordinate workbench, `GET /api/camps/history`, and the journey view). The MVP phase — enabling the upload form — is the priority still pending; phases 3.5–3.7 are deferred.
+
+- Backend: [ ] | Frontend: [x]
 
 ---
 
