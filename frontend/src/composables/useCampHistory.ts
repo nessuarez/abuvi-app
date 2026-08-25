@@ -1,7 +1,12 @@
 import { computed, ref } from 'vue'
 import { api } from '@/utils/api'
+import { useCampEditions } from '@/composables/useCampEditions'
 import type { ApiResponse } from '@/types/api'
-import type { CampHistoryEntry, CampHistoryVenue } from '@/types/camp-history'
+import type {
+  CampEditionOption,
+  CampHistoryEntry,
+  CampHistoryVenue
+} from '@/types/camp-history'
 
 type ApiErrorShape = { response?: { data?: { error?: { message?: string } }; status?: number } }
 
@@ -19,6 +24,10 @@ export function useCampHistory() {
   const entries = ref<CampHistoryEntry[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+
+  // Its own instance, so a failure fetching the current edition cannot leak into the
+  // history's own error state. See fetchEditionOptions.
+  const { currentCampEdition, fetchCurrentCampEdition } = useCampEditions()
 
   const fetchHistory = async (): Promise<void> => {
     loading.value = true
@@ -90,6 +99,48 @@ export function useCampHistory() {
     return entry ? venuesByCampId.value.get(entry.campId) : undefined
   }
 
+  /**
+   * Editions somebody can anchor a contribution to: the whole history, plus the camp that
+   * is running now — which the history endpoint deliberately excludes, since it only
+   * returns completed editions.
+   */
+  const editionOptions = computed<CampEditionOption[]>(() => {
+    // Most recent first: whoever is standing at a camp wants this year, not 1976.
+    const options: CampEditionOption[] = [...entries.value]
+      .sort((a, b) => b.year - a.year)
+      .map((entry) => ({
+        year: entry.year,
+        label: `${entry.year} — ${entry.campName}`,
+        campName: entry.campName,
+        isCurrent: false
+      }))
+
+    const current = currentCampEdition.value
+    if (current && !options.some((option) => option.year === current.year)) {
+      options.unshift({
+        year: current.year,
+        label: `${current.year} — ${current.campName} (este campamento)`,
+        campName: current.campName,
+        isCurrent: true
+      })
+    }
+
+    return options
+  })
+
+  /**
+   * Loads both sources. The current edition is optional: there may be no open camp, and
+   * today there is none, so its absence must never empty the list or raise an error.
+   */
+  const fetchEditionOptions = async (): Promise<void> => {
+    await Promise.all([
+      fetchHistory(),
+      fetchCurrentCampEdition().catch(() => {
+        /* no current camp is a normal state, not a failure */
+      })
+    ])
+  }
+
   return {
     entries,
     venues,
@@ -98,6 +149,8 @@ export function useCampHistory() {
     error,
     fetchHistory,
     entryByYear,
-    venueByYear
+    venueByYear,
+    editionOptions,
+    fetchEditionOptions
   }
 }

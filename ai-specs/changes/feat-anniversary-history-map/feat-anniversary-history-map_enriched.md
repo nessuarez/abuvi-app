@@ -158,7 +158,7 @@ Sin fotos, el mapa es una lista de sitios. Con ellas, es un archivo. Por eso el 
 
 ---
 
-### Fase MVP — Aportar en el campamento ⭐ PRIORIDAD
+### Fase MVP — Aportar en el campamento ✅ HECHO
 
 Lo indispensable a corto plazo. Deliberadamente pequeño.
 
@@ -173,6 +173,26 @@ Lo indispensable a corto plazo. Deliberadamente pequeño.
 | Deep link para el QR: `/anniversary?tipo=audio&anio=2026#subir-recuerdo` | Pequeño |
 | Casilla obligatoria de derechos de imagen antes de enviar | Pequeño |
 | Aportar **en nombre de otra persona**: el formulario ya tiene campo de nombre; dejar claro que puede ser el de quien recuerda, no el de quien sube | Textual |
+
+**Ficheros:** `components/anniversary/AnniversaryUploadForm.vue`, `composables/useCampHistory.ts`,
+`types/camp-history.ts`.
+
+- [x] Formulario activo: `comingSoon` y su aviso eliminados.
+- [x] Selector de edición alimentado por `useCampHistory`, ordenado del más reciente al más antiguo.
+- [x] Año obligatorio: se retiraron los dos `?? 2026` que archivaban el recuerdo en un año inventado.
+- [x] Deep link `?tipo=&anio=` con desplazamiento al formulario; lo irreconocible se ignora sin romper.
+- [x] Casilla obligatoria de derechos de imagen, que se limpia tras cada envío.
+- [x] Aviso de revisión previa y de cómo pedir la retirada.
+- [x] Texto de ayuda: el nombre es el de quien recuerda, no el de quien sube.
+- [x] 24 tests del formulario y 18 del composable.
+
+#### La edición en curso no la sirve el histórico
+
+`GET /api/camps/history` devuelve sólo ediciones `Completed`, así que el selector no puede ofrecer el campamento en curso. Se resuelve sumando `GET /api/camps/current` a las opciones, **sin tocar el endpoint del histórico**: ampliarlo cambiaría el significado de `photoCount` —un año futuro no tiene nada que conservar, que no es lo mismo que un año perdido— y pondría el campamento de 2026 en el mapa del aniversario como si fuera historia.
+
+Y como `/camps/current` tampoco contempla `Draft`, el selector acepta además un año que no conozca ninguna de las dos fuentes: si el QR dice `?anio=2026` y ningún endpoint sabe de 2026, se ofrece igualmente como opción suelta. Sin eso, el cartel impreso apuntaría a un año que el formulario no sabe ofrecer.
+
+> **La casilla de derechos no se guarda en ninguna parte.** Es una barrera en el navegador y nada más. Si la asociación necesita algún día demostrar que alguien declaró tener derechos sobre una imagen, hace falta un campo en backend: no lo hay.
 
 #### Acceso: sin desarrollo nuevo
 
@@ -559,12 +579,12 @@ El diseño que se siguió:
 
 ### Del MVP (corto plazo)
 
-- [ ] Alguien presente en el campamento puede subir una foto y un audio desde el móvil.
-- [ ] No se puede enviar sin marcar la declaración de derechos de imagen.
-- [ ] El contenido queda **sin publicar**, en la cola de aprobación.
-- [ ] La aportación se ancla a una edición concreta elegida de una lista, no tecleando un año.
-- [ ] El deep link del QR abre el formulario ya preparado para audio.
-- [ ] Recorrido completo probado en un móvil real.
+- [x] Alguien presente en el campamento puede subir una foto y un audio desde el móvil.
+- [x] No se puede enviar sin marcar la declaración de derechos de imagen.
+- [x] El contenido queda **sin publicar**, en la cola de aprobación. `MediaItemsService` ya lo hacía; no hizo falta backend.
+- [x] La aportación se ancla a una edición concreta elegida de una lista, no tecleando un año.
+- [x] El deep link del QR abre el formulario ya preparado para audio.
+- [ ] Recorrido completo probado en un **móvil real**. Verificado en Chrome emulando 430×932, que no es lo mismo: falta probarlo con un teléfono y cobertura de campamento.
 
 ### Del resto de la feature
 
