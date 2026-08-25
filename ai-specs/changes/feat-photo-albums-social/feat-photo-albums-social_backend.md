@@ -451,19 +451,18 @@ Add the matching `using` statements. Configurations are picked up by `ApplyConfi
 
 **Implementation Steps**:
 
-1. **Backfill `media_items.camp_edition_id`** from `year` — exactly one edition exists per historical year:
+1. **Backfill `media_items.camp_edition_id`** from `year` — exactly one edition exists per historical year.
+   **Do not reach for `MIN(id)`: PostgreSQL has no `min()` aggregate for `uuid`.** The correlated
+   `COUNT(*) = 1` says "only when that year is unambiguous" and needs no aggregate:
 
 ```csharp
 migrationBuilder.Sql(@"
     UPDATE media_items m
     SET camp_edition_id = e.id, year_source = 'Uploader'
-    FROM (
-        SELECT year, MIN(id) AS id
-        FROM camp_editions
-        GROUP BY year
-        HAVING COUNT(*) = 1
-    ) e
-    WHERE m.year = e.year AND m.camp_edition_id IS NULL;
+    FROM camp_editions e
+    WHERE m.year = e.year
+      AND m.camp_edition_id IS NULL
+      AND (SELECT COUNT(*) FROM camp_editions e2 WHERE e2.year = e.year) = 1;
 ");
 ```
 

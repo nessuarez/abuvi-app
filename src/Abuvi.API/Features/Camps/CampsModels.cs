@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.MediaItems;
+using Abuvi.API.Features.Users;
 
 namespace Abuvi.API.Features.Camps;
 
@@ -1195,3 +1197,36 @@ public record AssignmentReportGroupResponse(
     int UsedCapacity,
     IReadOnlyList<AssignmentReportFamilyRow> Families
 );
+
+// ──────────────────────────────────────────────────────
+// Camp edition attendance — "yo estuve en este campamento"
+// ──────────────────────────────────────────────────────
+
+/// <summary>
+/// A member declaring they attended a camp edition, optionally on behalf of a family member.
+///
+/// Attendance is ALSO derived from Registration for recent editions. Derived attendance is
+/// never persisted here — the read model unions both sources and tags each row Declared or
+/// Registration, so a derived row cannot be deleted through the API.
+///
+/// Beyond the personal timeline ("has estado en 14 campamentos"), this is what lets the
+/// archive suggest who to ask about an undated photo.
+/// </summary>
+public class CampEditionAttendance
+{
+    public Guid Id { get; set; }
+    public Guid CampEditionId { get; set; }
+
+    /// <summary>The declaring account.</summary>
+    public Guid UserId { get; set; }
+
+    /// <summary>Null means the declarer themselves. Must belong to the declarer's family unit.</summary>
+    public Guid? FamilyMemberId { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+
+    // Navigation
+    public CampEdition CampEdition { get; set; } = null!;
+    public User User { get; set; } = null!;
+    public FamilyMember? FamilyMember { get; set; }
+}

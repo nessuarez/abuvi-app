@@ -171,16 +171,15 @@ Store the **full** path, but expose only the **last three segments** to regular 
 
 **Backfill in the migration:** for every existing `media_items` row with a non-null `year`, set `camp_edition_id` to the single `camp_editions` row with that year (there is exactly one edition per year historically), and set `year_source = 'Uploader'`. Rows whose year matches zero or multiple editions are left `NULL` / `Unknown`.
 
+> **PostgreSQL note:** do not reach for `MIN(id)` to pick the edition — there is no `min()` aggregate for `uuid`. The correlated `COUNT(*) = 1` expresses "only when that year is unambiguous" directly and needs no aggregate at all.
+
 ```sql
 UPDATE media_items m
 SET camp_edition_id = e.id, year_source = 'Uploader'
-FROM (
-    SELECT year, MIN(id) AS id
-    FROM camp_editions
-    GROUP BY year
-    HAVING COUNT(*) = 1
-) e
-WHERE m.year = e.year AND m.camp_edition_id IS NULL;
+FROM camp_editions e
+WHERE m.year = e.year
+  AND m.camp_edition_id IS NULL
+  AND (SELECT COUNT(*) FROM camp_editions e2 WHERE e2.year = e.year) = 1;
 
 CREATE INDEX ix_media_items_unplaced
 ON media_items (created_at DESC)
