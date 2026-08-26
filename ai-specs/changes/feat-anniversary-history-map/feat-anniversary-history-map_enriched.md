@@ -469,16 +469,33 @@ dotnet run --project src/Abuvi.Setup -- import camp-editions --dir=<seed> --conn
 
 El flag es `--connection=<cadena>` **con signo igual**; con espacio se ignora en silencio y cae al usuario `postgres` por defecto.
 
-### Producción — migración EF
+### Producción — migración EF ✅ HECHO
 
-`SafetyGuard.EnsureImportAllowedAsync` prohíbe importar en producción si `camps` tiene datos, y la tendrá. Por tanto la vía correcta es una **migración EF idempotente** que se aplica sola en el despliegue:
+**`20260826082352_SeedHistoricalCamps`.** `SafetyGuard.EnsureImportAllowedAsync` prohíbe importar en producción si `camps` tiene datos, y la tendrá. Por tanto la vía es una **migración EF idempotente**, que se aplica sola al desplegar porque `Program.cs` llama a `MigrateAsync` al arrancar.
+
+Comprobada contra PostgreSQL real, sobre una base creada desde cero:
+
+| Comprobación | Resultado |
+| --- | --- |
+| Aplicación sobre base limpia | 31 sedes, 50 ediciones, 1976–2025, 50 años distintos, 0 huérfanas |
+| Reaplicación (borrando su fila del historial) | sigue en 31/50: no duplica |
+| Sede que ya existía con **otro id** | 31 sedes en total, una sola fila con ese nombre, y sus 3 ediciones colgando de la sede preexistente |
+| `Down` | borra 50 ediciones y 30 sedes, y **deja intacta** la que ya estaba |
+
+Las ediciones **resuelven su sede por nombre**, no por el `campId` del CSV. Eso es lo que hace que, cuando la sede ya existe como candidata de prospección, la edición se enganche a esa fila en vez de crear un duplicado — el mismo problema que motivó la reconciliación de nombres de la Fase 0.4.
+
+> **Encontrado al probarlo, y es previo a este trabajo.** Sobre una base de datos **realmente vacía**, la cadena de migraciones **falla antes de llegar aquí**: `20260216005928_AddLogIndexes` crea índices sobre la tabla `logs`, que no la crea ninguna migración — la crea el sink de Serilog en tiempo de ejecución. En los entornos ya desplegados no se nota porque la tabla existe desde hace meses, pero un despliegue desde cero se rompe. Para poder probar hubo que crear `logs` a mano.
+
+El diseño que se siguió:
 
 - `INSERT` de las 31 sedes y las 50 ediciones con **UUID deterministas** (los `id`/`campId` que ya traen los CSV), no con `Guid.NewGuid()`.
 - `ON CONFLICT ("Id") DO NOTHING` para que reaplicarla no duplique.
 - Método `Down` que borre ambos conjuntos por sus identificadores.
 - Patrón `migrationBuilder.Sql`, como `SeedInitialAdminUser_v2`. **No usar `HasData`**: obliga a arrastrar los UUID en todos los snapshots futuros.
 
-**Consecuencia a tener en cuenta:** el importador de desarrollo **descarta la columna `id`** y genera UUID aleatorios, así que hoy los identificadores de local y los de la migración no coincidirían. Para que ambos entornos sean equivalentes, la migración debe ser la fuente de verdad y conviene recargar local desde ella.
+**Consecuencia a tener en cuenta:** el importador de desarrollo **descarta la columna `id`** y genera UUID aleatorios, así que los identificadores de una base local sembrada a mano **no coinciden** con los de la migración. La migración es la fuente de verdad; conviene recargar local desde ella si los dos entornos tienen que coincidir.
+
+**El campamento de 2026 no entra en esta migración.** El Clar del Bosc sigue sin geocodificar y su edición está en `Draft`. Cuando esté resuelto, va en su propia migración.
 
 ---
 
