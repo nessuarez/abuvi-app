@@ -2037,6 +2037,10 @@ async function login(credentials: LoginRequest): Promise<{ success: boolean; err
 
 ## Development Workflow
 
+### Environments and Deployment
+
+Deployment is automatic and branch-driven, hosted on **Coolify**: `dev` deploys to the test/demo environment, `main` deploys to production. Each environment builds and serves its own frontend against its own API — there is no shared state between local, demo and production. See [backend-standards.mdc](./backend-standards.mdc) § Environments and Deployment for how the API side resolves its database and blob storage per environment.
+
 ### Git Workflow
 
 - **Feature Branches**: Develop features in separate branches with the `-frontend` suffix (e.g., `feature/camp-registration-frontend`)
