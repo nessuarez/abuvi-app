@@ -134,6 +134,16 @@ Store a per-family IBAN (encrypted at rest) for direct debits, notify the board 
 
 ---
 
+### feat-surveys
+
+**[feat]** · [folder](./feat-surveys) · **Spec only**
+
+Resolve who gets surveyed — adults who attended a camp edition, or adult active members — and reach them with a link to an external form (Google Forms). Audience preview, CSV export, email send with rate-limited reminder. The platform stores no responses, which makes anonymity structural.
+
+- Backend: [ ] | Frontend: [ ]
+
+---
+
 ### feat-media-50-aniversary
 
 **[feat]** · [folder](./feat-media-50-aniversary) · **Planned**
