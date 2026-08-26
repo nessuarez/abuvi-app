@@ -19,6 +19,17 @@ public interface ICampEditionsRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets every edition held in a given year, regardless of status.
+    ///
+    /// Historically there is exactly one edition per year, which is what lets a known year
+    /// resolve to an edition. Callers must check the count rather than assume it: a year
+    /// with zero or several editions is ambiguous and must be left unresolved.
+    /// </summary>
+    Task<IReadOnlyList<CampEdition>> GetByYearAsync(
+        int year,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Creates a new camp edition
     /// </summary>
     Task<CampEdition> CreateAsync(CampEdition edition, CancellationToken cancellationToken = default);

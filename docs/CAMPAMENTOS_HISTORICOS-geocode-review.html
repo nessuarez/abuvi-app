@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revisión de geolocalización — campamentos ABUVI</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 14px 20px; background: #78350f; color: #fef3c7; }
+  h1 { margin: 0 0 6px; font-size: 18px; }
+  .counts { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; }
+  .counts b { font-weight: 600; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+  .ok { background: #16a34a; } .review { background: #f59e0b; }
+  .failed { background: #dc2626; } .pending { background: #9ca3af; }
+  main { display: flex; height: calc(100vh - 76px); }
+  #map { flex: 1 1 60%; }
+  #list { flex: 1 1 40%; overflow-y: auto; border-left: 1px solid #d6d3d1; }
+  .row { padding: 10px 14px; border-bottom: 1px solid #e7e5e4; cursor: pointer; }
+  .row:hover { background: #fef3c7; }
+  .row h2 { margin: 0 0 3px; font-size: 15px; font-weight: 600; }
+  .meta { font-size: 13px; color: #57534e; }
+  .notes { font-size: 13px; color: #b45309; margin-top: 4px; }
+  .mismatch { color: #dc2626; font-weight: 600; }
+  @media (max-width: 800px) { main { flex-direction: column; height: auto; }
+    #map { height: 55vh; } #list { border-left: 0; border-top: 1px solid #d6d3d1; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Revisión de geolocalización — campamentos ABUVI</h1>
+  <div class="counts">
+    <span><span class="dot ok"></span><b>31</b> correctos</span>
+    <span><span class="dot review"></span><b>0</b> a revisar</span>
+    <span><span class="dot failed"></span><b>0</b> sin resolver</span>
+    <span><span class="dot pending"></span><b>0</b> ya fijados</span>
+    <span>Total: <b>31</b></span>
+  </div>
+</header>
+<main>
+  <div id="map"></div>
+  <div id="list"></div>
+</main>
+<script>
+const DATA = [{"name":"Arcas del Villar","expectedProvince":"Cuenca","googleProvince":"Cuenca","address":"16123 Arcas, Cuenca, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":39.9886745,"lng":-2.1140398},{"name":"Bo\u00F1ar","expectedProvince":"Le\u00F3n","googleProvince":"Le\u00F3n","address":"Bo\u00F1ar, Le\u00F3n, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":42.8661879,"lng":-5.3235259},{"name":"Caba\u00F1eros","expectedProvince":"Ciudad Real","googleProvince":"Ciudad Real","address":"Av. Parque de Caba\u00F1eros, 13005 Ciudad Real, Cdad. Real, Espa\u00F1a","types":"route","status":"ok","notes":"","lat":38.9760631,"lng":-3.9141793},{"name":"Casillas de Ranera","expectedProvince":"Cuenca","googleProvince":"Cuenca","address":"16321 Casillas de Ranera, Cuenca, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":39.7795614,"lng":-1.2716524},{"name":"Cervera de Pisuerga","expectedProvince":"Palencia","googleProvince":"Palencia","address":"34840 Cervera de Pisuerga, Palencia, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":42.8668915,"lng":-4.4992928},{"name":"Condado de Castilnovo","expectedProvince":"Segovia","googleProvince":"Segovia","address":"Condado de Castilnovo, 40318, Segovia, Espa\u00F1a","types":"administrative_area_level_4 political","status":"ok","notes":"","lat":41.2451106,"lng":-3.7485874},{"name":"Condemios de Arriba","expectedProvince":"Guadalajara","googleProvince":"Guadalajara","address":"19275 Condemios de Arriba, Guadalajara, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":41.215671,"lng":-3.1255912},{"name":"Covaleda","expectedProvince":"Soria","googleProvince":"Soria","address":"42157 Covaleda, Soria, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":41.9354883,"lng":-2.8831158},{"name":"El Bosque","expectedProvince":"C\u00E1diz","googleProvince":"C\u00E1diz","address":"11670 El Bosque, C\u00E1diz, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":36.7580042,"lng":-5.5061788},{"name":"Espinosa de los Monteros","expectedProvince":"Burgos","googleProvince":"Burgos","address":"09560 Espinosa de los Monteros, Burgos, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":43.0773479,"lng":-3.5521721},{"name":"Jerte","expectedProvince":"C\u00E1ceres","googleProvince":"C\u00E1ceres","address":"10612 Jerte, C\u00E1ceres, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":40.2224705,"lng":-5.7519844},{"name":"Los Palancares","expectedProvince":"Cuenca","googleProvince":"Cuenca","address":"C. los Palancares, 16003 Cuenca, Espa\u00F1a","types":"route","status":"ok","notes":"","lat":40.0586715,"lng":-2.1353947},{"name":"Matapozuelos","expectedProvince":"Valladolid","googleProvince":"Valladolid","address":"47230 Matapozuelos, Valladolid, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":41.4130125,"lng":-4.7911681},{"name":"Molino de Butrera","expectedProvince":"Burgos","googleProvince":"Burgos","address":"C. Butrera, s/n, 09568 Butrera, Burgos, Espa\u00F1a","types":"establishment point_of_interest","status":"ok","notes":"","lat":42.9990081,"lng":-3.5759606},{"name":"Montes Universales","expectedProvince":"Teruel","googleProvince":"Teruel","address":"Montes Universales, 44115, Teruel, Espa\u00F1a","types":"establishment natural_feature","status":"ok","notes":"","lat":40.375,"lng":-1.739722},{"name":"Montes de Talayuelas","expectedProvince":"Cuenca","googleProvince":"Cuenca","address":"Cam. Tejeda, 16320 Talayuelas, Cuenca, Espa\u00F1a","types":"establishment point_of_interest","status":"ok","notes":"","lat":39.8386504,"lng":-1.2979352},{"name":"Mora de Rubielos","expectedProvince":"Teruel","googleProvince":"Teruel","address":"44400 Mora de Rubielos, Teruel, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":40.2510415,"lng":-0.754289},{"name":"Oto","expectedProvince":"Huesca","googleProvince":"Huesca","address":"22370 Oto, Huesca, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":42.5983622,"lng":-0.128148},{"name":"Palacio de la Teyeria, Mestas de Con","expectedProvince":"Asturias","googleProvince":"Asturias","address":"Carretera de Llano s/n, 33556 Mestas de Con, Asturias, Espa\u00F1a","types":"establishment lodging point_of_interest","status":"ok","notes":"","lat":43.340613,"lng":-5.018647},{"name":"Pola de Gordon","expectedProvince":"Le\u00F3n","googleProvince":"Le\u00F3n","address":"24600 La Pola de Gord\u00F3n, Le\u00F3n, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":42.8543772,"lng":-5.6714331},{"name":"Quintanar de la Sierra","expectedProvince":"Burgos","googleProvince":"Burgos","address":"09670 Quintanar de la Sierra, Burgos, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":41.9849486,"lng":-3.0363399},{"name":"San Juan de Ri\u00F3par","expectedProvince":"Albacete","googleProvince":"Albacete","address":"Carretera, CM-3204, km 5, 02450 Ri\u00F3par, Albacete, Espa\u00F1a","types":"establishment point_of_interest","status":"ok","notes":"","lat":38.4797927,"lng":-2.447208},{"name":"San Mart\u00EDn del Casta\u00F1ar","expectedProvince":"Salamanca","googleProvince":"Salamanca","address":"37659 San Mart\u00EDn del Casta\u00F1ar, Salamanca, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":40.5218032,"lng":-6.0642792},{"name":"San Pedro de las Herrer\u00EDas","expectedProvince":"Zamora","googleProvince":"Zamora","address":"49560 San Pedro de las Herrer\u00EDas, Zamora, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":41.9033059,"lng":-6.3807881},{"name":"Selva de Oza","expectedProvince":"Huesca","googleProvince":"Huesca","address":"Selva de Oza, 22720, Huesca, Espa\u00F1a","types":"establishment natural_feature","status":"ok","notes":"","lat":42.7024393,"lng":-0.7519191},{"name":"Sierra de San Vicente","expectedProvince":"Toledo","googleProvince":"Toledo","address":"Sierra de San Vicente, Toledo, Espa\u00F1a","types":"administrative_area_level_3 political","status":"ok","notes":"","lat":40.0848454,"lng":-4.8520636},{"name":"Sierra de Segura","expectedProvince":"Ja\u00E9n","googleProvince":"Ja\u00E9n","address":"Sierra de Segura, 23290, Ja\u00E9n, Espa\u00F1a","types":"establishment natural_feature","status":"ok","notes":"","lat":37.9766667,"lng":-2.7761111},{"name":"Sierra del Moncayo","expectedProvince":"Zaragoza","googleProvince":"Zaragoza","address":"Moncayo, 50590, Zaragoza, Espa\u00F1a","types":"establishment natural_feature","status":"ok","notes":"","lat":41.7675,"lng":-1.8216667},{"name":"Ulzama","expectedProvince":"Navarra","googleProvince":"Navarra","address":"Ultzama, Navarra, Espa\u00F1a","types":"administrative_area_level_4 political","status":"ok","notes":"","lat":43.0001899,"lng":-1.6727153},{"name":"Valle de Pineta","expectedProvince":"Huesca","googleProvince":"Huesca","address":"Valle de Pineta, 22351, Huesca, Espa\u00F1a","types":"establishment natural_feature","status":"ok","notes":"","lat":42.6753784,"lng":0.0879363},{"name":"Villaman\u00EDn","expectedProvince":"Le\u00F3n","googleProvince":"Le\u00F3n","address":"24680 Villaman\u00EDn, Le\u00F3n, Espa\u00F1a","types":"locality political","status":"ok","notes":"","lat":42.9389054,"lng":-5.6556545}];
+const COLORS = { ok: '#16a34a', review: '#f59e0b', failed: '#dc2626', pending: '#9ca3af' };
+
+const map = L.map('map').setView([40.4, -3.7], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap', maxZoom: 19
+}).addTo(map);
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const markers = [];
+const bounds = [];
+
+DATA.forEach((d, i) => {
+  const provinceMismatch = d.googleProvince &&
+    d.googleProvince.toLowerCase().indexOf(d.expectedProvince.toLowerCase()) === -1;
+
+  const popup = `<strong>${esc(d.name)}</strong><br>
+    Provincia esperada: ${esc(d.expectedProvince)}<br>
+    Google dice: <span class="${provinceMismatch ? 'mismatch' : ''}">${esc(d.googleProvince) || '—'}</span><br>
+    ${esc(d.address)}<br>
+    <small>${esc(d.types)}</small>
+    ${d.notes ? `<br><em>${esc(d.notes)}</em>` : ''}
+    ${d.lat ? `<br><a href="https://www.google.com/maps/search/?api=1&query=${d.lat},${d.lng}"
+      target="_blank" rel="noopener">Ver en Google Maps</a>` : ''}`;
+
+  if (d.lat != null && d.lng != null) {
+    const m = L.circleMarker([d.lat, d.lng], {
+      radius: 8, color: '#fff', weight: 2,
+      fillColor: COLORS[d.status] || COLORS.pending, fillOpacity: 1
+    }).addTo(map).bindPopup(popup);
+    markers[i] = m;
+    bounds.push([d.lat, d.lng]);
+  }
+
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = `<h2><span class="dot ${d.status}"></span>${esc(d.name)}</h2>
+    <div class="meta">${esc(d.expectedProvince)}
+      ${d.googleProvince ? `&rarr; <span class="${provinceMismatch ? 'mismatch' : ''}">${esc(d.googleProvince)}</span>` : ''}
+    </div>
+    <div class="meta">${esc(d.address) || '<em>sin dirección</em>'}</div>
+    ${d.notes ? `<div class="notes">${esc(d.notes)}</div>` : ''}`;
+  row.onclick = () => {
+    if (!markers[i]) return;
+    map.setView(markers[i].getLatLng(), 11);
+    markers[i].openPopup();
+  };
+  document.getElementById('list').appendChild(row);
+});
+
+if (bounds.length) map.fitBounds(bounds, { padding: [40, 40] });
+</script>
+</body>
+</html>

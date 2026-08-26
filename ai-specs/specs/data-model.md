@@ -1040,6 +1040,12 @@ Tracks board (Junta) membership periods. Board members are elected in assembly f
 
 ### PhotoAlbum
 
+> **SUPERSEDED — never implemented, do not build.**
+> There is no entity, no `DbSet` and no table for this. Camp media is anchored on
+> `MediaItem.CampEditionId`; an "album" is a *query* over `MediaItem` filtered by
+> edition, not an entity. Building this would fork the media model in two.
+> The section is kept for historical context only.
+
 A photo album associated with a specific camp edition. Part of the private area accessible to members.
 
 **Fields:**
@@ -1066,6 +1072,12 @@ A photo album associated with a specific camp edition. Part of the private area 
 ---
 
 ### Photo
+
+> **SUPERSEDED — never implemented, do not build.**
+> There is no entity, no `DbSet` and no table for this. Camp media is anchored on
+> `MediaItem.CampEditionId`; an "album" is a *query* over `MediaItem` filtered by
+> edition, not an entity. Building this would fork the media model in two.
+> The section is kept for historical context only.
 
 An individual photo within a camp photo album.
 
@@ -1131,7 +1143,8 @@ A story, anecdote, or memory contributed to the permanent historical archive. Pa
 - `title`: Memory title (required, max 200 characters)
 - `content`: Memory content (required, rich text)
 - `year`: Approximate year of the memory (optional, integer, e.g. 1985)
-- `campLocationId`: Optional link to a historical camp location (optional, FK -> CampLocation)
+- `campLocationId`: Optional link to a historical camp location (optional, FK -> CampLocation). **Dead column — CampLocation was never implemented**
+- `campEditionId`: The camp edition this story belongs to (optional, FK -> CampEdition, SET NULL on delete). Same semantics as `MediaItem.campEditionId`: `NULL` means the edition is unknown, never that the story is unrelated to a camp
 - `isPublished`: Whether the memory is visible to all users (required, default: false)
 - `isApproved`: Whether the memory has been approved by board/admin (required, default: false)
 - `createdAt`: Record creation timestamp (required, auto-generated)
@@ -1171,7 +1184,12 @@ Multimedia content (photos, videos, interviews, documents, audio) for the histor
 - `campLocationId`: Optional link to a camp location (optional, FK -> CampLocation)
 - `accommodationId`: Optional link to a specific accommodation (optional, FK -> CampEditionAccommodation, SET NULL on delete)
 - `zoneId`: Optional link to a specific accommodation zone (optional, FK -> AccommodationZone, SET NULL on delete)
-- `context`: Free-text contextual label for filtering (optional, e.g. "camp", "meeting")
+- `context`: Free-text contextual label for filtering (optional, e.g. "camp", "meeting"). Also carries the bulk importer's deduplication hash as `import:<sha256-prefix-16>`
+- `campEditionId`: The camp edition this item belongs to (optional, FK -> CampEdition, SET NULL on delete). **`NULL` means "we do not know which edition yet" — always a temporary state, never a permanent category.** All ABUVI media belongs to some camp; we may just not know which
+- `yearSource`: How the year was established (required, enum: `Unknown` | `Exif` | `FolderName` | `Uploader` | `Community` | `Admin`, default: `Unknown`)
+- `commentCount`: Denormalised comment counter (required, default: 0) so album grids never join comments
+- `mediaSourceId`: Who provided the material (optional, FK -> MediaSource, SET NULL on delete). `NULL` means the uploader is also the provider
+- `sourcePath`: Original folder path the file came from, relative to the import root (optional, max 1024 characters). A dating clue — see the visibility rule below
 - `isPublished`: Whether the item is visible to all users (required, default: false)
 - `isApproved`: Whether the item has been approved by board/admin (required, default: false). Automatically set to `true` when `accommodationId` or `zoneId` is provided (internal media).
 - `createdAt`: Record creation timestamp (required, auto-generated)
@@ -1181,6 +1199,10 @@ Multimedia content (photos, videos, interviews, documents, audio) for the histor
 
 - ThumbnailUrl is required when type is Photo or Video
 - Decade is auto-derived from year when year is provided
+- **Neither `campEditionId` nor `year` may ever be made mandatory.** Uploading without knowing the edition is a first-class flow: the item lands in the unplaced pile and becomes eligible for collaborative dating, which is what fills the archive
+- When `campEditionId` is supplied the year is derived from the edition; when only a year is supplied it resolves to an edition **only if exactly one edition exists for that year** — an ambiguous year is left unresolved rather than guessed
+- `yearSource = Admin` freezes the item permanently: community consensus never overwrites a manual decision
+- **`sourcePath` visibility**: members see only the last three path segments, Admin/Board see the full value. Raw paths leak — `D:/Users/maria.carmen.lopez/...` names a person and their directory structure. Trimming happens in the response mapper, never in the database: the full path is evidence
 - MediaItems require approval (isApproved = true) by Admin or Board before becoming visible
 - A MediaItem is only visible when both isApproved = true AND isPublished = true
 - FileUrl must point to a valid blob storage location
@@ -1192,10 +1214,222 @@ Multimedia content (photos, videos, interviews, documents, audio) for the histor
 - Each MediaItem optionally links to one CampLocation (via `campLocationId`)
 - Each MediaItem optionally belongs to one CampEditionAccommodation (via `accommodationId`, SET NULL on delete)
 - Each MediaItem optionally belongs to one AccommodationZone (via `zoneId`, SET NULL on delete)
+- Each MediaItem optionally belongs to one CampEdition (via `campEditionId`, SET NULL on delete)
+- Each MediaItem optionally has one MediaSource (via `mediaSourceId`, SET NULL on delete)
+- One MediaItem carries many MediaThemes through MediaItemTheme (N:M)
+- One MediaItem has many MediaComments and many MediaItemYearProposals (CASCADE on delete)
+
+---
+
+### MediaSource
+
+Who provided a batch of historical material.
+
+Distinct from `MediaItem.uploadedByUserId`, which records the account that performed the upload. The provider is frequently **not a registered user** — a member hands over a USB stick of photos taken by their late father, a family lends an album — which is why `contributorName` is free text rather than a User foreign key.
+
+**One row per donation, not per file.** A batch of 800 photos shares a single source, so correcting a misspelled name once fixes all 800, and "everything Manolo gave us" is one query rather than a `GROUP BY` over free text.
+
+This also feeds collaborative dating: the person who handed over the material is usually the best person to ask what year it is from.
+
+**Fields:**
+
+- `id`: Unique identifier for the MediaSource entity (Primary Key, UUID)
+- `contributorName`: Free-text name of the provider (required, max 200 characters)
+- `contributorUserId`: Set when the provider is a member (optional, FK -> User, SET NULL on delete). Enables "ask them" links on undated items
+- `contributorContact`: Email or phone (optional, max 200 characters). **Admin/Board only — stripped server-side for everyone else**
+- `notes`: How the material arrived (optional, max 1000 characters)
+- `receivedAt`: When the material reached the association (optional, timestamp)
+- `registeredByUserId`: Who recorded this source (required, FK -> User, CASCADE on delete)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- Any authenticated member may register a contributor — any member could be the one collecting a neighbour's shoebox of photos
+- Editing is limited to Admin/Board or whoever registered it, which prevents drive-by renaming while keeping correction easy for the person who knows the provenance
+- `contributorContact` must never be serialised to a non-Admin/Board caller. This is enforced in the mapper, not the frontend
+- Deleting a source leaves the media intact: `MediaItem.mediaSourceId` becomes `NULL`
+- **RGPD erasure** is a dedicated operation that blanks `contributorName`, `contributorContact` and `contributorUserId` while keeping the row and the donated media, so the archive survives while the person disappears from it
+- Free-text names guarantee near-duplicates over time ("Manolo García" / "Manuel García"), so a **merge** operation repoints every item and deletes the emptied source in one transaction
+
+**Relationships:**
+
+- Each MediaSource optionally references one User as the contributor (via `contributorUserId`, SET NULL on delete)
+- Each MediaSource was registered by one User (via `registeredByUserId`, CASCADE on delete)
+- One MediaSource supplies many MediaItems (via `MediaItem.mediaSourceId`, SET NULL on delete)
+
+---
+
+### MediaTheme
+
+A recurring subject that spans many camp editions — "San Abuvino", "Actuaciones", "Asambleas".
+
+Themes are a **cross-cutting tag dimension, not a rival container** to the edition album: a photo is edition 1998 *and* San Abuvino at the same time. An item with no edition can still carry themes, and those themes then become a dating clue.
+
+**Fields:**
+
+- `id`: Unique identifier for the MediaTheme entity (Primary Key, UUID)
+- `name`: Display name (required, max 100 characters)
+- `slug`: Kebab-case URL identity (required, max 100 characters, **unique**)
+- `description`: Theme description (optional, max 500 characters)
+- `isActive`: Soft retirement flag (required, default: true) — deactivating keeps existing tags intact
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- Only Admin/Board create themes; any member may attach the themes that exist. A catalogue anyone can extend degrades into synonyms within a season
+- The slug is derived from the name (lowercase, accents stripped, non-alphanumerics collapsed to dashes) with `-2`, `-3` suffixes on collision
+- **Renaming a theme does not change its slug** — existing links must not break
+- Deleting a theme with tagged items is refused unless explicitly forced
+
+**Relationships:**
+
+- One MediaTheme tags many MediaItems through MediaItemTheme (N:M)
+
+---
+
+### MediaItemTheme
+
+The N:M join between media and themes.
+
+**Fields:**
+
+- `mediaItemId`: The tagged item (required, FK -> MediaItem, CASCADE on delete, **composite PK part 1**)
+- `mediaThemeId`: The theme applied (required, FK -> MediaTheme, CASCADE on delete, **composite PK part 2**)
+- `taggedByUserId`: Who applied the tag (required, FK -> User, CASCADE on delete)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+
+**Validation rules:**
+
+- The composite primary key makes duplicate tagging impossible at the database level, so attaching a theme twice is a no-op rather than a data-quality problem
+- Detaching is allowed for whoever applied the tag, or for Admin/Board
+
+---
+
+### MediaComment
+
+A comment on a media item — "este es mi padre", "esto son las fiestas de San Abuvino".
+
+Named `MediaComment` rather than `PhotoComment` on purpose: comments work on audio, video and interviews too. An undated interview recording is exactly the kind of item the community will discuss.
+
+**Fields:**
+
+- `id`: Unique identifier for the MediaComment entity (Primary Key, UUID)
+- `mediaItemId`: The item being discussed (required, FK -> MediaItem, CASCADE on delete)
+- `authorUserId`: Who wrote it (required, FK -> User, CASCADE on delete)
+- `body`: Comment text (required, 1-1000 characters)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+- `deletedAt`: Soft-delete timestamp (optional) — mirrors the `FamilyMember.deletedAt` pattern
+- `deletedByUserId`: Who removed it, author or moderator (optional, FK -> User)
+
+**Validation rules:**
+
+- Comments on **already-approved** media publish immediately; moderation happens afterwards. Commenting on unapproved media is restricted to Admin/Board because it is not published yet
+- An author may edit or delete their own comment for **15 minutes**; after that only Admin/Board can remove it
+- Deletion is always soft; soft-deleted comments are excluded from every read path
+- `MediaItem.commentCount` is incremented on create and decremented on soft delete, in the same transaction
+- Rate limited to 10 comments per user per minute
+
+**Relationships:**
+
+- Each MediaComment belongs to one MediaItem (via `mediaItemId`, CASCADE on delete)
+- Each MediaComment was written by one User (via `authorUserId`, CASCADE on delete)
+- One MediaComment can accumulate many MediaCommentReports
+
+---
+
+### MediaCommentReport
+
+A member flagging a comment for moderator attention.
+
+**Fields:**
+
+- `id`: Unique identifier for the MediaCommentReport entity (Primary Key, UUID)
+- `mediaCommentId`: The reported comment (required, FK -> MediaComment, CASCADE on delete)
+- `reportedByUserId`: Who reported it (required, FK -> User, CASCADE on delete)
+- `reason`: Why (required, enum: `Offensive` | `PrivacyConcern` | `Incorrect` | `Other`)
+- `notes`: Free-text detail (optional, max 500 characters)
+- `status`: Moderation state (required, enum: `Pending` | `Actioned` | `Dismissed`, default: `Pending`)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `reviewedAt`: When a moderator handled it (optional, timestamp)
+- `reviewedByUserId`: Which moderator (optional, FK -> User)
+
+**Validation rules:**
+
+- **One report per user per comment**, enforced by a unique index on `(mediaCommentId, reportedByUserId)`
+- A reviewed report cannot be returned to `Pending`
+
+---
+
+### MediaItemYearProposal
+
+One member's answer to *"¿de qué año es esta?"* for an undated media item. Applies to any media type, not just photos.
+
+**Fields:**
+
+- `id`: Unique identifier for the MediaItemYearProposal entity (Primary Key, UUID)
+- `mediaItemId`: The item being dated (required, FK -> MediaItem, CASCADE on delete)
+- `proposedByUserId`: Who proposed (required, FK -> User, CASCADE on delete)
+- `proposedYear`: The proposed year (required, integer, 1975 <= year <= current year)
+- `proposedCampEditionId`: Optional venue precision (optional, FK -> CampEdition, SET NULL on delete)
+- `rationale`: Why they think so, e.g. *"mi hermana nació ese verano"* (optional, max 500 characters)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+- `updatedAt`: Last update timestamp (required, auto-updated)
+
+**Validation rules:**
+
+- **One vote per user per item**, enforced by a unique index on `(mediaItemId, proposedByUserId)`. Re-proposing updates the existing row rather than stacking a second vote, which is what keeps the consensus ratio honest
+- A proposed edition must belong to the proposed year
+- **Consensus rule**: a year is applied to the item when it has **at least 3 proposals** *and* holds **at least 66%** of all proposals for that item. The item then takes `year`, `decade`, an edition, and `yearSource = Community`
+- Withdrawing a proposal re-evaluates consensus and **can un-resolve** a previously dated item, returning it to the unplaced pile. A vote that can only ever add is not a vote
+- `yearSource = Admin` skips consensus evaluation entirely — a human decision is not up for a vote
+
+**Relationships:**
+
+- Each proposal belongs to one MediaItem (via `mediaItemId`, CASCADE on delete)
+- Each proposal was made by one User (via `proposedByUserId`, CASCADE on delete)
+
+---
+
+### CampEditionAttendance
+
+A member declaring *"yo estuve en este campamento"*, optionally on behalf of a family member.
+
+Beyond the personal timeline (*"has estado en 14 campamentos"*), this is what lets the archive suggest who to ask about an undated photo.
+
+**Fields:**
+
+- `id`: Unique identifier for the CampEditionAttendance entity (Primary Key, UUID)
+- `campEditionId`: The edition attended (required, FK -> CampEdition, CASCADE on delete)
+- `userId`: The declaring account (required, FK -> User, CASCADE on delete)
+- `familyMemberId`: Who attended; `NULL` means the declarer themselves (optional, FK -> FamilyMember, CASCADE on delete)
+- `createdAt`: Record creation timestamp (required, auto-generated)
+
+**Validation rules:**
+
+- A user may only declare attendance for a FamilyMember belonging to **their own** FamilyUnit
+- Declaring the same attendance twice is **idempotent** — a toggle that errors when pressed twice is worse than one that shrugs
+- Unique index on `(campEditionId, userId, familyMemberId)`, **plus a partial unique index on `(campEditionId, userId) WHERE family_member_id IS NULL`**: in PostgreSQL a `NULL` does not collide in a unique index, so without the second index the same person could declare for themselves twice
+- **Derived attendance** is also inferred from Registration for recent editions. Derived rows are computed at read time and **never persisted here**, which is why they cannot be withdrawn through the API — attempting to do so returns a validation error, not a not-found
+
+**Relationships:**
+
+- Each attendance belongs to one CampEdition (via `campEditionId`, CASCADE on delete)
+- Each attendance is declared by one User (via `userId`, CASCADE on delete)
+- Each attendance optionally names one FamilyMember (via `familyMemberId`, CASCADE on delete)
 
 ---
 
 ### CampLocation
+
+> **SUPERSEDED — never implemented, do not build.**
+> No entity, no `DbSet`, no foreign key was ever created. The `campLocationId` columns on
+> `MediaItem` and `Memory` are dead: they exist in the schema and are always `NULL`.
+> Use `MediaItem.CampEditionId` / `Memory.CampEditionId` instead. Venues are modelled by
+> the `Camp` entity and the years they ran by `CampEdition`.
+> Dropping the dead columns is a pending cleanup, not a blocker.
 
 A historical camp location for the interactive map. Each record represents a specific place where a camp was held in a given year.
 

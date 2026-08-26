@@ -37,4 +37,15 @@ public static class HttpContextExtensions
     {
         return user.FindFirst(ClaimTypes.Role)?.Value;
     }
+
+    /// <summary>
+    /// True when the caller is Admin or Board.
+    ///
+    /// Used to widen what a response contains rather than to gate access — moderator-only
+    /// endpoints are protected by RequireRole. Passing this into a service lets the mapper
+    /// strip privileged fields (contributor contact details, full source paths) server-side,
+    /// which is the only place that decision can safely be made.
+    /// </summary>
+    public static bool IsAdminOrBoard(this ClaimsPrincipal user)
+        => user.IsInRole("Admin") || user.IsInRole("Board");
 }

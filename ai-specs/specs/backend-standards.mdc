@@ -839,9 +839,36 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 // 6. Authorization
 app.UseAuthorization();
+// 7. Rate limiting — MUST come after authentication (see below)
+app.UseRateLimiter();
 ```
 
 Health check requests (`/health`) are suppressed from request logs to reduce noise by demoting them to `Verbose` level via `GetLevel`.
+
+### Rate Limiting
+
+Rate limiting uses the ASP.NET Core 9 built-in limiter (`Microsoft.AspNetCore.RateLimiting`) — **no NuGet package is required**. Policies are declared with `AddRateLimiter` and applied per endpoint with `.RequireRateLimiting("<policy>")`.
+
+```csharp
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("comments", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            // Partition by user, so one chatty member cannot exhaust everyone's budget
+            partitionKey: httpContext.User.GetUserId()?.ToString() ?? "anonymous",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+});
+```
+
+**`UseRateLimiter()` must be placed after `UseAuthentication()`.** The partition key reads `httpContext.User`, which is empty until authentication has run. Placed earlier the code still compiles and the limiter still works — but every authenticated member silently shares the single `"anonymous"` bucket, so ten comments from ten different people would exhaust the limit for all of them. This is a silent failure: nothing errors, the limit is simply wrong.
+
+Apply rate limiting where an authenticated user can create unbounded content. It is not a substitute for authorization.
 
 ## Language Standards for User-Facing Content
 

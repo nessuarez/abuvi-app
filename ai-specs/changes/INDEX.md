@@ -22,6 +22,18 @@ Add structured concept descriptions to payments showing what each installment co
 
 ---
 
+### feat-anniversary-history-map
+
+**[feat]** · [folder](./feat-anniversary-history-map) · **In progress**
+
+Load the 50 years of ABUVI camps (31 venues, 50 editions 1976–2025) with verified geocoding, add a member-level history endpoint, and build the linked map + venue list view on the 50th anniversary page. Includes an admin workbench to refine camp coordinates from the web.
+
+Phases 0–3 are merged into `dev` (data import, geocoding, coordinate workbench, `GET /api/camps/history`, and the journey view). The MVP phase — enabling the upload form — is the priority still pending; phases 3.5–3.7 are deferred.
+
+- Backend: [ ] | Frontend: [x]
+
+---
+
 ### feat-admin-edit-profiles
 
 **[feat]** · [folder](./feat-admin-edit-profiles) · **Planned**
@@ -139,6 +151,18 @@ Replace static mock on `/anniversary` page with real file uploads and persistenc
 Auto-assign sequential member numbers and family numbers, add filtering by membership status in admin panels, and make member numbers editable by Admin/Board with unique constraints.
 
 - Backend: [x] | Frontend: [x]
+
+---
+
+### feat-photo-albums-social
+
+**[feat]** · [folder](./feat-photo-albums-social) · **In progress**
+
+Camp edition albums, cross-cutting themes, provenance, comments, collaborative dating and "yo estuve en este campamento". Turns the community into the engine of the photo archive: uploading without knowing the edition is a first-class flow, and the unplaced pile is what collaborative dating works on.
+
+Task 1 (data model) merged in #286. Task 2 (API, ~35 endpoints + 83 unit tests) in progress on `feature/feat-photo-albums-social-backend-api`. Task 3 (bulk importer) and Task 4 (frontend) not started.
+
+- Backend: [x] | Frontend: [ ]
 
 ---
 

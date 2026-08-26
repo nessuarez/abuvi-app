@@ -1234,6 +1234,66 @@ Returns the best available camp edition for the current user. Uses status-priori
 
 ---
 
+### GET /api/camps/history
+
+Returns every completed camp edition, ordered by year, for the 50th anniversary history map.
+Not paginated: the whole history is a single small payload (50 rows for 1976-2025), which is what
+allows the client to group it by venue without a second request.
+
+**Authorization**: Admin, Board, or Member
+
+**No query parameters.**
+
+Each row carries two counters computed in the service: `editionNumber` is how many times the
+association had camped at that venue up to and including that year, and `totalEditionsAtVenue` is
+the venue's full tally. `photoCount` counts approved and published photos anchored to that year via
+`MediaItem.Year` with `Context = "anniversary-50"`; a value of `0` means nothing survives from that
+year, which is meaningful data and not an error. `previewPhotos` carries at most three items so a
+map popup needs no extra call, and `thumbnailUrl` falls back to the full image when no thumbnail was
+generated, so it is never empty.
+
+No gallery URL is returned on purpose: the client builds it from `year`, keeping the API free of
+client routing.
+
+> **Note**: `photoCount` counts `MediaItemType.Photo` only. A year holding only audio reads as `0`.
+> That is correct today and will need a separate audio counter once camp audio capture is live.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "year": 2015,
+      "campId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "campName": "Espinosa de los Monteros",
+      "location": "Burgos",
+      "latitude": 43.077348,
+      "longitude": -3.552172,
+      "editionNumber": 4,
+      "totalEditionsAtVenue": 4,
+      "photoCount": 37,
+      "previewPhotos": [
+        {
+          "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+          "thumbnailUrl": "https://blob.example.com/thumbs/arrival.webp",
+          "title": "Llegada al campamento"
+        }
+      ]
+    }
+  ],
+  "error": null
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized**: User not authenticated
+- **403 Forbidden**: User role is not Member or above
+
+---
+
 ### GET /api/camps
 
 Returns all camp locations (lightweight, no photos).
@@ -3982,3 +4042,509 @@ Replace all feature assignments for an accommodation zone.
 
 - **400 Bad Request**: One or more feature IDs do not exist or are inactive
 - **404 Not Found**: Zone not found
+
+---
+
+## Camp Edition Albums, Themes and Collective Memory
+
+Endpoints for the historical archive: albums per camp edition, cross-cutting themes, provenance, comments, collaborative dating and attendance.
+
+**All endpoints in this section require authentication.** There is no anonymous access anywhere in the feature — the archive holds photographs of identifiable people, including minors.
+
+### Two organising axes
+
+Everything here follows from one decision:
+
+- **Placement** — `MediaItem.campEditionId` is nullable. `NULL` means *"we do not know which edition yet"*: always temporary, always resolvable by collaborative dating. All ABUVI media belongs to *some* camp; we may just not know which. There is deliberately **no** "not camp related" state.
+- **Themes** — a subject like *San Abuvino* recurs across many years, so themes are a many-to-many tag dimension, not a rival container. An item is *edition 1998* **and** *San Abuvino* at once, and an item with no edition can still carry themes.
+
+An **album is a query**, not an entity: `MediaItem` filtered by `campEditionId`. (`PhotoAlbum` / `Photo` appear in `data-model.md` but were never implemented — do not build them.)
+
+### Privacy rules enforced server-side
+
+Two fields are filtered in the response mapper according to the caller's role. The frontend is not a security boundary and must not be relied on:
+
+| Field | Member sees | Admin/Board sees |
+|-------|-------------|------------------|
+| `contributorContact` | `null` | the value |
+| `sourcePathDisplay` | last 3 path segments only | the full path |
+
+Raw source paths leak — `D:/Users/maria.carmen.lopez/Fotos privadas/...` names a person and their directory structure. The full path is stored because it is evidence; only the display is trimmed.
+
+---
+
+## Album Endpoints
+
+### GET /api/camp-editions/albums
+
+Index of every camp edition with its media counts and cover. Issues a constant number of queries regardless of how many editions exist.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "campEditionId": "<uuid>",
+      "year": 1998,
+      "campId": "<uuid>",
+      "campName": "Selva de Oza",
+      "campLocality": "Huesca",
+      "latitude": 42.7, "longitude": -0.6,
+      "photoCount": 137, "videoCount": 2, "audioCount": 4,
+      "documentCount": 1, "memoryCount": 6,
+      "coverThumbnailUrl": "https://.../thumb.webp",
+      "viewerAttended": true
+    }
+  ]
+}
+```
+
+`audioCount` includes items of type `Interview`. `viewerAttended` unions declared attendance with attendance derived from registrations.
+
+---
+
+### GET /api/camp-editions/{editionId}/album
+
+One album: edition summary plus a page of media of **all types interleaved**. The frontend groups them for display; the API does not pre-segment.
+
+**Query Parameters:**
+
+- `page` (default 1)
+- `pageSize` (default 24, capped at 100 server-side)
+- `type` (optional: `Photo` | `Video` | `Audio` | `Interview` | `Document`)
+- `themeId` (optional)
+
+**Success Response (200 OK):** `AlbumDetailResponse` — `{ edition, items[], totalCount, page, pageSize }`.
+
+Each item carries `campEditionId`, `yearSource`, `commentCount`, `mediaSourceId`, `mediaSourceName`, `sourcePathDisplay` and its `themes[]`.
+
+Members see only approved and published items. Admin/Board additionally see pending ones.
+
+Written stories are fetched separately via `GET /api/memories?campEditionId=`, so the two lists paginate independently.
+
+**Error Responses:** **404 Not Found** — edition does not exist.
+
+---
+
+### GET /api/media-items/unplaced
+
+The *"sin ubicar"* pile: approved media whose edition is unknown. A waiting room, not a rejects bin.
+
+**Query Parameters:**
+
+- `page`, `pageSize`, `type` — as above
+- `mediaSourceId` (optional) — work through one contributor's undated batch in a single sitting, which is how this material actually gets dated
+- `suggestedForMe` (optional, default false) — restrict to items the caller is plausibly able to date: anything they contributed themselves, plus anything whose year points at an edition they attended
+
+**Success Response (200 OK):** `{ items[], totalCount, page, pageSize }`.
+
+---
+
+### PATCH /api/media-items/{id}/edition
+
+Manually place or un-place an item. **Admin, Board.**
+
+**Request Body:** `{ "campEditionId": "<uuid>" }` — or `null` to return the item to the unplaced pile, which is a legitimate correction.
+
+Sets `yearSource = Admin`, which freezes the item against community consensus permanently.
+
+**Error Responses:** **403 Forbidden**, **404 Not Found**.
+
+---
+
+### PATCH /api/media-items/{id}/source
+
+Correct an item's provenance. Allowed for **Admin/Board, or the uploader of that item**.
+
+**Request Body:** `{ "mediaSourceId": "<uuid>" }` or `null`.
+
+---
+
+## Provenance Endpoints
+
+### GET /api/media-sources
+
+Catalogue of contributors with item counts and year span.
+
+**Success Response (200 OK):** list of `MediaSourceResponse` — `id`, `contributorName`, `contributorUserId`, `contributorContact` (see privacy table), `notes`, `receivedAt`, `registeredByUserId`, `registeredByName`, `itemCount`, `undatedItemCount`, `firstYear`, `lastYear`, `createdAt`.
+
+`undatedItemCount` is how much of that person's material still needs dating.
+
+---
+
+### GET /api/media-sources/{id}
+
+One contributor. **404 Not Found** if unknown.
+
+### GET /api/media-sources/{id}/items
+
+Everything one person contributed, paged. Dated items first, undated last — the undated ones are what that contributor could still help place.
+
+**Query Parameters:** `page`, `pageSize`.
+
+---
+
+### POST /api/media-sources
+
+Register a contributor. **Any authenticated member** — any member could be the one collecting a neighbour's shoebox of photos.
+
+**Request Body:**
+
+```json
+{
+  "contributorName": "Manolo García",
+  "contributorUserId": null,
+  "contributorContact": "manolo@example.com",
+  "notes": "pendrive entregado en la asamblea de 2024",
+  "receivedAt": "2024-11-15T00:00:00Z"
+}
+```
+
+**Validation:** `contributorName` required, max 200. `contributorContact` max 200. `notes` max 1000. `receivedAt` cannot be in the future.
+
+**Success Response (201 Created):** `MediaSourceResponse`.
+
+---
+
+### PUT /api/media-sources/{id}
+
+Correct a contributor. **Admin/Board, or whoever registered it** — this prevents drive-by renaming while keeping correction easy for the person who knows the provenance.
+
+**Error Responses:** **403 Forbidden**, **404 Not Found**.
+
+---
+
+### POST /api/media-sources/{id}/merge
+
+Fold one contributor into another and delete the emptied row. **Admin, Board.**
+
+Free-text names guarantee near-duplicates over time (*"Manolo García"* / *"Manuel García"*), so this is what keeps the catalogue usable rather than a nice-to-have. Both steps run in one transaction.
+
+**Request Body:** `{ "targetId": "<uuid>" }`
+
+**Success Response (200 OK):** `{ "movedItems": 800 }`
+
+**Error Responses:** **400 Bad Request** — merging a source into itself. **404 Not Found** — either source unknown.
+
+---
+
+### PATCH /api/media-sources/{id}/anonymise
+
+RGPD erasure for a contributor who is not a member and never signed anything. **Admin.**
+
+Blanks the identifying fields and keeps the row and the donated media, so the archive survives while the person disappears from it. One operation rather than an admin editing three fields by hand and missing one.
+
+**Success Response (204 No Content).**
+
+---
+
+### DELETE /api/media-sources/{id}
+
+Delete a contributor. **Admin.** Items keep their media; `mediaSourceId` becomes `NULL`.
+
+**Success Response (204 No Content).**
+
+---
+
+## Theme Endpoints
+
+### GET /api/media-themes
+
+Theme catalogue with counts and year span.
+
+**Query Parameters:** `includeInactive` (optional, default false; honoured only for Admin/Board).
+
+**Success Response (200 OK):** list of `MediaThemeSummaryResponse` — `id`, `name`, `slug`, `description`, `isActive`, `itemCount`, `firstYear`, `lastYear`, `undatedCount`.
+
+`firstYear`/`lastYear` are what make "this theme spans many years" visible: *"Este tema aparece entre 1981 y 2019"*.
+
+---
+
+### GET /api/media-themes/{slug}/items
+
+One theme's items **across all editions**. Newest year first, undated last.
+
+**Query Parameters:** `page`, `pageSize`, `year`, `campEditionId`, `undatedOnly`, `type`.
+
+**Success Response (200 OK):** `{ theme, items[], totalCount, page, pageSize }`.
+
+**Error Responses:** **404 Not Found** — unknown slug.
+
+---
+
+### POST /api/media-themes
+
+Create a theme. **Admin, Board** — a catalogue anyone can extend degrades into synonyms within a season.
+
+**Request Body:** `{ "name": "San Abuvino", "description": "Fiesta de San Abuvino" }`
+
+The slug is derived from the name (accents stripped, non-alphanumerics collapsed to dashes) with `-2`, `-3` suffixes on collision.
+
+**Success Response (201 Created).**
+
+### PUT /api/media-themes/{id}
+
+Rename, edit or deactivate. **Admin, Board.** **The slug is deliberately left unchanged** so existing links do not break.
+
+### DELETE /api/media-themes/{id}
+
+**Admin.** **409 Conflict** when the theme has tagged items, unless `?force=true`.
+
+---
+
+### POST /api/media-items/{id}/themes
+
+Attach a theme. **Any authenticated member** — tagging a theme is a far cheaper contribution than recalling a year, and someone who cannot date a photo may still recognise the actuación.
+
+**Request Body:** `{ "themeId": "<uuid>" }`
+
+Idempotent: the composite primary key makes a repeat a no-op.
+
+**Success Response (204 No Content).**
+
+### DELETE /api/media-items/{id}/themes/{themeId}
+
+Detach. Allowed for **whoever applied the tag, or Admin/Board**. **403 Forbidden** otherwise.
+
+---
+
+## Comment Endpoints
+
+Comments on already-approved media **publish immediately**; moderation happens afterwards through reports and Admin/Board deletion.
+
+### GET /api/media-items/{mediaItemId}/comments
+
+The thread, oldest first, excluding soft-deleted comments.
+
+**Success Response (200 OK):** list of `MediaCommentResponse` — `id`, `mediaItemId`, `authorUserId`, `authorName`, `body`, `canEdit`, `canDelete`, `viewerReported`, `createdAt`, `updatedAt`.
+
+`canEdit` is true when the viewer is the author **and** still inside the 15-minute window. `canDelete` is that, or Admin/Board.
+
+---
+
+### POST /api/media-items/{mediaItemId}/comments
+
+Add a comment. **Rate limited to 10 per user per minute.**
+
+**Request Body:** `{ "body": "Este es mi padre" }` — required, max 1000 characters.
+
+**Success Response (201 Created):** `MediaCommentResponse`.
+
+**Error Responses:**
+
+- **403 Forbidden** — the item is not approved yet and the caller is not Admin/Board
+- **429 Too Many Requests** — rate limit exceeded
+
+---
+
+### PUT /api/media-comments/{id}
+
+Edit. Author only, **within 15 minutes of creation**. **403 Forbidden** otherwise.
+
+### DELETE /api/media-comments/{id}
+
+Soft delete. Author within the window, or Admin/Board at any time. **204 No Content**; **403 Forbidden** otherwise.
+
+Decrements `MediaItem.commentCount` in the same transaction.
+
+---
+
+### POST /api/media-comments/{id}/report
+
+Report a comment for moderator attention.
+
+**Request Body:** `{ "reason": "PrivacyConcern", "notes": "sale mi hija" }`
+
+`reason` is one of `Offensive` | `PrivacyConcern` | `Incorrect` | `Other`. `notes` max 500.
+
+**Success Response (204 No Content).**
+
+**Error Responses:** **409 Conflict** — one report per user per comment.
+
+---
+
+### GET /api/media-comments/reports
+
+Moderation queue. **Admin, Board.**
+
+**Query Parameters:** `status` (optional: `Pending` | `Actioned` | `Dismissed`).
+
+### PATCH /api/media-comments/reports/{id}
+
+Resolve a report. **Admin, Board.**
+
+**Request Body:** `{ "status": "Actioned" }` — a reviewed report cannot be returned to `Pending` (**400 Bad Request**).
+
+---
+
+## Collaborative Dating Endpoints
+
+### GET /api/media-items/{mediaItemId}/year-proposals
+
+The current tally, the viewer's own proposal, and the clues.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "mediaItemId": "<uuid>",
+    "resolvedYear": null,
+    "yearSource": "Unknown",
+    "isResolved": false,
+    "groups": [
+      { "year": 1998, "campEditionId": "<uuid>", "campName": "Selva de Oza",
+        "count": 3, "proposerNames": ["Ana Socia", "Luis Abuvino"] }
+    ],
+    "viewerProposal": null,
+    "themeHints": [
+      { "themeId": "<uuid>", "themeName": "San Abuvino",
+        "yearsWithDatedItems": [1998, 2003, 2011] }
+    ],
+    "sourceHint": {
+      "mediaSourceId": "<uuid>",
+      "contributorName": "Manolo García",
+      "contributorUserId": "<uuid>",
+      "yearsFromSameSource": [1997, 1998],
+      "sourcePathDisplay": ".../Verano 98/Selva de Oza/img.jpg"
+    }
+  }
+}
+```
+
+`proposerNames` is capped at five — the point is *who says so*, not a full roll call.
+
+**`themeHints`** and **`sourceHint`** are the dating clues. Provenance is usually the strongest: the person who handed over the material generally knows roughly when it is from, and `contributorUserId` being non-null means the UI can offer *"preguntar a esta persona"*.
+
+---
+
+### PUT /api/media-items/{mediaItemId}/year-proposals
+
+Record or replace the caller's proposal, then re-evaluate consensus.
+
+**PUT, not POST**: one vote per user per item, so proposing again replaces the previous answer rather than stacking a second one.
+
+**Request Body:**
+
+```json
+{ "proposedYear": 1998, "proposedCampEditionId": null, "rationale": "mi hermana nació ese verano" }
+```
+
+**Validation:** `proposedYear` between 1975 and the current year. `rationale` max 500. A supplied edition must belong to the proposed year.
+
+**Consensus rule:** a year is applied when it has **at least 3 proposals** *and* holds **at least 66%** of all proposals for that item. The item then takes `year`, `decade`, an edition, and `yearSource = Community`.
+
+**Success Response (200 OK):** the updated tally.
+
+---
+
+### DELETE /api/media-items/{mediaItemId}/year-proposals
+
+Withdraw the caller's proposal and re-evaluate.
+
+**This can un-resolve an item** whose consensus no longer holds, returning it to the unplaced pile. A vote that can only ever add is not a vote.
+
+**Success Response (200 OK):** the updated tally.
+
+---
+
+### PATCH /api/media-items/{id}/year
+
+Force a year. **Admin, Board.**
+
+**Request Body:** `{ "year": 1977, "campEditionId": null }`
+
+Sets `yearSource = Admin`, which **freezes the item against community consensus permanently** — a human decision is not up for a vote.
+
+---
+
+## Attendance Endpoints
+
+### POST /api/camp-editions/{editionId}/attendance
+
+Declare *"yo estuve en este campamento"*.
+
+**Request Body:** `{ "familyMemberId": null }` — `null` means the caller themselves.
+
+**Idempotent**: declaring twice returns **200 OK**, not 409. A toggle that errors when pressed twice is worse than one that shrugs.
+
+**Error Responses:**
+
+- **403 Forbidden** — `"No puedes declarar asistencia por este familiar"`: the family member does not belong to the caller's family unit
+- **404 Not Found** — edition does not exist
+
+---
+
+### DELETE /api/camp-editions/{editionId}/attendance
+
+Withdraw. **Query Parameters:** `familyMemberId` (optional).
+
+**Error Responses:**
+
+- **400 Bad Request** — `"La asistencia derivada de una inscripción no se puede eliminar"`. Attendance inferred from a registration is computed at read time and never stored, so there is nothing to delete. The member can see it, so a 404 would be a confusing answer
+- **404 Not Found** — never declared
+
+---
+
+### GET /api/camp-editions/{editionId}/attendance
+
+Who attended, unioning declared attendance with attendance derived from registrations. Each entry carries `source`: `"Declared"` or `"Registration"`.
+
+---
+
+### GET /api/users/me/camp-timeline
+
+The caller's personal timeline.
+
+Returns **every edition**, attended or not, so the frontend can paint *"tus campamentos"* over the full map without a second call.
+
+**Success Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "totalEditionsAttended": 14,
+    "entries": [
+      { "campEditionId": "<uuid>", "year": 2019, "campName": "Selva de Oza",
+        "latitude": 42.7, "longitude": -0.6,
+        "attended": true, "attendanceSource": "Declared", "mediaCount": 212 }
+    ]
+  }
+}
+```
+
+`attendanceSource` is `"Declared"`, `"Registration"` or `"None"`.
+
+---
+
+## Extended Filters on Existing Endpoints
+
+### GET /api/media-items
+
+Gains `campEditionId`, `unplacedOnly` and `themeId`. **All existing parameters and behaviour are unchanged** — the anniversary gallery depends on `approved` + `context`.
+
+### GET /api/memories
+
+Gains `campEditionId` and `unplacedOnly`.
+
+### POST /api/media-items
+
+The upload request gains, for **every** media type:
+
+| Field | Meaning |
+|-------|---------|
+| `campEditionId` | The edition. **`null` means "I don't know" — a valid submission** |
+| `themeIds` | Themes to attach. Unknown or inactive ids are ignored rather than failing the upload |
+| `mediaSourceId` | An existing contributor |
+| `newSource` | Create a contributor inline. Mutually exclusive with `mediaSourceId` (**400 Bad Request** if both) |
+| `sourcePath` | Original folder path, when the browser exposes one |
+
+**Placement resolution:** an explicit edition wins and the year is derived from it; otherwise a year resolves to an edition **only if exactly one edition exists for that year**; otherwise the item stays unplaced with `yearSource = Unknown`.
+
+Uploading with **neither an edition nor a year is valid and must remain so.** It is the flow that fills the unplaced pile, which is what collaborative dating works on. No validation rule may require either field.
+
+`POST /api/memories` accepts `campEditionId` under the same rules.

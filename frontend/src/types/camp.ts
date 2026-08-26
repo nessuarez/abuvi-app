@@ -48,6 +48,7 @@ export interface Camp {
 	googleMapsUrl: string | null;
 	googleRating: number | null;
 	googleRatingCount: number | null;
+	placeTypes: string | null;
 	businessStatus: string | null;
 	pricePerAdult: number;
 	pricePerChild: number;
@@ -141,6 +142,12 @@ export interface CampLocation {
 	year?: number;
 	location?: string;
 	lastEditionYear?: number;
+	/** Stable identifier. When absent, `name` identifies the marker, as it always did. */
+	id?: string;
+	/** Edition years rendered as clickable chips inside the popup. */
+	editionYears?: number[];
+	/** Drives marker size. When absent, the default Leaflet pin is used. */
+	editionCount?: number;
 }
 
 export interface CampObservation {

@@ -59,7 +59,7 @@
     "encoding": "UTF-8",
     "headerTrimming": true,
     "valueTrimming": true,
-    "quoteHandling": "none",
+    "quoteHandling": "RFC 4180 — quoted fields may contain commas, newlines and escaped double quotes (\"\"); quotes are stripped from headers and values",
     "blankLinesSkipped": true,
     "decimalFormat": "InvariantCulture (dot separator)",
     "missingFileBehavior": "silently skipped"

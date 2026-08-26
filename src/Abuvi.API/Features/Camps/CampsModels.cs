@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Abuvi.API.Features.FamilyUnits;
 using Abuvi.API.Features.MediaItems;
+using Abuvi.API.Features.Users;
 
 namespace Abuvi.API.Features.Camps;
 
@@ -579,6 +581,8 @@ public record CampResponse(
     decimal? GoogleRating,
     int? GoogleRatingCount,
     string? BusinessStatus,
+    // Google place types, so a list view can tell an exact campsite from a whole town
+    string? PlaceTypes,
     decimal PricePerAdult,
     decimal PricePerChild,
     decimal PricePerBaby,
@@ -803,6 +807,39 @@ public record CurrentCampEditionResponse(
     DateTime? FirstPaymentDeadline,
     DateTime? SecondPaymentDeadline,
     DateTime? ExtrasPaymentDeadline
+);
+
+/// <summary>
+/// A published anniversary photo, trimmed down to what a map popup needs.
+/// ThumbnailUrl falls back to the full image when no thumbnail was generated,
+/// so the caller always has something it can render.
+/// </summary>
+public record CampHistoryPhotoResponse(
+    Guid Id,
+    string ThumbnailUrl,
+    string Title
+);
+
+/// <summary>
+/// One completed camp edition as shown on the 50th anniversary history map.
+/// EditionNumber counts how many times the association had camped at that venue
+/// up to and including this year; TotalEditionsAtVenue is the venue's full tally.
+/// PhotoCount is what makes an empty year meaningful: it separates "nothing survives
+/// from 1987" from "not loaded yet", and turns the gap into a call to action.
+/// No gallery URL is returned on purpose — the caller builds it from Year, which
+/// keeps the API free of client routing.
+/// </summary>
+public record CampHistoryResponse(
+    int Year,
+    Guid CampId,
+    string CampName,
+    string? Location,
+    decimal? Latitude,
+    decimal? Longitude,
+    int EditionNumber,
+    int TotalEditionsAtVenue,
+    int PhotoCount,
+    IReadOnlyList<CampHistoryPhotoResponse> PreviewPhotos
 );
 
 /// <summary>
@@ -1160,3 +1197,66 @@ public record AssignmentReportGroupResponse(
     int UsedCapacity,
     IReadOnlyList<AssignmentReportFamilyRow> Families
 );
+
+// ──────────────────────────────────────────────────────
+// Camp edition attendance — "yo estuve en este campamento"
+// ──────────────────────────────────────────────────────
+
+/// <summary>
+/// A member declaring they attended a camp edition, optionally on behalf of a family member.
+///
+/// Attendance is ALSO derived from Registration for recent editions. Derived attendance is
+/// never persisted here — the read model unions both sources and tags each row Declared or
+/// Registration, so a derived row cannot be deleted through the API.
+///
+/// Beyond the personal timeline ("has estado en 14 campamentos"), this is what lets the
+/// archive suggest who to ask about an undated photo.
+/// </summary>
+public class CampEditionAttendance
+{
+    public Guid Id { get; set; }
+    public Guid CampEditionId { get; set; }
+
+    /// <summary>The declaring account.</summary>
+    public Guid UserId { get; set; }
+
+    /// <summary>Null means the declarer themselves. Must belong to the declarer's family unit.</summary>
+    public Guid? FamilyMemberId { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+
+    // Navigation
+    public CampEdition CampEdition { get; set; } = null!;
+    public User User { get; set; } = null!;
+    public FamilyMember? FamilyMember { get; set; }
+}
+
+/// <summary>Body of POST /api/camp-editions/{id}/attendance. Null member = the caller.</summary>
+public record DeclareAttendanceRequest(Guid? FamilyMemberId);
+
+public record AttendanceEntryResponse(
+    Guid CampEditionId,
+    Guid UserId,
+    string UserName,
+    Guid? FamilyMemberId,
+    string? FamilyMemberName,
+    /// <summary>"Declared" or "Registration" — derived entries cannot be withdrawn.</summary>
+    string Source);
+
+public record CampTimelineEntryResponse(
+    Guid CampEditionId,
+    int Year,
+    string CampName,
+    decimal? Latitude,
+    decimal? Longitude,
+    bool Attended,
+    string AttendanceSource,
+    int MediaCount);
+
+/// <summary>
+/// Every edition, attended or not, so the frontend can paint "tus campamentos" over the
+/// full map without a second call.
+/// </summary>
+public record CampTimelineResponse(
+    int TotalEditionsAttended,
+    IReadOnlyList<CampTimelineEntryResponse> Entries);

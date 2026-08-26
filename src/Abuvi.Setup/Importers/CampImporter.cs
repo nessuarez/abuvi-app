@@ -35,6 +35,11 @@ public class CampImporter(AbuviDbContext db)
                     PricePerAdult = CsvHelper.RequireDecimal(r, "pricePerAdult"),
                     PricePerChild = CsvHelper.RequireDecimal(r, "pricePerChild"),
                     PricePerBaby = CsvHelper.RequireDecimal(r, "pricePerBaby"),
+                    Latitude = CsvHelper.OptionalDecimal(r, "latitude"),
+                    Longitude = CsvHelper.OptionalDecimal(r, "longitude"),
+                    GooglePlaceId = CsvHelper.Optional(r, "googlePlaceId"),
+                    FormattedAddress = CsvHelper.Optional(r, "formattedAddress"),
+                    PlaceTypes = CsvHelper.Optional(r, "googleTypes"),
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
