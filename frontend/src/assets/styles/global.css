@@ -11,3 +11,12 @@ h1, h2, h3, h4, h5, h6 {
   line-height: var(--line-height-heading);
   font-weight: 600;
 }
+
+/* Leaflet stacks its panes at z-index 200-700 and its controls at 800-1000,
+   all of which sit above the sticky header (z-50), so markers and the zoom
+   control paint over the nav bar on scroll. Isolating the map container gives
+   those values a stacking context of their own: the layering inside the map is
+   untouched, but none of it can escape past the container any more. */
+.leaflet-container {
+  isolation: isolate;
+}
