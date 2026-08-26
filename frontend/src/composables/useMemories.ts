@@ -15,6 +15,9 @@ export function useMemories() {
   const fetchMemories = async (params?: {
     year?: number
     approved?: boolean
+    campEditionId?: string
+    /** Only stories whose edition is still unknown. */
+    unplacedOnly?: boolean
   }): Promise<void> => {
     loading.value = true
     error.value = null
@@ -22,6 +25,8 @@ export function useMemories() {
       const query = new URLSearchParams()
       if (params?.year != null) query.set('year', String(params.year))
       if (params?.approved != null) query.set('approved', String(params.approved))
+      if (params?.campEditionId) query.set('campEditionId', params.campEditionId)
+      if (params?.unplacedOnly) query.set('unplacedOnly', 'true')
 
       const qs = query.toString()
       const url = `/memories${qs ? `?${qs}` : ''}`

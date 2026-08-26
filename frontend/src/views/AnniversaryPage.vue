@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import AnniversaryHero from '@/components/anniversary/AnniversaryHero.vue'
 import AnniversaryJourney from '@/components/anniversary/AnniversaryJourney.vue'
 import AnniversaryUploadForm from '@/components/anniversary/AnniversaryUploadForm.vue'
@@ -42,6 +43,25 @@ const selectedYear = ref<number | null>(null)
           href="#contacto"
           class="text-sm font-medium text-amber-100 transition-colors hover:text-white"
           >Contacto</a
+        >
+
+        <span class="h-4 w-px bg-amber-700" aria-hidden="true" />
+
+        <!-- Full pages rather than page sections, so they get their own route -->
+        <RouterLink
+          :to="{ name: 'anniversary-themes' }"
+          class="text-sm font-medium text-amber-100 transition-colors hover:text-white"
+          >Temas</RouterLink
+        >
+        <RouterLink
+          :to="{ name: 'anniversary-unplaced' }"
+          class="text-sm font-medium text-amber-100 transition-colors hover:text-white"
+          >Sin ubicar</RouterLink
+        >
+        <RouterLink
+          :to="{ name: 'anniversary-my-camps' }"
+          class="text-sm font-medium text-amber-100 transition-colors hover:text-white"
+          >Mis campamentos</RouterLink
         >
       </div>
     </nav>
