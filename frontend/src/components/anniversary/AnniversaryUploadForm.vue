@@ -7,7 +7,6 @@ import { useMediaItems } from '@/composables/useMediaItems'
 import { useMemories } from '@/composables/useMemories'
 import { useCampHistory } from '@/composables/useCampHistory'
 import type { MediaItemType } from '@/types/media-item'
-import type { CampEditionOption } from '@/types/camp-history'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Checkbox from 'primevue/checkbox'
@@ -49,16 +48,38 @@ const errors = ref<Record<string, string>>({})
 
 const isSubmitting = computed(() => uploading.value || creatingMedia.value || creatingMemory.value)
 
+/** The upload form's own option shape: unlike CampEditionOption, year may be null — that is the
+ * explicit "No lo sé" choice, not an unset field. */
+interface UploadYearOption {
+  year: number | null
+  label: string
+  campName: string | null
+  isCurrent: boolean
+}
+
+const NO_EDITION_OPTION: UploadYearOption = {
+  year: null,
+  label: 'No lo sé — que la comunidad lo ubique',
+  campName: null,
+  isCurrent: false,
+}
+
 /**
  * The QR printed for the camp may name a year that no endpoint can offer yet — the current
  * edition is only reachable once it leaves Draft. Rather than silently dropping what the
  * poster asked for, show it as a plain year.
+ *
+ * "No lo sé" is always first and is the default: a contributor who doesn't remember the year
+ * must still be able to submit. The item lands in the unplaced pile, where the community dates it.
  */
-const yearOptions = computed<CampEditionOption[]>(() => {
-  const options = editionOptions.value
-  if (form.year === null || options.some((option) => option.year === form.year)) return options
+const yearOptions = computed<UploadYearOption[]>(() => {
+  const options: UploadYearOption[] = editionOptions.value
+  if (form.year === null || options.some((option) => option.year === form.year)) {
+    return [NO_EDITION_OPTION, ...options]
+  }
 
   return [
+    NO_EDITION_OPTION,
     { year: form.year, label: String(form.year), campName: null, isCurrent: false },
     ...options,
   ]
@@ -68,7 +89,6 @@ const validate = (): boolean => {
   errors.value = {}
   if (!form.name.trim()) errors.value.name = 'El nombre es obligatorio'
   if (!form.contentType) errors.value.contentType = 'El tipo de contenido es obligatorio'
-  if (form.year === null) errors.value.year = 'Elige la edición a la que pertenece el recuerdo'
   if (form.contentType && form.contentType !== 'historia' && !selectedFile.value) {
     errors.value.file = 'Debes seleccionar un archivo'
   }
@@ -127,7 +147,9 @@ const handleSubmit = async () => {
       const memory = await createMemory({
         title: `${form.name} — Historia 50 aniversario`,
         content: form.description,
-        year: form.year!,
+        // An unknown year must stay unknown. Defaulting it would file the story under
+        // whatever edition exists that year, which is wrong data that looks correct.
+        year: form.year ?? undefined,
       })
       if (!memory) {
         toast.add({
@@ -163,7 +185,9 @@ const handleSubmit = async () => {
         type: mediaType,
         title: `${form.name} — Recuerdo 50 aniversario`,
         description: form.description || undefined,
-        year: form.year!,
+        // Never invent a year. An item with no year and no edition lands in the unplaced
+        // pile, where the community can date it — that is the point, not a failure mode.
+        year: form.year ?? undefined,
         context: 'anniversary-50',
       })
       if (!mediaItem) {
@@ -250,7 +274,7 @@ const handleSubmit = async () => {
       <!-- Edición -->
       <div>
         <label for="upload-year" class="mb-2 block text-sm font-semibold text-gray-700">
-          Edición <span class="text-red-500">*</span>
+          Edición
         </label>
         <Select
           id="upload-year"
@@ -261,9 +285,10 @@ const handleSubmit = async () => {
           filter
           placeholder="¿De qué campamento es este recuerdo?"
           class="w-full"
-          :invalid="!!errors.year"
         />
-        <small v-if="errors.year" class="mt-1 block text-red-500">{{ errors.year }}</small>
+        <small class="mt-1 block text-gray-400">
+          ¿No lo recuerdas? Deja "No lo sé" y otros abuvinos ayudarán a datarlo.
+        </small>
       </div>
 
       <!-- Descripción -->
