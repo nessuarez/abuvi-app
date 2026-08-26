@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import Button from 'primevue/button'
@@ -125,9 +125,21 @@ const centreOnMarker = () => {
   map.setView(currentPosition(), Math.max(map.getZoom(), PLACED_ZOOM))
 }
 
-onMounted(initializeMap)
+// Leaflet caches the container size, so a viewport change leaves the map clipped until it
+// is told to measure again. Rotating a phone or resizing a projector window hits this.
+const handleResize = () => map?.invalidateSize()
+
+onMounted(async () => {
+  initializeMap()
+  // This picker sits inside a form laid out by its flex/grid parent, which finishes sizing
+  // the container after mount; without this the tiles never load, same fix as CampLocationMap.
+  await nextTick()
+  map?.invalidateSize()
+  window.addEventListener('resize', handleResize)
+})
 
 onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
   map?.remove()
   map = null
   marker = null

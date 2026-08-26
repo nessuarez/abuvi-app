@@ -10,6 +10,7 @@ const mockBindTooltip = vi.hoisted(() => vi.fn().mockReturnThis())
 const mockSetView = vi.hoisted(() => vi.fn())
 const mockRemoveLayer = vi.hoisted(() => vi.fn())
 const mockLayerAddTo = vi.hoisted(() => vi.fn())
+const mockInvalidateSize = vi.hoisted(() => vi.fn())
 
 const mockMarker = vi.hoisted(() => ({
   addTo: vi.fn().mockReturnThis(),
@@ -34,6 +35,7 @@ vi.mock('leaflet', () => {
     }),
     removeLayer: mockRemoveLayer,
     remove: vi.fn(),
+    invalidateSize: mockInvalidateSize,
   })
 
   return {
