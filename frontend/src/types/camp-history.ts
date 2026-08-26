@@ -23,6 +23,16 @@ export interface CampHistoryEntry {
   previewPhotos: CampHistoryPhoto[]
 }
 
+/** One choice in the edition selector of the anniversary upload form. */
+export interface CampEditionOption {
+  year: number
+  /** "2003 — Espinosa de los Monteros" */
+  label: string
+  campName: string | null
+  /** The camp running now. It is not part of the history yet, so it comes from elsewhere. */
+  isCurrent: boolean
+}
+
 /** A venue with all its editions, grouped client-side from the flat history rows. */
 export interface CampHistoryVenue {
   campId: string

@@ -1,5 +1,10 @@
 # Desactivar envío de contenido del 50º Aniversario — "Coming soon"
 
+> **✅ RESUELTO y revertido (2026-08-25).** El formulario se volvió a activar en la Fase MVP de
+> `feat-anniversary-history-map`, junto con el selector de edición, la casilla de derechos de imagen
+> y el aviso de revisión. `comingSoon` ya no existe en `AnniversaryUploadForm.vue`. Este ticket se
+> conserva como registro de por qué estuvo apagado.
+
 ## Contexto
 
 La funcionalidad de subida de contenido para el 50º aniversario está completamente implementada (formulario, backend, galería, panel de revisión admin), pero **aún no se va a permitir el envío de contenido por parte de los usuarios**. Se necesita desactivar el botón de envío del formulario y mostrar un mensaje de tipo "Coming soon" hasta que se decida habilitar la funcionalidad.
