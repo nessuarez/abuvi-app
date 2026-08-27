@@ -74,6 +74,16 @@ Move CampEdition editing out of the modal into a dedicated full-page form — sp
 
 ---
 
+### feat-camp-meals-report
+
+**[feat]** · [folder](./feat-camp-meals-report) · **Spec only**
+
+Export an Excel report of diners ("comensales") per day, per meal, and per age range for a camp edition, computed from registrations, with manual add/remove adjustments for visitors, unforeseen guests, or people skipping a specific meal.
+
+- Backend: [x] | Frontend: [x]
+
+---
+
 ### feat-camps-payments
 
 **[feat]** · [folder](./feat-camps-payments) · **Planned**
@@ -206,6 +216,16 @@ Introduce intermediate registration statuses tied to installment confirmation (i
 
 ---
 
+### feat-tpv-redsys-payments
+
+**[feat]** · [folder](./feat-tpv-redsys-payments) · **Spec only**
+
+Readiness assessment and phased plan for online card/Bizum payments through the Banc Sabadell TPV Virtual (Redsys). Documents the 12 gaps blocking a gateway integration (order numbers, event log, status machine, idempotency, anonymous signed callbacks, commissions, settlement batches), defines a bank-independent Phase 0 that makes the payment model gateway-ready, and sets out the decisions the Junta must take before Phase 1.
+
+- Backend: [ ] | Frontend: [ ]
+
+---
+
 ### feat-trello-integration
 
 **[feat]** · [folder](./feat-trello-integration) · **Spec only**
@@ -274,4 +294,4 @@ Meta-spec: defines task ID conventions and workflow mapping from Claude Code com
 
 ---
 
-*Last updated: 2026-04-22*
+*Last updated: 2026-08-26*
