@@ -26,9 +26,11 @@ Add structured concept descriptions to payments showing what each installment co
 
 **[feat]** · [folder](./feat-anniversary-history-map) · **In progress**
 
-Load the 50 years of ABUVI camps (31 venues, 50 editions 1976–2025) with verified geocoding, add a member-level history endpoint, and build the linked map + timeline view on the 50th anniversary page. Includes an admin workbench to refine camp coordinates from the web.
+Load the 50 years of ABUVI camps (31 venues, 50 editions 1976–2025) with verified geocoding, add a member-level history endpoint, and build the linked map + venue list view on the 50th anniversary page. Includes an admin workbench to refine camp coordinates from the web.
 
-- Backend: [ ] | Frontend: [ ]
+Phases 0–3 are merged into `dev` (data import, geocoding, coordinate workbench, `GET /api/camps/history`, and the journey view). The MVP phase — enabling the upload form — is the priority still pending; phases 3.5–3.7 are deferred.
+
+- Backend: [ ] | Frontend: [x]
 
 ---
 
@@ -69,6 +71,16 @@ Manage extras (optional add-ons) attached to camp editions — creation, orderin
 Move CampEdition editing out of the modal into a dedicated full-page form — spec mirrors `feat-camp-edition-edit-fullpage`.
 
 - Backend: [ ] | Frontend: [x]
+
+---
+
+### feat-camp-meals-report
+
+**[feat]** · [folder](./feat-camp-meals-report) · **Spec only**
+
+Export an Excel report of diners ("comensales") per day, per meal, and per age range for a camp edition, computed from registrations, with manual add/remove adjustments for visitors, unforeseen guests, or people skipping a specific meal.
+
+- Backend: [x] | Frontend: [x]
 
 ---
 
@@ -126,7 +138,17 @@ Allow hard deletion of camp registrations within 24 hours of creation (represent
 
 **[feat]** · [folder](./feat-family-iban-direct-debit) · **Spec only**
 
-Store a per-family IBAN (encrypted at rest) for direct debits, notify the board by email on every change, and warn families that an outdated IBAN makes them liable for the returned-receipt surcharge.
+Store a per-family IBAN (encrypted at rest) plus the account holder's identity and address for direct debits, notify the board by email on every change, and warn families that an outdated IBAN makes them liable for the returned-receipt surcharge. The SEPA mandate stays on paper — no RUM, sequence types or digital signature.
+
+- Backend: [ ] | Frontend: [ ]
+
+---
+
+### feat-surveys
+
+**[feat]** · [folder](./feat-surveys) · **Spec only**
+
+Resolve who gets surveyed — adults who attended a camp edition, or adult active members — and reach them with a link to an external form (Google Forms). Audience preview, CSV export, email send with rate-limited reminder. The platform stores no responses, which makes anonymity structural.
 
 - Backend: [ ] | Frontend: [ ]
 
@@ -149,6 +171,18 @@ Replace static mock on `/anniversary` page with real file uploads and persistenc
 Auto-assign sequential member numbers and family numbers, add filtering by membership status in admin panels, and make member numbers editable by Admin/Board with unique constraints.
 
 - Backend: [x] | Frontend: [x]
+
+---
+
+### feat-photo-albums-social
+
+**[feat]** · [folder](./feat-photo-albums-social) · **In progress**
+
+Camp edition albums, cross-cutting themes, provenance, comments, collaborative dating and "yo estuve en este campamento". Turns the community into the engine of the photo archive: uploading without knowing the edition is a first-class flow, and the unplaced pile is what collaborative dating works on.
+
+Task 1 (data model) merged in #286. Task 2 (API, ~35 endpoints + 83 unit tests) in progress on `feature/feat-photo-albums-social-backend-api`. Task 3 (bulk importer) and Task 4 (frontend) not started.
+
+- Backend: [x] | Frontend: [ ]
 
 ---
 
@@ -177,6 +211,16 @@ Enable editing of registrations (members and extras) after creation with automat
 **[feat]** · [folder](./feat-registration-status-flow) · **Spec only**
 
 Introduce intermediate registration statuses tied to installment confirmation (instead of jumping from Pending directly to Confirmed) and add transactional email notifications on each status transition.
+
+- Backend: [ ] | Frontend: [ ]
+
+---
+
+### feat-tpv-redsys-payments
+
+**[feat]** · [folder](./feat-tpv-redsys-payments) · **Spec only**
+
+Readiness assessment and phased plan for online card/Bizum payments through the Banc Sabadell TPV Virtual (Redsys). Documents the 12 gaps blocking a gateway integration (order numbers, event log, status machine, idempotency, anonymous signed callbacks, commissions, settlement batches), defines a bank-independent Phase 0 that makes the payment model gateway-ready, and sets out the decisions the Junta must take before Phase 1.
 
 - Backend: [ ] | Frontend: [ ]
 
@@ -250,4 +294,4 @@ Meta-spec: defines task ID conventions and workflow mapping from Claude Code com
 
 ---
 
-*Last updated: 2026-04-22*
+*Last updated: 2026-08-26*

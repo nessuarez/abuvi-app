@@ -1,22 +1,27 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useBlobStorage } from '@/composables/useBlobStorage'
 import { useMediaItems } from '@/composables/useMediaItems'
 import { useMemories } from '@/composables/useMemories'
+import { useCampHistory } from '@/composables/useCampHistory'
 import type { MediaItemType } from '@/types/media-item'
+import type { CampEditionOption } from '@/types/camp-history'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
-import InputNumber from 'primevue/inputnumber'
+import Checkbox from 'primevue/checkbox'
 import Textarea from 'primevue/textarea'
 import FileUpload from 'primevue/fileupload'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
 
+const route = useRoute()
 const toast = useToast()
 const { uploadFile, uploading, uploadError } = useBlobStorage()
 const { createMediaItem, creating: creatingMedia, createError: mediaError } = useMediaItems()
 const { createMemory, creating: creatingMemory, createError: memoryError } = useMemories()
+const { editionOptions, fetchEditionOptions } = useCampHistory()
 
 const contentTypes = [
   { label: 'Foto', value: 'foto' },
@@ -36,24 +41,42 @@ const form = reactive({
   contentType: null as string | null,
   year: null as number | null,
   description: '',
+  rightsAccepted: false,
 })
 
 const selectedFile = ref<File | null>(null)
 const errors = ref<Record<string, string>>({})
 
-const comingSoon = true
-
 const isSubmitting = computed(() => uploading.value || creatingMedia.value || creatingMemory.value)
+
+/**
+ * The QR printed for the camp may name a year that no endpoint can offer yet — the current
+ * edition is only reachable once it leaves Draft. Rather than silently dropping what the
+ * poster asked for, show it as a plain year.
+ */
+const yearOptions = computed<CampEditionOption[]>(() => {
+  const options = editionOptions.value
+  if (form.year === null || options.some((option) => option.year === form.year)) return options
+
+  return [
+    { year: form.year, label: String(form.year), campName: null, isCurrent: false },
+    ...options,
+  ]
+})
 
 const validate = (): boolean => {
   errors.value = {}
   if (!form.name.trim()) errors.value.name = 'El nombre es obligatorio'
   if (!form.contentType) errors.value.contentType = 'El tipo de contenido es obligatorio'
+  if (form.year === null) errors.value.year = 'Elige la edición a la que pertenece el recuerdo'
   if (form.contentType && form.contentType !== 'historia' && !selectedFile.value) {
     errors.value.file = 'Debes seleccionar un archivo'
   }
   if (form.contentType === 'historia' && !form.description.trim()) {
     errors.value.description = 'La descripción es obligatoria para historias escritas'
+  }
+  if (!form.rightsAccepted) {
+    errors.value.rights = 'Debes aceptar esta declaración para enviar'
   }
   return Object.keys(errors.value).length === 0
 }
@@ -63,9 +86,38 @@ const resetForm = () => {
   form.contentType = null
   form.year = null
   form.description = ''
+  // Cleared on purpose: a box left ticked would mean the next contributor never declared anything.
+  form.rightsAccepted = false
   selectedFile.value = null
   errors.value = {}
 }
+
+/**
+ * Prefill from the QR code: /anniversary?tipo=audio&anio=2026#subir-recuerdo
+ * Anything unrecognised is ignored — a mistyped poster must not produce a broken page.
+ */
+const applyQueryPrefill = () => {
+  const tipo = route.query.tipo
+  if (typeof tipo === 'string' && contentTypes.some((t) => t.value === tipo)) {
+    form.contentType = tipo
+  }
+
+  const anio = Number(route.query.anio)
+  if (Number.isInteger(anio) && anio >= 1976 && anio <= new Date().getFullYear() + 1) {
+    form.year = anio
+  }
+}
+
+onMounted(async () => {
+  applyQueryPrefill()
+  fetchEditionOptions()
+
+  // Browsers do not reliably honour a fragment on an SPA's first paint.
+  if (route.hash === '#subir-recuerdo') {
+    await nextTick()
+    document.getElementById('subir-recuerdo')?.scrollIntoView({ behavior: 'smooth' })
+  }
+})
 
 const handleSubmit = async () => {
   if (!validate()) return
@@ -75,7 +127,7 @@ const handleSubmit = async () => {
       const memory = await createMemory({
         title: `${form.name} — Historia 50 aniversario`,
         content: form.description,
-        year: form.year ?? 2026,
+        year: form.year!,
       })
       if (!memory) {
         toast.add({
@@ -111,7 +163,7 @@ const handleSubmit = async () => {
         type: mediaType,
         title: `${form.name} — Recuerdo 50 aniversario`,
         description: form.description || undefined,
-        year: form.year ?? 2026,
+        year: form.year!,
         context: 'anniversary-50',
       })
       if (!mediaItem) {
@@ -155,11 +207,7 @@ const handleSubmit = async () => {
       </p>
     </div>
 
-    <form
-      class="space-y-6 rounded-xl bg-white p-8 shadow-sm"
-      :class="{ 'pointer-events-none opacity-60': comingSoon }"
-      @submit.prevent="handleSubmit"
-    >
+    <form class="space-y-6 rounded-xl bg-white p-8 shadow-sm" @submit.prevent="handleSubmit">
       <!-- Nombre -->
       <div>
         <label for="upload-name" class="mb-2 block text-sm font-semibold text-gray-700">
@@ -168,11 +216,15 @@ const handleSubmit = async () => {
         <InputText
           id="upload-name"
           v-model="form.name"
-          placeholder="Tu nombre completo"
+          placeholder="Nombre completo"
           class="w-full"
           :invalid="!!errors.name"
+          aria-describedby="upload-name-help"
         />
         <small v-if="errors.name" class="mt-1 block text-red-500">{{ errors.name }}</small>
+        <small id="upload-name-help" class="mt-1 block text-gray-400">
+          El nombre de quien recuerda. Si subes el recuerdo de otra persona, pon el suyo.
+        </small>
       </div>
 
       <!-- Tipo de contenido -->
@@ -195,20 +247,23 @@ const handleSubmit = async () => {
         }}</small>
       </div>
 
-      <!-- Año aproximado -->
+      <!-- Edición -->
       <div>
         <label for="upload-year" class="mb-2 block text-sm font-semibold text-gray-700">
-          Año aproximado
+          Edición <span class="text-red-500">*</span>
         </label>
-        <InputNumber
+        <Select
           id="upload-year"
           v-model="form.year"
-          :min="1976"
-          :max="2026"
-          :use-grouping="false"
-          placeholder="Ej: 2001"
+          :options="yearOptions"
+          option-label="label"
+          option-value="year"
+          filter
+          placeholder="¿De qué campamento es este recuerdo?"
           class="w-full"
+          :invalid="!!errors.year"
         />
+        <small v-if="errors.year" class="mt-1 block text-red-500">{{ errors.year }}</small>
       </div>
 
       <!-- Descripción -->
@@ -267,17 +322,41 @@ const handleSubmit = async () => {
         role="status"
       />
 
+      <!-- Derechos de imagen -->
+      <div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <div class="flex items-start gap-3">
+          <Checkbox
+            v-model="form.rightsAccepted"
+            input-id="upload-rights"
+            binary
+            :invalid="!!errors.rights"
+          />
+          <label for="upload-rights" class="text-sm text-gray-700">
+            Tengo derecho a compartir esta imagen y respeto la privacidad de quienes aparecen.
+            <span class="text-red-500">*</span>
+          </label>
+        </div>
+        <small v-if="errors.rights" class="mt-2 block text-red-500">{{ errors.rights }}</small>
+      </div>
+
+      <!-- Qué pasa con lo que envías -->
+      <p class="text-sm text-gray-500">
+        Todo lo que envíes se revisa antes de publicarse: no aparece en la web de forma automática.
+        Si quieres que retiremos algo en lo que apareces, escríbenos desde
+        <a href="#contacto" class="font-medium text-amber-700 hover:underline"
+          >el formulario de contacto</a
+        >
+        y lo quitamos.
+      </p>
+
       <!-- Submit -->
-      <div class="pointer-events-auto pt-2" :class="{ 'opacity-100': comingSoon }">
-        <p v-if="comingSoon" class="mb-3 text-center text-sm text-amber-700">
-          La subida de recuerdos estará disponible próximamente. ¡Estate atento!
-        </p>
+      <div class="pt-2">
         <Button
           type="submit"
-          :label="comingSoon ? 'Próximamente' : 'Enviar recuerdo'"
-          :icon="comingSoon ? 'pi pi-clock' : 'pi pi-send'"
+          label="Enviar recuerdo"
+          icon="pi pi-send"
           class="w-full"
-          :disabled="comingSoon || isSubmitting"
+          :disabled="isSubmitting"
           :loading="isSubmitting"
         />
       </div>

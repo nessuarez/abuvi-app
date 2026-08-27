@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { ref } from 'vue'
 import { useCampHistory } from '@/composables/useCampHistory'
 import { api } from '@/utils/api'
 import type { CampHistoryEntry } from '@/types/camp-history'
@@ -11,6 +12,16 @@ vi.mock('@/utils/api', () => ({
     patch: vi.fn(),
     delete: vi.fn()
   }
+}))
+
+const mockCurrentCampEdition = ref<{ year: number; campName: string } | null>(null)
+const mockFetchCurrentCampEdition = vi.fn()
+
+vi.mock('@/composables/useCampEditions', () => ({
+  useCampEditions: () => ({
+    currentCampEdition: mockCurrentCampEdition,
+    fetchCurrentCampEdition: mockFetchCurrentCampEdition
+  })
 }))
 
 const ESPINOSA = '11111111-1111-1111-1111-111111111111'
@@ -36,6 +47,8 @@ describe('useCampHistory', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockCurrentCampEdition.value = null
+    mockFetchCurrentCampEdition.mockResolvedValue(undefined)
   })
 
   describe('fetchHistory', () => {
@@ -184,6 +197,71 @@ describe('useCampHistory', () => {
       await fetchHistory()
 
       expect(years.value).toEqual([1976, 1993, 2015])
+    })
+  })
+
+  describe('editionOptions', () => {
+    it('labels each edition with its year and venue, most recent first', async () => {
+      vi.mocked(api.get).mockResolvedValue(
+        ok([
+          makeEntry({ year: 1983 }),
+          makeEntry({ year: 2015, campId: PALANCARES, campName: 'Los Palancares' })
+        ])
+      )
+
+      const { editionOptions, fetchEditionOptions } = useCampHistory()
+      await fetchEditionOptions()
+
+      expect(editionOptions.value.map((o) => o.label)).toEqual([
+        '2015 — Los Palancares',
+        '1983 — Espinosa de los Monteros'
+      ])
+    })
+
+    it('adds the camp running now, which the history endpoint leaves out', async () => {
+      vi.mocked(api.get).mockResolvedValue(ok([makeEntry({ year: 2025 })]))
+      mockCurrentCampEdition.value = { year: 2026, campName: 'El Clar del Bosc' }
+
+      const { editionOptions, fetchEditionOptions } = useCampHistory()
+      await fetchEditionOptions()
+
+      expect(editionOptions.value[0]).toMatchObject({
+        year: 2026,
+        label: '2026 — El Clar del Bosc (este campamento)',
+        isCurrent: true
+      })
+    })
+
+    it('does not duplicate a current edition already present in the history', async () => {
+      vi.mocked(api.get).mockResolvedValue(ok([makeEntry({ year: 2025 })]))
+      mockCurrentCampEdition.value = { year: 2025, campName: 'Matapozuelos' }
+
+      const { editionOptions, fetchEditionOptions } = useCampHistory()
+      await fetchEditionOptions()
+
+      expect(editionOptions.value.filter((o) => o.year === 2025)).toHaveLength(1)
+    })
+
+    it('keeps the history options when there is no current camp', async () => {
+      vi.mocked(api.get).mockResolvedValue(ok([makeEntry({ year: 1983 })]))
+      mockCurrentCampEdition.value = null
+
+      const { editionOptions, fetchEditionOptions } = useCampHistory()
+      await fetchEditionOptions()
+
+      expect(editionOptions.value).toHaveLength(1)
+      expect(editionOptions.value[0].isCurrent).toBe(false)
+    })
+
+    it('survives the current-edition request failing outright', async () => {
+      vi.mocked(api.get).mockResolvedValue(ok([makeEntry({ year: 1983 })]))
+      mockFetchCurrentCampEdition.mockRejectedValueOnce(new Error('boom'))
+
+      const { editionOptions, error, fetchEditionOptions } = useCampHistory()
+      await fetchEditionOptions()
+
+      expect(editionOptions.value).toHaveLength(1)
+      expect(error.value).toBeNull()
     })
   })
 

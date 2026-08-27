@@ -7,6 +7,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Xunit;
+using Abuvi.API.Features.MediaThemes;
+using Abuvi.API.Features.MediaSources;
+using Abuvi.API.Features.Camps;
 
 namespace Abuvi.Tests.Unit.Features.MediaItems;
 
@@ -15,6 +18,9 @@ public class MediaItemsServiceTests
     private readonly IMediaItemsRepository _repository;
     private readonly IBlobStorageService _blobStorageService;
     private readonly ILogger<MediaItemsService> _logger;
+    private readonly ICampEditionsRepository _campEditionsRepository;
+    private readonly IMediaSourcesRepository _mediaSourcesRepository;
+    private readonly IMediaThemesRepository _themesRepository;
     private readonly MediaItemsService _service;
 
     private const string PublicBaseUrl = "https://abuvi-media.fsn1.your-objectstorage.com";
@@ -24,11 +30,16 @@ public class MediaItemsServiceTests
         _repository = Substitute.For<IMediaItemsRepository>();
         _blobStorageService = Substitute.For<IBlobStorageService>();
         _logger = Substitute.For<ILogger<MediaItemsService>>();
+        _campEditionsRepository = Substitute.For<ICampEditionsRepository>();
+        _mediaSourcesRepository = Substitute.For<IMediaSourcesRepository>();
+        _themesRepository = Substitute.For<IMediaThemesRepository>();
 
         var options = Substitute.For<IOptions<BlobStorageOptions>>();
         options.Value.Returns(new BlobStorageOptions { PublicBaseUrl = PublicBaseUrl });
 
-        _service = new MediaItemsService(_repository, _blobStorageService, options, _logger);
+        _service = new MediaItemsService(
+            _repository, _campEditionsRepository, _mediaSourcesRepository, _themesRepository,
+            _blobStorageService, options, _logger);
     }
 
     [Fact]
@@ -200,15 +211,17 @@ public class MediaItemsServiceTests
     public async Task GetListAsync_WithContextFilter_DelegatesToRepository()
     {
         // Arrange
-        _repository.GetListAsync(null, null, "camp", null, null, null, Arg.Any<CancellationToken>())
+        _repository.GetListAsync(null, null, "camp", null, null, null, null, false, null, Arg.Any<CancellationToken>())
             .Returns(new List<MediaItem>());
 
         // Act
-        var result = await _service.GetListAsync(null, null, "camp", null, null, null, CancellationToken.None);
+        var result = await _service.GetListAsync(
+            null, null, "camp", null, null, null, null, false, null, CancellationToken.None);
 
         // Assert
         result.Should().BeEmpty();
-        await _repository.Received(1).GetListAsync(null, null, "camp", null, null, null, Arg.Any<CancellationToken>());
+        await _repository.Received(1).GetListAsync(
+            null, null, "camp", null, null, null, null, false, null, Arg.Any<CancellationToken>());
     }
 
     // Helper methods

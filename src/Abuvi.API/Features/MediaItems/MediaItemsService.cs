@@ -1,6 +1,8 @@
 using Abuvi.API.Common.Exceptions;
 using Abuvi.API.Features.BlobStorage;
 using Abuvi.API.Features.Camps;
+using Abuvi.API.Features.MediaSources;
+using Abuvi.API.Features.MediaThemes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -8,6 +10,9 @@ namespace Abuvi.API.Features.MediaItems;
 
 public class MediaItemsService(
     IMediaItemsRepository repository,
+    ICampEditionsRepository campEditionsRepository,
+    IMediaSourcesRepository mediaSourcesRepository,
+    IMediaThemesRepository themesRepository,
     IBlobStorageService blobStorageService,
     IOptions<BlobStorageOptions> blobOptions,
     ILogger<MediaItemsService> logger)
@@ -21,6 +26,10 @@ public class MediaItemsService(
         CancellationToken ct)
     {
         var isInternalMedia = request.AccommodationId.HasValue || request.ZoneId.HasValue;
+
+        var sourceId = await ResolveSourceAsync(userId, request, ct);
+        var (editionId, year, yearSource) = await ResolvePlacementAsync(request, ct);
+
         var mediaItem = new MediaItem
         {
             Id = Guid.NewGuid(),
@@ -30,13 +39,17 @@ public class MediaItemsService(
             Type = request.Type,
             Title = request.Title,
             Description = request.Description,
-            Year = request.Year,
-            Decade = MediaItemMappingExtensions.DeriveDecade(request.Year),
+            Year = year,
+            Decade = MediaItemMappingExtensions.DeriveDecade(year),
             MemoryId = request.MemoryId,
             CampLocationId = request.CampLocationId,
             AccommodationId = request.AccommodationId,
             ZoneId = request.ZoneId,
             Context = request.Context,
+            CampEditionId = editionId,
+            YearSource = yearSource,
+            MediaSourceId = sourceId,
+            SourcePath = request.SourcePath,
             IsApproved = isInternalMedia,
             IsPublished = false,
             CreatedAt = DateTime.UtcNow,
@@ -45,11 +58,103 @@ public class MediaItemsService(
 
         await repository.AddAsync(mediaItem, ct);
 
+        if (request.ThemeIds is { Count: > 0 })
+            await AttachThemesIgnoringUnknownAsync(mediaItem.Id, request.ThemeIds, userId, ct);
+
         logger.LogInformation(
-            "MediaItem {MediaItemId} of type {Type} created by user {UserId}",
-            mediaItem.Id, mediaItem.Type, userId);
+            "MediaItem {MediaItemId} of type {Type} created by user {UserId} " +
+            "(edition {EditionId}, yearSource {YearSource})",
+            mediaItem.Id, mediaItem.Type, userId, editionId, yearSource);
 
         return mediaItem.ToResponse();
+    }
+
+    /// <summary>
+    /// Resolves the contributor for an upload. An existing source or an inline new one —
+    /// never both. Neither means the uploader is the provider, which is the common case
+    /// for a member uploading their own material.
+    /// </summary>
+    private async Task<Guid?> ResolveSourceAsync(
+        Guid userId, CreateMediaItemRequest request, CancellationToken ct)
+    {
+        if (request.MediaSourceId is not null && request.NewSource is not null)
+            throw new ValidationException(
+                "Indica un aportante existente o crea uno nuevo, pero no ambos");
+
+        if (request.NewSource is not { } ns)
+            return request.MediaSourceId;
+
+        var source = new MediaSource
+        {
+            Id = Guid.NewGuid(),
+            ContributorName = ns.ContributorName.Trim(),
+            ContributorUserId = ns.ContributorUserId,
+            ContributorContact = ns.ContributorContact,
+            Notes = ns.Notes,
+            ReceivedAt = ns.ReceivedAt,
+            RegisteredByUserId = userId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        await mediaSourcesRepository.AddAsync(source, ct);
+        return source.Id;
+    }
+
+    /// <summary>
+    /// Attaches themes supplied at upload time. Unknown or inactive ids are skipped rather
+    /// than failing the upload — losing a photo because a theme id went stale would be a
+    /// bad trade.
+    /// </summary>
+    private async Task AttachThemesIgnoringUnknownAsync(
+        Guid mediaItemId, IReadOnlyList<Guid> themeIds, Guid userId, CancellationToken ct)
+    {
+        var known = await themesRepository.GetByIdsAsync(themeIds.Distinct().ToList(), ct);
+
+        var tags = known
+            .Where(t => t.IsActive)
+            .Select(t => new MediaItemTheme
+            {
+                MediaItemId = mediaItemId,
+                MediaThemeId = t.Id,
+                TaggedByUserId = userId,
+                CreatedAt = DateTime.UtcNow
+            })
+            .ToList();
+
+        await themesRepository.AttachManyAsync(tags, ct);
+    }
+
+    /// <summary>
+    /// Works out which edition an upload belongs to.
+    ///
+    /// Every branch here is a valid outcome — including the one where nothing resolves.
+    /// An upload with no edition and no year is NOT an error: it lands in the unplaced
+    /// pile and becomes eligible for collaborative dating, which is exactly the flow that
+    /// fills the archive. No validation rule may require either field.
+    /// </summary>
+    private async Task<(Guid? EditionId, int? Year, MediaItemYearSource YearSource)>
+        ResolvePlacementAsync(CreateMediaItemRequest request, CancellationToken ct)
+    {
+        if (request.CampEditionId is { } requestedEditionId)
+        {
+            var edition = await campEditionsRepository.GetByIdAsync(requestedEditionId, ct)
+                ?? throw new NotFoundException("edición", requestedEditionId);
+
+            return (edition.Id, request.Year ?? edition.Year, MediaItemYearSource.Uploader);
+        }
+
+        if (request.Year is { } requestedYear)
+        {
+            // Exactly one edition per historical year, so a year usually determines the
+            // edition — but verify rather than assume. An ambiguous year stays unplaced.
+            var candidates = await campEditionsRepository.GetByYearAsync(requestedYear, ct);
+            var resolved = candidates.Count == 1 ? candidates[0].Id : (Guid?)null;
+
+            return (resolved, requestedYear, MediaItemYearSource.Uploader);
+        }
+
+        return (null, null, MediaItemYearSource.Unknown);
     }
 
     public async Task<MediaItemResponse> GetByIdAsync(Guid id, CancellationToken ct)
@@ -67,9 +172,15 @@ public class MediaItemsService(
         MediaItemType? type,
         Guid? accommodationId,
         Guid? zoneId,
+        Guid? campEditionId,
+        bool unplacedOnly,
+        Guid? themeId,
         CancellationToken ct)
     {
-        var items = await repository.GetListAsync(year, approved, context, type, accommodationId, zoneId, ct);
+        var items = await repository.GetListAsync(
+            year, approved, context, type, accommodationId, zoneId,
+            campEditionId, unplacedOnly, themeId, ct);
+
         return items.Select(m => m.ToResponse()).ToList();
     }
 
