@@ -1,0 +1,507 @@
+<title>La Memoria Abuvina</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..900&family=Libre+Franklin:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=Caveat:wght@500;600;700&display=swap">
+<style>
+  :root{
+    --ink:#241a12;
+    --forest:#1e4432;
+    --forest-deep:#132a20;
+    --forest-line:#3c6650;
+    --parchment:#f4ecda;
+    --parchment-dim:#e9dcbe;
+    --parchment-line:#cdb98c;
+    --wood:#7c5330;
+    --gold:#c8992f;
+    --gold-bright:#e6bd5c;
+    --ember:#b8482a;
+    --ember-bright:#d97a4f;
+    --ink-soft:#3b2f22;
+    --font-display:'Fraunces', Georgia, 'Times New Roman', serif;
+    --font-body:'Libre Franklin', 'Segoe UI', Arial, sans-serif;
+    --font-hand:'Caveat', 'Segoe Script', cursive;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:var(--ink);
+    color:var(--ink-soft);
+    font-family:var(--font-body);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;}
+  p{margin:0;text-wrap:pretty;}
+  button{font-family:inherit;}
+  :focus-visible{outline:3px solid var(--gold-bright);outline-offset:3px;border-radius:2px;}
+
+  /* ---------- paper texture ---------- */
+  .grain{position:absolute;inset:0;pointer-events:none;opacity:.5;mix-blend-mode:multiply;
+    background-image:
+      radial-gradient(circle at 12% 18%, rgba(0,0,0,.05) 0, transparent 45%),
+      radial-gradient(circle at 82% 72%, rgba(0,0,0,.05) 0, transparent 50%),
+      repeating-linear-gradient(115deg, rgba(0,0,0,.015) 0px, rgba(0,0,0,.015) 1px, transparent 1px, transparent 3px);
+  }
+  .grain--dark{opacity:.35;mix-blend-mode:overlay;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,.04) 0, transparent 45%),
+      radial-gradient(circle at 85% 78%, rgba(255,255,255,.05) 0, transparent 50%),
+      repeating-linear-gradient(115deg, rgba(255,255,255,.02) 0px, rgba(255,255,255,.02) 1px, transparent 1px, transparent 3px);
+  }
+
+  /* ---------- stage / deck ---------- */
+  .stage{position:relative;width:100vw;height:100dvh;overflow:hidden;background:var(--ink);}
+  .deck{display:flex;height:100%;width:100%;transition:transform .65s cubic-bezier(.65,0,.35,1);will-change:transform;}
+  .slide{flex:0 0 100%;width:100vw;height:100dvh;overflow-y:auto;position:relative;
+    padding:clamp(2rem,5vw,5.5rem) clamp(1.5rem,7vw,7rem);
+    display:flex;flex-direction:column;justify-content:center;gap:clamp(1rem,2.5vw,2rem);}
+  .slide-inner{position:relative;z-index:1;width:100%;max-width:78rem;margin:0 auto;}
+
+  .slide--forest{background:radial-gradient(120% 130% at 20% 0%, var(--forest) 0%, var(--forest-deep) 62%, #0f2119 100%);color:var(--parchment);}
+  .slide--parchment{background:var(--parchment);color:var(--ink-soft);}
+  .slide--ember{background:radial-gradient(130% 140% at 80% 100%, #7c2a19 0%, #4a180f 60%, #2c0d08 100%);color:var(--parchment);}
+
+  .eyebrow{font-family:var(--font-body);font-weight:700;text-transform:uppercase;letter-spacing:.15em;
+    font-size:clamp(.85rem,1.15vw,1.05rem);color:var(--gold-bright);}
+  .slide--parchment .eyebrow{color:var(--ember);}
+
+  @media (prefers-reduced-motion:reduce){ .deck{transition:none;} .tab-pin{transition:none;} }
+
+  /* ---------- slide 1: portada ---------- */
+  .cover{display:grid;place-items:center;text-align:center;gap:clamp(1.2rem,3vw,2.2rem);}
+  .cover .kicker{font-family:var(--font-body);font-weight:700;letter-spacing:.32em;text-transform:uppercase;
+    font-size:clamp(.78rem,1.1vw,1rem);color:var(--gold);}
+  .cover .logo-slot{width:clamp(126px,17vw,228px);aspect-ratio:3/2;margin:0 auto;border:1.5px dashed var(--gold);
+    border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35rem;
+    background:rgba(244,236,218,.05);color:var(--gold-bright);}
+  .cover .logo-slot svg{width:1.7rem;height:1.7rem;opacity:.75;}
+  .cover .logo-slot span{font-family:var(--font-body);font-weight:700;letter-spacing:.09em;font-size:.68rem;
+    text-transform:uppercase;opacity:.85;}
+  .cover h1{font-size:clamp(2.6rem,7vw,5.6rem);font-weight:600;color:var(--parchment);line-height:1.02;}
+  .cover h1 em{font-style:normal;color:var(--gold-bright);display:block;font-size:.55em;font-weight:400;letter-spacing:.01em;margin-top:.3em;}
+  .cover .tagline{font-family:var(--font-body);font-weight:500;font-size:clamp(1.2rem,2.8vw,1.7rem);
+    line-height:1.5;color:var(--parchment);max-width:36rem;margin:0 auto;}
+  .cover .venue{font-weight:600;letter-spacing:.06em;font-size:clamp(.95rem,1.3vw,1.15rem);color:var(--gold);
+    border-top:1px solid var(--forest-line);border-bottom:1px solid var(--forest-line);padding:.7em 0;display:inline-block;}
+  .cover .lede{max-width:38rem;margin:0 auto;color:var(--parchment-dim);font-size:clamp(1.05rem,1.4vw,1.3rem);line-height:1.6;}
+
+  /* ---------- generic content headers ---------- */
+  .head{display:flex;flex-direction:column;gap:.5rem;margin-bottom:clamp(1.5rem,3vw,2.4rem);}
+  .head h2{font-size:clamp(2rem,4.4vw,3.4rem);font-weight:600;color:var(--ink-soft);}
+  .slide--forest .head h2,.slide--ember .head h2{color:var(--parchment);}
+  .head .lede{font-size:clamp(1.05rem,1.5vw,1.3rem);max-width:44rem;line-height:1.55;color:var(--wood);}
+  .slide--forest .head .lede,.slide--ember .head .lede{color:var(--parchment-dim);}
+
+  /* ---------- polaroid placeholders ---------- */
+  .polaroid{background:#fffdf7;border:1px solid rgba(0,0,0,.06);border-radius:2px;padding:.9rem .9rem 2.4rem;
+    box-shadow:0 18px 30px -14px rgba(20,10,0,.45), 0 2px 6px rgba(20,10,0,.15);transform:rotate(-1.4deg);}
+  .polaroid.tilt-r{transform:rotate(1.6deg);}
+  .polaroid .frame{aspect-ratio:16/10;border:2px dashed var(--parchment-line);border-radius:2px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6rem;text-align:center;
+    background:repeating-linear-gradient(135deg, rgba(124,83,48,.05) 0 10px, rgba(124,83,48,.09) 10px 20px);
+    color:var(--wood);padding:1.2rem;}
+  .polaroid .frame svg{width:clamp(28px,4vw,40px);height:clamp(28px,4vw,40px);opacity:.6;}
+  .polaroid .frame .ph-title{font-family:var(--font-body);font-weight:700;font-size:clamp(.95rem,1.3vw,1.1rem);color:var(--ember);}
+  .polaroid .frame .ph-sub{font-size:.82rem;color:var(--wood);max-width:22rem;line-height:1.45;}
+  .polaroid .caption{font-family:var(--font-body);font-weight:600;font-size:1rem;color:var(--ink-soft);text-align:center;margin-top:.7rem;}
+  .polaroid.square .frame{aspect-ratio:1/1;}
+
+  /* ---------- slide 2 ---------- */
+  .snap-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:clamp(1.5rem,4vw,3.5rem);align-items:center;}
+  .stat-row{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:1.4rem;}
+  .stat-tag{font-family:var(--font-body);font-weight:700;font-size:.95rem;letter-spacing:.02em;color:var(--ink);
+    background:var(--gold-bright);border-radius:3px;padding:.5rem .9rem;box-shadow:1px 2px 0 var(--wood);}
+
+  /* ---------- slide 3: three cards ---------- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:clamp(1.2rem,2.5vw,2rem);}
+  .card{background:var(--parchment-dim);border:1px solid var(--parchment-line);border-radius:6px;padding:clamp(1.4rem,2.2vw,2rem);
+    display:flex;flex-direction:column;gap:.9rem;}
+  .card .icon{width:2.6rem;height:2.6rem;border-radius:50%;background:var(--forest);color:var(--gold-bright);
+    display:grid;place-items:center;}
+  .card .icon svg{width:1.4rem;height:1.4rem;}
+  .card h3{font-size:clamp(1.25rem,1.8vw,1.55rem);font-weight:600;color:var(--ink-soft);}
+  .card p{font-size:1.02rem;line-height:1.55;color:var(--wood);}
+
+  /* ---------- slide 4: steps + screenshot ---------- */
+  .steps-layout{display:grid;grid-template-columns:1.15fr 1fr;gap:clamp(1.6rem,3vw,3rem);align-items:start;}
+  .trail{position:relative;display:flex;flex-direction:column;gap:0;}
+  .trail::before{content:"";position:absolute;left:1.05rem;top:1.6rem;bottom:1.6rem;width:2px;
+    background-image:linear-gradient(var(--parchment-line) 60%, transparent 0%);background-size:2px 12px;background-repeat:repeat-y;}
+  .step{display:flex;gap:1rem;padding:.75rem 0;position:relative;}
+  .step .pin{flex:none;width:2.1rem;height:2.1rem;border-radius:50%;background:var(--forest);color:var(--gold-bright);
+    display:grid;place-items:center;font-family:var(--font-body);font-weight:700;font-size:.95rem;z-index:1;
+    box-shadow:0 0 0 4px var(--parchment);}
+  .step .txt h4{font-size:1.12rem;font-weight:700;color:var(--ink-soft);margin-bottom:.15rem;}
+  .step .txt p{font-size:.95rem;color:var(--wood);line-height:1.4;}
+  .note{margin-top:1.3rem;padding:.9rem 1.1rem;background:var(--parchment-dim);border-left:3px solid var(--ember);
+    border-radius:0 4px 4px 0;font-size:.98rem;color:var(--ink-soft);line-height:1.5;}
+
+  /* ---------- slide 5: checklist ---------- */
+  .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr));gap:.9rem 2rem;}
+  .check-item{display:flex;gap:.8rem;align-items:flex-start;font-size:clamp(1.02rem,1.3vw,1.18rem);line-height:1.4;color:var(--ink-soft);}
+  .check-item svg{flex:none;width:1.4rem;height:1.4rem;margin-top:.15rem;color:var(--ember);}
+
+  /* ---------- slide 6: qr ---------- */
+  .qr-layout{display:grid;grid-template-columns:.9fr 1.1fr;gap:clamp(1.6rem,4vw,3.5rem);align-items:center;}
+  .qr-url{margin-top:1.3rem;font-family:var(--font-body);font-weight:600;font-size:clamp(1.05rem,1.4vw,1.3rem);
+    letter-spacing:.01em;color:var(--gold-bright);background:rgba(0,0,0,.22);border:1px solid var(--forest-line);
+    border-radius:4px;padding:.9rem 1.1rem;word-break:break-word;font-variant-numeric:tabular-nums;}
+  .qr-tip{margin-top:1rem;font-size:1rem;color:var(--parchment-dim);line-height:1.5;max-width:30rem;}
+
+  /* ---------- slide 7: dinamica — caja de reliquias ---------- */
+  .relic-scene{position:relative;height:clamp(12.5rem,25vw,18rem);}
+
+  .relic-box{position:absolute;left:6%;bottom:4%;width:clamp(9rem,18vw,13rem);height:clamp(5.6rem,11vw,8rem);
+    background:linear-gradient(160deg,#6b4527 0%,#4a2f1a 55%,#3a2513 100%);
+    border-radius:3px 3px 6px 6px;
+    box-shadow:0 16px 26px -12px rgba(10,5,0,.55), inset 0 0 0 1px rgba(0,0,0,.28), inset 0 -6px 10px rgba(0,0,0,.32);}
+  .relic-box::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background-image:repeating-linear-gradient(72deg, rgba(0,0,0,.09) 0 2px, transparent 2px 14px),
+                      repeating-linear-gradient(-35deg, rgba(255,255,255,.05) 0 1px, transparent 1px 18px);
+    mix-blend-mode:overlay;}
+  .relic-box::after{content:"";position:absolute;left:8%;top:-7%;width:84%;height:15%;border-radius:2px;
+    background:linear-gradient(90deg,#8a6a2e,#c8992f 50%,#8a6a2e);box-shadow:0 2px 4px rgba(0,0,0,.4);}
+
+  .relic-lid{position:absolute;left:4%;bottom:80%;width:90%;height:36%;border-radius:4px 4px 0 0;
+    background:linear-gradient(160deg,#5a391f,#3a2513);transform:rotate(-14deg);transform-origin:bottom left;
+    box-shadow:0 8px 14px -8px rgba(10,5,0,.5);}
+
+  .relic-doc{position:absolute;width:clamp(2.3rem,4.6vw,3.2rem);aspect-ratio:4/5;background:#fbf6e8;
+    border:1px solid rgba(0,0,0,.14);border-radius:2px;box-shadow:0 6px 12px -6px rgba(20,10,0,.4);}
+  .relic-doc::after{content:"";position:absolute;inset:16% 12%;opacity:.4;
+    background-image:repeating-linear-gradient(var(--wood) 0 2px, transparent 2px 9px);}
+  .relic-doc--1{left:0%;bottom:50%;transform:rotate(-15deg);z-index:2;}
+  .relic-doc--2{left:26%;bottom:58%;transform:rotate(8deg);z-index:3;}
+
+  .relic-brochure{position:absolute;left:46%;bottom:54%;width:clamp(2.5rem,5vw,3.4rem);aspect-ratio:3/4;
+    background:#fbf6e8;border:1px solid rgba(0,0,0,.14);border-radius:2px;transform:rotate(-5deg);
+    box-shadow:0 6px 12px -6px rgba(20,10,0,.4);overflow:hidden;z-index:2;}
+  .relic-brochure::before{content:"";position:absolute;top:0;left:0;right:0;height:38%;
+    background:linear-gradient(135deg,var(--forest),var(--forest-line));}
+  .relic-brochure::after{content:"";position:absolute;inset:44% 14% 12%;opacity:.4;
+    background-image:repeating-linear-gradient(var(--wood) 0 2px, transparent 2px 8px);}
+
+  .relic-doc--glow{left:64%;bottom:66%;transform:rotate(11deg);z-index:4;border-color:var(--gold);
+    box-shadow:0 0 0 1px var(--gold), 0 0 24px 5px rgba(200,153,47,.55), 0 8px 14px -6px rgba(20,10,0,.4);}
+  .relic-doc--glow::after{background-image:repeating-linear-gradient(var(--gold) 0 2px, transparent 2px 9px);opacity:.6;}
+
+  .relic-scan{position:absolute;left:76%;bottom:112%;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;z-index:6;}
+  .relic-scan__camera{width:clamp(2.1rem,4.2vw,2.9rem);height:auto;color:var(--ink-soft);
+    filter:drop-shadow(0 4px 6px rgba(0,0,0,.25));}
+  .relic-scan__beam{width:clamp(2.6rem,5.2vw,3.8rem);height:clamp(3.4rem,6.8vw,5rem);margin-top:-.15rem;
+    background:linear-gradient(180deg, rgba(230,189,92,.55), rgba(230,189,92,0));
+    clip-path:polygon(40% 0%, 60% 0%, 92% 100%, 8% 100%);}
+
+  /* ---------- slide 8/9: cta ---------- */
+  .cta{display:grid;place-items:center;text-align:center;gap:1.4rem;}
+  .cta h2{font-size:clamp(2.1rem,5.4vw,4.4rem);font-weight:600;max-width:20ch;color:var(--parchment);}
+  .cta p{max-width:36rem;font-size:clamp(1.05rem,1.5vw,1.3rem);color:var(--parchment-dim);line-height:1.6;}
+  .cta .polaroid{margin:.6rem auto 0;max-width:15rem;}
+
+  /* ---------- nav ---------- */
+  .nav-arrow{position:fixed;top:50%;transform:translateY(-50%);z-index:5;width:clamp(2.6rem,4vw,3.4rem);height:clamp(2.6rem,4vw,3.4rem);
+    border-radius:50%;border:1px solid rgba(244,236,218,.35);background:rgba(20,15,10,.4);color:var(--parchment);
+    display:grid;place-items:center;cursor:pointer;backdrop-filter:blur(2px);transition:background .2s,opacity .2s;}
+  .nav-arrow:hover{background:rgba(20,15,10,.65);}
+  .nav-arrow[disabled]{opacity:.25;cursor:default;}
+  .nav-arrow--prev{left:clamp(.6rem,2vw,1.6rem);}
+  .nav-arrow--next{right:clamp(.6rem,2vw,1.6rem);}
+  .nav-arrow svg{width:1.2rem;height:1.2rem;}
+
+  .trailnav{position:fixed;left:50%;bottom:clamp(.8rem,2vw,1.6rem);transform:translateX(-50%);z-index:5;
+    display:flex;align-items:center;gap:0;padding:.5rem .9rem;border-radius:999px;background:rgba(20,15,10,.4);
+    backdrop-filter:blur(2px);}
+  .tab-pin{width:.6rem;height:.6rem;border-radius:50%;background:rgba(244,236,218,.35);border:none;cursor:pointer;
+    margin:0 .45rem;position:relative;transition:background .2s,transform .2s;}
+  .tab-pin::before{content:"";position:absolute;top:50%;right:100%;width:.9rem;height:1px;background:rgba(244,236,218,.3);
+    transform:translateY(-50%);}
+  .tab-pin:first-child::before{display:none;}
+  .tab-pin[aria-current="true"]{background:var(--gold-bright);transform:scale(1.35);}
+
+  .counter{position:fixed;top:clamp(.8rem,2vw,1.4rem);right:clamp(.8rem,2vw,1.6rem);z-index:5;
+    font-family:var(--font-hand);font-size:1.3rem;color:var(--parchment);background:rgba(20,15,10,.4);
+    border:1px solid rgba(244,236,218,.3);border-radius:4px;padding:.3rem .8rem .35rem;font-variant-numeric:tabular-nums;}
+
+  @media (max-width:760px){
+    .snap-grid,.steps-layout,.qr-layout{grid-template-columns:1fr;}
+    .nav-arrow{display:none;}
+  }
+</style>
+
+<div class="stage">
+  <div class="deck" id="deck">
+
+    <!-- 1 — PORTADA -->
+    <section class="slide slide--forest" id="slide-0">
+      <div class="grain grain--dark"></div>
+      <div class="slide-inner cover">
+        <p class="kicker">50º aniversario</p>
+        <div class="logo-slot" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="5" width="18" height="14" rx="1.5"/><circle cx="9" cy="10" r="1.6"/><path d="M3 16l5-4 4 3 4-5 5 6"/></svg>
+          <span>Logo Abuvi</span>
+        </div>
+        <h1>La Memoria<em>Abuvina</em></h1>
+        <p class="tagline">Medio siglo de campamentos, amistades y aventuras.<br>Hoy empezamos a guardarlo todo, entre toda la familia abuvina.</p>
+        <p class="venue">Hoy · 16:30 · Sala de Proyecciones</p>
+      </div>
+    </section>
+
+    <!-- 2 — SNAPSHOT -->
+    <section class="slide slide--parchment" id="slide-1">
+      <div class="grain"></div>
+      <div class="slide-inner">
+        <p class="eyebrow">La sección, hoy</p>
+        <div class="head"><h2>Ya está aquí</h2></div>
+        <div class="snap-grid">
+          <div>
+            <p class="lede">Hemos construido un rincón dentro de la app de ABUVI donde cabe toda nuestra historia: 32 campamentos, 50 ediciones —sí, esta es la 50ª—, y sitio para cada foto, vídeo o historia que todavía nos falta por guardar.</p>
+            <div class="stat-row">
+              <span class="stat-tag">32 campamentos</span>
+              <span class="stat-tag">50 ediciones</span>
+              <span class="stat-tag">1976 → 2026</span>
+            </div>
+          </div>
+          <div class="polaroid">
+            <div class="frame">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="5" width="18" height="14" rx="1.5"/><circle cx="9" cy="10" r="1.6"/><path d="M3 16l5-4 4 3 4-5 5 6"/></svg>
+              <span class="ph-title">Captura pendiente</span>
+              <span class="ph-sub">Aquí va la captura de /anniversary: mapa, lista de sedes y tira de años</span>
+            </div>
+            <p class="caption">La sección "Historia", en vivo</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 — QUÉ HAY YA -->
+    <section class="slide slide--parchment" id="slide-2">
+      <div class="grain"></div>
+      <div class="slide-inner">
+        <p class="eyebrow">Tres cosas que ya puedes hacer</p>
+        <div class="head"><h2>Qué hay ya</h2></div>
+        <div class="card-grid">
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.3"/></svg></div>
+            <h3>Viaja por los 50 años</h3>
+            <p>Un mapa recorre cada campamento desde 1976 hasta hoy: dale al play y revive medio siglo en un momento.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="7" width="13" height="13" rx="1.4"/><rect x="7" y="4" width="13" height="13" rx="1.4"/></svg></div>
+            <h3>Busca tu año</h3>
+            <p>Cada edición tiene su propia galería. Si ves un hueco, es una invitación: seguro que tienes lo que falta.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></div>
+            <h3>Sube tu recuerdo</h3>
+            <p>Foto, vídeo, audio o una historia escrita: cualquier recuerdo tiene sitio aquí.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 — CÓMO SE SUBE -->
+    <section class="slide slide--parchment" id="slide-3">
+      <div class="grain"></div>
+      <div class="slide-inner">
+        <p class="eyebrow">Un minuto, seis pasos</p>
+        <div class="head"><h2>Cómo se sube un recuerdo</h2></div>
+        <div class="steps-layout">
+          <div>
+            <div class="trail">
+              <div class="step"><span class="pin">1</span><div class="txt"><h4>Nombre</h4><p>Quién comparte el recuerdo.</p></div></div>
+              <div class="step"><span class="pin">2</span><div class="txt"><h4>Tipo</h4><p>Foto, vídeo, audio o historia escrita.</p></div></div>
+              <div class="step"><span class="pin">3</span><div class="txt"><h4>Año o edición</h4><p>De qué campamento es este recuerdo.</p></div></div>
+              <div class="step"><span class="pin">4</span><div class="txt"><h4>Una frase que lo cuente</h4><p>Qué se ve, quién sale, qué pasó.</p></div></div>
+              <div class="step"><span class="pin">5</span><div class="txt"><h4>El archivo</h4><p>Se sube directamente desde el móvil.</p></div></div>
+              <div class="step"><span class="pin">6</span><div class="txt"><h4>Confirmar</h4><p>Que se puede compartir esta imagen.</p></div></div>
+            </div>
+            <p class="note">Lo revisamos antes de publicarlo, para cuidar la privacidad de quienes aparecen en cada foto — si no se ve publicado al instante, ya está en camino.</p>
+          </div>
+          <div class="polaroid tilt-r">
+            <div class="frame">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9h18M8 4v5"/></svg>
+              <span class="ph-title">Captura pendiente</span>
+              <span class="ph-sub">Aquí va el formulario completo de subida</span>
+            </div>
+            <p class="caption">El formulario, tal cual</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 — CONSEJILLOS -->
+    <section class="slide slide--parchment" id="slide-4">
+      <div class="grain"></div>
+      <div class="slide-inner">
+        <p class="eyebrow">Para que la memoria quede lo mejor posible</p>
+        <div class="head"><h2>Antes de subir, unos consejillos</h2></div>
+        <div class="checklist">
+          <div class="check-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg><span>Si aparecen menores, solo con su consentimiento (el suyo o el de su familia)</span></div>
+          <div class="check-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg><span>Mejor en grupo que en solitario</span></div>
+          <div class="check-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg><span>Que se vea bien: nada borroso ni demasiado lejos</span></div>
+          <div class="check-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg><span>Sin duplicados: hay que preseleccionar antes de subir</span></div>
+          <div class="check-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg><span>Cuanta más variedad de actividades, mejor</span></div>
+          <div class="check-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg><span>Con un nombre que cuente qué es</span></div>
+          <div class="check-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg><span>Con etiquetas que ayuden a encontrarla después, o con el nombre y apellidos de quienes salen en la foto</span></div>
+          <div class="check-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg><span>Si es audio, mejor corto</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 — QR -->
+    <section class="slide slide--forest" id="slide-5">
+      <div class="grain grain--dark"></div>
+      <div class="slide-inner">
+        <p class="eyebrow" style="color:var(--gold-bright)">Escanéalo ahora mismo</p>
+        <div class="head"><h2>Este año también es historia</h2></div>
+        <div class="qr-layout">
+          <div class="polaroid square" style="margin:0 auto;max-width:22rem;">
+            <div class="frame">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM19 14h2v2h-2zM14 19h2v2h-2zM19 19h2v2h-2z"/></svg>
+              <span class="ph-title">QR pendiente</span>
+              <span class="ph-sub">Aquí va la imagen del QR que aporta Néstor</span>
+            </div>
+          </div>
+          <div>
+            <p class="lede" style="color:var(--parchment-dim)">Escanea y sube ahora mismo, desde tu móvil, algo de la edición de este año.</p>
+            <p class="qr-url">app.abuvi.org/anniversary?tipo=foto&amp;anio=2026#subir-recuerdo</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 — DINÁMICA PRESENCIAL -->
+    <section class="slide slide--parchment" id="slide-6">
+      <div class="grain"></div>
+      <div class="slide-inner">
+        <p class="eyebrow">Ahora, entre todas y todos</p>
+        <div class="head"><h2>Vamos a hacerlo juntas y juntos</h2></div>
+        <div class="snap-grid">
+          <p class="lede">En estas cajas guardamos documentos de toda la vida de Abuvi, todavía sin revisar. Abramos las cajas entre todas y todos, veamos qué guardan y salvemos lo que podamos — lo que identifiquemos, lo subimos aquí mismo.<br><br>Si no sabéis cómo, buscad a Néstor o a cualquiera de quienes estamos ayudando hoy — se hace en un minuto.</p>
+          <div class="relic-scene" aria-hidden="true">
+            <div class="relic-box">
+              <div class="relic-lid"></div>
+              <div class="relic-doc relic-doc--1"></div>
+              <div class="relic-doc relic-doc--2"></div>
+              <div class="relic-brochure"></div>
+              <div class="relic-doc relic-doc--glow"></div>
+              <div class="relic-scan">
+                <svg class="relic-scan__camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+                  <rect x="3" y="8" width="18" height="12" rx="2"/><circle cx="12" cy="14" r="3.4"/><path d="M8 8l1.6-2.2h4.8L16 8"/>
+                </svg>
+                <div class="relic-scan__beam"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 — CTA ESTE AÑO -->
+    <section class="slide slide--ember" id="slide-7">
+      <div class="grain grain--dark"></div>
+      <div class="slide-inner cta">
+        <p class="eyebrow" style="color:var(--gold-bright)">Edición 2026</p>
+        <h2>Que este año no se quede sin recuerdos.</h2>
+        <p>Todo lo que estamos viviendo hoy también será historia algún día. Súbelo ahora, que no se pierda.</p>
+      </div>
+    </section>
+
+    <!-- 9 — CTA SUGERENCIAS -->
+    <section class="slide slide--forest" id="slide-8">
+      <div class="grain grain--dark"></div>
+      <div class="slide-inner cta">
+        <p class="eyebrow">Y esto sigue creciendo</p>
+        <h2>Esto es de toda la familia abuvina — ayudadnos a mejorarlo</h2>
+        <p>¿Se os ocurre algo que falta, una idea, algo que no funciona bien? En la propia app hay un botón de feedback, siempre a mano: usadlo, lo leemos todo.</p>
+        <div class="polaroid square">
+          <div class="frame">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="ph-title">Captura pendiente</span>
+            <span class="ph-sub">Aquí va el screenshot real del botón de Feedback (Userback)</span>
+          </div>
+          <p class="caption">Así lo verás en la app</p>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <button class="nav-arrow nav-arrow--prev" id="prev" aria-label="Diapositiva anterior">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <button class="nav-arrow nav-arrow--next" id="next" aria-label="Siguiente diapositiva">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+
+  <div class="trailnav" id="trailnav" role="tablist" aria-label="Ir a diapositiva"></div>
+  <div class="counter" id="counter">01 · 09</div>
+</div>
+
+<script>
+(function(){
+  var deck = document.getElementById('deck');
+  var slides = Array.prototype.slice.call(deck.children);
+  var total = slides.length;
+  var index = 0;
+  var prevBtn = document.getElementById('prev');
+  var nextBtn = document.getElementById('next');
+  var trailnav = document.getElementById('trailnav');
+  var counter = document.getElementById('counter');
+
+  slides.forEach(function(_, i){
+    var b = document.createElement('button');
+    b.className = 'tab-pin';
+    b.setAttribute('role','tab');
+    b.setAttribute('aria-label','Diapositiva ' + (i+1));
+    b.addEventListener('click', function(){ goto(i); });
+    trailnav.appendChild(b);
+  });
+  var pins = Array.prototype.slice.call(trailnav.children);
+
+  function pad(n){ return n < 10 ? '0'+n : ''+n; }
+
+  function render(){
+    deck.style.transform = 'translateX(-' + (index * 100) + 'vw)';
+    prevBtn.disabled = index === 0;
+    nextBtn.disabled = index === total - 1;
+    pins.forEach(function(p, i){ p.setAttribute('aria-current', i === index ? 'true' : 'false'); });
+    counter.textContent = pad(index+1) + ' · ' + pad(total);
+    slides.forEach(function(s, i){ s.setAttribute('aria-hidden', i === index ? 'false' : 'true'); });
+    try{ localStorage.setItem('abuvi50-slide', String(index)); }catch(e){}
+  }
+
+  function goto(i){
+    index = Math.max(0, Math.min(total - 1, i));
+    render();
+  }
+
+  prevBtn.addEventListener('click', function(){ goto(index - 1); });
+  nextBtn.addEventListener('click', function(){ goto(index + 1); });
+
+  window.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowRight' || e.key === 'PageDown'){ goto(index + 1); }
+    else if(e.key === 'ArrowLeft' || e.key === 'PageUp'){ goto(index - 1); }
+    else if(e.key === 'Home'){ goto(0); }
+    else if(e.key === 'End'){ goto(total - 1); }
+  });
+
+  var touchStartX = null;
+  window.addEventListener('touchstart', function(e){ touchStartX = e.changedTouches[0].clientX; }, {passive:true});
+  window.addEventListener('touchend', function(e){
+    if(touchStartX === null) return;
+    var dx = e.changedTouches[0].clientX - touchStartX;
+    if(Math.abs(dx) > 50){ goto(dx < 0 ? index + 1 : index - 1); }
+    touchStartX = null;
+  }, {passive:true});
+
+  try{
+    var saved = parseInt(localStorage.getItem('abuvi50-slide'), 10);
+    if(!isNaN(saved) && saved >= 0 && saved < total){ index = saved; }
+  }catch(e){}
+
+  render();
+})();
+</script>
