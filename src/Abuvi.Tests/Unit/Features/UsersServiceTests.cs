@@ -71,44 +71,112 @@ public class UsersServiceTests
         result.Should().BeNull();
     }
 
+    private static User BuildUser(string email, UserRole role = UserRole.Member) => new()
+    {
+        Id = Guid.NewGuid(),
+        Email = email,
+        FirstName = "User",
+        LastName = "Test",
+        Role = role,
+        IsActive = true,
+        CreatedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow
+    };
+
     [Fact]
-    public async Task GetAllAsync_ReturnsListOfUserResponses()
+    public async Task GetPagedAsync_ReturnsMappedItemsAndPagingMetadata()
     {
         // Arrange
-        var users = new List<User>
-        {
-            new() {
-                Id = Guid.NewGuid(),
-                Email = "user1@example.com",
-                FirstName = "User",
-                LastName = "One",
-                Role = UserRole.Member,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            },
-            new() {
-                Id = Guid.NewGuid(),
-                Email = "user2@example.com",
-                FirstName = "User",
-                LastName = "Two",
-                Role = UserRole.Admin,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            }
-        };
-
-        _repository.GetAllAsync(0, 100, Arg.Any<CancellationToken>())
-            .Returns(users);
+        var users = new List<User> { BuildUser("user1@example.com"), BuildUser("user2@example.com", UserRole.Admin) };
+        _repository.GetPagedAsync(1, 20, null, null, null, null, null, Arg.Any<CancellationToken>())
+            .Returns((users, 45));
 
         // Act
-        var result = await _service.GetAllAsync();
+        var result = await _service.GetPagedAsync(new UserListQuery());
 
         // Assert
-        result.Should().HaveCount(2);
-        result[0].Email.Should().Be("user1@example.com");
-        result[1].Email.Should().Be("user2@example.com");
+        result.Items.Should().HaveCount(2);
+        result.Items[0].Email.Should().Be("user1@example.com");
+        result.Items[1].Role.Should().Be(UserRole.Admin);
+        result.TotalCount.Should().Be(45);
+        result.Page.Should().Be(1);
+        result.PageSize.Should().Be(20);
+        result.TotalPages.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_PassesFiltersToRepository()
+    {
+        // Arrange
+        _repository.GetPagedAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<UserRole?>(),
+                Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns((new List<User>(), 0));
+        var query = new UserListQuery(2, 10, "ana", UserRole.Board, false, "email", "asc");
+
+        // Act
+        await _service.GetPagedAsync(query);
+
+        // Assert
+        await _repository.Received(1).GetPagedAsync(
+            2, 10, "ana", UserRole.Board, false, "email", "asc", Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-3)]
+    public async Task GetPagedAsync_PageBelowOne_NormalizesToOne(int page)
+    {
+        // Arrange
+        _repository.GetPagedAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<UserRole?>(),
+                Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns((new List<User>(), 0));
+
+        // Act
+        var result = await _service.GetPagedAsync(new UserListQuery(Page: page));
+
+        // Assert
+        result.Page.Should().Be(1);
+        await _repository.Received(1).GetPagedAsync(
+            1, Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<UserRole?>(), Arg.Any<bool?>(),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(1000, 100)]
+    [InlineData(0, 1)]
+    [InlineData(-5, 1)]
+    public async Task GetPagedAsync_PageSizeOutOfRange_IsClamped(int requested, int expected)
+    {
+        // Arrange
+        _repository.GetPagedAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<UserRole?>(),
+                Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns((new List<User>(), 0));
+
+        // Act
+        var result = await _service.GetPagedAsync(new UserListQuery(PageSize: requested));
+
+        // Assert
+        result.PageSize.Should().Be(expected);
+        await _repository.Received(1).GetPagedAsync(
+            Arg.Any<int>(), expected, Arg.Any<string?>(), Arg.Any<UserRole?>(), Arg.Any<bool?>(),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_NoResults_ReturnsZeroTotalPages()
+    {
+        // Arrange
+        _repository.GetPagedAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<UserRole?>(),
+                Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns((new List<User>(), 0));
+
+        // Act
+        var result = await _service.GetPagedAsync(new UserListQuery(Search: "nobody"));
+
+        // Assert
+        result.Items.Should().BeEmpty();
+        result.TotalCount.Should().Be(0);
+        result.TotalPages.Should().Be(0);
     }
 
     [Fact]

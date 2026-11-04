@@ -81,6 +81,37 @@ public record UserResponse(
 );
 
 /// <summary>
+/// Query parameters for the paged admin users list
+/// </summary>
+/// <param name="Page">1-based page number</param>
+/// <param name="PageSize">Items per page (clamped to 1..100)</param>
+/// <param name="Search">Case-insensitive match on email, first name, last name or full name</param>
+/// <param name="Role">Optional role filter</param>
+/// <param name="IsActive">Optional active-state filter</param>
+/// <param name="SortBy">email | firstName | lastName | createdAt | role (default createdAt)</param>
+/// <param name="SortOrder">asc | desc (default desc)</param>
+public record UserListQuery(
+    int Page = 1,
+    int PageSize = 20,
+    string? Search = null,
+    UserRole? Role = null,
+    bool? IsActive = null,
+    string? SortBy = null,
+    string? SortOrder = null
+);
+
+/// <summary>
+/// Paginated response envelope for the admin users list
+/// </summary>
+public record PagedUsersResponse(
+    List<UserResponse> Items,
+    int TotalCount,
+    int Page,
+    int PageSize,
+    int TotalPages
+);
+
+/// <summary>
 /// Audit log entry for user role changes
 /// </summary>
 public class UserRoleChangeLog

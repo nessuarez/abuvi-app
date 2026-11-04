@@ -22,9 +22,9 @@ public static class UsersEndpoints
         // GET /api/users - Get all users (Admin/Board)
         group.MapGet("/", GetAllUsers)
             .WithName("GetAllUsers")
-            .WithSummary("Get all users")
+            .WithSummary("Get paged users with search and filters")
             .RequireAuthorization(policy => policy.RequireRole("Admin", "Board"))
-            .Produces<ApiResponse<List<UserResponse>>>()
+            .Produces<ApiResponse<PagedUsersResponse>>()
             .Produces(401)
             .Produces(403);
 
@@ -86,16 +86,15 @@ public static class UsersEndpoints
     }
 
     /// <summary>
-    /// Get all users with optional pagination
+    /// Get a paged list of users with optional search, role/active filters and sorting
     /// </summary>
     private static async Task<IResult> GetAllUsers(
         [FromServices] UsersService service,
-        [FromQuery] int skip = 0,
-        [FromQuery] int take = 100,
+        [AsParameters] UserListQuery query,
         CancellationToken cancellationToken = default)
     {
-        var users = await service.GetAllAsync(skip, take, cancellationToken);
-        return Results.Ok(ApiResponse<List<UserResponse>>.Ok(users));
+        var result = await service.GetPagedAsync(query, cancellationToken);
+        return Results.Ok(ApiResponse<PagedUsersResponse>.Ok(result));
     }
 
     /// <summary>
