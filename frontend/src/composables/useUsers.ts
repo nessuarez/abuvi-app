@@ -1,6 +1,13 @@
-import { ref, type Ref } from 'vue'
+import { ref } from 'vue'
 import { api } from '@/utils/api'
-import type { User, CreateUserRequest, UpdateUserRequest, UpdateUserRoleRequest } from '@/types/user'
+import type {
+  User,
+  CreateUserRequest,
+  UpdateUserRequest,
+  UpdateUserRoleRequest,
+  UserListParams,
+  PagedUsersResponse
+} from '@/types/user'
 import type { ApiResponse } from '@/types/api'
 
 export function useUsers() {
@@ -8,23 +15,57 @@ export function useUsers() {
   const selectedUser = ref<User | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const pagination = ref({ page: 1, pageSize: 20, totalCount: 0, totalPages: 0 })
+  const lastParams = ref<UserListParams>({ page: 1, pageSize: 20 })
+  let requestSeq = 0
 
   /**
-   * Fetch all users from the API
+   * Fetch one page of users. Params are merged into the last used query so that
+   * callers can change a single aspect (e.g. only the page).
    */
-  const fetchUsers = async (): Promise<void> => {
+  const fetchUsers = async (params: UserListParams = {}): Promise<void> => {
+    const merged: UserListParams = { ...lastParams.value, ...params }
+    lastParams.value = merged
+
+    const query: Record<string, string | number | boolean> = {}
+    if (merged.page !== undefined) query.page = merged.page
+    if (merged.pageSize !== undefined) query.pageSize = merged.pageSize
+    const search = merged.search?.trim()
+    if (search) query.search = search
+    if (merged.role != null) query.role = merged.role
+    if (merged.isActive != null) query.isActive = merged.isActive
+    if (merged.sortBy) query.sortBy = merged.sortBy
+    if (merged.sortOrder) query.sortOrder = merged.sortOrder
+
+    const seq = ++requestSeq
     loading.value = true
     error.value = null
     try {
-      const response = await api.get<ApiResponse<User[]>>('/users')
-      users.value = response.data.data ?? []
+      const response = await api.get<ApiResponse<PagedUsersResponse>>('/users', { params: query })
+      if (seq !== requestSeq) return // a newer request superseded this one
+      const data = response.data.data
+      users.value = data?.items ?? []
+      if (data) {
+        pagination.value = {
+          page: data.page,
+          pageSize: data.pageSize,
+          totalCount: data.totalCount,
+          totalPages: data.totalPages
+        }
+      }
     } catch (err) {
+      if (seq !== requestSeq) return
       error.value = 'Failed to load users. Please try again.'
       console.error('fetchUsers error:', err)
     } finally {
-      loading.value = false
+      if (seq === requestSeq) loading.value = false
     }
   }
+
+  /**
+   * Re-run the last query (keeps page, search and sort)
+   */
+  const refresh = (): Promise<void> => fetchUsers(lastParams.value)
 
   /**
    * Fetch a single user by ID
@@ -61,7 +102,7 @@ export function useUsers() {
     try {
       const response = await api.post<ApiResponse<User>>('/users', request)
       if (response.data.data) {
-        users.value.push(response.data.data)
+        await refresh()
         return response.data.data
       }
       return null
@@ -198,7 +239,11 @@ export function useUsers() {
     error.value = null
     try {
       await api.delete(`/users/${id}`)
-      users.value = users.value.filter((u) => u.id !== id)
+      if (users.value.length === 1 && pagination.value.page > 1) {
+        await fetchUsers({ page: pagination.value.page - 1 })
+      } else {
+        await refresh()
+      }
       return true
     } catch (err: any) {
       if (err.response?.status === 404) {
@@ -223,7 +268,9 @@ export function useUsers() {
     selectedUser,
     loading,
     error,
+    pagination,
     fetchUsers,
+    refresh,
     fetchUserById,
     createUser,
     updateUser,

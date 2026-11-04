@@ -1775,6 +1775,19 @@ export function useDebounce<T>(value: () => T, delay: number = 300) {
 }
 ```
 
+### Server-side search and pagination for admin tables
+
+Admin tables backed by a paged endpoint must search, sort and paginate on the server. Never filter paged data in the browser: rows outside the loaded page become unreachable.
+
+- Use a **lazy `DataTable`** with `:total-records`, `:first`, `:loading`, `@page` and `@sort`.
+- Debounce the search input with `useDebounceFn` (300 ms). A search change always resets to page 1.
+- Map sortable columns to the backend sort allowlist; do not mark columns the backend cannot sort as `sortable`.
+- The composable merges params into the last query, exposes `pagination` and `refresh()`, and guards against stale responses with a request sequence counter.
+- Show the full-page spinner only on the initial load so the search input never unmounts while typing.
+- Use search-aware empty-state copy and show a total counter.
+
+Reference implementations: `FamilyUnitsAdminPanel.vue` and `UsersAdminPanel.vue` (with `useUsers.ts`).
+
 ## Language Standards
 
 All user-facing text (UI labels, validation messages, error messages, toasts) must be in **Spanish** to match the application's primary audience in Spain.
