@@ -113,6 +113,103 @@ public class MediaItemsServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_WithThemeIds_AttachesKnownActiveThemes()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var themeA = new MediaTheme { Id = Guid.NewGuid(), Name = "San Abuvino", Slug = "san-abuvino", IsActive = true };
+        var themeB = new MediaTheme { Id = Guid.NewGuid(), Name = "Excursiones", Slug = "excursiones", IsActive = true };
+        var request = new CreateMediaItemRequest(
+            "https://example.com/file.jpg", "https://example.com/thumb.webp",
+            MediaItemType.Photo, "Title", null, null, null, null, null,
+            ThemeIds: [themeA.Id, themeB.Id]);
+
+        _themesRepository.GetByIdsAsync(
+                Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 2), Arg.Any<CancellationToken>())
+            .Returns(new List<MediaTheme> { themeA, themeB });
+
+        // Act
+        await _service.CreateAsync(userId, request, CancellationToken.None);
+
+        // Assert
+        await _themesRepository.Received(1).AttachManyAsync(
+            Arg.Is<IReadOnlyList<MediaItemTheme>>(tags =>
+                tags.Count == 2 &&
+                tags.All(t => t.TaggedByUserId == userId) &&
+                tags.Select(t => t.MediaThemeId).OrderBy(id => id)
+                    .SequenceEqual(new[] { themeA.Id, themeB.Id }.OrderBy(id => id))),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithThemeIds_SkipsInactiveThemes()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var active = new MediaTheme { Id = Guid.NewGuid(), Name = "Deportes", Slug = "deportes", IsActive = true };
+        var retired = new MediaTheme { Id = Guid.NewGuid(), Name = "Antiguo", Slug = "antiguo", IsActive = false };
+        var request = new CreateMediaItemRequest(
+            "https://example.com/file.jpg", "https://example.com/thumb.webp",
+            MediaItemType.Photo, "Title", null, null, null, null, null,
+            ThemeIds: [active.Id, retired.Id]);
+
+        _themesRepository.GetByIdsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<MediaTheme> { active, retired });
+
+        // Act
+        await _service.CreateAsync(userId, request, CancellationToken.None);
+
+        // Assert — a retired theme keeps its existing tags but must never receive new ones.
+        await _themesRepository.Received(1).AttachManyAsync(
+            Arg.Is<IReadOnlyList<MediaItemTheme>>(tags =>
+                tags.Count == 1 && tags[0].MediaThemeId == active.Id),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithUnknownThemeIds_AttachesOnlyKnownOnes()
+    {
+        // Arrange — two of the three requested ids do not exist (typo, deleted theme, race).
+        var userId = Guid.NewGuid();
+        var known = new MediaTheme { Id = Guid.NewGuid(), Name = "Asambleas", Slug = "asambleas", IsActive = true };
+        var request = new CreateMediaItemRequest(
+            "https://example.com/file.jpg", "https://example.com/thumb.webp",
+            MediaItemType.Photo, "Title", null, null, null, null, null,
+            ThemeIds: [known.Id, Guid.NewGuid(), Guid.NewGuid()]);
+
+        _themesRepository.GetByIdsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<MediaTheme> { known });
+
+        // Act
+        var act = () => _service.CreateAsync(userId, request, CancellationToken.None);
+
+        // Assert — an unresolvable theme id must not fail the whole upload.
+        await act.Should().NotThrowAsync();
+        await _themesRepository.Received(1).AttachManyAsync(
+            Arg.Is<IReadOnlyList<MediaItemTheme>>(tags => tags.Count == 1 && tags[0].MediaThemeId == known.Id),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithoutThemeIds_NeverCallsThemeRepository()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var request = new CreateMediaItemRequest(
+            "https://example.com/file.jpg", "https://example.com/thumb.webp",
+            MediaItemType.Photo, "Title", null, null, null, null, null);
+
+        // Act
+        await _service.CreateAsync(userId, request, CancellationToken.None);
+
+        // Assert — the common case (no themes chosen) must not spend a query on it.
+        await _themesRepository.DidNotReceive().GetByIdsAsync(
+            Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>());
+        await _themesRepository.DidNotReceive().AttachManyAsync(
+            Arg.Any<IReadOnlyList<MediaItemTheme>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task ApproveAsync_WithExistingId_SetsBothFlagsTrue()
     {
         // Arrange

@@ -1775,6 +1775,31 @@ public class AnalysisService(IPythonEnvironment python)
 
 ## Development Workflow
 
+### Environments and Deployment
+
+Deployment is automatic and branch-driven, hosted on **Coolify**:
+
+| Branch | Deploys to | Purpose |
+|--------|-----------|---------|
+| `dev`  | Test / demo environment | Integration testing, stakeholder demos |
+| `main` | Production | Real member-facing environment |
+
+**Each environment has its own PostgreSQL database and its own blob storage bucket.** Nothing is shared between local, demo and production — same schema, entirely separate data and credentials. There is no `appsettings.Production.json` (or `.Demo.json`) committed to this repo; environment-specific values (`ConnectionStrings:DefaultConnection`, the `BlobStorage` section) are injected at the hosting level via environment variables, following the standard ASP.NET Core convention (`ConnectionStrings__DefaultConnection`, `BlobStorage__AccessKeyId`, etc. — double underscore maps to nested config).
+
+**Targeting a non-local environment from `Abuvi.Setup`** (or any one-off script built on it): the tool already resolves its connection in this order —
+
+```csharp
+// SetupConfig.Parse
+var connection = args.FirstOrDefault(a => a.StartsWith("--connection="))
+    ?.Replace("--connection=", "")
+    ?? Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? "Host=localhost;Database=abuvi;Username=postgres;Password=postgres";
+```
+
+So a run against demo or production supplies either `--connection="<connection string>"` or a `DATABASE_URL` environment variable — never a value hardcoded or committed. Blob storage credentials for that same environment must be supplied the same way (environment variables, not a config file in the repo), since uploading files and creating `MediaItem` rows against an environment requires **both** — a database connection alone lets you write rows that point at files that were never uploaded to that environment's bucket.
+
+**Safety practice**: pull environment credentials from Coolify directly onto the machine running the script (env vars or a local `.env` ignored by git) — never paste them into a chat session or a committed file. Any operation with `--env=production` should go through `--dry-run` first, per the existing `SafetyGuard` convention in `Abuvi.Setup`.
+
 ### Git Workflow
 
 - **Feature Branches**: Develop features in separate branches with the `-backend` suffix (e.g., `feature/camp-registration-backend`)

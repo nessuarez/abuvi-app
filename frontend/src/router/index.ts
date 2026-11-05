@@ -43,6 +43,53 @@ const router = createRouter({
 				title: "ABUVI | 50 Aniversario"
 			}
 		},
+		// The historical journey on /anniversary is the album index; there is deliberately
+		// no second listing route competing with it for the same fifty editions.
+		{
+			path: "/anniversary/albums/:editionId",
+			name: "anniversary-album",
+			component: () => import("@/views/anniversary/AlbumDetailPage.vue"),
+			meta: {
+				requiresAuth: true,
+				title: "ABUVI | Álbum del campamento"
+			}
+		},
+		{
+			path: "/anniversary/temas",
+			name: "anniversary-themes",
+			component: () => import("@/views/anniversary/ThemesIndexPage.vue"),
+			meta: {
+				requiresAuth: true,
+				title: "ABUVI | Temas"
+			}
+		},
+		{
+			path: "/anniversary/temas/:slug",
+			name: "anniversary-theme",
+			component: () => import("@/views/anniversary/ThemeDetailPage.vue"),
+			meta: {
+				requiresAuth: true,
+				title: "ABUVI | Tema"
+			}
+		},
+		{
+			path: "/anniversary/sin-ubicar",
+			name: "anniversary-unplaced",
+			component: () => import("@/views/anniversary/UnplacedMediaPage.vue"),
+			meta: {
+				requiresAuth: true,
+				title: "ABUVI | Recuerdos sin ubicar"
+			}
+		},
+		{
+			path: "/anniversary/mis-campamentos",
+			name: "anniversary-my-camps",
+			component: () => import("@/views/anniversary/MyCampTimelinePage.vue"),
+			meta: {
+				requiresAuth: true,
+				title: "ABUVI | Mis campamentos"
+			}
+		},
 		{
 			path: "/profile",
 			name: "profile",

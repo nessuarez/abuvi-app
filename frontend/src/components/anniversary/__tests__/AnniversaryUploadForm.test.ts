@@ -185,7 +185,8 @@ describe('AnniversaryUploadForm', () => {
       expect(wrapper.text()).toContain('La descripción es obligatoria para historias escritas')
     })
 
-    it('requires an edition instead of silently defaulting to the current year', async () => {
+    it('submits with "No lo sé" selected instead of silently defaulting to the current year', async () => {
+      mockCreateMemory.mockResolvedValue({ id: 'memory-1', title: 'Test' })
       const wrapper = mountForm()
       await wrapper.find('#upload-name').setValue('Test User')
       await wrapper.find('#upload-type').setValue('historia')
@@ -193,8 +194,11 @@ describe('AnniversaryUploadForm', () => {
       await wrapper.find('#upload-rights').setValue(true)
       await wrapper.find('form').trigger('submit')
 
-      expect(wrapper.text()).toContain('Elige la edición a la que pertenece el recuerdo')
-      expect(mockCreateMemory).not.toHaveBeenCalled()
+      // No edition was ever selected -- the default stays "No lo sé". The item must still be
+      // submittable, and must never carry a guessed year: it belongs in the unplaced pile.
+      expect(mockCreateMemory).toHaveBeenCalledWith(
+        expect.objectContaining({ year: undefined }),
+      )
     })
   })
 
