@@ -4495,6 +4495,62 @@ Who attended, unioning declared attendance with attendance derived from registra
 
 ---
 
+### GET /api/users
+
+Paged, searchable list of users for administration.
+
+**Authorization**: `Admin` or `Board`.
+
+**Query parameters**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | int | `1` | 1-based page number. Values below 1 become 1. |
+| `pageSize` | int | `20` | Items per page. Clamped to 1..100. |
+| `search` | string | - | Case-insensitive, trimmed match on email, first name, last name or full name ("first last"). |
+| `role` | enum | - | `Admin`, `Board` or `Member`. |
+| `isActive` | bool | - | Filter by active state. |
+| `sortBy` | string | `createdAt` | One of `email`, `firstName`, `lastName`, `createdAt`, `role` (case-insensitive). Unknown values fall back to the default. |
+| `sortOrder` | string | `desc` | `asc` or `desc` (case-insensitive). With a recognised `sortBy`, anything other than `desc` sorts ascending. Without `sortBy`, the default is `createdAt desc`. |
+
+Ties are broken by user id so pages never overlap.
+
+**Response 200**
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "3f2b8f3e-0000-0000-0000-000000000001",
+        "email": "ana.garcia@example.com",
+        "firstName": "Ana",
+        "lastName": "García",
+        "phone": null,
+        "role": "Member",
+        "isActive": true,
+        "emailVerified": true,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-01T00:00:00Z"
+      }
+    ],
+    "totalCount": 1,
+    "page": 1,
+    "pageSize": 20,
+    "totalPages": 1
+  }
+}
+```
+
+An empty result is still `200` with `items: []`, `totalCount: 0` and `totalPages: 0`.
+
+**Status codes**: `200` success, `400` unbindable query value (for example `role=Foo`), `401` no or invalid token, `403` not Admin or Board.
+
+**Breaking change**: `data` was previously a plain array of users (limited to 100, no search).
+
+---
+
 ### GET /api/users/me/camp-timeline
 
 The caller's personal timeline.

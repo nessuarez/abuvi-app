@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref, reactive, computed, nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
+import DataTable from 'primevue/datatable'
 import Tooltip from 'primevue/tooltip'
 import UsersAdminPanel from '../UsersAdminPanel.vue'
 import type { User } from '@/types/user'
@@ -14,10 +15,12 @@ const mockUpdateUser = vi.fn()
 const mockToggleUserActive = vi.fn()
 const mockDeleteUser = vi.fn()
 const mockClearError = vi.fn()
+const mockRefresh = vi.fn()
 
 const mockUsers = ref<User[]>([])
 const mockLoading = ref(false)
 const mockError = ref<string | null>(null)
+const mockPagination = ref({ page: 1, pageSize: 20, totalCount: 2, totalPages: 1 })
 
 const mockRole = ref<string>('Admin')
 const mockAuthStore = reactive({
@@ -48,6 +51,8 @@ vi.mock('@/composables/useUsers', () => ({
     toggleUserActive: mockToggleUserActive,
     deleteUser: mockDeleteUser,
     clearError: mockClearError,
+    pagination: mockPagination,
+    refresh: mockRefresh,
   }),
 }))
 
@@ -78,6 +83,14 @@ const userFormStub = {
   emits: ['submit', 'cancel'],
 }
 
+const searchInputStub = {
+  name: 'InputText',
+  props: ['modelValue'],
+  emits: ['update:modelValue'],
+  template:
+    `<input :value="modelValue" @input="$emit('update:modelValue', $event.target.value)" />`,
+}
+
 function mountPanel() {
   return mount(UsersAdminPanel, {
     global: {
@@ -91,9 +104,9 @@ function mountPanel() {
         Dialog: dialogStub,
         ProgressSpinner: true,
         Message: true,
-        IconField: true,
+        IconField: { template: '<div><slot /></div>' },
         InputIcon: true,
-        InputText: true,
+        InputText: searchInputStub,
       },
     },
   })
@@ -105,6 +118,11 @@ describe('UsersAdminPanel', () => {
     mockUsers.value = [makeUser(), makeUser({ id: 'user-2', email: 'other@example.com' })]
     mockLoading.value = false
     mockError.value = null
+    mockPagination.value = { page: 1, pageSize: 20, totalCount: 2, totalPages: 1 }
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   describe('Admin role', () => {
@@ -217,6 +235,105 @@ describe('UsersAdminPanel', () => {
 
       expect(wrapper.html()).toContain('Editar Perfil de Usuario')
       expect(mockToastAdd).not.toHaveBeenCalled()
+    })
+  })
+  describe('Server-side search, paging and sort', () => {
+    beforeEach(() => {
+      mockRole.value = 'Admin'
+    })
+
+    it('fetches first page on mount', () => {
+      mountPanel()
+      expect(mockFetchUsers).toHaveBeenCalledWith({
+        page: 1, pageSize: 20, search: '', sortBy: 'createdAt', sortOrder: 'desc',
+      })
+    })
+
+    it('debounces search input and resets to page 1', async () => {
+      vi.useFakeTimers()
+      const wrapper = mountPanel()
+      mockFetchUsers.mockClear()
+
+      await wrapper.find('[data-testid="users-search-input"]').setValue('ana')
+      vi.advanceTimersByTime(299)
+      expect(mockFetchUsers).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(1)
+
+      expect(mockFetchUsers).toHaveBeenCalledTimes(1)
+      expect(mockFetchUsers).toHaveBeenCalledWith(
+        expect.objectContaining({ search: 'ana', page: 1 })
+      )
+    })
+
+    it('does not filter rows client-side', async () => {
+      const wrapper = mountPanel()
+      await wrapper.find('[data-testid="users-search-input"]').setValue('zzz')
+      await nextTick()
+      expect(wrapper.findAll('[data-testid^="edit-user-"]').length).toBe(2)
+    })
+
+    it('requests the next page on paginator page event', async () => {
+      const wrapper = mountPanel()
+      mockFetchUsers.mockClear()
+
+      wrapper.findComponent(DataTable).vm.$emit('page', { page: 1, rows: 20, first: 20 })
+
+      expect(mockFetchUsers).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 2, pageSize: 20 })
+      )
+    })
+
+    it('maps column sort to server sortBy/sortOrder', async () => {
+      const wrapper = mountPanel()
+      mockFetchUsers.mockClear()
+
+      wrapper.findComponent(DataTable).vm.$emit('sort', { sortField: 'email', sortOrder: 1 })
+
+      expect(mockFetchUsers).toHaveBeenCalledWith(
+        expect.objectContaining({ sortBy: 'email', sortOrder: 'asc', page: 1 })
+      )
+    })
+
+    it('resets to createdAt desc when the sort is cleared', async () => {
+      const wrapper = mountPanel()
+      mockFetchUsers.mockClear()
+
+      wrapper.findComponent(DataTable).vm.$emit('sort', { sortField: 'email', sortOrder: 0 })
+
+      expect(mockFetchUsers).toHaveBeenCalledWith(
+        expect.objectContaining({ sortBy: 'createdAt', sortOrder: 'desc', page: 1 })
+      )
+    })
+
+    it('shows total count', () => {
+      mockPagination.value = { page: 1, pageSize: 20, totalCount: 137, totalPages: 7 }
+      const wrapper = mountPanel()
+      expect(wrapper.find('[data-testid="users-total"]').text()).toContain('137 usuarios')
+    })
+
+    it('shows search-specific empty message', async () => {
+      const wrapper = mountPanel()
+      await wrapper.find('[data-testid="users-search-input"]').setValue('nadie')
+      mockUsers.value = []
+      await nextTick()
+      expect(wrapper.html()).toContain('No se encontraron usuarios para')
+      expect(wrapper.html()).toContain('nadie')
+    })
+
+    it('shows plain empty message without a search term', async () => {
+      mockUsers.value = []
+      const wrapper = mountPanel()
+      await nextTick()
+      expect(wrapper.html()).toContain('No hay usuarios.')
+    })
+
+    it('refreshes list after role update', async () => {
+      const wrapper = mountPanel()
+      wrapper
+        .findComponent({ name: 'UserRoleDialog' })
+        .vm.$emit('role-updated', makeUser({ role: 'Board' }))
+      await nextTick()
+      expect(mockRefresh).toHaveBeenCalled()
     })
   })
 })

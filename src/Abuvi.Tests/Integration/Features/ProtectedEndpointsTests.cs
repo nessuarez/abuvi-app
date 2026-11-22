@@ -193,10 +193,12 @@ public class ProtectedEndpointsTests : IClassFixture<WebApplicationFactory<Progr
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ApiResponse<List<UserResponse>>>(JsonOptions);
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<PagedUsersResponse>>(JsonOptions);
         result.Should().NotBeNull();
         result!.Success.Should().BeTrue();
         result.Data.Should().NotBeNull();
+        result.Data!.Items.Should().NotBeNull();
+        result.Data.Page.Should().Be(1);
     }
 
     [Fact]
@@ -211,10 +213,48 @@ public class ProtectedEndpointsTests : IClassFixture<WebApplicationFactory<Progr
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ApiResponse<List<UserResponse>>>(JsonOptions);
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<PagedUsersResponse>>(JsonOptions);
         result.Should().NotBeNull();
         result!.Success.Should().BeTrue();
         result.Data.Should().NotBeNull();
+        result.Data!.Items.Should().NotBeNull();
+        result.Data.Page.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetAllUsers_WithSearchQuery_Returns200AndFilteredItems()
+    {
+        // Arrange
+        var adminToken = await GetAdminTokenAsync();
+        var adminEmail = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler()
+            .ReadJwtToken(adminToken).Claims
+            .First(c => c.Type is "email" or System.Security.Claims.ClaimTypes.Email).Value;
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        // Act
+        var response = await _client.GetAsync($"/api/users?search={Uri.EscapeDataString(adminEmail)}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<PagedUsersResponse>>(JsonOptions);
+        result!.Data!.Items.Should().ContainSingle(u => u.Email == adminEmail);
+        result.Data.TotalCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetAllUsers_WithPageSizeAbove100_ClampsPageSize()
+    {
+        // Arrange
+        var adminToken = await GetAdminTokenAsync();
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        // Act
+        var response = await _client.GetAsync("/api/users?pageSize=500");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<PagedUsersResponse>>(JsonOptions);
+        result!.Data!.PageSize.Should().Be(100);
     }
 
     #endregion

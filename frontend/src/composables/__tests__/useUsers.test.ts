@@ -22,21 +22,74 @@ describe('useUsers', () => {
     vi.clearAllMocks()
   })
 
+  const paged = (items: User[], extra: Partial<{ page: number; pageSize: number; totalCount: number; totalPages: number }> = {}) => ({
+    data: {
+      success: true,
+      data: { items, totalCount: items.length, page: 1, pageSize: 20, totalPages: 1, ...extra },
+      error: null
+    }
+  })
+
   describe('fetchUsers', () => {
     it('should fetch users successfully', async () => {
-      const mockUsers = [mockUser]
-      vi.mocked(api.get).mockResolvedValue({
-        data: { success: true, data: mockUsers, error: null }
-      })
+      vi.mocked(api.get).mockResolvedValue(paged([mockUser]))
 
       const { users, loading, error, fetchUsers } = useUsers()
 
       await fetchUsers()
 
-      expect(users.value).toEqual(mockUsers)
+      expect(users.value).toEqual([mockUser])
       expect(loading.value).toBe(false)
       expect(error.value).toBeNull()
-      expect(api.get).toHaveBeenCalledWith('/users')
+    })
+
+    it('sends page, pageSize, search, sortBy and sortOrder as query params', async () => {
+      vi.mocked(api.get).mockResolvedValue(paged([mockUser]))
+      const { fetchUsers } = useUsers()
+
+      await fetchUsers({ page: 2, pageSize: 20, search: 'ana', sortBy: 'email', sortOrder: 'asc' })
+
+      expect(api.get).toHaveBeenCalledWith('/users', {
+        params: { page: 2, pageSize: 20, search: 'ana', sortBy: 'email', sortOrder: 'asc' }
+      })
+    })
+
+    it('omits empty search and null filters from params', async () => {
+      vi.mocked(api.get).mockResolvedValue(paged([]))
+      const { fetchUsers } = useUsers()
+
+      await fetchUsers({ page: 1, pageSize: 20, search: '   ', role: null, isActive: null })
+
+      expect(api.get).toHaveBeenCalledWith('/users', { params: { page: 1, pageSize: 20 } })
+    })
+
+    it('maps PagedUsersResponse into users and pagination', async () => {
+      vi.mocked(api.get).mockResolvedValue(
+        paged([mockUser], { page: 3, pageSize: 10, totalCount: 25, totalPages: 3 })
+      )
+      const { users, pagination, fetchUsers } = useUsers()
+
+      await fetchUsers({ page: 3, pageSize: 10 })
+
+      expect(users.value).toEqual([mockUser])
+      expect(pagination.value).toEqual({ page: 3, pageSize: 10, totalCount: 25, totalPages: 3 })
+    })
+
+    it('ignores a stale response when a newer request was issued', async () => {
+      const second = { ...mockUser, id: '2' }
+      let resolveFirst!: (v: unknown) => void
+      vi.mocked(api.get)
+        .mockImplementationOnce(() => new Promise((r) => { resolveFirst = r }))
+        .mockResolvedValueOnce(paged([second]))
+      const { users, fetchUsers } = useUsers()
+
+      const p1 = fetchUsers({ search: 'a' })
+      const p2 = fetchUsers({ search: 'ab' })
+      await p2
+      resolveFirst(paged([mockUser]))
+      await p1
+
+      expect(users.value).toEqual([second])
     })
 
     it('should set error when fetch fails', async () => {
@@ -48,6 +101,18 @@ describe('useUsers', () => {
 
       expect(users.value).toEqual([])
       expect(error.value).toBe('Failed to load users. Please try again.')
+    })
+
+    it('refresh re-runs the last query', async () => {
+      vi.mocked(api.get).mockResolvedValue(paged([mockUser]))
+      const { fetchUsers, refresh } = useUsers()
+      await fetchUsers({ page: 2, pageSize: 10, search: 'x' })
+
+      await refresh()
+
+      expect(api.get).toHaveBeenLastCalledWith('/users', {
+        params: { page: 2, pageSize: 10, search: 'x' }
+      })
     })
   })
 
@@ -86,7 +151,7 @@ describe('useUsers', () => {
         data: { success: true, data: mockUser, error: null }
       })
 
-      const { users, createUser } = useUsers()
+      const { createUser } = useUsers()
 
       const request = {
         email: 'test@example.com',
@@ -100,8 +165,23 @@ describe('useUsers', () => {
       const result = await createUser(request)
 
       expect(result).toEqual(mockUser)
-      expect(users.value).toContainEqual(mockUser)
       expect(api.post).toHaveBeenCalledWith('/users', request)
+    })
+
+    it('createUser refreshes current page after success', async () => {
+      vi.mocked(api.get).mockResolvedValue(paged([mockUser]))
+      vi.mocked(api.post).mockResolvedValue({
+        data: { success: true, data: mockUser, error: null }
+      })
+      const { fetchUsers, createUser } = useUsers()
+      await fetchUsers({ page: 2, pageSize: 10, search: 'x' })
+      vi.mocked(api.get).mockClear()
+
+      await createUser({
+        email: 'a@b.com', password: 'pw', firstName: 'A', lastName: 'B', phone: null, role: 'Member'
+      })
+
+      expect(api.get).toHaveBeenCalledWith('/users', { params: { page: 2, pageSize: 10, search: 'x' } })
     })
 
     it('should set error on duplicate email', async () => {
@@ -257,9 +337,7 @@ describe('useUsers', () => {
     it('should update user in list after successful role change', async () => {
       const updatedUser = { ...mockUser, role: 'Board' as const }
 
-      vi.mocked(api.get).mockResolvedValue({
-        data: { success: true, data: [mockUser], error: null }
-      })
+      vi.mocked(api.get).mockResolvedValue(paged([mockUser]))
 
       vi.mocked(api.patch).mockResolvedValue({
         data: { success: true, data: updatedUser, error: null }
@@ -300,6 +378,49 @@ describe('useUsers', () => {
       await updateUserRole('1', request)
 
       expect(selectedUser.value?.role).toBe('Board')
+    })
+  })
+
+  describe('deleteUser', () => {
+    it('goes to the previous page when the last row of a page > 1 is deleted', async () => {
+      vi.mocked(api.get).mockResolvedValue(
+        paged([mockUser], { page: 3, pageSize: 10, totalCount: 21, totalPages: 3 })
+      )
+      vi.mocked(api.delete).mockResolvedValue({ data: {} })
+      const { fetchUsers, deleteUser } = useUsers()
+      await fetchUsers({ page: 3, pageSize: 10 })
+      vi.mocked(api.get).mockClear()
+
+      const ok = await deleteUser('1')
+
+      expect(ok).toBe(true)
+      expect(api.get).toHaveBeenCalledWith('/users', { params: { page: 2, pageSize: 10 } })
+    })
+
+    it('refreshes the current page otherwise', async () => {
+      vi.mocked(api.get).mockResolvedValue(
+        paged([mockUser, { ...mockUser, id: '2' }], { page: 2, pageSize: 10, totalCount: 12, totalPages: 2 })
+      )
+      vi.mocked(api.delete).mockResolvedValue({ data: {} })
+      const { fetchUsers, deleteUser } = useUsers()
+      await fetchUsers({ page: 2, pageSize: 10 })
+      vi.mocked(api.get).mockClear()
+
+      await deleteUser('1')
+
+      expect(api.get).toHaveBeenCalledWith('/users', { params: { page: 2, pageSize: 10 } })
+    })
+
+    it('refreshes the first page when its last row is deleted', async () => {
+      vi.mocked(api.get).mockResolvedValue(paged([mockUser]))
+      vi.mocked(api.delete).mockResolvedValue({ data: {} })
+      const { fetchUsers, deleteUser } = useUsers()
+      await fetchUsers({ page: 1, pageSize: 10 })
+      vi.mocked(api.get).mockClear()
+
+      await deleteUser('1')
+
+      expect(api.get).toHaveBeenCalledWith('/users', { params: { page: 1, pageSize: 10 } })
     })
   })
 })

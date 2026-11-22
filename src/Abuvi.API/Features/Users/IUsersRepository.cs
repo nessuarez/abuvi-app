@@ -26,9 +26,11 @@ public interface IUsersRepository
     Task<User?> GetByPasswordResetTokenAsync(string token, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets all users with optional pagination
+    /// Gets a filtered, sorted page of users and the total matching count
     /// </summary>
-    Task<List<User>> GetAllAsync(int skip = 0, int take = 100, CancellationToken cancellationToken = default);
+    Task<(List<User> Items, int TotalCount)> GetPagedAsync(
+        int page, int pageSize, string? search, UserRole? role, bool? isActive,
+        string? sortBy, string? sortOrder, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Creates a new user

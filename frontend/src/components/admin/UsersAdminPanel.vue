@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, watch } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 import { useUsers } from '@/composables/useUsers'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useAuthStore } from '@/stores/auth'
-import DataTable from 'primevue/datatable'
+import DataTable, { type DataTablePageEvent, type DataTableSortEvent } from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -18,23 +19,49 @@ import InputText from 'primevue/inputtext'
 import UserForm from '@/components/users/UserForm.vue'
 import UserRoleCell from '@/components/users/UserRoleCell.vue'
 import UserRoleDialog from '@/components/users/UserRoleDialog.vue'
-import type { CreateUserRequest, UpdateUserRequest, User } from '@/types/user'
+import type { CreateUserRequest, UpdateUserRequest, User, UserSortField } from '@/types/user'
 
 const toast = useToast()
 const confirm = useConfirm()
 const auth = useAuthStore()
-const { users, loading, error, fetchUsers, createUser, updateUser, toggleUserActive, deleteUser, clearError } = useUsers()
+const { users, loading, error, pagination, fetchUsers, refresh, createUser, updateUser, toggleUserActive, deleteUser, clearError } = useUsers()
 
 const searchQuery = ref('')
+const sortField = ref<UserSortField>('createdAt')
+const sortOrder = ref<'asc' | 'desc'>('desc')
+const rows = ref(20)
 
-const filteredUsers = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return users.value
-  return users.value.filter(u =>
-    u.email.toLowerCase().includes(q) ||
-    `${u.firstName} ${u.lastName}`.toLowerCase().includes(q)
-  )
-})
+// Columns the backend can sort by (column field -> API sort field)
+const SORTABLE_FIELDS: readonly UserSortField[] = ['firstName', 'email', 'role', 'createdAt']
+
+const loadUsers = (page = 1) =>
+  fetchUsers({
+    page,
+    pageSize: rows.value,
+    search: searchQuery.value,
+    sortBy: sortField.value,
+    sortOrder: sortOrder.value
+  })
+
+const debouncedSearch = useDebounceFn(() => loadUsers(1), 300)
+watch(searchQuery, () => { debouncedSearch() })
+
+const onPage = (event: DataTablePageEvent) => {
+  rows.value = event.rows
+  loadUsers(event.page + 1)
+}
+
+const onSort = (event: DataTableSortEvent) => {
+  const field = SORTABLE_FIELDS.find(f => f === event.sortField)
+  if (field && event.sortOrder) {
+    sortField.value = field
+    sortOrder.value = event.sortOrder === 1 ? 'asc' : 'desc'
+  } else {
+    sortField.value = 'createdAt'
+    sortOrder.value = 'desc'
+  }
+  loadUsers(1)
+}
 
 const showCreateDialog = ref(false)
 const creatingUser = ref(false)
@@ -46,7 +73,7 @@ const showEditDialog = ref(false)
 const editingUser = ref<User | null>(null)
 const updatingUser = ref(false)
 
-onMounted(() => { fetchUsers() })
+onMounted(() => { loadUsers(1) })
 
 const openCreateDialog = () => {
   showCreateDialog.value = true
@@ -107,6 +134,8 @@ const handleRoleUpdated = (updatedUser: User) => {
     detail: `El rol de ${updatedUser.firstName} ${updatedUser.lastName} ha sido actualizado`,
     life: 5000
   })
+  // UserRoleDialog uses its own useUsers() instance, so reload the current page
+  refresh()
 }
 
 const handleToggleActive = async (user: User) => {
@@ -162,14 +191,17 @@ const formatDate = (dateString: string) =>
 <template>
   <div data-testid="users-admin-panel" class="space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h2 class="text-xl font-semibold text-gray-800">Gestión de Usuarios</h2>
+      <div class="flex items-baseline gap-3">
+        <h2 class="text-xl font-semibold text-gray-800">Gestión de Usuarios</h2>
+        <span class="text-sm text-gray-500" data-testid="users-total">{{ pagination.totalCount }} usuarios</span>
+      </div>
       <div class="flex flex-wrap items-center gap-3">
         <IconField>
           <InputIcon class="pi pi-search" />
           <InputText
             v-model="searchQuery"
             placeholder="Buscar por nombre o email…"
-            class="w-72"
+            class="w-full sm:w-72"
             aria-label="Buscar usuarios"
             data-testid="users-search-input"
           />
@@ -179,24 +211,32 @@ const formatDate = (dateString: string) =>
     </div>
 
     <!-- Loading state -->
-    <div v-if="loading && users.length === 0" class="flex justify-center py-12">
+    <div v-if="loading && users.length === 0 && !searchQuery.trim()" class="flex justify-center py-12">
       <ProgressSpinner />
     </div>
 
     <!-- Error state -->
     <Message v-else-if="error" severity="error" :closable="false" class="mb-4">
       {{ error }}
-      <Button label="Reintentar" text size="small" class="ml-2" @click="fetchUsers" />
+      <Button label="Reintentar" text size="small" class="ml-2" @click="refresh" />
     </Message>
 
     <!-- Users DataTable -->
     <DataTable
       v-else
-      :value="filteredUsers"
+      :value="users"
+      lazy
       striped-rows
       paginator
-      :rows="10"
-      :rows-per-page-options="[5, 10, 20, 50]"
+      :rows="rows"
+      :first="(pagination.page - 1) * rows"
+      :total-records="pagination.totalCount"
+      :rows-per-page-options="[10, 20, 50, 100]"
+      :loading="loading"
+      :sort-field="sortField"
+      :sort-order="sortOrder === 'asc' ? 1 : -1"
+      @page="onPage"
+      @sort="onSort"
       scrollable
       scroll-height="flex"
       class="rounded-lg"
@@ -218,7 +258,7 @@ const formatDate = (dateString: string) =>
           <span class="text-gray-600">{{ data.phone || '—' }}</span>
         </template>
       </Column>
-      <Column field="isActive" header="Estado" sortable>
+      <Column field="isActive" header="Estado">
         <template #body="{ data }">
           <Tag
             :value="data.isActive ? 'Activo' : 'Inactivo'"
@@ -274,7 +314,10 @@ const formatDate = (dateString: string) =>
         </template>
       </Column>
       <template #empty>
-        <span class="text-gray-500">No se encontraron usuarios que coincidan con la búsqueda.</span>
+        <span v-if="searchQuery.trim()" class="text-gray-500">
+          No se encontraron usuarios para «{{ searchQuery.trim() }}».
+        </span>
+        <span v-else class="text-gray-500">No hay usuarios.</span>
       </template>
     </DataTable>
 

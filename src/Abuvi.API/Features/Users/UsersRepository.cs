@@ -31,14 +31,62 @@ public class UsersRepository(AbuviDbContext context) : IUsersRepository
     public async Task<User?> GetByPasswordResetTokenAsync(string token, CancellationToken cancellationToken = default)
         => await context.Users.FirstOrDefaultAsync(u => u.PasswordResetToken == token, cancellationToken);
 
-    public async Task<List<User>> GetAllAsync(int skip = 0, int take = 100, CancellationToken cancellationToken = default)
+    public async Task<(List<User> Items, int TotalCount)> GetPagedAsync(
+        int page, int pageSize, string? search, UserRole? role, bool? isActive,
+        string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
     {
-        return await context.Users
-            .AsNoTracking()
-            .OrderBy(u => u.CreatedAt)
-            .Skip(skip)
-            .Take(take)
+        IQueryable<User> query = context.Users.AsNoTracking();
+
+        if (role.HasValue)
+            query = query.Where(u => u.Role == role.Value);
+
+        if (isActive.HasValue)
+            query = query.Where(u => u.IsActive == isActive.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(u =>
+                u.Email.ToLower().Contains(term) ||
+                u.FirstName.ToLower().Contains(term) ||
+                u.LastName.ToLower().Contains(term) ||
+                (u.FirstName + " " + u.LastName).ToLower().Contains(term));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await ApplySort(query, sortBy, sortOrder)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    /// <summary>
+    /// Applies an allowlisted sort (unknown values fall back to createdAt desc) with Id as a stable tiebreaker
+    /// </summary>
+    private static IOrderedQueryable<User> ApplySort(IQueryable<User> query, string? sortBy, string? sortOrder)
+    {
+        // A recognised field without an explicit "desc" sorts ascending
+        var descending = string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase);
+
+        IOrderedQueryable<User>? ordered = (sortBy?.ToLowerInvariant(), descending) switch
+        {
+            ("email", false) => query.OrderBy(u => u.Email),
+            ("email", true) => query.OrderByDescending(u => u.Email),
+            ("firstname", false) => query.OrderBy(u => u.FirstName),
+            ("firstname", true) => query.OrderByDescending(u => u.FirstName),
+            ("lastname", false) => query.OrderBy(u => u.LastName),
+            ("lastname", true) => query.OrderByDescending(u => u.LastName),
+            ("role", false) => query.OrderBy(u => u.Role),
+            ("role", true) => query.OrderByDescending(u => u.Role),
+            ("createdat", false) => query.OrderBy(u => u.CreatedAt),
+            ("createdat", true) => query.OrderByDescending(u => u.CreatedAt),
+            _ => null
+        };
+
+        return (ordered ?? query.OrderByDescending(u => u.CreatedAt)).ThenBy(u => u.Id);
     }
 
     public async Task<User> CreateAsync(User user, CancellationToken cancellationToken = default)

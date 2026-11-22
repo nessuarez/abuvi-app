@@ -20,12 +20,20 @@ public class UsersService(
     }
 
     /// <summary>
-    /// Gets all users with pagination
+    /// Gets a paged, filtered list of users for administration
     /// </summary>
-    public async Task<List<UserResponse>> GetAllAsync(int skip = 0, int take = 100, CancellationToken cancellationToken = default)
+    public async Task<PagedUsersResponse> GetPagedAsync(UserListQuery query, CancellationToken cancellationToken = default)
     {
-        var users = await repository.GetAllAsync(skip, take, cancellationToken);
-        return users.Select(MapToResponse).ToList();
+        var page = Math.Max(1, query.Page);
+        var pageSize = Math.Clamp(query.PageSize, 1, 100);
+
+        var (items, totalCount) = await repository.GetPagedAsync(
+            page, pageSize, query.Search, query.Role, query.IsActive,
+            query.SortBy, query.SortOrder, cancellationToken);
+
+        var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PagedUsersResponse(items.Select(MapToResponse).ToList(), totalCount, page, pageSize, totalPages);
     }
 
     /// <summary>
