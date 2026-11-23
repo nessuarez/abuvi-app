@@ -5,7 +5,9 @@ import Skeleton from 'primevue/skeleton'
 import CampLocationMap from '@/components/camps/CampLocationMap.vue'
 import AnniversaryVenueList from '@/components/anniversary/AnniversaryVenueList.vue'
 import AnniversaryYearStrip from '@/components/anniversary/AnniversaryYearStrip.vue'
+import { RouterLink } from 'vue-router'
 import { useCampHistory } from '@/composables/useCampHistory'
+import { useAlbums } from '@/composables/useAlbums'
 import type { CampLocation } from '@/types/camp'
 
 const emit = defineEmits<{
@@ -23,6 +25,14 @@ const selectedEntry = computed(() =>
   selectedYear.value == null ? undefined : entryByYear(selectedYear.value)
 )
 const selectedCampId = computed(() => selectedEntry.value?.campId ?? null)
+
+// The history endpoint is keyed by year and carries no edition id, so the album index
+// supplies it. Both assume one edition per year, true for 1976-2025.
+const { fetchIndex: fetchAlbumIndex, editionIdByYear } = useAlbums()
+
+const selectedEditionId = computed(() =>
+  selectedYear.value == null ? null : (editionIdByYear.value.get(selectedYear.value) ?? null)
+)
 
 /** Venues the map can actually place. A venue without coordinates still shows in the list. */
 const mapLocations = computed<CampLocation[]>(() =>
@@ -97,7 +107,11 @@ const scrollToUpload = () => {
 
 watch(selectedYear, (year) => emit('update:year', year))
 
-onMounted(fetchHistory)
+onMounted(() => {
+  fetchHistory()
+  // Independent of the history call: a failure here only costs the album link.
+  fetchAlbumIndex()
+})
 // A leaked interval keeps panning a destroyed Leaflet map, which throws on every tick.
 onUnmounted(stopPlayback)
 </script>
@@ -200,6 +214,17 @@ onUnmounted(stopPlayback)
             {{ selectedEntry.totalEditionsAtVenue }} aquí
           </span>
         </div>
+
+        <!-- The way into the year's full album. Hidden when no edition maps to this
+             year, rather than rendering a link that would 404. -->
+        <RouterLink
+          v-if="selectedEditionId"
+          :to="{ name: 'anniversary-album', params: { editionId: selectedEditionId } }"
+          class="mt-4 inline-flex items-center gap-2 font-medium text-amber-700 underline hover:text-amber-900"
+        >
+          Ver el álbum de {{ selectedEntry.year }}
+          <i class="pi pi-arrow-right text-xs" aria-hidden="true" />
+        </RouterLink>
 
         <!-- Nothing survives from this year: that is the ask, not a failure -->
         <div v-if="selectedEntry.photoCount === 0" class="mt-4">

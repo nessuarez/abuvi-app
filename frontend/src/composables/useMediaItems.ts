@@ -19,6 +19,10 @@ export function useMediaItems() {
     type?: MediaItemType
     accommodationId?: string
     zoneId?: string
+    campEditionId?: string
+    /** Only items whose edition is still unknown. */
+    unplacedOnly?: boolean
+    themeId?: string
   }): Promise<void> => {
     loading.value = true
     error.value = null
@@ -30,6 +34,9 @@ export function useMediaItems() {
       if (params?.type) query.set('type', params.type)
       if (params?.accommodationId) query.set('accommodationId', params.accommodationId)
       if (params?.zoneId) query.set('zoneId', params.zoneId)
+      if (params?.campEditionId) query.set('campEditionId', params.campEditionId)
+      if (params?.unplacedOnly) query.set('unplacedOnly', 'true')
+      if (params?.themeId) query.set('themeId', params.themeId)
 
       const qs = query.toString()
       const url = `/media-items${qs ? `?${qs}` : ''}`
